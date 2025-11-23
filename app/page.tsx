@@ -145,7 +145,7 @@ export default function Home() {
         >
           <div className="relative w-full aspect-[9/16]">
             <Image
-              src="/img/screenshot-placeholder.png"
+              src="/img/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
@@ -163,7 +163,7 @@ export default function Home() {
         >
           <div className="relative w-full aspect-[9/16]">
             <Image
-              src="/img/screenshot-placeholder.png"
+              src="/img/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
