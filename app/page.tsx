@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Check } from 'lucide-react'
 import { Typography } from '@/components/ui/typography'
 import { Input } from '@/components/ui/input'
@@ -68,15 +69,111 @@ export default function Home() {
     }
   }, [charIndex, isTyping, currentLinkIndex])
 
+  // Parallax scroll effect for screenshots
+  const [showImages, setShowImages] = useState(false)
+  const leftImageRef = useRef<HTMLDivElement>(null)
+  const rightImageRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Start fade-in animation after delay
+    const showTimer = setTimeout(() => {
+      setShowImages(true)
+    }, 700)
+
+    let ticking = false
+    let cleanup: (() => void) | null = null
+
+    // Wait for animation to complete before enabling parallax
+    const enableParallax = setTimeout(() => {
+      // Remove transition property to prevent scroll lag
+      if (leftImageRef.current) leftImageRef.current.style.transition = 'none'
+      if (rightImageRef.current) rightImageRef.current.style.transition = 'none'
+
+      const handleScroll = () => {
+        if (!ticking) {
+          window.requestAnimationFrame(() => {
+            const scrollY = window.scrollY || window.pageYOffset
+            const scrollFactor = 0.3 // Parallax speed
+
+            if (leftImageRef.current) {
+              // Left image moves down as you scroll
+              leftImageRef.current.style.transform = `translate3d(0, calc(30% + ${scrollY * scrollFactor}px), 0)`
+            }
+
+            if (rightImageRef.current) {
+              // Right image moves up as you scroll
+              rightImageRef.current.style.transform = `translate3d(0, calc(30% - ${scrollY * scrollFactor}px), 0)`
+            }
+
+            ticking = false
+          })
+          ticking = true
+        }
+      }
+
+      // Initial call to set position
+      handleScroll()
+
+      // Add scroll listeners
+      window.addEventListener('scroll', handleScroll, { passive: true })
+
+      cleanup = () => {
+        window.removeEventListener('scroll', handleScroll)
+      }
+    }, 1500) // Wait for animation to complete (0.7s delay + 0.8s duration)
+
+    return () => {
+      clearTimeout(showTimer)
+      clearTimeout(enableParallax)
+      if (cleanup) cleanup()
+    }
+  }, [])
+
   return (
     <>
       <Navbar />
       {/* Hero Section with Background Effect */}
-      <div className="relative min-h-screen">
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Left Screenshot - Desktop only */}
+        <div
+          ref={leftImageRef}
+          className={`hidden lg:block absolute left-[5%] bottom-0 w-[300px] xl:w-[400px] z-10 pointer-events-none transition-all duration-1000 ease-out ${
+            showImages ? 'opacity-100 translate-y-[30%]' : 'opacity-0 translate-y-[calc(30%+40px)]'
+          }`}
+        >
+          <div className="relative w-full aspect-[9/16]">
+            <Image
+              src="/img/screenshot-placeholder.png"
+              alt="Generated website preview"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+
+        {/* Right Screenshot - Desktop only, slightly higher */}
+        <div
+          ref={rightImageRef}
+          className={`hidden lg:block absolute right-[5%] bottom-[8%] w-[300px] xl:w-[400px] z-10 pointer-events-none transition-all duration-1000 ease-out ${
+            showImages ? 'opacity-100 translate-y-[30%]' : 'opacity-0 translate-y-[calc(30%+40px)]'
+          }`}
+        >
+          <div className="relative w-full aspect-[9/16]">
+            <Image
+              src="/img/screenshot-placeholder.png"
+              alt="Generated website preview"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
+
         <div className="absolute inset-0 opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
           <BackgroundEffect />
         </div>
-        <div className="content">
+        <div className="content relative z-20">
           <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
           <Typography variant="small" className="mb-4 text-muted-foreground uppercase tracking-wider animate-fade-in-up">
@@ -117,7 +214,7 @@ export default function Home() {
               Generate Free Site
             </Button>
             
-            <Typography variant="small" className="text-center text-muted-foreground pt-1">
+            <Typography variant="small" className="text-center text-muted-foreground pt-1 text-xs">
               No registration required until you're ready to publish.
             </Typography>
             
@@ -125,7 +222,7 @@ export default function Home() {
             <div className="pt-1">
               <Link 
                 href="#" 
-                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+                className="text-sm text-white hover:text-orange-500 underline underline-offset-4 transition-colors"
               >
                 or fill in data manually
               </Link>
@@ -197,6 +294,26 @@ export default function Home() {
 
       {/* Feature Points Section - Below the fold */}
       <section className="relative bg-black min-h-screen flex items-center justify-center py-20">
+        {/* Mobile Screenshots - Below hero */}
+        <div className="lg:hidden w-full px-4 mb-8 flex flex-col items-center gap-6">
+          <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
+            <Image
+              src="/img/screenshot-placeholder.png"
+              alt="Generated website preview"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
+            <Image
+              src="/img/screenshot-placeholder.png"
+              alt="Generated website preview"
+              fill
+              className="object-contain"
+            />
+          </div>
+        </div>
+
         <div className="w-full max-w-4xl px-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
