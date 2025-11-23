@@ -43,7 +43,9 @@ let lastMouseX = 0;
 let lastMouseY = 0;
 let mouseMoveTimeout: NodeJS.Timeout | null = null;
 
-// FPS tracking removed
+// FPS tracking variables
+let frameCount = 0;
+let lastTime = performance.now();
 
 // Shader code
 const vertexShader = `
@@ -171,6 +173,8 @@ const fragmentShader = `
 
 export default function BackgroundEffect() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const fpsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
@@ -233,18 +237,46 @@ export default function BackgroundEffect() {
       material.needsUpdate = true;
     }
 
-    // Cursor removed
+    // Make sure cursor is visible initially
+    if (cursorRef.current) {
+      cursorRef.current.style.opacity = "1";
+    }
 
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
-      // Use mouse position for the effect
+      // Always use mouse position for the effect
       mouse.x = e.clientX / window.innerWidth;
       mouse.y = 1.0 - e.clientY / window.innerHeight; // Flip Y
+
+      // Update custom cursor position
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      }
+
+      // Check if mouse is actually moving
+      if (e.clientX !== lastMouseX || e.clientY !== lastMouseY) {
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        // Update cursor state - active when moving
+        cursorRef.current?.classList.add("active");
+        cursorRef.current?.classList.remove("idle");
+        isMoving = true;
+        // Clear previous timeout
+        if (mouseMoveTimeout) {
+          clearTimeout(mouseMoveTimeout);
+        }
+        // Set timeout to detect when movement stops - slower to deactivate (500ms)
+        mouseMoveTimeout = setTimeout(() => {
+          isMoving = false;
+          cursorRef.current?.classList.remove("active");
+          cursorRef.current?.classList.add("idle");
+        }, 500); // 500ms without movement = idle
+      }
     };
 
     // Initialize cursor as visible but idle
     const handleLoad = () => {
-      // Cursor removed
+      cursorRef.current?.classList.add("idle");
       // Initial color update
       updateColors();
     };
@@ -263,9 +295,25 @@ export default function BackgroundEffect() {
     function animate() {
       requestAnimationFrame(animate);
 
+      // Set fixed cursor size
+      document.documentElement.style.setProperty("--cursor-size", "8px");
+
       // Update uniforms with fixed animation speed
       uniforms.iTime.value += 0.01 * 1.0;
       uniforms.iMouse.value.set(mouse.x, mouse.y);
+
+      // Update FPS counter
+      if (fpsRef.current) {
+        frameCount++;
+        const currentTime = performance.now();
+        const deltaTime = currentTime - lastTime;
+        if (deltaTime >= 1000) {
+          const fps = Math.round((frameCount * 1000) / deltaTime);
+          fpsRef.current.textContent = `FPS: ${fps}`;
+          frameCount = 0;
+          lastTime = currentTime;
+        }
+      }
 
       // Render scene
       renderer.render(scene, camera);
@@ -303,6 +351,11 @@ export default function BackgroundEffect() {
           <div className="author">The light reveals what darkness conceals, but never explains</div>
         </div>
       </div>
+
+      {/* Custom cursor */}
+      <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
+
+      <div ref={fpsRef} id="fps">FPS: 0</div>
 
       {/* Canvas container for Three.js */}
       <div ref={containerRef} className="canvas-container"></div>
