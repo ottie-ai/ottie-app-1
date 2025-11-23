@@ -7,6 +7,7 @@ import { Check } from 'lucide-react'
 import { Typography } from '@/components/ui/typography'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 const BackgroundEffect = dynamic(() => import('@/components/background-effect'), {
   ssr: false,
@@ -68,9 +69,11 @@ export default function Home() {
 
   return (
     <>
-      <BackgroundEffect />
-      <div className="content">
-        <div className="quote-container">
+      {/* Hero Section with Background Effect */}
+      <div className="relative min-h-screen">
+        <BackgroundEffect />
+        <div className="content">
+          <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
           <Typography variant="small" className="mb-4 text-muted-foreground uppercase tracking-wider">
             Ottie App
@@ -86,43 +89,8 @@ export default function Home() {
             Create a premium, dedicated property site in seconds—no coding, no setup, no cost.
           </Typography>
 
-          {/* Feature Points */}
-          <div className="mb-8 space-y-3 max-w-2xl">
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                No more catalog confusion—each of your listings gets its own conversion-focused site.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                Designed to impress buyers from the first click, on every device.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                Share your unique property link everywhere: WhatsApp, ads, email.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                Built for speed, SEO, and seamless lead capture.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                Agent-first. Your data stays yours—never sold, never shared.
-              </Typography>
-            </div>
-          </div>
-
           {/* Input Section */}
           <div className="w-full max-w-md space-y-2">
-            <Label htmlFor="link-input">Enter your link</Label>
             <div className="relative">
               <Input
                 ref={inputRef}
@@ -141,6 +109,14 @@ export default function Home() {
               )}
             </div>
             
+            <Button className="w-full">
+              Generate Free Site
+            </Button>
+            
+            <Typography variant="small" className="text-center text-muted-foreground pt-1">
+              No registration required until you're ready to publish.
+            </Typography>
+            
             {/* Manual Start Link */}
             <div className="pt-1">
               <Link 
@@ -152,8 +128,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Testimonial Section */}
-          <div className="mt-8 flex flex-col items-center gap-3">
+          {/* Spacer - pushes testimonial to bottom */}
+          <div className="flex-grow"></div>
+
+          {/* Bottom Section - Testimonial and Footer */}
+          <div className="w-full flex flex-col items-center gap-6 pb-[15px]">
+            {/* Testimonial Section */}
+            <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
               {/* Overlapping Avatars */}
               <div className="flex -space-x-2">
@@ -186,13 +167,67 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Testimonial Text */}
-            <Typography variant="small" className="text-muted-foreground">
-              Loved by 1200+ realtors
-            </Typography>
+              {/* Testimonial Text */}
+              <Typography variant="small" className="text-muted-foreground">
+                Loved by 1200+ realtors
+              </Typography>
+            </div>
+
+            {/* Privacy & Compliance Footer */}
+            <div className="flex items-center justify-center gap-2">
+              <Link 
+                href="/privacy" 
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">GDPR compliant</span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">SOC2 - ready</span>
+            </div>
+          </div>
           </div>
         </div>
       </div>
+
+      {/* Feature Points Section - Below the fold */}
+      <section className="relative bg-black min-h-screen flex items-center justify-center py-20">
+        <div className="w-full max-w-4xl px-4">
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-muted-foreground">
+                No more catalog confusion — <span className="font-semibold text-foreground">each listing gets its own site</span>.
+              </Typography>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Impress buyers instantly</span> — beautiful on every device.
+              </Typography>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
+              </Typography>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-muted-foreground">
+                Built for <span className="font-semibold text-foreground">speed, SEO, and seamless lead capture</span>.
+              </Typography>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-foreground">Never sold, never shared</span>.
+              </Typography>
+            </div>
+          </div>
+        </div>
+      </section>
     </>
   )
 }
