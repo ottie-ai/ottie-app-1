@@ -77,12 +77,12 @@ export default function Home() {
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-6 font-light max-w-3xl">
+          <Typography variant="h1" className="mb-1 font-medium max-w-3xl">
             Turn any listing link into a luxury website. Instantly. For free.
           </Typography>
 
           {/* Subheading */}
-          <Typography variant="lead" className="mb-8 max-w-2xl">
+          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug">
             Create a premium, dedicated property site in seconds—no coding, no setup, no cost.
           </Typography>
 
@@ -140,16 +140,16 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Manual Start Link */}
-          <div className="mt-6">
-            <Link 
-              href="#" 
-              className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
-            >
-              alebo začni manuálne
-            </Link>
+            
+            {/* Manual Start Link */}
+            <div className="pt-1">
+              <Link 
+                href="#" 
+                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+              >
+                or fill in data manually
+              </Link>
+            </div>
           </div>
 
           {/* Testimonial Section */}
@@ -188,7 +188,7 @@ export default function Home() {
 
             {/* Testimonial Text */}
             <Typography variant="small" className="text-muted-foreground">
-              Loved by 3200+ developers
+              Loved by 1200+ realtors
             </Typography>
           </div>
         </div>
