@@ -73,7 +73,9 @@ export default function Home() {
       <Navbar />
       {/* Hero Section with Background Effect */}
       <div className="relative min-h-screen">
-        <BackgroundEffect />
+        <div className="absolute inset-0">
+          <BackgroundEffect />
+        </div>
         <div className="content">
           <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
