@@ -47,7 +47,6 @@ const settings = {
   saturation: 2.0,
   invert: false,
   cursorSize: 8,
-  cursorIntensity: 2.0,
   resetPosition: () => {
     mouse.x = 0.5;
     mouse.y = 0.5;
@@ -403,13 +402,12 @@ export default function BackgroundEffect() {
         });
       colorFolder.open();
 
-      // Cursor and interaction
-      const cursorFolder = gui.addFolder("Cursor & Controls");
-      cursorFolder.add(settings, "useMousePosition").name("Use Mouse Position");
-      cursorFolder.add(settings, "cursorSize", 8, 40).name("Cursor Size");
-      cursorFolder.add(settings, "cursorIntensity", 0.1, 2.0).name("Cursor Glow");
-      cursorFolder.add(settings, "resetPosition").name("Reset Position");
-      cursorFolder.open();
+  // Cursor and interaction
+  const cursorFolder = gui.addFolder("Cursor & Controls");
+  cursorFolder.add(settings, "useMousePosition").name("Use Mouse Position");
+  cursorFolder.add(settings, "cursorSize", 8, 40).name("Cursor Size");
+  cursorFolder.add(settings, "resetPosition").name("Reset Position");
+  cursorFolder.open();
     }
 
     // Initialize GUI
@@ -425,16 +423,7 @@ export default function BackgroundEffect() {
         `${settings.cursorSize}px`
       );
 
-      // Apply cursor glow effect
-      if (cursorRef.current) {
-        if (isMoving) {
-          cursorRef.current.style.boxShadow = `0 0 ${20 * settings.cursorIntensity}px ${
-            10 * settings.cursorIntensity
-          }px rgba(255, 255, 255, ${0.8 * settings.cursorIntensity})`;
-        } else {
-          cursorRef.current.style.boxShadow = "none";
-        }
-      }
+      // Cursor shadow removed - no glow effects
 
       // Update uniforms
       uniforms.iTime.value += 0.01 * settings.flareSpeed;
