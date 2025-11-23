@@ -117,6 +117,7 @@
   --secondary-color: rgba(255, 255, 255, 0.5);
   --quote-size: 8vw;
   --author-size: 1vw;
+  --cursor-size: 16px;
   --ghost-color: #000000;
   --eye-glow-color: #ffff00;
 }
@@ -239,6 +240,21 @@ body::before {
   font-size: var(--author-size);
   opacity: 0.5;
   margin-top: 1vh;
+}
+
+/* Custom cursor */
+.custom-cursor {
+  position: fixed;
+  width: var(--cursor-size);
+  height: var(--cursor-size);
+  border-radius: 50%;
+  background-color: var(--secondary-color);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mix-blend-mode: difference;
+  z-index: 9999;
+  transition: width 0.2s, height 0.2s;
+  will-change: transform;
 }
 
 /* Canvas overlay - Fixed to be below noise effect */
