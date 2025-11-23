@@ -46,8 +46,6 @@ const settings = {
   contrastBW: 0.0,
   saturation: 2.0,
   invert: false,
-  cursorSize: 8,
-  cursorIntensity: 2.0,
   resetPosition: () => {
     mouse.x = 0.5;
     mouse.y = 0.5;
@@ -58,11 +56,7 @@ const settings = {
 const mouse = new THREE.Vector2(0.5, 0.5);
 const defaultMouse = new THREE.Vector2(0.5, 0.5);
 
-// Variables for cursor tracking
-let isMoving = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-let mouseMoveTimeout: NodeJS.Timeout | null = null;
+// Variables for cursor tracking - removed
 
 // FPS tracking variables
 let frameCount = 0;
@@ -194,7 +188,6 @@ const fragmentShader = `
 
 export default function BackgroundEffect() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const cursorRef = useRef<HTMLDivElement>(null);
   const fpsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -258,10 +251,7 @@ export default function BackgroundEffect() {
       material.needsUpdate = true;
     }
 
-    // Make sure cursor is visible initially
-    if (cursorRef.current) {
-      cursorRef.current.style.opacity = "1";
-    }
+    // Cursor removed - no initialization needed
 
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
@@ -270,35 +260,11 @@ export default function BackgroundEffect() {
         mouse.y = 1.0 - e.clientY / window.innerHeight; // Flip Y
       }
 
-      // Update custom cursor position
-      if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-      }
-
-      // Check if mouse is actually moving
-      if (e.clientX !== lastMouseX || e.clientY !== lastMouseY) {
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        // Update cursor state - active when moving
-        cursorRef.current?.classList.add("active");
-        cursorRef.current?.classList.remove("idle");
-        isMoving = true;
-        // Clear previous timeout
-        if (mouseMoveTimeout) {
-          clearTimeout(mouseMoveTimeout);
-        }
-        // Set timeout to detect when movement stops - slower to deactivate (500ms)
-        mouseMoveTimeout = setTimeout(() => {
-          isMoving = false;
-          cursorRef.current?.classList.remove("active");
-          cursorRef.current?.classList.add("idle");
-        }, 500); // 500ms without movement = idle
-      }
+      // Cursor removed - no position updates needed
     };
 
-    // Initialize cursor as visible but idle
+    // Initialize colors
     const handleLoad = () => {
-      cursorRef.current?.classList.add("idle");
       // Initial color update
       updateColors();
     };
@@ -401,15 +367,7 @@ export default function BackgroundEffect() {
           uniforms.invert.value = settings.invert;
           material.needsUpdate = true;
         });
-      colorFolder.open();
-
-      // Cursor and interaction
-      const cursorFolder = gui.addFolder("Cursor & Controls");
-      cursorFolder.add(settings, "useMousePosition").name("Use Mouse Position");
-      cursorFolder.add(settings, "cursorSize", 8, 40).name("Cursor Size");
-      cursorFolder.add(settings, "cursorIntensity", 0.1, 2.0).name("Cursor Glow");
-      cursorFolder.add(settings, "resetPosition").name("Reset Position");
-      cursorFolder.open();
+  colorFolder.open();
     }
 
     // Initialize GUI
@@ -419,22 +377,7 @@ export default function BackgroundEffect() {
     function animate() {
       requestAnimationFrame(animate);
 
-      // Update cursor size based on settings
-      document.documentElement.style.setProperty(
-        "--cursor-size",
-        `${settings.cursorSize}px`
-      );
-
-      // Apply cursor glow effect
-      if (cursorRef.current) {
-        if (isMoving) {
-          cursorRef.current.style.boxShadow = `0 0 ${20 * settings.cursorIntensity}px ${
-            10 * settings.cursorIntensity
-          }px rgba(255, 255, 255, ${0.8 * settings.cursorIntensity})`;
-        } else {
-          cursorRef.current.style.boxShadow = "none";
-        }
-      }
+        // Cursor removed - no styling needed
 
       // Update uniforms
       uniforms.iTime.value += 0.01 * settings.flareSpeed;
@@ -494,8 +437,6 @@ export default function BackgroundEffect() {
       </div>
 
       {/* Custom cursor */}
-      <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
-
       <div ref={fpsRef} id="fps">FPS: 0</div>
 
       {/* Canvas container for Three.js */}
