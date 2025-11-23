@@ -248,7 +248,7 @@ body::before {
   width: var(--cursor-size);
   height: var(--cursor-size);
   border-radius: 50%;
-  background-color: var(--secondary-color);
+  background-color: white;
   transform: translate(-50%, -50%);
   pointer-events: none;
   mix-blend-mode: difference;
