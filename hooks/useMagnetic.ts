@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, RefObject } from 'react'
+import { useEffect, useRef, MutableRefObject } from 'react'
 
 interface UseMagneticOptions {
   distance?: number // Distance in pixels to activate magnetic effect
@@ -9,9 +9,9 @@ interface UseMagneticOptions {
 
 export function useMagnetic<T extends HTMLElement = HTMLButtonElement>(
   options: UseMagneticOptions = {}
-): RefObject<T> {
+): MutableRefObject<T | null> {
   const { distance = 100, strength = 0.3 } = options
-  const ref = useRef<T>(null)
+  const ref = useRef<T | null>(null)
 
   useEffect(() => {
     const element = ref.current
