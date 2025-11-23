@@ -8,6 +8,7 @@ import { Typography } from '@/components/ui/typography'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import Navbar from '@/components/navbar'
 
 const BackgroundEffect = dynamic(() => import('@/components/background-effect'), {
   ssr: false,
@@ -69,28 +70,29 @@ export default function Home() {
 
   return (
     <>
+      <Navbar />
       {/* Hero Section with Background Effect */}
       <div className="relative min-h-screen">
         <BackgroundEffect />
         <div className="content">
           <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
-          <Typography variant="small" className="mb-4 text-muted-foreground uppercase tracking-wider">
+          <Typography variant="small" className="mb-4 text-muted-foreground uppercase tracking-wider animate-fade-in-up">
             Ottie App
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 font-medium max-w-3xl">
+          <Typography variant="h1" className="mb-1 font-medium max-w-3xl animate-fade-in-up-delay-1">
             Turn any listing link into a luxury website. Instantly. For free.
           </Typography>
 
           {/* Subheading */}
-          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug">
+          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug animate-fade-in-up-delay-2">
             Create a premium, dedicated property site in seconds—no coding, no setup, no cost.
           </Typography>
 
           {/* Input Section */}
-          <div className="w-full max-w-md space-y-2">
+          <div className="w-full max-w-md space-y-2 animate-fade-in-up-delay-3">
             <div className="relative">
               <Input
                 ref={inputRef}
@@ -132,7 +134,7 @@ export default function Home() {
           <div className="flex-grow"></div>
 
           {/* Bottom Section - Testimonial and Footer */}
-          <div className="w-full flex flex-col items-center gap-6 pb-[15px]">
+          <div className="w-full flex flex-col items-center gap-6 pb-[15px] animate-fade-in-up-delay-4">
             {/* Testimonial Section */}
             <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
@@ -174,7 +176,7 @@ export default function Home() {
             </div>
 
             {/* Privacy & Compliance Footer */}
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 animate-fade-in-up-delay-5">
               <Link 
                 href="/privacy" 
                 className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
