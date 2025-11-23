@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import * as THREE from 'three';
 import { GUI } from 'dat.gui';
 
@@ -497,6 +498,16 @@ export default function BackgroundEffect() {
       <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
 
       <div ref={fpsRef} id="fps">FPS: 0</div>
+
+      <div className="profile-card">
+        <Image className="profile-image" src="/images/profile003.jpg" alt="Filip Zrnzević" width={28} height={28} />
+        <div className="profile-info">
+          <p className="profile-name">Filip Zrnzević</p>
+          <p className="profile-twitter">
+            <a href="https://x.com/filipz" target="_blank">@filipz</a>
+          </p>
+        </div>
+      </div>
 
       {/* Canvas container for Three.js */}
       <div ref={containerRef} className="canvas-container"></div>
