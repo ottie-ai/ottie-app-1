@@ -42,6 +42,9 @@ let isMoving = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
 let mouseMoveTimeout: NodeJS.Timeout | null = null;
+let autoMoveActive = true; // Track if auto-movement is active
+let autoMoveInterval: NodeJS.Timeout | null = null;
+let autoMoveTime = 0; // Time counter for auto movement
 
 // Cursor tracking variables
 
@@ -234,13 +237,26 @@ export default function BackgroundEffect() {
       material.needsUpdate = true;
     }
 
-    // Make sure cursor is visible initially
+    // Hide cursor initially (will show when user moves mouse manually)
     if (cursorRef.current) {
-      cursorRef.current.style.opacity = "1";
+      cursorRef.current.style.opacity = "0";
     }
 
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
+      // Stop auto-movement when user moves mouse manually
+      if (autoMoveActive) {
+        autoMoveActive = false;
+        if (autoMoveInterval) {
+          clearInterval(autoMoveInterval);
+          autoMoveInterval = null;
+        }
+        // Show cursor when user starts moving manually
+        if (cursorRef.current) {
+          cursorRef.current.style.opacity = "1";
+        }
+      }
+
       // Always use mouse position for the effect
       mouse.x = e.clientX / window.innerWidth;
       mouse.y = 1.0 - e.clientY / window.innerHeight; // Flip Y
@@ -278,6 +294,42 @@ export default function BackgroundEffect() {
       updateColors();
     };
 
+    // Auto-move cursor function - creates gentle circular motion
+    const startAutoMove = () => {
+      if (autoMoveInterval) return; // Already running
+      
+      autoMoveInterval = setInterval(() => {
+        if (!autoMoveActive) {
+          if (autoMoveInterval) {
+            clearInterval(autoMoveInterval);
+            autoMoveInterval = null;
+          }
+          return;
+        }
+
+        autoMoveTime += 0.02; // Slow increment for smooth motion
+        
+        // Create gentle circular/elliptical motion around center
+        const centerX = 0.5;
+        const centerY = 0.5;
+        const radiusX = 0.15; // Horizontal radius
+        const radiusY = 0.1; // Vertical radius
+        const speed = 0.3; // Speed of rotation
+        
+        mouse.x = centerX + Math.cos(autoMoveTime * speed) * radiusX;
+        mouse.y = centerY + Math.sin(autoMoveTime * speed) * radiusY;
+
+        // Update custom cursor position (convert normalized to pixel coordinates)
+        // Keep cursor hidden during auto-movement
+        if (cursorRef.current) {
+          const pixelX = mouse.x * window.innerWidth;
+          const pixelY = (1.0 - mouse.y) * window.innerHeight; // Flip Y back
+          cursorRef.current.style.transform = `translate(${pixelX}px, ${pixelY}px)`;
+          cursorRef.current.style.opacity = "0"; // Keep hidden during auto-move
+        }
+      }, 16); // ~60fps
+    };
+
     // Handle window resize
     const handleResize = () => {
       const width = window.innerWidth;
@@ -308,6 +360,9 @@ export default function BackgroundEffect() {
     window.addEventListener("load", handleLoad);
     window.addEventListener("resize", handleResize);
 
+    // Start auto-movement
+    startAutoMove();
+
     // Start animation
     animate();
 
@@ -316,6 +371,13 @@ export default function BackgroundEffect() {
       document.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("load", handleLoad);
       window.removeEventListener("resize", handleResize);
+      if (autoMoveInterval) {
+        clearInterval(autoMoveInterval);
+        autoMoveInterval = null;
+      }
+      if (mouseMoveTimeout) {
+        clearTimeout(mouseMoveTimeout);
+      }
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
@@ -328,7 +390,7 @@ export default function BackgroundEffect() {
   return (
     <>
       {/* Custom cursor */}
-      <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
+      <div ref={cursorRef} className="custom-cursor" style={{ opacity: 0 }}></div>
 
       {/* Canvas container for Three.js */}
       <div ref={containerRef} className="canvas-container"></div>
