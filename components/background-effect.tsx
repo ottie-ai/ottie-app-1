@@ -43,9 +43,7 @@ let lastMouseX = 0;
 let lastMouseY = 0;
 let mouseMoveTimeout: NodeJS.Timeout | null = null;
 
-// FPS tracking variables
-let frameCount = 0;
-let lastTime = performance.now();
+// Cursor tracking variables
 
 // Shader code
 const vertexShader = `
@@ -174,7 +172,6 @@ const fragmentShader = `
 export default function BackgroundEffect() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
-  const fpsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!containerRef.current || typeof window === 'undefined') return;
@@ -302,19 +299,6 @@ export default function BackgroundEffect() {
       uniforms.iTime.value += 0.01 * 1.0;
       uniforms.iMouse.value.set(mouse.x, mouse.y);
 
-      // Update FPS counter
-      if (fpsRef.current) {
-        frameCount++;
-        const currentTime = performance.now();
-        const deltaTime = currentTime - lastTime;
-        if (deltaTime >= 1000) {
-          const fps = Math.round((frameCount * 1000) / deltaTime);
-          fpsRef.current.textContent = `FPS: ${fps}`;
-          frameCount = 0;
-          lastTime = currentTime;
-        }
-      }
-
       // Render scene
       renderer.render(scene, camera);
     }
@@ -354,8 +338,6 @@ export default function BackgroundEffect() {
 
       {/* Custom cursor */}
       <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
-
-      <div ref={fpsRef} id="fps">FPS: 0</div>
 
       {/* Canvas container for Three.js */}
       <div ref={containerRef} className="canvas-container"></div>
