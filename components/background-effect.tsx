@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { GUI } from 'dat.gui';
 
 // Pure RGB color definitions - extremely simplified
 const colorPalettes = {
@@ -32,26 +31,7 @@ const colorPalettes = {
   }
 };
 
-// Settings for GUI - Default values from newest screenshot
-const settings = {
-  intensity: 1.09,
-  streakLength: 48,
-  streakHeight: 0.23,
-  glowPower: 2.75,
-  useMousePosition: true,
-  flareSize: 1.52,
-  flareSpeed: 1.0,
-  colorIntensity: 0.5,
-  colorScheme: "fire",
-  contrastBW: 0.0,
-  saturation: 2.0,
-  invert: false,
-  cursorSize: 8,
-  resetPosition: () => {
-    mouse.x = 0.5;
-    mouse.y = 0.5;
-  }
-};
+// Fixed settings - no longer adjustable
 
 // Mouse position tracking
 const mouse = new THREE.Vector2(0.5, 0.5);
@@ -210,24 +190,24 @@ export default function BackgroundEffect() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    // Initialize uniforms for shader
+    // Initialize uniforms for shader - fixed values
     const uniforms = {
       iResolution: {
         value: new THREE.Vector2(window.innerWidth, window.innerHeight)
       },
       iTime: { value: 0 },
       iMouse: { value: new THREE.Vector2(0.5, 0.5) },
-      intensity: { value: settings.intensity },
-      streakLength: { value: settings.streakLength },
-      streakHeight: { value: settings.streakHeight },
-      glowPower: { value: settings.glowPower },
-      flareSize: { value: settings.flareSize },
-      colorIntensity: { value: settings.colorIntensity },
-      primaryColor: { value: new THREE.Vector3(0, 1, 0) }, // Pure green
-      secondaryColor: { value: new THREE.Vector3(0.4, 1, 0.4) }, // Light green
-      contrastBW: { value: settings.contrastBW },
-      saturation: { value: settings.saturation },
-      invert: { value: settings.invert }
+      intensity: { value: 1.09 },
+      streakLength: { value: 48 },
+      streakHeight: { value: 0.23 },
+      glowPower: { value: 2.75 },
+      flareSize: { value: 1.52 },
+      colorIntensity: { value: 0.5 },
+      primaryColor: { value: new THREE.Vector3(1.0, 0.4, 0.0) }, // Orange
+      secondaryColor: { value: new THREE.Vector3(1.0, 0.6, 0.1) }, // Light orange
+      contrastBW: { value: 0.0 },
+      saturation: { value: 2.0 },
+      invert: { value: false }
     };
 
     // Create material and geometry
@@ -243,9 +223,9 @@ export default function BackgroundEffect() {
     const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-    // Function to update colors based on selected scheme
+    // Function to set fixed colors - orange/fire theme
     function updateColors() {
-      const palette = colorPalettes[settings.colorScheme as keyof typeof colorPalettes] || colorPalettes.green;
+      const palette = colorPalettes.fire; // Fixed to fire/orange colors
       // Update the uniforms with direct property assignment
       uniforms.primaryColor.value.x = palette.primary[0];
       uniforms.primaryColor.value.y = palette.primary[1];
@@ -264,10 +244,9 @@ export default function BackgroundEffect() {
 
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
-      if (settings.useMousePosition) {
-        mouse.x = e.clientX / window.innerWidth;
-        mouse.y = 1.0 - e.clientY / window.innerHeight; // Flip Y
-      }
+      // Always use mouse position for the effect
+      mouse.x = e.clientX / window.innerWidth;
+      mouse.y = 1.0 - e.clientY / window.innerHeight; // Flip Y
 
       // Update custom cursor position
       if (cursorRef.current) {
@@ -310,123 +289,17 @@ export default function BackgroundEffect() {
       uniforms.iResolution.value.set(width, height);
     };
 
-    // GUI instance
-    let gui: GUI;
-
-    // Create GUI controls
-    function createGUI() {
-      gui = new GUI();
-
-      // Flare parameters
-      const flareFolder = gui.addFolder("Flare Settings");
-      flareFolder
-        .add(settings, "intensity", 0.1, 2.0)
-        .name("Flare Intensity")
-        .onChange(() => {
-          uniforms.intensity.value = settings.intensity;
-          material.needsUpdate = true;
-        });
-      flareFolder
-        .add(settings, "streakLength", 1.0, 50.0)
-        .name("Streak Length")
-        .onChange(() => {
-          uniforms.streakLength.value = settings.streakLength;
-          material.needsUpdate = true;
-        });
-      flareFolder
-        .add(settings, "streakHeight", 0.1, 2.0)
-        .name("Streak Height")
-        .onChange(() => {
-          uniforms.streakHeight.value = settings.streakHeight;
-          material.needsUpdate = true;
-        });
-      flareFolder
-        .add(settings, "glowPower", 0.5, 5.0)
-        .name("Glow Power")
-        .onChange(() => {
-          uniforms.glowPower.value = settings.glowPower;
-          material.needsUpdate = true;
-        });
-      flareFolder
-        .add(settings, "flareSize", 0.1, 3.0)
-        .name("Flare Size")
-        .onChange(() => {
-          uniforms.flareSize.value = settings.flareSize;
-          material.needsUpdate = true;
-        });
-      flareFolder.add(settings, "flareSpeed", 0.1, 5.0).name("Animation Speed");
-      flareFolder.open();
-
-      // Color parameters
-      const colorFolder = gui.addFolder("Color Settings");
-      colorFolder
-        .add(settings, "colorScheme", [
-          "original",
-          "blue",
-          "purple",
-          "fire",
-          "green",
-          "rainbow"
-        ])
-        .name("Color Scheme")
-        .onChange(() => {
-          updateColors();
-        });
-      colorFolder
-        .add(settings, "colorIntensity", 0.1, 0.5)
-        .name("Color Intensity")
-        .onChange(() => {
-          uniforms.colorIntensity.value = settings.colorIntensity;
-          material.needsUpdate = true;
-        });
-      colorFolder
-        .add(settings, "contrastBW", 0.0, 1.0)
-        .name("Black & White")
-        .onChange(() => {
-          uniforms.contrastBW.value = settings.contrastBW;
-          material.needsUpdate = true;
-        });
-      colorFolder
-        .add(settings, "saturation", 0.0, 2.0)
-        .name("Saturation")
-        .onChange(() => {
-          uniforms.saturation.value = settings.saturation;
-          material.needsUpdate = true;
-        });
-      colorFolder
-        .add(settings, "invert")
-        .name("Invert Colors")
-        .onChange(() => {
-          uniforms.invert.value = settings.invert;
-          material.needsUpdate = true;
-        });
-      colorFolder.open();
-
-  // Cursor and interaction
-  const cursorFolder = gui.addFolder("Cursor & Controls");
-  cursorFolder.add(settings, "useMousePosition").name("Use Mouse Position");
-  cursorFolder.add(settings, "cursorSize", 8, 40).name("Cursor Size");
-  cursorFolder.add(settings, "resetPosition").name("Reset Position");
-  cursorFolder.open();
-    }
-
-    // Initialize GUI
-    createGUI();
+    // GUI removed - all settings are now fixed
 
     // Animation function
     function animate() {
       requestAnimationFrame(animate);
 
-      // Update cursor size based on settings
-      document.documentElement.style.setProperty(
-        "--cursor-size",
-        `${settings.cursorSize}px`
-      );
+      // Set fixed cursor size
+      document.documentElement.style.setProperty("--cursor-size", "8px");
 
-      // Cursor shadow removed - no glow effects
-
-      // Update uniforms
-      uniforms.iTime.value += 0.01 * settings.flareSpeed;
+      // Update uniforms with fixed animation speed
+      uniforms.iTime.value += 0.01 * 1.0;
       uniforms.iMouse.value.set(mouse.x, mouse.y);
 
       // Update FPS counter
@@ -459,9 +332,6 @@ export default function BackgroundEffect() {
       document.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("load", handleLoad);
       window.removeEventListener("resize", handleResize);
-      if (gui) {
-        gui.destroy();
-      }
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
