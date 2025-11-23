@@ -73,7 +73,7 @@ export default function Home() {
       <Navbar />
       {/* Hero Section with Background Effect */}
       <div className="relative min-h-screen">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
           <BackgroundEffect />
         </div>
         <div className="content">
