@@ -145,7 +145,7 @@ export default function Home() {
         >
           <div className="relative w-full aspect-[9/16]">
             <Image
-              src="/img/screenshot-placeholder.svg"
+              src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
@@ -163,7 +163,7 @@ export default function Home() {
         >
           <div className="relative w-full aspect-[9/16]">
             <Image
-              src="/img/screenshot-placeholder.svg"
+              src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
@@ -307,7 +307,7 @@ export default function Home() {
         <div className="lg:hidden w-full px-4 mb-8 flex flex-col items-center gap-6">
           <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
             <Image
-              src="/img/screenshot-placeholder.png"
+              src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
@@ -315,7 +315,7 @@ export default function Home() {
           </div>
           <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
             <Image
-              src="/img/screenshot-placeholder.png"
+              src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
               className="object-contain"
