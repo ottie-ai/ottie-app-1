@@ -117,9 +117,7 @@
   --secondary-color: rgba(255, 255, 255, 0.5);
   --quote-size: 8vw;
   --author-size: 1vw;
-  --cursor-size: 16px;
   --ghost-color: #000000;
-  --eye-glow-color: #ffff00;
 }
 
 html,
@@ -242,21 +240,6 @@ body::before {
   margin-top: 1vh;
 }
 
-/* Custom cursor */
-.custom-cursor {
-  position: fixed;
-  width: var(--cursor-size);
-  height: var(--cursor-size);
-  border-radius: 50%;
-  background-color: white;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  mix-blend-mode: difference;
-  z-index: 9999;
-  transition: width 0.2s, height 0.2s;
-  will-change: transform;
-}
-
 /* Canvas overlay - Fixed to be below noise effect */
 canvas {
   display: block;
@@ -312,17 +295,6 @@ canvas {
   margin-top: 60px !important;
 }
 
-#fps {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  color: white;
-  z-index: 100;
-  background-color: rgba(0, 0, 0, 0.5);
-  padding: 5px 10px;
-  border-radius: 5px;
-  font-size: 12px;
-}
 
 .book a {
   color: white;
