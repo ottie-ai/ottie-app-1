@@ -327,15 +327,6 @@ export default function BackgroundEffect() {
 
   return (
     <>
-      {/* Content to be revealed */}
-      <div className="content">
-        <div className="quote-container">
-          <div className="caption">Fragments of stardust, scattered across time.</div>
-          <div className="quote">Luminous absence</div>
-          <div className="author">The light reveals what darkness conceals, but never explains</div>
-        </div>
-      </div>
-
       {/* Custom cursor */}
       <div ref={cursorRef} className="custom-cursor" style={{ opacity: 1 }}></div>
 
