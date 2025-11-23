@@ -20,8 +20,8 @@ const colorPalettes = {
     secondary: [0.8, 0.3, 1.0] // Light purple
   },
   fire: {
-    primary: [1.0, 0.3, 0.0], // Orange-red
-    secondary: [1.0, 0.6, 0.2] // Light orange
+    primary: [1.0, 0.65, 0.0], // Orange
+    secondary: [1.0, 0.8, 0.2] // Light orange
   },
   green: {
     primary: [0.0, 1.0, 0.0], // Pure green
