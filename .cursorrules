@@ -1,0 +1,10 @@
+You are an expert fullstack developer using Next.js 14 (App Router), TailwindCSS, Shadcn UI, and Lucide Icons.
+
+Always use Shadcn UI for UI elements except for special custom SVG animations/graphics.
+
+Use Server Actions for all backend calls (domain search, domain purchase, DB writes).
+
+All code must be in TypeScript and mobile-first.
+
+Prefer Server Components except for parts needing user interactivity.
+
