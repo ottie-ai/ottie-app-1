@@ -18,11 +18,11 @@ const BackgroundEffect = dynamic(() => import('@/components/background-effect'),
 })
 
 const realEstateLinks = [
-  'https://www.zillow.com/homedetails/123-Main-St/12345678_zpid/',
-  'https://www.realtor.com/realestateandhomes-detail/123-Main-St',
-  'https://www.redfin.com/CA/Los-Angeles/123-Main-St',
-  'https://www.trulia.com/p/ca/los-angeles/123-main-st',
-  'https://www.homes.com/property/123-main-st',
+  'zillow.com/123-Main-St',
+  'realtor.com/456-Oak-Avenue',
+  'redfin.com/789-Park-Boulevard',
+  'trulia.com/321-Elm-Street',
+  'homes.com/654-Pine-Drive',
 ]
 
 export default function Home() {
@@ -35,12 +35,13 @@ export default function Home() {
 
   useEffect(() => {
     const currentLink = realEstateLinks[currentLinkIndex]
+    const prefix = 'eg. '
     
     if (isTyping) {
       // Typing animation
       if (charIndex < currentLink.length) {
         const timer = setTimeout(() => {
-          setPlaceholder(currentLink.slice(0, charIndex + 1))
+          setPlaceholder(prefix + currentLink.slice(0, charIndex + 1))
           setCharIndex(charIndex + 1)
         }, 50) // Typing speed
         return () => clearTimeout(timer)
@@ -55,7 +56,7 @@ export default function Home() {
       // Deleting animation
       if (charIndex > 0) {
         const timer = setTimeout(() => {
-          setPlaceholder(currentLink.slice(0, charIndex - 1))
+          setPlaceholder(prefix + currentLink.slice(0, charIndex - 1))
           setCharIndex(charIndex - 1)
         }, 30) // Deleting speed
         return () => clearTimeout(timer)
@@ -216,7 +217,7 @@ export default function Home() {
             </MagneticButton>
             
             <Typography variant="small" className="text-center text-muted-foreground pt-1 text-xs">
-              No registration required until you're ready to publish.
+              No registration required until you&apos;re ready to publish.
             </Typography>
             
             {/* Manual Start Link */}
@@ -240,16 +241,23 @@ export default function Home() {
             <div className="flex items-center gap-2">
               {/* Overlapping Avatars */}
               <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
+                {[
+                  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&crop=faces',
+                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces',
+                  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=faces',
+                  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=faces',
+                ].map((src, i) => (
                   <div
                     key={i}
-                    className="relative h-10 w-10 rounded-full border-2 border-background overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500"
+                    className="relative h-10 w-10 rounded-full border-2 border-background overflow-hidden"
                   >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                        <div className="h-6 w-6 rounded-full bg-white/30"></div>
-                      </div>
-                    </div>
+                    <Image
+                      src={src}
+                      alt={`Realtor ${i + 1}`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                   </div>
                 ))}
               </div>
