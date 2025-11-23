@@ -77,19 +77,19 @@
 
   /* Typography - Global Styles */
   h1 {
-    @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
+    @apply scroll-m-20 text-5xl leading-[48px] font-extrabold tracking-tight;
   }
 
   h2 {
-    @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+    @apply scroll-m-20 text-4xl leading-10 font-semibold tracking-tight;
   }
 
   h3 {
-    @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+    @apply scroll-m-20 text-3xl leading-9 font-semibold tracking-tight;
   }
 
   h4 {
-    @apply scroll-m-20 text-xl font-semibold tracking-tight;
+    @apply scroll-m-20 text-2xl leading-8 font-semibold tracking-tight;
   }
 
   p {
@@ -124,6 +124,24 @@
     @apply text-sm font-medium leading-none;
   }
 
+  /* Custom Heading Styles */
+  .heading-xl {
+    @apply text-5xl leading-[48px];
+  }
+
+  .heading-lg {
+    @apply text-4xl leading-10;
+  }
+
+  .heading-md {
+    @apply text-3xl leading-9;
+  }
+
+  .heading-sm {
+    @apply text-2xl leading-8;
+  }
+
+  /* Utility Classes */
   .muted {
     @apply text-sm text-muted-foreground;
   }

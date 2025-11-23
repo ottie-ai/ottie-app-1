@@ -6,10 +6,14 @@ import { cn } from "@/lib/utils"
 const typographyVariants = cva("", {
   variants: {
     variant: {
-      h1: "scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl",
-      h2: "scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0",
-      h3: "scroll-m-20 text-2xl font-semibold tracking-tight",
-      h4: "scroll-m-20 text-xl font-semibold tracking-tight",
+      h1: "scroll-m-20 text-5xl leading-[48px] font-extrabold tracking-tight",
+      h2: "scroll-m-20 text-4xl leading-10 font-semibold tracking-tight",
+      h3: "scroll-m-20 text-3xl leading-9 font-semibold tracking-tight",
+      h4: "scroll-m-20 text-2xl leading-8 font-semibold tracking-tight",
+      "heading-xl": "text-5xl leading-[48px]",
+      "heading-lg": "text-4xl leading-10",
+      "heading-md": "text-3xl leading-9",
+      "heading-sm": "text-2xl leading-8",
       p: "leading-7 [&:not(:first-child)]:mt-6",
       blockquote: "mt-6 border-l-2 pl-6 italic",
       ul: "my-6 ml-6 list-disc [&>li]:mt-2",
@@ -39,6 +43,10 @@ const Typography = React.forwardRef<HTMLElement, TypographyProps>(
                             variant === "h2" ? "h2" : 
                             variant === "h3" ? "h3" : 
                             variant === "h4" ? "h4" : 
+                            variant === "heading-xl" ? "h1" :
+                            variant === "heading-lg" ? "h2" :
+                            variant === "heading-md" ? "h3" :
+                            variant === "heading-sm" ? "h4" :
                             variant === "blockquote" ? "blockquote" : 
                             variant === "ul" ? "ul" : 
                             variant === "ol" ? "ol" : 
