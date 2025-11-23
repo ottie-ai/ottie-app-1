@@ -9,6 +9,7 @@ import { Typography } from '@/components/ui/typography'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { MagneticButton } from '@/components/ui/magnetic-button'
 import Navbar from '@/components/navbar'
 
 const BackgroundEffect = dynamic(() => import('@/components/background-effect'), {
@@ -210,9 +211,9 @@ export default function Home() {
               )}
             </div>
             
-            <Button className="w-full">
+            <MagneticButton className="w-full" magneticDistance={120} magneticStrength={0.4}>
               Generate Free Site
-            </Button>
+            </MagneticButton>
             
             <Typography variant="small" className="text-center text-muted-foreground pt-1 text-xs">
               No registration required until you're ready to publish.
