@@ -186,7 +186,7 @@ export default function Home() {
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 font-medium max-w-3xl">
+          <Typography variant="h1" className="mb-1 font-medium max-w-3xl text-gray-900 dark:text-foreground">
             <WordReveal 
               text="Turn any listing into a premium showcase. Instantly. For free."
               delay={0.1}
@@ -235,7 +235,7 @@ export default function Home() {
             <div className="pt-1">
               <Link 
                 href="#" 
-                className="text-sm text-white hover:text-orange-500 underline underline-offset-4 transition-colors"
+                className="text-sm text-foreground hover:text-orange-500 underline underline-offset-4 transition-colors"
               >
                 or fill in data manually
               </Link>
@@ -313,7 +313,7 @@ export default function Home() {
       </div>
 
       {/* Feature Points Section - Below the fold */}
-      <section className="relative bg-black min-h-screen flex items-center justify-center py-20">
+      <section className="relative bg-background min-h-screen flex items-center justify-center py-20">
         {/* Mobile Screenshots - Below hero */}
         <div className="lg:hidden w-full px-4 mb-8 flex flex-col items-center gap-6">
           <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">

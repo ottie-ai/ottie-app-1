@@ -203,11 +203,11 @@ export default function BackgroundEffect() {
       glowPower: { value: 2.75 },
       flareSize: { value: 1.52 },
       colorIntensity: { value: 0.5 },
-      primaryColor: { value: new THREE.Vector3(1.0, 0.4, 0.0) }, // Orange
-      secondaryColor: { value: new THREE.Vector3(1.0, 0.6, 0.1) }, // Light orange
+      primaryColor: { value: new THREE.Vector3(0.0, 0.6, 1.0) }, // Cyan (inverts to orange)
+      secondaryColor: { value: new THREE.Vector3(0.0, 0.4, 0.9) }, // Light cyan (inverts to light orange)
       contrastBW: { value: 0.0 },
       saturation: { value: 2.0 },
-      invert: { value: false }
+      invert: { value: true }
     };
 
     // Create material and geometry
