@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Typography } from "@/components/ui/typography"
 import Navbar from "@/components/navbar"
@@ -18,9 +19,18 @@ export default function Privacy() {
           <div className="space-y-8">
             {/* Header */}
             <div className="space-y-4">
-              <Typography variant="h1" className="mb-2">
-                Privacy Policy
-              </Typography>
+              <div className="flex items-center gap-4">
+                <Link 
+                  href="/"
+                  className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-muted transition-colors"
+                  aria-label="Back to homepage"
+                >
+                  <ArrowLeft className="h-5 w-5 text-foreground" />
+                </Link>
+                <Typography variant="h1" className="mb-0">
+                  Privacy Policy
+                </Typography>
+              </div>
               <Typography variant="muted" className="text-muted-foreground">
                 Last updated: {lastUpdated}
               </Typography>
@@ -29,7 +39,7 @@ export default function Privacy() {
             {/* Introduction */}
             <div className="space-y-4">
               <Typography variant="p" className="text-muted-foreground">
-                Ottie ("we", "our", or "us") operates the Ottie website ("Service") offering agents and property owners instant, free listing sites with agent-first privacy.
+                Ottie Group LLC ("we", "our", or "us") operates the Ottie website ("Service") offering agents and property owners instant, free listing sites with agent-first privacy.
               </Typography>
             </div>
 
@@ -139,13 +149,7 @@ export default function Privacy() {
                 10. Contact us
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
-                For privacy questions or requests, email:{" "}
-                <a 
-                  href="mailto:privacy@ottie.app" 
-                  className="text-foreground hover:text-orange-500 underline underline-offset-2 transition-colors"
-                >
-                  privacy@ottie.app
-                </a>
+                For privacy questions or requests, contact our support team.
               </Typography>
             </div>
 

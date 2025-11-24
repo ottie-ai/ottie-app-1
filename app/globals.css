@@ -354,7 +354,6 @@ body {
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  cursor: none;
   background-color: #111;
   letter-spacing: -0.03em;
   position: relative;

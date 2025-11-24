@@ -19,7 +19,9 @@ const BackgroundEffect = dynamic(() => import('@/components/background-effect'),
 
 const realEstateLinks = [
   'zillow.com/123-Main-St',
+  'airbnb.com/rooms/456789',
   'realtor.com/456-Oak-Avenue',
+  'booking.com/hotel/12345',
   'redfin.com/789-Park-Boulevard',
   'trulia.com/321-Elm-Street',
   'homes.com/654-Pine-Drive',
@@ -132,7 +134,7 @@ export default function Home() {
   }, [])
 
   return (
-    <>
+    <div style={{ cursor: 'none' }}>
       <Navbar />
       {/* Hero Section with Background Effect */}
       <div className="relative min-h-screen overflow-hidden">
@@ -358,7 +360,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </>
+    </div>
   )
 }
 
