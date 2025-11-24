@@ -151,7 +151,7 @@ export default function Home() {
               src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
-              className="object-contain"
+              className="object-contain brightness-150 contrast-75"
               priority
             />
           </div>
@@ -169,7 +169,7 @@ export default function Home() {
               src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
-              className="object-contain"
+              className="object-contain brightness-150 contrast-75"
               priority
             />
           </div>
@@ -321,7 +321,7 @@ export default function Home() {
               src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
-              className="object-contain"
+              className="object-contain brightness-150 contrast-75"
             />
           </div>
           <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
@@ -329,7 +329,7 @@ export default function Home() {
               src="/images/screenshot-placeholder.svg"
               alt="Generated website preview"
               fill
-              className="object-contain"
+              className="object-contain brightness-150 contrast-75"
             />
           </div>
         </div>
