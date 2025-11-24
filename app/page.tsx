@@ -189,7 +189,7 @@ export default function Home() {
 
           {/* Subheading */}
           <Typography variant="lead" className="mb-6 max-w-2xl leading-snug animate-fade-in-up-delay-2">
-            Create a beautiful, dedicated property site in seconds—no coding, no setup, no cost.
+            Create a beautiful, dedicated property site in seconds - no coding, no setup, no cost.
           </Typography>
 
           {/* Input Section */}
@@ -294,7 +294,7 @@ export default function Home() {
               <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground">GDPR compliant</span>
               <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">SOC2 - ready</span>
+              <span className="text-xs text-muted-foreground">SOC2 ready</span>
             </div>
           </div>
           </div>
