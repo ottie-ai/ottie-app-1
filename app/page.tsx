@@ -184,12 +184,12 @@ export default function Home() {
 
           {/* Heading */}
           <Typography variant="h1" className="mb-1 font-medium max-w-3xl animate-fade-in-up-delay-1">
-            Turn any listing link into a luxury website. Instantly. For free.
+            Turn any listing into a premium website. Instantly. For free.
           </Typography>
 
           {/* Subheading */}
           <Typography variant="lead" className="mb-6 max-w-2xl leading-snug animate-fade-in-up-delay-2">
-            Create a premium, dedicated property site in seconds—no coding, no setup, no cost.
+            Create a beautiful, dedicated property site in seconds—no coding, no setup, no cost.
           </Typography>
 
           {/* Input Section */}
