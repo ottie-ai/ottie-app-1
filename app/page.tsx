@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Check } from 'lucide-react'
 import { Typography } from '@/components/ui/typography'
+import { WordReveal } from '@/components/ui/word-reveal'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -185,13 +186,21 @@ export default function Home() {
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 font-medium max-w-3xl animate-fade-in-up-delay-1">
-            Turn any listing into a premium website. Instantly. For free.
+          <Typography variant="h1" className="mb-1 font-medium max-w-3xl">
+            <WordReveal 
+              text="Turn any listing into a premium showcase. Instantly. For free."
+              delay={0.1}
+              wordDelay={0.12}
+            />
           </Typography>
 
           {/* Subheading */}
-          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug animate-fade-in-up-delay-2">
-            Create a beautiful, dedicated property site in seconds - no coding, no setup, no cost.
+          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug">
+            <WordReveal 
+              text="Create a beautiful, dedicated property website in seconds - no coding, no setup, no cost."
+              delay={0.8}
+              wordDelay={0.08}
+            />
           </Typography>
 
           {/* Input Section */}

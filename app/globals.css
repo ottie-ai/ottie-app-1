@@ -461,6 +461,26 @@ body::before {
   will-change: transform, opacity;
 }
 
+/* Word reveal animation - Linear.app style */
+@keyframes wordReveal {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.animate-word-reveal {
+  animation: wordReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  will-change: opacity, filter, transform;
+}
+
 /* Content to be revealed */
 .content {
   position: relative;
