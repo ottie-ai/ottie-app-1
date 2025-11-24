@@ -17,7 +17,7 @@
 @layer base {
   /* Light theme - neutral background */
   :root {
-    --font-sans: 'Suisse Intl', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    --font-sans: 'Neue Montreal', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     --background: 0 0% 100%;
     --foreground: 0 0% 9%;
     --card: 0 0% 100%;
@@ -83,19 +83,19 @@
 
   /* Typography - Global Styles */
   h1 {
-    @apply scroll-m-20 text-5xl leading-[60px] font-bold tracking-tight;
+    @apply scroll-m-20 text-5xl leading-[60px] font-bold tracking-normal;
   }
 
   h2 {
-    @apply scroll-m-20 text-4xl leading-[50px] font-semibold tracking-tight;
+    @apply scroll-m-20 text-4xl leading-[50px] font-semibold tracking-normal;
   }
 
   h3 {
-    @apply scroll-m-20 text-3xl leading-[44px] font-semibold tracking-tight;
+    @apply scroll-m-20 text-3xl leading-[44px] font-semibold tracking-normal;
   }
 
   h4 {
-    @apply scroll-m-20 text-2xl leading-10 font-semibold tracking-tight;
+    @apply scroll-m-20 text-2xl leading-10 font-semibold tracking-normal;
   }
 
   p {
@@ -163,149 +163,69 @@
 
 /* Background Effect Styles */
 
-/* Suisse Intl Font Family - Complete Setup */
+/* Neue Montreal Font Family - Complete Setup */
 @font-face {
-  font-family: 'Suisse Intl';
-  font-style: normal;
-  font-weight: 100;
-  font-display: swap;
-  src: url('/font/SuisseIntl-Ultralight.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: italic;
-  font-weight: 100;
-  font-display: swap;
-  src: url('/font/SuisseIntl-UltralightItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: normal;
-  font-weight: 200;
-  font-display: swap;
-  src: url('/font/SuisseIntl-Thin.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: italic;
-  font-weight: 200;
-  font-display: swap;
-  src: url('/font/SuisseIntl-ThinItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('/font/SuisseIntl-Light.otf') format('opentype');
+  src: url('/font/NeueMontreal-Light.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: italic;
   font-weight: 300;
   font-display: swap;
-  src: url('/font/SuisseIntl-LightItalic.otf') format('opentype');
+  src: url('/font/NeueMontreal-LightItalic.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/font/SuisseIntl-Regular.otf') format('opentype');
+  src: url('/font/NeueMontreal-Regular.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/font/SuisseIntl-RegularItalic.otf') format('opentype');
+  src: url('/font/NeueMontreal-RegularItalic.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
-  font-style: normal;
-  font-weight: 450;
-  font-display: swap;
-  src: url('/font/SuisseIntl-Book.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: italic;
-  font-weight: 450;
-  font-display: swap;
-  src: url('/font/SuisseIntl-BookItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/font/SuisseIntl-Medium.otf') format('opentype');
+  src: url('/font/NeueMontreal-Medium.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: italic;
   font-weight: 500;
   font-display: swap;
-  src: url('/font/SuisseIntl-MediumItalic.otf') format('opentype');
+  src: url('/font/NeueMontreal-MediumItalic.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/font/SuisseIntl-SemiBold.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: italic;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/font/SuisseIntl-SemiBoldItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/font/SuisseIntl-Bold.otf') format('opentype');
+  src: url('/font/NeueMontreal-Bold.otf') format('opentype');
 }
 
 @font-face {
-  font-family: 'Suisse Intl';
+  font-family: 'Neue Montreal';
   font-style: italic;
   font-weight: 700;
   font-display: swap;
-  src: url('/font/SuisseIntl-BoldItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: normal;
-  font-weight: 900;
-  font-display: swap;
-  src: url('/font/SuisseIntl-Black.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Suisse Intl';
-  font-style: italic;
-  font-weight: 900;
-  font-display: swap;
-  src: url('/font/SuisseIntl-BlackItalic.otf') format('opentype');
+  src: url('/font/NeueMontreal-BoldItalic.otf') format('opentype');
 }
 
 /* Local font definitions */
@@ -361,7 +281,7 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   background-color: #111;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   position: relative;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
