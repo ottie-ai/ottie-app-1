@@ -186,7 +186,7 @@ export default function Home() {
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 font-medium max-w-3xl text-gray-900 dark:text-foreground">
+          <Typography variant="h1" className="mb-1 max-w-3xl text-gray-900 dark:text-foreground">
             <WordReveal 
               text="Turn any listing into a premium showcase. Instantly. For free."
               delay={0.1}

@@ -83,7 +83,7 @@
 
   /* Typography - Global Styles */
   h1 {
-    @apply scroll-m-20 text-5xl leading-[60px] font-extrabold tracking-tight;
+    @apply scroll-m-20 text-5xl leading-[60px] font-bold tracking-tight;
   }
 
   h2 {
