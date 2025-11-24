@@ -195,7 +195,7 @@ export default function Home() {
           </Typography>
 
           {/* Subheading */}
-          <Typography variant="lead" className="mb-6 max-w-2xl leading-snug">
+          <Typography variant="lead" className="mb-6 max-w-xl leading-snug">
             <WordReveal 
               text="Create a beautiful, dedicated property website in seconds - no coding, no setup, no cost."
               delay={0.8}
