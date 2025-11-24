@@ -17,7 +17,7 @@
 @layer base {
   /* Light theme - neutral background */
   :root {
-    --font-sans: 'Neue Montreal', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --background: 0 0% 100%;
     --foreground: 0 0% 9%;
     --card: 0 0% 100%;
@@ -83,19 +83,19 @@
 
   /* Typography - Global Styles */
   h1 {
-    @apply scroll-m-20 text-5xl leading-[60px] font-bold tracking-normal;
+    @apply scroll-m-20 text-5xl leading-[60px] tracking-normal;
   }
 
   h2 {
-    @apply scroll-m-20 text-4xl leading-[50px] font-semibold tracking-normal;
+    @apply scroll-m-20 text-4xl leading-[50px] tracking-normal;
   }
 
   h3 {
-    @apply scroll-m-20 text-3xl leading-[44px] font-semibold tracking-normal;
+    @apply scroll-m-20 text-3xl leading-[44px] tracking-normal;
   }
 
   h4 {
-    @apply scroll-m-20 text-2xl leading-10 font-semibold tracking-normal;
+    @apply scroll-m-20 text-2xl leading-10 tracking-normal;
   }
 
   p {
@@ -163,70 +163,6 @@
 
 /* Background Effect Styles */
 
-/* Neue Montreal Font Family - Complete Setup */
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: normal;
-  font-weight: 300;
-  font-display: swap;
-  src: url('/font/NeueMontreal-Light.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: italic;
-  font-weight: 300;
-  font-display: swap;
-  src: url('/font/NeueMontreal-LightItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/font/NeueMontreal-Regular.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: italic;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/font/NeueMontreal-RegularItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/font/NeueMontreal-Medium.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: italic;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/font/NeueMontreal-MediumItalic.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/font/NeueMontreal-Bold.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'Neue Montreal';
-  font-style: italic;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/font/NeueMontreal-BoldItalic.otf') format('opentype');
-}
 
 /* Local font definitions */
 @font-face {
