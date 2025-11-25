@@ -1,11 +1,12 @@
 'use client'
 
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
-import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife } from '@phosphor-icons/react'
+import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
 import { useDelayedFont } from '@/components/builder/FontTransition'
+import { ComponentType } from 'react'
 
 // Icon mapping
-const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number; weight?: string }>> = {
+const iconMap: Record<string, ComponentType<IconProps>> = {
   bed: Bed,
   bath: Bathtub,
   ruler: Ruler,
