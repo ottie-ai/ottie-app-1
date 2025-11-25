@@ -3,11 +3,14 @@
 import Image from 'next/image'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
+import { useDelayedFont } from '@/components/builder/FontTransition'
 
 /**
  * HeroCentered - Centered layout hero with full-width background
  */
 export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionData>) {
+  const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  
   const {
     headline,
     subheadline,
@@ -54,7 +57,10 @@ export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionD
             </span>
           )}
           
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight">
+          <h1 
+            className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight"
+            style={{ fontFamily: headingFont }}
+          >
             {headline}
           </h1>
           

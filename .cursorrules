@@ -1,10 +1,24 @@
-You are an expert fullstack developer using Next.js 14 (App Router), TailwindCSS, Shadcn UI, and Lucide Icons.
+You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Router), TypeScript, Supabase, and Tailwind CSS.
 
-Always use Shadcn UI for UI elements except for special custom SVG animations/graphics.
+### Tech Stack & Guidelines
+- **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
+- **UI Library:** Shadcn UI + Tailwind CSS. Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.
+- **Icons:** Phosphor Icons (`@phosphor-icons/react`).
+- **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
+- **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.
 
-Use Server Actions for all backend calls (domain search, domain purchase, DB writes).
+### Architecture: Section-Based Builder
+This project is a "Property Website Generator" based on a dynamic list of sections.
+- **Modular Sections:** All page sections (Hero, Features, Gallery) must be isolated components in `components/sections/[type]/`.
+- **Registry Pattern:** Use a central registry to map JSON keys (type/variant) to React components. Avoid giant switch statements in renderers.
+- **Data Driven:** The UI should be fully driven by a JSON configuration object (`PageConfig`).
 
-All code must be in TypeScript and mobile-first.
+### Coding Standards
+- **Mobile-First:** Always write Tailwind classes with mobile as default, then `md:`, `lg:` overrides.
+- **Error Handling:** Wrap Server Actions in `try/catch` and return structured `{ success, error, data }` objects.
+- **Type Safety:** Share types between backend (Server Actions) and frontend components via `types/` folder.
+- **Performance:** Optimize images using `next/image`. Use `phosphor` dynamically if possible to save bundle size.
 
-Prefer Server Components except for parts needing user interactivity.
-
+### Workflow
+- When generating new sections, always ask: "Does this need a new variant in the registry?"
+- Keep components small (< 200 lines). Extract sub-components if they grow too large.

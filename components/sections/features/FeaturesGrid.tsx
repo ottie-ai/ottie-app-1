@@ -2,6 +2,7 @@
 
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
 import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife } from '@phosphor-icons/react'
+import { useDelayedFont } from '@/components/builder/FontTransition'
 
 // Icon mapping
 const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number; weight?: string }>> = {
@@ -23,6 +24,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string; size?: n
  * FeaturesGrid - Grid layout for property features
  */
 export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSectionData>) {
+  const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { title, features } = data
 
   return (
@@ -31,7 +33,10 @@ export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSect
         {title && (
           <h2 
             className="text-2xl md:text-3xl font-semibold text-center mb-12"
-            style={{ color: theme?.textColor }}
+            style={{ 
+              color: theme?.textColor,
+              fontFamily: headingFont,
+            }}
           >
             {title}
           </h2>

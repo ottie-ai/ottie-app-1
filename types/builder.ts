@@ -34,8 +34,10 @@ export interface Section<T extends SectionData = SectionData> {
  * Theme configuration for the entire page
  */
 export interface ThemeConfig {
-  /** Primary font family */
+  /** Primary font family for body text */
   fontFamily: string
+  /** Font family for headings/titles */
+  headingFontFamily: string
   /** Primary brand color (hex) */
   primaryColor: string
   /** Secondary/accent color (hex) */

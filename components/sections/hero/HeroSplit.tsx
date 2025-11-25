@@ -3,11 +3,14 @@
 import Image from 'next/image'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
+import { useDelayedFont } from '@/components/builder/FontTransition'
 
 /**
  * HeroSplit - Split layout hero with content on left, image on right
  */
 export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData>) {
+  const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  
   const {
     headline,
     subheadline,
@@ -38,7 +41,10 @@ export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData
             
             <h1 
               className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight"
-              style={{ color: theme?.textColor }}
+              style={{ 
+                color: theme?.textColor,
+                fontFamily: headingFont,
+              }}
             >
               {headline}
             </h1>

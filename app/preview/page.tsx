@@ -2,13 +2,17 @@
 
 import { useState } from 'react'
 import { PageRenderer } from '@/components/builder/SectionRenderer'
-import { PageConfig, Section, ThemeConfig } from '@/types/builder'
+import { Section, ThemeConfig } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { getVariants } from '@/components/builder/registry'
+import { FontSelector } from '@/components/builder/FontSelector'
+import { FontLoader } from '@/components/builder/FontLoader'
+import { FontTransition } from '@/components/builder/FontTransition'
 
 // Example theme configuration
 const exampleTheme: ThemeConfig = {
   fontFamily: 'system-ui, sans-serif',
+  headingFontFamily: 'Playfair Display',
   primaryColor: '#3b82f6',
   secondaryColor: '#8b5cf6',
   backgroundColor: '#ffffff',
@@ -50,7 +54,7 @@ const initialSections: Section[] = [
 
 export default function PreviewPage() {
   const [sections, setSections] = useState<Section[]>(initialSections)
-  const [theme] = useState<ThemeConfig>(exampleTheme)
+  const [theme, setTheme] = useState<ThemeConfig>(exampleTheme)
 
   // Get available hero variants for the demo switcher
   const heroVariants = getVariants('hero')
@@ -66,35 +70,56 @@ export default function PreviewPage() {
     )
   }
 
+  // Function to update heading font
+  const updateHeadingFont = (font: string) => {
+    setTheme(prev => ({ ...prev, headingFontFamily: font }))
+  }
+
   const currentHeroVariant = sections.find(s => s.type === 'hero')?.variant || 'split'
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Load Google Fonts dynamically */}
+      <FontLoader fonts={[theme.headingFontFamily]} />
+
       {/* Demo Controls - Remove in production */}
-      <div className="fixed top-4 right-4 z-50 bg-card border rounded-lg shadow-lg p-4 space-y-3">
-        <p className="text-sm font-medium text-muted-foreground">Hero Variant:</p>
-        <div className="flex gap-2">
-          {heroVariants.map(variant => (
-            <Button
-              key={variant}
-              size="sm"
-              variant={currentHeroVariant === variant ? 'default' : 'outline'}
-              onClick={() => swapHeroVariant(variant)}
-            >
-              {variant}
-            </Button>
-          ))}
+      <div className="fixed top-4 right-4 z-50 bg-card border rounded-lg shadow-lg p-4 space-y-4 w-64">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Hero Variant:</p>
+          <div className="flex gap-2">
+            {heroVariants.map(variant => (
+              <Button
+                key={variant}
+                size="sm"
+                variant={currentHeroVariant === variant ? 'default' : 'outline'}
+                onClick={() => swapHeroVariant(variant)}
+              >
+                {variant}
+              </Button>
+            ))}
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Current: <code className="bg-muted px-1 rounded">{currentHeroVariant}</code>
+
+        <div className="border-t pt-4">
+          <FontSelector 
+            value={theme.headingFontFamily}
+            onChange={updateHeadingFont}
+            label="Heading Font"
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Font: <code className="bg-muted px-1 rounded">{theme.headingFontFamily}</code>
         </p>
       </div>
 
       {/* Page Content */}
-      <PageRenderer 
-        sections={sections} 
-        theme={theme}
-      />
+      <FontTransition font={theme.headingFontFamily}>
+        <PageRenderer 
+          sections={sections} 
+          theme={theme}
+        />
+      </FontTransition>
 
       {/* Debug: Show current JSON state */}
       <div className="container mx-auto px-4 py-12">
@@ -110,4 +135,3 @@ export default function PreviewPage() {
     </div>
   )
 }
-
