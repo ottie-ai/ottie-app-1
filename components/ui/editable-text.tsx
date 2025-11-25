@@ -1,17 +1,14 @@
 'use client'
 
-import * as React from 'react'
+import React from 'react'
 import { PencilSimple } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 
 interface EditableTextProps {
@@ -33,69 +30,58 @@ export function EditableText({
   description = 'Make changes to the text below.',
   multiline = true,
 }: EditableTextProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
   const [editValue, setEditValue] = React.useState(value)
-
-  React.useEffect(() => {
-    if (isOpen) {
-      setEditValue(value)
-    }
-  }, [isOpen, value])
 
   const handleSave = () => {
     onChange(editValue)
-    setIsOpen(false)
   }
 
   const handleCancel = () => {
     setEditValue(value)
-    setIsOpen(false)
   }
 
   return (
-    <>
-      <div className={cn('group/editable relative inline-block', className)}>
-        {children}
-        
-        {/* Edit Button - appears on hover */}
-        <Button
-          size="icon"
-          variant="secondary"
-          className="absolute -top-2 -right-2 size-7 opacity-0 group-hover/editable:opacity-100 transition-opacity shadow-lg z-10"
-          onClick={() => setIsOpen(true)}
-        >
-          <PencilSimple className="size-3.5" weight="bold" />
-        </Button>
-      </div>
+    <div className={cn('group/editable relative inline-block', className)}>
+      {children}
 
-      {/* Edit Dialog */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{label}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
+      {/* Edit Button with Popover */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute -top-2 -right-2 size-7 opacity-0 group-hover/editable:opacity-100 transition-opacity shadow-lg z-10"
+          >
+            <PencilSimple className="size-3.5" weight="bold" />
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-80" align="end">
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium leading-none">{label}</h4>
+              <p className="text-sm text-muted-foreground mt-1">{description}</p>
+            </div>
+
             <Textarea
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               className="min-h-[120px] resize-none"
               autoFocus
             />
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
 
