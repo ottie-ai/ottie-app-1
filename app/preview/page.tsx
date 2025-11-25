@@ -130,6 +130,11 @@ export default function PreviewPage() {
     })
   }
 
+  const heroSection = sections.find((section) => section.type === 'hero')
+  const navbarSettingsPanel = heroSection ? (
+    <HeroSettingsPanel theme={editingTheme} onThemeChange={setEditingTheme} />
+  ) : null
+
   return (
     <div className="min-h-screen bg-background">
       {/* Workspace Navbar */}
@@ -137,6 +142,10 @@ export default function PreviewPage() {
         userName="John Doe"
         userEmail="john@realestate.com"
         companyName="Luxury Homes RE"
+        settingsPanel={navbarSettingsPanel ?? undefined}
+        onSaveSettings={
+          heroSection ? () => handleSave(heroSection.id) : undefined
+        }
       />
 
       {/* Load Google Fonts dynamically */}
@@ -162,16 +171,10 @@ export default function PreviewPage() {
                     onDataChange={(data) => updateSectionData(section.id, data)}
                   />
                 }
-                settingsPanel={
-                  <HeroSettingsPanel
-                    theme={editingTheme}
-                    onThemeChange={setEditingTheme}
-                  />
-                }
               >
-                <SectionRenderer 
-                  section={displaySection} 
-                  theme={editingTheme}
+                <SectionRenderer
+                  section={displaySection}
+                    theme={editingTheme}
                   onDataChange={(data) => updateSectionData(section.id, data)}
                 />
               </SectionEditor>

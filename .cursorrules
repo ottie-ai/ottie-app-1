@@ -4,6 +4,7 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 - **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
 - **UI Library:** 
 # Shadcn UI Workflow
+- Use new-york-v4 style everywhere
 - When I ask for a UI component (like Button, Slider, Dialog), FIRST check if it exists in `@/components/ui`.
 - If the component is missing, DO NOT generate the code manually or create a new file yourself.
 - Instead, use the terminal to install it via the CLI command: `npx shadcn@latest add <component_name>`.
