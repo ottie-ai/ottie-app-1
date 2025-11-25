@@ -10,6 +10,8 @@ interface SectionRendererProps {
   theme?: ThemeConfig
   /** Optional class name for wrapper */
   className?: string
+  /** Callback for editing section data */
+  onDataChange?: (data: Section['data']) => void
 }
 
 /**
@@ -26,7 +28,7 @@ interface SectionRendererProps {
  * />
  * ```
  */
-export function SectionRenderer({ section, theme, className }: SectionRendererProps) {
+export function SectionRenderer({ section, theme, className, onDataChange }: SectionRendererProps) {
   const Component = getComponent(section.type, section.variant)
 
   // Component not found in registry
@@ -55,7 +57,7 @@ export function SectionRenderer({ section, theme, className }: SectionRendererPr
       data-section-type={section.type}
       data-section-variant={section.variant}
     >
-      <Component data={section.data} theme={theme} />
+      <Component data={section.data} theme={theme} onDataChange={onDataChange} />
     </div>
   )
 }

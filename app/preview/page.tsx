@@ -161,7 +161,11 @@ export default function PreviewPage() {
                   />
                 }
               >
-                <SectionRenderer section={displaySection} theme={editingTheme} />
+                <SectionRenderer 
+                  section={displaySection} 
+                  theme={editingTheme}
+                  onDataChange={(data) => updateSectionData(section.id, data)}
+                />
               </SectionEditor>
             )
           }
@@ -180,7 +184,11 @@ export default function PreviewPage() {
                   />
                 }
               >
-                <SectionRenderer section={displaySection} theme={editingTheme} />
+                <SectionRenderer 
+                  section={displaySection} 
+                  theme={editingTheme}
+                  onDataChange={(data) => updateSectionData(section.id, data)}
+                />
               </SectionEditor>
             )
           }

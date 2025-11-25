@@ -4,11 +4,12 @@ import Image from 'next/image'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { useDelayedFont } from '@/components/builder/FontTransition'
+import { EditableText } from '@/components/ui/editable-text'
 
 /**
  * HeroCentered - Centered layout hero with full-width background
  */
-export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionData>) {
+export function HeroCentered({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   
   const {
@@ -57,21 +58,54 @@ export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionD
             </span>
           )}
           
-          <h1 
-            className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
-            style={{ 
-              fontFamily: headingFont,
-              transform: `scale(${theme?.headingFontSize || 1})`,
-              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-            }}
-          >
-            {headline}
-          </h1>
+          {onDataChange ? (
+            <EditableText
+              value={headline}
+              onChange={(value) => onDataChange({ ...data, headline: value })}
+              label="Edit Headline"
+              description="Update the main headline text."
+            >
+              <h1 
+                className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                style={{ 
+                  fontFamily: headingFont,
+                  transform: `scale(${theme?.headingFontSize || 1})`,
+                  letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+                }}
+              >
+                {headline}
+              </h1>
+            </EditableText>
+          ) : (
+            <h1 
+              className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+              style={{ 
+                fontFamily: headingFont,
+                transform: `scale(${theme?.headingFontSize || 1})`,
+                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+              }}
+            >
+              {headline}
+            </h1>
+          )}
           
           {subheadline && (
-            <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
-              {subheadline}
-            </p>
+            onDataChange ? (
+              <EditableText
+                value={subheadline}
+                onChange={(value) => onDataChange({ ...data, subheadline: value })}
+                label="Edit Description"
+                description="Update the description text."
+              >
+                <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
+                  {subheadline}
+                </p>
+              </EditableText>
+            ) : (
+              <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
+                {subheadline}
+              </p>
+            )
           )}
           
           {address && (

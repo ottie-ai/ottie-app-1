@@ -4,11 +4,12 @@ import Image from 'next/image'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { useDelayedFont } from '@/components/builder/FontTransition'
+import { EditableText } from '@/components/ui/editable-text'
 
 /**
  * HeroSplit - Split layout hero with content on left, image on right
  */
-export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData>) {
+export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   
   const {
@@ -39,25 +40,62 @@ export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData
               </span>
             )}
             
-            <h1 
-              className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
-              style={{ 
-                color: theme?.textColor,
-                fontFamily: headingFont,
-                transform: `scale(${theme?.headingFontSize || 1})`,
-                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-              }}
-            >
-              {headline}
-            </h1>
+            {onDataChange ? (
+              <EditableText
+                value={headline}
+                onChange={(value) => onDataChange({ ...data, headline: value })}
+                label="Edit Headline"
+                description="Update the main headline text."
+              >
+                <h1 
+                  className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+                  style={{ 
+                    color: theme?.textColor,
+                    fontFamily: headingFont,
+                    transform: `scale(${theme?.headingFontSize || 1})`,
+                    letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+                  }}
+                >
+                  {headline}
+                </h1>
+              </EditableText>
+            ) : (
+              <h1 
+                className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+                style={{ 
+                  color: theme?.textColor,
+                  fontFamily: headingFont,
+                  transform: `scale(${theme?.headingFontSize || 1})`,
+                  letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+                }}
+              >
+                {headline}
+              </h1>
+            )}
             
             {subheadline && (
-              <p 
-                className="text-lg md:text-xl opacity-80"
-                style={{ color: theme?.textColor }}
-              >
-                {subheadline}
-              </p>
+              onDataChange ? (
+                <EditableText
+                  value={subheadline}
+                  onChange={(value) => onDataChange({ ...data, subheadline: value })}
+                  label="Edit Description"
+                  description="Update the description text."
+                >
+                  <p 
+                    className="text-lg md:text-xl opacity-80"
+                    style={{ color: theme?.textColor }}
+                  >
+                    {subheadline}
+                  </p>
+                </EditableText>
+              ) : (
+                <p 
+                  className="text-lg md:text-xl opacity-80"
+                  style={{ color: theme?.textColor }}
+                >
+                  {subheadline}
+                </p>
+              )
             )}
             
             {address && (

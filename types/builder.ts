@@ -162,6 +162,8 @@ export interface SectionVariants {
 export interface SectionComponentProps<T extends SectionData = SectionData> {
   data: T
   theme?: ThemeConfig
+  /** Callback for editing data - if provided, component shows edit buttons */
+  onDataChange?: (data: T) => void
 }
 
 /**
