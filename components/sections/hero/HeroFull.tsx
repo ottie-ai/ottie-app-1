@@ -86,10 +86,10 @@ export function HeroFull({ data, theme }: SectionComponentProps<HeroSectionData>
 
                 {/* Headline */}
                 <h1 
-                  className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                  className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
                   style={{ 
                     fontFamily: headingFont,
-                    fontSize: `calc(1em * ${theme?.headingFontSize || 1})`,
+                    transform: `scale(${theme?.headingFontSize || 1})`,
                     letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
                   }}
                 >

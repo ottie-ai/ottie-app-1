@@ -1,17 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { PageRenderer } from '@/components/builder/SectionRenderer'
+import { SectionRenderer } from '@/components/builder/SectionRenderer'
+import { SectionEditor } from '@/components/builder/SectionEditor'
+import { HeroSettings } from '@/components/builder/settings/HeroSettings'
 import { Section, ThemeConfig } from '@/types/builder'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import { Slider } from '@/components/ui/slider'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { getVariants } from '@/components/builder/registry'
-import { FontSelector } from '@/components/builder/FontSelector'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 
@@ -29,7 +22,7 @@ const exampleTheme: ThemeConfig = {
   borderRadius: 'lg',
 }
 
-// Example sections data (this would come from your database/API)
+// Example sections data
 const initialSections: Section[] = [
   {
     id: 'hero-1',
@@ -64,164 +57,94 @@ const initialSections: Section[] = [
 export default function PreviewPage() {
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [theme, setTheme] = useState<ThemeConfig>(exampleTheme)
+  
+  // Temporary state for editing (before save)
+  const [editingTheme, setEditingTheme] = useState<ThemeConfig>(exampleTheme)
+  const [editingVariant, setEditingVariant] = useState<Record<string, string>>({})
 
-  // Get available hero variants for the demo switcher
-  const heroVariants = getVariants('hero')
+  // Get current variant for a section
+  const getSectionVariant = (sectionId: string, currentVariant: string) => {
+    return editingVariant[sectionId] ?? currentVariant
+  }
 
-  // Function to swap hero variant
-  const swapHeroVariant = (newVariant: string) => {
-    setSections(prev => 
-      prev.map(section => 
-        section.type === 'hero' 
-          ? { ...section, variant: newVariant }
-          : section
+  // Update section variant
+  const updateSectionVariant = (sectionId: string, variant: string) => {
+    setEditingVariant(prev => ({ ...prev, [sectionId]: variant }))
+  }
+
+  // Save changes for a section
+  const handleSave = (sectionId: string) => {
+    // Apply theme changes
+    setTheme(editingTheme)
+    
+    // Apply variant changes
+    if (editingVariant[sectionId]) {
+      setSections(prev => 
+        prev.map(section => 
+          section.id === sectionId 
+            ? { ...section, variant: editingVariant[sectionId] }
+            : section
+        )
       )
-    )
+    }
+    
+    // Clear editing state for this section
+    setEditingVariant(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
   }
 
-  // Function to update heading font
-  const updateHeadingFont = (font: string) => {
-    setTheme(prev => ({ ...prev, headingFontFamily: font }))
+  // Reset editing state when panel closes without saving
+  const handleCancel = (sectionId: string) => {
+    setEditingTheme(theme)
+    setEditingVariant(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
   }
-
-  const currentHeroVariant = sections.find(s => s.type === 'hero')?.variant || 'split'
 
   return (
     <div className="min-h-screen bg-background">
       {/* Load Google Fonts dynamically */}
-      <FontLoader fonts={[theme.headingFontFamily]} />
+      <FontLoader fonts={[editingTheme.headingFontFamily]} />
 
-      {/* Settings Panel */}
-      <div className="fixed top-4 right-4 z-50 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <Tabs defaultValue="layout" className="w-full">
-          <Card>
-            <CardHeader className="pb-3">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="layout">Layout</TabsTrigger>
-                <TabsTrigger value="typography">Typography</TabsTrigger>
-              </TabsList>
-            </CardHeader>
+      {/* Page Content with Section Editors */}
+      <FontTransition font={editingTheme.headingFontFamily}>
+        {sections.map((section) => {
+          const currentVariant = getSectionVariant(section.id, section.variant)
+          const displaySection = { ...section, variant: currentVariant }
 
-            <CardContent className="space-y-4">
-              {/* Layout Tab */}
-              <TabsContent value="layout" className="mt-0 space-y-4">
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Hero Style
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <div className="flex flex-wrap gap-2">
-                      {heroVariants.map(variant => (
-                        <Button
-                          key={variant}
-                          size="sm"
-                          variant={currentHeroVariant === variant ? 'default' : 'outline'}
-                          onClick={() => swapHeroVariant(variant)}
-                          className="capitalize"
-                        >
-                          {variant}
-                        </Button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+          if (section.type === 'hero') {
+            return (
+              <SectionEditor
+                key={section.id}
+                onSave={() => handleSave(section.id)}
+                settingsPanel={
+                  <HeroSettings
+                    theme={editingTheme}
+                    variant={currentVariant}
+                    onThemeChange={setEditingTheme}
+                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                  />
+                }
+              >
+                <SectionRenderer section={displaySection} theme={editingTheme} />
+              </SectionEditor>
+            )
+          }
 
-              {/* Typography Tab */}
-              <TabsContent value="typography" className="mt-0 space-y-4">
-                {/* Font Family Card */}
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Font Family
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <FontSelector 
-                      value={theme.headingFontFamily}
-                      onChange={updateHeadingFont}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Font Size Card */}
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex justify-between">
-                      <span>Font Size</span>
-                      <span className="font-mono text-foreground">
-                        {Math.round(theme.headingFontSize * 100)}%
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <Slider
-                      value={[theme.headingFontSize]}
-                      onValueChange={([value]) => setTheme(prev => ({ ...prev, headingFontSize: value }))}
-                      min={0.7}
-                      max={1.3}
-                      step={0.05}
-                      className="w-full"
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Letter Spacing Card */}
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex justify-between">
-                      <span>Letter Spacing</span>
-                      <span className="font-mono text-foreground">
-                        {theme.headingLetterSpacing > 0 ? '+' : ''}{theme.headingLetterSpacing.toFixed(2)}em
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <Slider
-                      value={[theme.headingLetterSpacing]}
-                      onValueChange={([value]) => setTheme(prev => ({ ...prev, headingLetterSpacing: value }))}
-                      min={-0.05}
-                      max={0.15}
-                      step={0.01}
-                      className="w-full"
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Style Options Card */}
-                <Card className="bg-muted/50">
-                  <CardHeader className="pb-2 pt-3 px-3">
-                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Style Options
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="uppercase" className="text-sm cursor-pointer">
-                        Uppercase Titles
-                      </Label>
-                      <Switch
-                        id="uppercase"
-                        checked={theme.uppercaseTitles}
-                        onCheckedChange={(checked) => setTheme(prev => ({ ...prev, uppercaseTitles: checked }))}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </CardContent>
-          </Card>
-        </Tabs>
-      </div>
-
-      {/* Page Content */}
-      <FontTransition font={theme.headingFontFamily}>
-        <PageRenderer 
-          sections={sections} 
-          theme={theme}
-        />
+          // Other sections without editor for now
+          return (
+            <SectionRenderer
+              key={section.id}
+              section={section}
+              theme={editingTheme}
+            />
+          )
+        })}
       </FontTransition>
 
       {/* Debug: Show current JSON state */}

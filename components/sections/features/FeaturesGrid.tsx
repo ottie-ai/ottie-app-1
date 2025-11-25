@@ -36,7 +36,7 @@ export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSect
             style={{ 
               color: theme?.textColor,
               fontFamily: headingFont,
-              fontSize: `calc(1em * ${theme?.headingFontSize || 1})`,
+              transform: `scale(${theme?.headingFontSize || 1})`,
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
             }}
           >
