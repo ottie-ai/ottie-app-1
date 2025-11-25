@@ -23,7 +23,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
   } = data
 
   return (
-    <section className="min-h-[80vh] flex items-center">
+    <section className="min-h-[80vh] flex items-center pt-12">
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content Side */}

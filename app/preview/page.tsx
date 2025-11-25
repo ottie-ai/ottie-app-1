@@ -152,68 +152,70 @@ export default function PreviewPage() {
       <FontLoader fonts={[editingTheme.headingFontFamily]} />
 
       {/* Page Content with Section Editors */}
-      <FontTransition font={editingTheme.headingFontFamily}>
-        {sections.map((section) => {
-          const currentVariant = getSectionVariant(section.id, section.variant)
-          const currentData = getSectionData(section)
-          const displaySection = { ...section, variant: currentVariant, data: currentData }
+      <div>
+        <FontTransition font={editingTheme.headingFontFamily}>
+          {sections.map((section) => {
+            const currentVariant = getSectionVariant(section.id, section.variant)
+            const currentData = getSectionData(section)
+            const displaySection = { ...section, variant: currentVariant, data: currentData }
 
-          if (section.type === 'hero') {
-            return (
-              <SectionEditor
-                key={section.id}
-                onSave={() => handleSave(section.id)}
-                remixPanel={
-                  <HeroRemixPanel
-                    variant={currentVariant}
-                    data={currentData as HeroSectionData}
-                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
-                    onDataChange={(data) => updateSectionData(section.id, data)}
-                  />
-                }
-              >
-                <SectionRenderer
-                  section={displaySection}
+            if (section.type === 'hero') {
+              return (
+                <SectionEditor
+                  key={section.id}
+                  onSave={() => handleSave(section.id)}
+                  remixPanel={
+                    <HeroRemixPanel
+                      variant={currentVariant}
+                      data={currentData as HeroSectionData}
+                      onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                      onDataChange={(data) => updateSectionData(section.id, data)}
+                    />
+                  }
+                >
+                  <SectionRenderer
+                    section={displaySection}
                     theme={editingTheme}
-                  onDataChange={(data) => updateSectionData(section.id, data)}
-                />
-              </SectionEditor>
-            )
-          }
-
-          if (section.type === 'features') {
-            return (
-              <SectionEditor
-                key={section.id}
-                onSave={() => handleSave(section.id)}
-                remixPanel={
-                  <FeaturesRemixPanel
-                    variant={currentVariant}
-                    data={currentData as FeaturesSectionData}
-                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
                     onDataChange={(data) => updateSectionData(section.id, data)}
                   />
-                }
-              >
-                <SectionRenderer 
-                  section={displaySection} 
-                  theme={editingTheme}
-                  onDataChange={(data) => updateSectionData(section.id, data)}
-                />
-              </SectionEditor>
-            )
-          }
+                </SectionEditor>
+              )
+            }
 
-          // Other sections without editor for now
-          return (
-            <SectionRenderer
-              key={section.id}
-              section={section}
-              theme={editingTheme}
-            />
-          )
-        })}
-      </FontTransition>
+            if (section.type === 'features') {
+              return (
+                <SectionEditor
+                  key={section.id}
+                  onSave={() => handleSave(section.id)}
+                  remixPanel={
+                    <FeaturesRemixPanel
+                      variant={currentVariant}
+                      data={currentData as FeaturesSectionData}
+                      onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                      onDataChange={(data) => updateSectionData(section.id, data)}
+                    />
+                  }
+                >
+                  <SectionRenderer 
+                    section={displaySection} 
+                    theme={editingTheme}
+                    onDataChange={(data) => updateSectionData(section.id, data)}
+                  />
+                </SectionEditor>
+              )
+            }
+
+            // Other sections without editor for now
+            return (
+              <SectionRenderer
+                key={section.id}
+                section={section}
+                theme={editingTheme}
+              />
+            )
+          })}
+        </FontTransition>
+      </div>
 
       {/* Debug: Show current JSON state */}
       <div className="container mx-auto px-4 py-12">

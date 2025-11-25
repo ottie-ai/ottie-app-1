@@ -27,7 +27,7 @@ export function SectionEditor({
       {children}
 
       {/* Editor Buttons */}
-      <div className="absolute top-4 right-4 z-40 flex gap-2">
+      <div className="absolute top-[104px] right-4 z-40 flex gap-2">
         {/* Remix Section Button */}
         {remixPanel && (
           <Popover>

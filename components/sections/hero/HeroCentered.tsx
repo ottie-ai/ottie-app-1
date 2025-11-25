@@ -23,10 +23,10 @@ export function HeroCentered({ data, theme, onDataChange }: SectionComponentProp
   } = data
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center">
+    <section className="relative min-h-[90vh] flex items-center justify-center -mt-12 pt-12">
       {/* Background Image */}
       {backgroundImage && (
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 -top-12">
           <Image
             src={backgroundImage}
             alt=""
@@ -42,7 +42,7 @@ export function HeroCentered({ data, theme, onDataChange }: SectionComponentProp
       {/* Fallback gradient background */}
       {!backgroundImage && (
         <div 
-          className={`absolute inset-0 z-0 ${!theme?.primaryColor ? 'bg-gradient-to-br from-primary to-secondary' : ''}`}
+          className={`absolute inset-0 z-0 -top-12 ${!theme?.primaryColor ? 'bg-gradient-to-br from-primary to-secondary' : ''}`}
           style={theme?.primaryColor ? { 
             background: `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor || theme.primaryColor} 100%)`
           } : undefined}

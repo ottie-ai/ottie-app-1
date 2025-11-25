@@ -32,10 +32,10 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
   })
 
   return (
-    <section className="relative min-h-screen w-full overflow-hidden">
+    <section className="relative min-h-screen w-full overflow-hidden -mt-12 pt-12">
       {/* Background Image */}
       {imageUrl ? (
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 -top-12">
           <Image
             src={imageUrl}
             alt=""
@@ -58,7 +58,7 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Top - Address */}
         {address && (
-          <div className="pt-8 md:pt-12 text-center">
+          <div className="pt-16 md:pt-20 text-center">
             <p className="text-white/90 text-sm md:text-base tracking-wide">
               {address}
             </p>

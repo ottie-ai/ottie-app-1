@@ -3,6 +3,7 @@
 import { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CaretUpDown, GearSix } from '@phosphor-icons/react'
+import { CaretUpDown, GearSix, ArrowLeft } from '@phosphor-icons/react'
 
 interface WorkspaceNavbarProps {
   userName?: string
@@ -33,15 +34,23 @@ export function WorkspaceNavbar({
 }: WorkspaceNavbarProps) {
   // Get initials for avatar fallback
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-12 w-full items-center justify-between px-6">
-        {/* Left side - Logo & Company */}
-        <div className="flex items-center gap-4">
+    <nav className="fixed top-0 z-50 w-full border-b border-border/20 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/30">
+      <div className="flex h-12 w-full items-center px-4">
+        {/* Left side - Back button */}
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="size-4" weight="bold" />
+            Back to Dashboard
+          </Button>
+        </div>
+
+        {/* Center - Logo & Company */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
           <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
               <span className="text-sm font-bold">Ottie</span>
-              <span className="text-muted-foreground text-sm">/</span>
+              <span className="text-muted-foreground text-sm">×</span>
               <div className="flex items-center gap-2">
                 <div className="size-4 rounded-full bg-gradient-to-br from-lime-400 via-amber-300 to-orange-500" />
                 <span className="text-sm font-medium">{companyName}</span>
@@ -50,13 +59,25 @@ export function WorkspaceNavbar({
               <CaretUpDown className="size-4 text-muted-foreground" weight="bold" />
             </Button>
           </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="center" className="w-56">
               <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{userName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {userEmail}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <Avatar className="size-12">
+                    <AvatarImage src={userAvatar} alt={userName} />
+                    <AvatarFallback>
+                      {userName
+                        ?.split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{userName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {userEmail}
+                    </p>
+                  </div>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -75,7 +96,7 @@ export function WorkspaceNavbar({
         </div>
 
         {/* Right side - Actions */}
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {settingsPanel && (
             <Popover>
               <PopoverTrigger asChild>
