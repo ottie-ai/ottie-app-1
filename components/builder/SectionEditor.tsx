@@ -10,6 +10,7 @@ interface SectionEditorProps {
   remixPanel?: ReactNode
   onSave?: () => void
   className?: string
+  isFirstSection?: boolean
 }
 
 /**
@@ -20,6 +21,7 @@ export function SectionEditor({
   remixPanel,
   onSave,
   className = '',
+  isFirstSection = false,
 }: SectionEditorProps) {
   return (
     <div className={`relative ${className}`}>
@@ -27,7 +29,7 @@ export function SectionEditor({
       {children}
 
       {/* Editor Buttons */}
-      <div className="absolute top-[calc(0.5rem+3rem+1rem)] right-4 z-40 flex gap-2">
+      <div className={`absolute ${isFirstSection ? 'top-28' : 'top-16'} right-4 z-40 flex gap-2`}>
         {/* Remix Section Button */}
         {remixPanel && (
           <Popover>

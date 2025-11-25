@@ -153,17 +153,18 @@ export default function PreviewPage() {
 
       {/* Page Content with Section Editors */}
       <div>
-        <FontTransition font={editingTheme.headingFontFamily}>
-          {sections.map((section) => {
-            const currentVariant = getSectionVariant(section.id, section.variant)
+      <FontTransition font={editingTheme.headingFontFamily}>
+        {sections.map((section) => {
+          const currentVariant = getSectionVariant(section.id, section.variant)
             const currentData = getSectionData(section)
             const displaySection = { ...section, variant: currentVariant, data: currentData }
 
-            if (section.type === 'hero') {
-              return (
-                <SectionEditor
-                  key={section.id}
-                  onSave={() => handleSave(section.id)}
+          if (section.type === 'hero') {
+            return (
+              <SectionEditor
+                key={section.id}
+                onSave={() => handleSave(section.id)}
+                  isFirstSection={true}
                   remixPanel={
                     <HeroRemixPanel
                       variant={currentVariant}
@@ -191,30 +192,30 @@ export default function PreviewPage() {
                     <FeaturesRemixPanel
                       variant={currentVariant}
                       data={currentData as FeaturesSectionData}
-                      onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
                       onDataChange={(data) => updateSectionData(section.id, data)}
-                    />
-                  }
-                >
+                  />
+                }
+              >
                   <SectionRenderer 
                     section={displaySection} 
                     theme={editingTheme}
                     onDataChange={(data) => updateSectionData(section.id, data)}
                   />
-                </SectionEditor>
-              )
-            }
-
-            // Other sections without editor for now
-            return (
-              <SectionRenderer
-                key={section.id}
-                section={section}
-                theme={editingTheme}
-              />
+              </SectionEditor>
             )
-          })}
-        </FontTransition>
+          }
+
+          // Other sections without editor for now
+          return (
+            <SectionRenderer
+              key={section.id}
+              section={section}
+              theme={editingTheme}
+            />
+          )
+        })}
+      </FontTransition>
       </div>
 
       {/* Debug: Show current JSON state */}

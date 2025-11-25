@@ -1,6 +1,7 @@
 'use client'
 
 import { ReactNode, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -44,8 +45,13 @@ export function WorkspaceNavbar({
 }: WorkspaceNavbarProps) {
   // Get initials for avatar fallback
   return (
-    <nav className="fixed top-2 left-2 right-2 z-50">
-      <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/30 shadow-lg">
+    <motion.nav
+      className="fixed top-2 left-2 right-2 z-50"
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-white shadow-lg">
         {/* Left side - Back button */}
         <div className="flex items-center">
           <Button variant="ghost" size="sm">
@@ -203,7 +209,7 @@ export function WorkspaceNavbar({
           </Dialog>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   )
 }
 
