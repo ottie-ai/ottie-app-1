@@ -77,16 +77,16 @@ export function HeroCentered({ data, theme, onDataChange }: SectionComponentProp
               </h1>
             </EditableText>
           ) : (
-            <h1 
-              className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
-              style={{ 
-                fontFamily: headingFont,
-                transform: `scale(${theme?.headingFontSize || 1})`,
-                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-              }}
-            >
-              {headline}
-            </h1>
+          <h1 
+            className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+            style={{ 
+              fontFamily: headingFont,
+              transform: `scale(${theme?.headingFontSize || 1})`,
+              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+            }}
+          >
+            {headline}
+          </h1>
           )}
           
           {subheadline && (
@@ -102,9 +102,9 @@ export function HeroCentered({ data, theme, onDataChange }: SectionComponentProp
                 </p>
               </EditableText>
             ) : (
-              <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
-                {subheadline}
-              </p>
+            <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
+              {subheadline}
+            </p>
             )
           )}
           

@@ -8,6 +8,7 @@ import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettin
 import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData } from '@/types/builder'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
+import { WorkspaceNavbar } from '@/components/workspace-navbar'
 
 // Example theme configuration
 const exampleTheme: ThemeConfig = {
@@ -131,6 +132,13 @@ export default function PreviewPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Workspace Navbar */}
+      <WorkspaceNavbar
+        userName="John Doe"
+        userEmail="john@realestate.com"
+        companyName="Luxury Homes RE"
+      />
+
       {/* Load Google Fonts dynamically */}
       <FontLoader fonts={[editingTheme.headingFontFamily]} />
 

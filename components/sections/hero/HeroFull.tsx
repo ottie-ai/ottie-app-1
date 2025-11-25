@@ -105,16 +105,16 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
                     </h1>
                   </EditableText>
                 ) : (
-                  <h1 
-                    className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
-                    style={{ 
-                      fontFamily: headingFont,
-                      transform: `scale(${theme?.headingFontSize || 1})`,
-                      letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-                    }}
-                  >
-                    {headline}
-                  </h1>
+                <h1 
+                  className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+                  style={{ 
+                    fontFamily: headingFont,
+                    transform: `scale(${theme?.headingFontSize || 1})`,
+                    letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+                  }}
+                >
+                  {headline}
+                </h1>
                 )}
               </div>
 
@@ -133,9 +133,9 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
                       </p>
                     </EditableText>
                   ) : (
-                    <p className="text-white/80 text-sm md:text-base leading-relaxed">
-                      {subheadline}
-                    </p>
+                  <p className="text-white/80 text-sm md:text-base leading-relaxed">
+                    {subheadline}
+                  </p>
                   )}
                 </div>
               )}

@@ -60,17 +60,17 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
                 </h1>
               </EditableText>
             ) : (
-              <h1 
-                className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
-                style={{ 
-                  color: theme?.textColor,
-                  fontFamily: headingFont,
-                  transform: `scale(${theme?.headingFontSize || 1})`,
-                  letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-                }}
-              >
-                {headline}
-              </h1>
+            <h1 
+              className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+              style={{ 
+                color: theme?.textColor,
+                fontFamily: headingFont,
+                transform: `scale(${theme?.headingFontSize || 1})`,
+                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+              }}
+            >
+              {headline}
+            </h1>
             )}
             
             {subheadline && (
@@ -89,12 +89,12 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
                   </p>
                 </EditableText>
               ) : (
-                <p 
-                  className="text-lg md:text-xl opacity-80"
-                  style={{ color: theme?.textColor }}
-                >
-                  {subheadline}
-                </p>
+              <p 
+                className="text-lg md:text-xl opacity-80"
+                style={{ color: theme?.textColor }}
+              >
+                {subheadline}
+              </p>
               )
             )}
             
