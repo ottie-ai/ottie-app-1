@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, ReactNode } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkle, X } from '@phosphor-icons/react'
+import { ReactNode } from 'react'
+import { Sparkle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface SectionEditorProps {
   children: ReactNode
@@ -22,13 +22,6 @@ export function SectionEditor({
   onSave,
   className = '' 
 }: SectionEditorProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
-  const handleSave = () => {
-    onSave?.()
-    setIsOpen(false)
-  }
-
   return (
     <div className={`relative group ${className}`}>
       {/* Section Content */}
@@ -36,78 +29,46 @@ export function SectionEditor({
 
       {/* Remix Button / Settings Panel */}
       <div className="absolute top-4 right-4 z-40">
-        <AnimatePresence mode="wait">
-          {!isOpen ? (
-            <motion.div
-              key="button"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              size="sm"
+              className="gap-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             >
-              <Button
-                onClick={() => setIsOpen(true)}
-                size="sm"
-                className="gap-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              >
-                <Sparkle weight="fill" className="w-4 h-4" />
-                Remix
-              </Button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="panel"
-              initial={{ opacity: 0, scale: 0.9, y: -10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -10 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="w-80 rounded-lg shadow-2xl border border-border/50 backdrop-blur-sm bg-background/95">
-                {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b">
-                  <div className="flex items-center gap-2">
-                    <Sparkle weight="fill" className="w-4 h-4 text-foreground" />
-                    <span className="font-medium text-sm">Edit Section</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* Settings Content */}
-                <div className="p-4 max-h-[60vh] overflow-y-auto">
-                  {settingsPanel}
-                </div>
-
-                {/* Footer */}
-                <div className="px-4 py-3 border-t bg-muted/30">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={handleSave}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
+              <Sparkle weight="fill" className="w-4 h-4" />
+              Remix
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            align="end" 
+            sideOffset={8}
+            className="w-80"
+          >
+            <div className="grid gap-4">
+              {/* Header */}
+              <div className="space-y-2">
+                <h4 className="font-medium leading-none">Edit Section</h4>
+                <p className="text-sm text-muted-foreground">
+                  Customize the appearance of this section.
+                </p>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+              {/* Settings Content */}
+              <div className="max-h-[50vh] overflow-y-auto">
+                {settingsPanel}
+              </div>
+
+              {/* Save Button */}
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={onSave}
+              >
+                Save
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   )

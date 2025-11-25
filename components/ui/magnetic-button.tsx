@@ -1,16 +1,20 @@
 'use client'
 
 import * as React from 'react'
-import { Button, ButtonProps } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { useMagnetic } from '@/hooks/useMagnetic'
+import { type VariantProps } from 'class-variance-authority'
 
-interface MagneticButtonProps extends ButtonProps {
+interface MagneticButtonProps 
+  extends React.ComponentProps<"button">,
+    VariantProps<typeof buttonVariants> {
   magneticDistance?: number
   magneticStrength?: number
+  asChild?: boolean
 }
 
 export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButtonProps>(
-  ({ magneticDistance = 100, magneticStrength = 0.3, className, ...props }, ref) => {
+  ({ magneticDistance = 100, magneticStrength = 0.3, className, children, ...props }, ref) => {
     const magneticRef = useMagnetic<HTMLButtonElement>({
       distance: magneticDistance,
       strength: magneticStrength,
@@ -34,10 +38,11 @@ export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButton
         ref={setRefs}
         className={className}
         {...props}
-      />
+      >
+        {children}
+      </Button>
     )
   }
 )
 
 MagneticButton.displayName = 'MagneticButton'
-
