@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { PencilSimple } from '@phosphor-icons/react'
+import { Pencil } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -52,7 +52,7 @@ export function EditableField({
             variant="secondary"
             className="absolute -right-2 -top-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-50"
           >
-            <PencilSimple className="size-4" weight="bold" />
+            <Pencil className="size-4 h-4" weight="fill" />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" sideOffset={8} className="w-80">
