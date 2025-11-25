@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { SectionRenderer } from '@/components/builder/SectionRenderer'
 import { SectionEditor } from '@/components/builder/SectionEditor'
-import { HeroSettings } from '@/components/builder/settings/HeroSettings'
-import { Section, ThemeConfig, HeroSectionData } from '@/types/builder'
+import { HeroRemixPanel, HeroSettingsPanel } from '@/components/builder/settings/HeroSettings'
+import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
+import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData } from '@/types/builder'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 
@@ -89,7 +90,7 @@ export default function PreviewPage() {
     setTheme(editingTheme)
     
     // Apply variant and data changes
-    setSections(prev => 
+      setSections(prev => 
       prev.map(section => {
         if (section.id !== sectionId) return section
         return {
@@ -98,7 +99,7 @@ export default function PreviewPage() {
           data: editingData[sectionId] ?? section.data
         }
       })
-    )
+      )
     
     // Clear editing state for this section
     setEditingVariant(prev => {
@@ -145,12 +146,35 @@ export default function PreviewPage() {
               <SectionEditor
                 key={section.id}
                 onSave={() => handleSave(section.id)}
-                settingsPanel={
-                  <HeroSettings
-                    theme={editingTheme}
+                remixPanel={
+                  <HeroRemixPanel
                     variant={currentVariant}
                     data={currentData as HeroSectionData}
+                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                    onDataChange={(data) => updateSectionData(section.id, data)}
+                  />
+                }
+                settingsPanel={
+                  <HeroSettingsPanel
+                    theme={editingTheme}
                     onThemeChange={setEditingTheme}
+                  />
+                }
+              >
+                <SectionRenderer section={displaySection} theme={editingTheme} />
+              </SectionEditor>
+            )
+          }
+
+          if (section.type === 'features') {
+            return (
+              <SectionEditor
+                key={section.id}
+                onSave={() => handleSave(section.id)}
+                remixPanel={
+                  <FeaturesRemixPanel
+                    variant={currentVariant}
+                    data={currentData as FeaturesSectionData}
                     onVariantChange={(v) => updateSectionVariant(section.id, v)}
                     onDataChange={(data) => updateSectionData(section.id, data)}
                   />

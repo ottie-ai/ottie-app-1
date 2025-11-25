@@ -10,7 +10,7 @@ import { HeroCentered } from '@/components/sections/hero/HeroCentered'
 import { HeroFull } from '@/components/sections/hero/HeroFull'
 
 // Import Features variants
-import { FeaturesGrid } from '@/components/sections/features/FeaturesGrid'
+import { FeaturesGrid, FeaturesList, FeaturesMinimal } from '@/components/sections/features'
 
 /**
  * Generic section component type that accepts any data shape
@@ -43,7 +43,8 @@ export const componentRegistry: RegistryMap = {
   },
   features: {
     grid: FeaturesGrid,
-    // list: FeaturesList,
+    list: FeaturesList,
+    minimal: FeaturesMinimal,
   },
   gallery: {
     // grid: GalleryGrid,

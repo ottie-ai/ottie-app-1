@@ -6,8 +6,7 @@ import { Switch } from '@/components/ui/switch'
 import { 
   Field, 
   FieldGroup, 
-  FieldLabel,
-  FieldSeparator 
+  FieldLabel 
 } from '@/components/ui/field'
 import { 
   Carousel, 
@@ -21,30 +20,28 @@ import { FontSelector } from '@/components/builder/FontSelector'
 import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/builder/registry'
 
-interface HeroSettingsProps {
-  theme: ThemeConfig
+// ============================================
+// Remix Panel - Layout & Background Image
+// ============================================
+
+interface HeroRemixPanelProps {
   variant: string
   data: HeroSectionData
-  onThemeChange: (theme: ThemeConfig) => void
   onVariantChange: (variant: string) => void
   onDataChange: (data: HeroSectionData) => void
 }
 
-export function HeroSettings({ 
-  theme, 
+export function HeroRemixPanel({ 
   variant, 
   data,
-  onThemeChange, 
   onVariantChange,
   onDataChange
-}: HeroSettingsProps) {
+}: HeroRemixPanelProps) {
   const heroVariants = getVariants('hero')
   const [api, setApi] = useState<CarouselApi>()
   
-  // Find current variant index
   const currentIndex = heroVariants.indexOf(variant)
 
-  // Sync carousel with variant changes
   useEffect(() => {
     if (!api) return
     if (currentIndex >= 0) {
@@ -52,7 +49,6 @@ export function HeroSettings({
     }
   }, [api, currentIndex])
 
-  // Handle carousel slide change
   const onSelect = useCallback(() => {
     if (!api) return
     const selectedIndex = api.selectedScrollSnap()
@@ -72,7 +68,6 @@ export function HeroSettings({
 
   return (
     <FieldGroup className="gap-5">
-      {/* Layout Variant Carousel */}
       <Field>
         <FieldLabel>Layout</FieldLabel>
         <Carousel setApi={setApi} opts={{ loop: true }}>
@@ -85,14 +80,13 @@ export function HeroSettings({
                     <span className="text-sm font-medium capitalize">{v}</span>
                   </div>
                 </CarouselItem>
-              ))}
+            ))}
             </CarouselContent>
             <CarouselNext className="static translate-y-0 size-7" />
           </div>
         </Carousel>
       </Field>
 
-      {/* Background Image */}
       <Field>
         <FieldLabel>Background Image</FieldLabel>
         <FileUpload
@@ -101,26 +95,40 @@ export function HeroSettings({
           placeholder="Drop an image or click to upload"
         />
       </Field>
+    </FieldGroup>
+  )
+}
 
-      <FieldSeparator />
+// ============================================
+// Settings Panel - Font & Typography
+// ============================================
 
-      {/* Font Family */}
+interface HeroSettingsPanelProps {
+  theme: ThemeConfig
+  onThemeChange: (theme: ThemeConfig) => void
+}
+
+export function HeroSettingsPanel({ 
+  theme, 
+  onThemeChange
+}: HeroSettingsPanelProps) {
+  return (
+    <FieldGroup className="gap-5">
       <Field>
         <FieldLabel>Font Family</FieldLabel>
-        <FontSelector 
-          value={theme.headingFontFamily}
-          onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
-        />
+          <FontSelector 
+            value={theme.headingFontFamily}
+            onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
+          />
       </Field>
 
-      {/* Uppercase Toggle */}
       <Field orientation="horizontal">
         <FieldLabel htmlFor="uppercase-hero">Uppercase Titles</FieldLabel>
-        <Switch
-          id="uppercase-hero"
-          checked={theme.uppercaseTitles}
-          onCheckedChange={(checked) => onThemeChange({ ...theme, uppercaseTitles: checked })}
-        />
+            <Switch
+              id="uppercase-hero"
+              checked={theme.uppercaseTitles}
+              onCheckedChange={(checked) => onThemeChange({ ...theme, uppercaseTitles: checked })}
+            />
       </Field>
     </FieldGroup>
   )

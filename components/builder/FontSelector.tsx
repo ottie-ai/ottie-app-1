@@ -23,24 +23,24 @@ export function FontSelector({ value, onChange }: FontSelectorProps) {
   const fontsByCategory = getFontsByCategory()
   
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder="Select a font" />
-      </SelectTrigger>
-      <SelectContent>
-        {Object.entries(fontsByCategory).map(([category, fonts]) => (
-          <SelectGroup key={category}>
-            <SelectLabel>
-              {categoryInfo[category]?.label || category}
-            </SelectLabel>
-            {fonts.map((font) => (
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select a font" />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(fontsByCategory).map(([category, fonts]) => (
+            <SelectGroup key={category}>
+              <SelectLabel>
+                {categoryInfo[category]?.label || category}
+              </SelectLabel>
+              {fonts.map((font) => (
               <SelectItem key={font.value} value={font.value}>
-                {font.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+                    {font.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
   )
 }
