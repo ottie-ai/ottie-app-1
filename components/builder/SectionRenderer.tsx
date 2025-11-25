@@ -1,0 +1,85 @@
+'use client'
+
+import { Section, ThemeConfig } from '@/types/builder'
+import { getComponent } from './registry'
+
+interface SectionRendererProps {
+  /** Section configuration to render */
+  section: Section
+  /** Optional theme configuration */
+  theme?: ThemeConfig
+  /** Optional class name for wrapper */
+  className?: string
+}
+
+/**
+ * SectionRenderer - Dynamically renders a section based on its type and variant
+ * 
+ * Uses the component registry to find the correct component,
+ * then renders it with the section's data.
+ * 
+ * @example
+ * ```tsx
+ * <SectionRenderer 
+ *   section={{ id: '1', type: 'hero', variant: 'split', data: { headline: 'Welcome' } }}
+ *   theme={pageTheme}
+ * />
+ * ```
+ */
+export function SectionRenderer({ section, theme, className }: SectionRendererProps) {
+  const Component = getComponent(section.type, section.variant)
+
+  // Component not found in registry
+  if (!Component) {
+    // In development, show a helpful message
+    if (process.env.NODE_ENV === 'development') {
+      return (
+        <div className="p-8 bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg text-center">
+          <p className="text-amber-800 font-medium">
+            Component not found: {section.type}/{section.variant}
+          </p>
+          <p className="text-amber-600 text-sm mt-1">
+            Register this component in components/builder/registry.ts
+          </p>
+        </div>
+      )
+    }
+    // In production, return null
+    return null
+  }
+
+  return (
+    <div 
+      id={`section-${section.id}`} 
+      className={className}
+      data-section-type={section.type}
+      data-section-variant={section.variant}
+    >
+      <Component data={section.data} theme={theme} />
+    </div>
+  )
+}
+
+/**
+ * Renders multiple sections from a PageConfig
+ */
+interface PageRendererProps {
+  sections: Section[]
+  theme?: ThemeConfig
+  className?: string
+}
+
+export function PageRenderer({ sections, theme, className }: PageRendererProps) {
+  return (
+    <div className={className}>
+      {sections.map((section) => (
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          theme={theme}
+        />
+      ))}
+    </div>
+  )
+}
+
