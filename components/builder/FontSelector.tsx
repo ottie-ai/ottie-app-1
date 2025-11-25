@@ -1,6 +1,6 @@
 'use client'
 
-import { headingFonts, getFontsByCategory, FontOption } from '@/lib/fonts'
+import { getFontsByCategory, categoryInfo } from '@/lib/fonts'
 import {
   Select,
   SelectContent,
@@ -17,15 +17,9 @@ interface FontSelectorProps {
   label?: string
 }
 
-const categoryLabels: Record<string, string> = {
-  'serif': 'Serif',
-  'sans-serif': 'Sans Serif',
-  'display': 'Display',
-  'handwriting': 'Handwriting',
-}
-
 /**
  * Font selector dropdown with categorized Google Fonts
+ * Categories: Luxury, Modern, Corporate, Lifestyle
  */
 export function FontSelector({ value, onChange, label }: FontSelectorProps) {
   const fontsByCategory = getFontsByCategory()
@@ -43,21 +37,31 @@ export function FontSelector({ value, onChange, label }: FontSelectorProps) {
             <span style={{ fontFamily: value }}>{value}</span>
           </SelectValue>
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-80">
           {Object.entries(fontsByCategory).map(([category, fonts]) => (
             <SelectGroup key={category}>
-              <SelectLabel className="text-xs uppercase tracking-wider text-muted-foreground">
-                {categoryLabels[category] || category}
+              <SelectLabel className="text-xs font-semibold text-foreground pt-2">
+                {categoryInfo[category]?.label || category}
+                <span className="block text-[10px] font-normal text-muted-foreground">
+                  {categoryInfo[category]?.description}
+                </span>
               </SelectLabel>
               {fonts.map((font) => (
                 <SelectItem 
                   key={font.value} 
                   value={font.value}
-                  className="cursor-pointer"
+                  className="cursor-pointer py-2"
                 >
-                  <span style={{ fontFamily: font.value }}>
-                    {font.name}
-                  </span>
+                  <div className="flex flex-col">
+                    <span style={{ fontFamily: font.value }}>
+                      {font.name}
+                    </span>
+                    {font.description && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {font.description}
+                      </span>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectGroup>
@@ -67,4 +71,3 @@ export function FontSelector({ value, onChange, label }: FontSelectorProps) {
     </div>
   )
 }
-

@@ -6,6 +6,7 @@ import { SectionType, SectionVariant, SectionComponent, SectionData } from '@/ty
 // Import Hero variants
 import { HeroSplit } from '@/components/sections/hero/HeroSplit'
 import { HeroCentered } from '@/components/sections/hero/HeroCentered'
+import { HeroFull } from '@/components/sections/hero/HeroFull'
 
 // Import Features variants
 import { FeaturesGrid } from '@/components/sections/features/FeaturesGrid'
@@ -31,6 +32,7 @@ export const componentRegistry: RegistryMap = {
   hero: {
     split: HeroSplit,
     centered: HeroCentered,
+    full: HeroFull,
   },
   features: {
     grid: FeaturesGrid,

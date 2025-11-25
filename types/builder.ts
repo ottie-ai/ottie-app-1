@@ -38,6 +38,12 @@ export interface ThemeConfig {
   fontFamily: string
   /** Font family for headings/titles */
   headingFontFamily: string
+  /** Heading font size multiplier (0.8 - 1.4) */
+  headingFontSize: number
+  /** Heading letter spacing (-0.05 to 0.1) */
+  headingLetterSpacing: number
+  /** Whether headings should be uppercase */
+  uppercaseTitles: boolean
   /** Primary brand color (hex) */
   primaryColor: string
   /** Secondary/accent color (hex) */

@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { PageRenderer } from '@/components/builder/SectionRenderer'
 import { Section, ThemeConfig } from '@/types/builder'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
+import { Slider } from '@/components/ui/slider'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import { getVariants } from '@/components/builder/registry'
 import { FontSelector } from '@/components/builder/FontSelector'
 import { FontLoader } from '@/components/builder/FontLoader'
@@ -13,6 +19,9 @@ import { FontTransition } from '@/components/builder/FontTransition'
 const exampleTheme: ThemeConfig = {
   fontFamily: 'system-ui, sans-serif',
   headingFontFamily: 'Playfair Display',
+  headingFontSize: 1,
+  headingLetterSpacing: 0,
+  uppercaseTitles: false,
   primaryColor: '#3b82f6',
   secondaryColor: '#8b5cf6',
   backgroundColor: '#ffffff',
@@ -25,15 +34,15 @@ const initialSections: Section[] = [
   {
     id: 'hero-1',
     type: 'hero',
-    variant: 'split', // Try changing this to 'centered'
+    variant: 'full',
     data: {
-      headline: 'Stunning Modern Villa',
-      subheadline: 'Experience luxury living in this beautifully designed 4-bedroom home with panoramic views.',
-      price: '$1,250,000',
-      address: '123 Oceanview Drive, Malibu, CA 90265',
+      headline: 'Own your word, one property at a time',
+      subheadline: 'Herman Thompson Jr., a financial planner with Innovative Financial Group in Atlanta, Ga. says he checks his portfolio when he makes a trade.',
+      price: 'Articles',
+      address: '21 Maine street, DE',
       ctaText: 'Schedule a Tour',
       ctaLink: '#contact',
-      propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+      propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1600',
     },
   },
   {
@@ -82,35 +91,129 @@ export default function PreviewPage() {
       {/* Load Google Fonts dynamically */}
       <FontLoader fonts={[theme.headingFontFamily]} />
 
-      {/* Demo Controls - Remove in production */}
-      <div className="fixed top-4 right-4 z-50 bg-card border rounded-lg shadow-lg p-4 space-y-4 w-64">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-2">Hero Variant:</p>
-          <div className="flex gap-2">
-            {heroVariants.map(variant => (
-              <Button
-                key={variant}
-                size="sm"
-                variant={currentHeroVariant === variant ? 'default' : 'outline'}
-                onClick={() => swapHeroVariant(variant)}
-              >
-                {variant}
-              </Button>
-            ))}
-          </div>
-        </div>
+      {/* Settings Panel */}
+      <div className="fixed top-4 right-4 z-50 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <Tabs defaultValue="layout" className="w-full">
+          <Card>
+            <CardHeader className="pb-3">
+              <TabsList className="w-full grid grid-cols-2">
+                <TabsTrigger value="layout">Layout</TabsTrigger>
+                <TabsTrigger value="typography">Typography</TabsTrigger>
+              </TabsList>
+            </CardHeader>
 
-        <div className="border-t pt-4">
-          <FontSelector 
-            value={theme.headingFontFamily}
-            onChange={updateHeadingFont}
-            label="Heading Font"
-          />
-        </div>
+            <CardContent className="space-y-4">
+              {/* Layout Tab */}
+              <TabsContent value="layout" className="mt-0 space-y-4">
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Hero Style
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <div className="flex flex-wrap gap-2">
+                      {heroVariants.map(variant => (
+                        <Button
+                          key={variant}
+                          size="sm"
+                          variant={currentHeroVariant === variant ? 'default' : 'outline'}
+                          onClick={() => swapHeroVariant(variant)}
+                          className="capitalize"
+                        >
+                          {variant}
+                        </Button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-        <p className="text-xs text-muted-foreground">
-          Font: <code className="bg-muted px-1 rounded">{theme.headingFontFamily}</code>
-        </p>
+              {/* Typography Tab */}
+              <TabsContent value="typography" className="mt-0 space-y-4">
+                {/* Font Family Card */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Font Family
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <FontSelector 
+                      value={theme.headingFontFamily}
+                      onChange={updateHeadingFont}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Font Size Card */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex justify-between">
+                      <span>Font Size</span>
+                      <span className="font-mono text-foreground">
+                        {Math.round(theme.headingFontSize * 100)}%
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <Slider
+                      value={[theme.headingFontSize]}
+                      onValueChange={([value]) => setTheme(prev => ({ ...prev, headingFontSize: value }))}
+                      min={0.7}
+                      max={1.3}
+                      step={0.05}
+                      className="w-full"
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Letter Spacing Card */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex justify-between">
+                      <span>Letter Spacing</span>
+                      <span className="font-mono text-foreground">
+                        {theme.headingLetterSpacing > 0 ? '+' : ''}{theme.headingLetterSpacing.toFixed(2)}em
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <Slider
+                      value={[theme.headingLetterSpacing]}
+                      onValueChange={([value]) => setTheme(prev => ({ ...prev, headingLetterSpacing: value }))}
+                      min={-0.05}
+                      max={0.15}
+                      step={0.01}
+                      className="w-full"
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Style Options Card */}
+                <Card className="bg-muted/50">
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Style Options
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="uppercase" className="text-sm cursor-pointer">
+                        Uppercase Titles
+                      </Label>
+                      <Switch
+                        id="uppercase"
+                        checked={theme.uppercaseTitles}
+                        onCheckedChange={(checked) => setTheme(prev => ({ ...prev, uppercaseTitles: checked }))}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </CardContent>
+          </Card>
+        </Tabs>
       </div>
 
       {/* Page Content */}

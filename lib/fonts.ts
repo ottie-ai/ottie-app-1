@@ -3,111 +3,194 @@
 export interface FontOption {
   name: string
   value: string
-  category: 'serif' | 'sans-serif' | 'display' | 'handwriting'
+  category: 'luxury' | 'modern' | 'corporate' | 'lifestyle'
   weights: number[]
+  description?: string
 }
 
 /**
- * Curated list of Google Fonts for headings
- * These fonts work well for real estate and luxury property sites
+ * Curated list of Google Fonts for real estate headings
+ * Organized by property type and style
  */
 export const headingFonts: FontOption[] = [
-  // Serif - Elegant & Classic
+  // ============================================
+  // 1. Luxury & Elegant (Villas, Historic Estates, High-end)
+  // ============================================
   {
     name: 'Playfair Display',
     value: 'Playfair Display',
-    category: 'serif',
+    category: 'luxury',
     weights: [400, 500, 600, 700],
+    description: 'The king of luxury websites. High contrast, bold.',
   },
   {
     name: 'Cormorant Garamond',
     value: 'Cormorant Garamond',
-    category: 'serif',
+    category: 'luxury',
     weights: [400, 500, 600, 700],
+    description: 'Very elegant, thin, looks like a fashion magazine.',
   },
   {
-    name: 'Libre Baskerville',
-    value: 'Libre Baskerville',
-    category: 'serif',
-    weights: [400, 700],
+    name: 'Cinzel',
+    value: 'Cinzel',
+    category: 'luxury',
+    weights: [400, 500, 600, 700],
+    description: 'Classic, Roman style. For ultra-premium properties.',
   },
   {
-    name: 'Lora',
-    value: 'Lora',
-    category: 'serif',
-    weights: [400, 500, 600, 700],
+    name: 'Prata',
+    value: 'Prata',
+    category: 'luxury',
+    weights: [400],
+    description: 'Sophisticated serif that looks great in large sizes.',
   },
   {
     name: 'Bodoni Moda',
     value: 'Bodoni Moda',
-    category: 'serif',
+    category: 'luxury',
     weights: [400, 500, 600, 700],
+    description: 'Extreme contrast, very fashionable and modern luxury.',
   },
-  
-  // Sans-serif - Modern & Clean
+
+  // ============================================
+  // 2. Modern & Minimalist (Apartments, New Developments, Penthouses)
+  // ============================================
   {
     name: 'Inter',
     value: 'Inter',
-    category: 'sans-serif',
+    category: 'modern',
     weights: [400, 500, 600, 700],
+    description: 'The standard for modern web. Readable, neutral.',
   },
   {
-    name: 'Outfit',
-    value: 'Outfit',
-    category: 'sans-serif',
+    name: 'Montserrat',
+    value: 'Montserrat',
+    category: 'modern',
     weights: [400, 500, 600, 700],
-  },
-  {
-    name: 'Space Grotesk',
-    value: 'Space Grotesk',
-    category: 'sans-serif',
-    weights: [400, 500, 600, 700],
-  },
-  {
-    name: 'DM Sans',
-    value: 'DM Sans',
-    category: 'sans-serif',
-    weights: [400, 500, 600, 700],
+    description: 'Geometric, wide. Feels confident and urban.',
   },
   {
     name: 'Plus Jakarta Sans',
     value: 'Plus Jakarta Sans',
-    category: 'sans-serif',
+    category: 'modern',
     weights: [400, 500, 600, 700],
-  },
-  
-  // Display - Bold & Statement
-  {
-    name: 'Bebas Neue',
-    value: 'Bebas Neue',
-    category: 'display',
-    weights: [400],
+    description: 'Very popular in tech. Feels fresh and modern.',
   },
   {
-    name: 'Oswald',
-    value: 'Oswald',
-    category: 'display',
+    name: 'Manrope',
+    value: 'Manrope',
+    category: 'modern',
     weights: [400, 500, 600, 700],
+    description: 'Modern grotesque, pleasant for reading numbers.',
   },
   {
-    name: 'Archivo Black',
-    value: 'Archivo Black',
-    category: 'display',
-    weights: [400],
-  },
-  {
-    name: 'Syne',
-    value: 'Syne',
-    category: 'display',
+    name: 'Outfit',
+    value: 'Outfit',
+    category: 'modern',
     weights: [400, 500, 600, 700],
+    description: 'A bit bolder, geometric. Great for modern brands.',
+  },
+
+  // ============================================
+  // 3. Trustworthy & Corporate (Family Homes, Classic Sales)
+  // ============================================
+  {
+    name: 'Lato',
+    value: 'Lato',
+    category: 'corporate',
+    weights: [400, 700],
+    description: 'Very friendly, rounded, but still professional.',
+  },
+  {
+    name: 'Roboto',
+    value: 'Roboto',
+    category: 'corporate',
+    weights: [400, 500, 700],
+    description: 'A classic. Offends no one, works everywhere.',
+  },
+  {
+    name: 'Open Sans',
+    value: 'Open Sans',
+    category: 'corporate',
+    weights: [400, 500, 600, 700],
+    description: 'Neutral, open, very readable on mobile.',
+  },
+  {
+    name: 'Merriweather',
+    value: 'Merriweather',
+    category: 'corporate',
+    weights: [400, 700],
+    description: 'A serif built for screen reading. Feels serious.',
+  },
+  {
+    name: 'Libre Baskerville',
+    value: 'Libre Baskerville',
+    category: 'corporate',
+    weights: [400, 700],
+    description: 'Traditional, banking style. Feels solid.',
+  },
+
+  // ============================================
+  // 4. Vacation & Lifestyle (Airbnb, Cabins, Boutique Hotels)
+  // ============================================
+  {
+    name: 'DM Sans',
+    value: 'DM Sans',
+    category: 'lifestyle',
+    weights: [400, 500, 600, 700],
+    description: 'Modern, but friendlier than Inter. Airbnb vibe.',
   },
   {
     name: 'Fraunces',
     value: 'Fraunces',
-    category: 'display',
+    category: 'lifestyle',
     weights: [400, 500, 600, 700],
+    description: 'Old-school serif with modern twist. Boutique feel.',
+  },
+  {
+    name: 'Josefin Sans',
+    value: 'Josefin Sans',
+    category: 'lifestyle',
+    weights: [400, 500, 600, 700],
+    description: 'Geometric, thin, elegant. Feels feminine and soft.',
+  },
+  {
+    name: 'Archivo',
+    value: 'Archivo',
+    category: 'lifestyle',
+    weights: [400, 500, 600, 700],
+    description: 'Strong, American style. Good for industrial lofts.',
+  },
+  {
+    name: 'Lora',
+    value: 'Lora',
+    category: 'lifestyle',
+    weights: [400, 500, 600, 700],
+    description: 'Beautiful serif with calligraphic elements.',
   },
 ]
+
+/**
+ * Category labels and descriptions
+ */
+export const categoryInfo: Record<string, { label: string; description: string }> = {
+  luxury: {
+    label: 'Luxury & Elegant',
+    description: 'Villas, Historic Estates, High-end',
+  },
+  modern: {
+    label: 'Modern & Minimalist',
+    description: 'Apartments, New Developments, Penthouses',
+  },
+  corporate: {
+    label: 'Trustworthy & Corporate',
+    description: 'Family Homes, Classic Sales',
+  },
+  lifestyle: {
+    label: 'Vacation & Lifestyle',
+    description: 'Airbnb, Cabins, Boutique Hotels',
+  },
+}
 
 /**
  * Generate Google Fonts URL for loading fonts

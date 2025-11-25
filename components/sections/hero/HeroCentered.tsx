@@ -58,8 +58,12 @@ export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionD
           )}
           
           <h1 
-            className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight"
-            style={{ fontFamily: headingFont }}
+            className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+            style={{ 
+              fontFamily: headingFont,
+              fontSize: `calc(1em * ${theme?.headingFontSize || 1})`,
+              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+            }}
           >
             {headline}
           </h1>

@@ -32,10 +32,12 @@ export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSect
       <div className="container mx-auto px-4">
         {title && (
           <h2 
-            className="text-2xl md:text-3xl font-semibold text-center mb-12"
+            className={`text-2xl md:text-3xl font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
             style={{ 
               color: theme?.textColor,
               fontFamily: headingFont,
+              fontSize: `calc(1em * ${theme?.headingFontSize || 1})`,
+              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
             }}
           >
             {title}

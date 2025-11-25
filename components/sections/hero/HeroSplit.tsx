@@ -40,10 +40,12 @@ export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData
             )}
             
             <h1 
-              className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight"
+              className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
               style={{ 
                 color: theme?.textColor,
                 fontFamily: headingFont,
+                fontSize: `calc(1em * ${theme?.headingFontSize || 1})`,
+                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
               }}
             >
               {headline}
