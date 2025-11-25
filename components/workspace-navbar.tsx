@@ -44,8 +44,8 @@ export function WorkspaceNavbar({
 }: WorkspaceNavbarProps) {
   // Get initials for avatar fallback
   return (
-    <nav className="fixed top-0 z-50 w-full border-b border-border/20 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/30">
-      <div className="flex h-12 w-full items-center px-4">
+    <nav className="fixed top-2 left-2 right-2 z-50">
+      <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/30 shadow-lg">
         {/* Left side - Back button */}
         <div className="flex items-center">
           <Button variant="ghost" size="sm">
