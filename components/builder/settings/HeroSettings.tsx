@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
-import { ThemeConfig } from '@/types/builder'
+import { useEffect, useCallback, useState } from 'react'
+import { ThemeConfig, HeroSectionData } from '@/types/builder'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import { 
+  Field, 
+  FieldGroup, 
+  FieldLabel 
+} from '@/components/ui/field'
 import { 
   Carousel, 
   CarouselContent, 
@@ -13,21 +17,25 @@ import {
   type CarouselApi 
 } from '@/components/ui/carousel'
 import { FontSelector } from '@/components/builder/FontSelector'
+import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/builder/registry'
-import { useState } from 'react'
 
 interface HeroSettingsProps {
   theme: ThemeConfig
   variant: string
+  data: HeroSectionData
   onThemeChange: (theme: ThemeConfig) => void
   onVariantChange: (variant: string) => void
+  onDataChange: (data: HeroSectionData) => void
 }
 
 export function HeroSettings({ 
   theme, 
   variant, 
+  data,
   onThemeChange, 
-  onVariantChange 
+  onVariantChange,
+  onDataChange
 }: HeroSettingsProps) {
   const heroVariants = getVariants('hero')
   const [api, setApi] = useState<CarouselApi>()
@@ -62,10 +70,10 @@ export function HeroSettings({
   }, [api, onSelect])
 
   return (
-    <div className="space-y-4">
+    <FieldGroup className="gap-4">
       {/* Layout Variant Carousel */}
-      <div className="grid gap-2">
-        <Label>Layout</Label>
+      <Field>
+        <FieldLabel>Layout</FieldLabel>
         <Carousel setApi={setApi} opts={{ loop: true }}>
           <div className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
             <CarouselPrevious className="static translate-y-0 size-7" />
@@ -81,26 +89,36 @@ export function HeroSettings({
             <CarouselNext className="static translate-y-0 size-7" />
           </div>
         </Carousel>
-      </div>
+      </Field>
 
       {/* Font Family */}
-      <div className="grid gap-2">
-        <Label>Font Family</Label>
+      <Field>
+        <FieldLabel>Font Family</FieldLabel>
         <FontSelector 
           value={theme.headingFontFamily}
           onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
         />
-      </div>
+      </Field>
+
+      {/* Background Image */}
+      <Field>
+        <FieldLabel>Background Image</FieldLabel>
+        <FileUpload
+          value={data.backgroundImage}
+          onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
+          placeholder="Drop an image or click to upload"
+        />
+      </Field>
 
       {/* Uppercase Toggle */}
-      <div className="flex items-center justify-between">
-        <Label htmlFor="uppercase-hero">Uppercase Titles</Label>
+      <Field orientation="horizontal">
+        <FieldLabel htmlFor="uppercase-hero">Uppercase Titles</FieldLabel>
         <Switch
           id="uppercase-hero"
           checked={theme.uppercaseTitles}
           onCheckedChange={(checked) => onThemeChange({ ...theme, uppercaseTitles: checked })}
         />
-      </div>
-    </div>
+      </Field>
+    </FieldGroup>
   )
 }

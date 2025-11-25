@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { SectionRenderer } from '@/components/builder/SectionRenderer'
 import { SectionEditor } from '@/components/builder/SectionEditor'
 import { HeroSettings } from '@/components/builder/settings/HeroSettings'
-import { Section, ThemeConfig } from '@/types/builder'
+import { Section, ThemeConfig, HeroSectionData } from '@/types/builder'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 
@@ -61,10 +61,16 @@ export default function PreviewPage() {
   // Temporary state for editing (before save)
   const [editingTheme, setEditingTheme] = useState<ThemeConfig>(exampleTheme)
   const [editingVariant, setEditingVariant] = useState<Record<string, string>>({})
+  const [editingData, setEditingData] = useState<Record<string, Section['data']>>({})
 
   // Get current variant for a section
   const getSectionVariant = (sectionId: string, currentVariant: string) => {
     return editingVariant[sectionId] ?? currentVariant
+  }
+
+  // Get current data for a section
+  const getSectionData = (section: Section) => {
+    return editingData[section.id] ?? section.data
   }
 
   // Update section variant
@@ -72,24 +78,35 @@ export default function PreviewPage() {
     setEditingVariant(prev => ({ ...prev, [sectionId]: variant }))
   }
 
+  // Update section data
+  const updateSectionData = (sectionId: string, data: Section['data']) => {
+    setEditingData(prev => ({ ...prev, [sectionId]: data }))
+  }
+
   // Save changes for a section
   const handleSave = (sectionId: string) => {
     // Apply theme changes
     setTheme(editingTheme)
     
-    // Apply variant changes
-    if (editingVariant[sectionId]) {
-      setSections(prev => 
-        prev.map(section => 
-          section.id === sectionId 
-            ? { ...section, variant: editingVariant[sectionId] }
-            : section
-        )
-      )
-    }
+    // Apply variant and data changes
+    setSections(prev => 
+      prev.map(section => {
+        if (section.id !== sectionId) return section
+        return {
+          ...section,
+          variant: editingVariant[sectionId] ?? section.variant,
+          data: editingData[sectionId] ?? section.data
+        }
+      })
+    )
     
     // Clear editing state for this section
     setEditingVariant(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
+    setEditingData(prev => {
       const newState = { ...prev }
       delete newState[sectionId]
       return newState
@@ -100,6 +117,11 @@ export default function PreviewPage() {
   const handleCancel = (sectionId: string) => {
     setEditingTheme(theme)
     setEditingVariant(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
+    setEditingData(prev => {
       const newState = { ...prev }
       delete newState[sectionId]
       return newState
@@ -115,7 +137,8 @@ export default function PreviewPage() {
       <FontTransition font={editingTheme.headingFontFamily}>
         {sections.map((section) => {
           const currentVariant = getSectionVariant(section.id, section.variant)
-          const displaySection = { ...section, variant: currentVariant }
+          const currentData = getSectionData(section)
+          const displaySection = { ...section, variant: currentVariant, data: currentData }
 
           if (section.type === 'hero') {
             return (
@@ -126,8 +149,10 @@ export default function PreviewPage() {
                   <HeroSettings
                     theme={editingTheme}
                     variant={currentVariant}
+                    data={currentData as HeroSectionData}
                     onThemeChange={setEditingTheme}
                     onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                    onDataChange={(data) => updateSectionData(section.id, data)}
                   />
                 }
               >
