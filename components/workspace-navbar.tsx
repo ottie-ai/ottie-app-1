@@ -47,16 +47,22 @@ export function WorkspaceNavbar({
   return (
     <motion.nav
       className="fixed top-2 left-2 right-2 z-50"
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ y: -100, opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+      animate={{ y: 0, opacity: 1, scale: 1, filter: 'blur(0px)' }}
+      transition={{ 
+        duration: 1.2, 
+        ease: [0.16, 1, 0.3, 1],
+        opacity: { duration: 0.8 },
+        scale: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+        filter: { duration: 0.6 }
+      }}
     >
       <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-white shadow-lg">
         {/* Left side - Back button */}
         <div className="flex items-center">
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" className="gap-1">
             <ArrowLeft className="size-4" weight="bold" />
-            Back to Dashboard
+            <span className="hidden md:inline">Back to Dashboard</span>
           </Button>
         </div>
 
@@ -64,14 +70,14 @@ export function WorkspaceNavbar({
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
           <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="gap-1 md:gap-2">
               <span className="text-sm font-bold">Ottie</span>
-              <span className="text-muted-foreground text-sm">×</span>
-              <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm hidden sm:inline">×</span>
+              <div className="flex items-center gap-1 md:gap-2">
                 <div className="size-4 rounded-full bg-gradient-to-br from-lime-400 via-amber-300 to-orange-500" />
-                <span className="text-sm font-medium">{companyName}</span>
+                <span className="text-sm font-medium hidden sm:inline">{companyName}</span>
               </div>
-              <Badge variant="secondary">Free</Badge>
+              <Badge variant="secondary" className="hidden md:inline-flex">Free</Badge>
               <CaretUpDown className="size-4 text-muted-foreground" weight="bold" />
             </Button>
           </DropdownMenuTrigger>
@@ -118,7 +124,7 @@ export function WorkspaceNavbar({
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
                   <GearSix className="size-4" weight="fill" />
-                  Settings
+                  <span className="hidden md:inline">Settings</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80">
