@@ -23,7 +23,7 @@ export function SectionEditor({
   className = '' 
 }: SectionEditorProps) {
   return (
-    <div className={`relative group ${className}`}>
+    <div className={`relative ${className}`}>
       {/* Section Content */}
       {children}
 
@@ -33,7 +33,7 @@ export function SectionEditor({
           <PopoverTrigger asChild>
             <Button
               size="sm"
-              className="gap-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="gap-2 shadow-lg"
             >
               <Sparkle weight="fill" className="w-4 h-4" />
               Remix
