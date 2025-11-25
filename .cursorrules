@@ -4,8 +4,16 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 - **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
 - **UI Library:** Shadcn UI + Tailwind CSS. Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.
 - **Icons:** Phosphor Icons (`@phosphor-icons/react`).
+- **Animation:** Framer Motion (`framer-motion`). Add subtle, premium entry animations (fade-in, slide-up) to all major UI sections and micro-interactions (hover scales, tap effects) to interactive elements.
 - **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
 - **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.
+
+### Design System & Theming
+- **Color Usage:**
+  - **Primary (Accent) Color:** Use ONLY for the main "Save" / "Publish" / "Call-to-Action" buttons. NEVER use it for form inputs, toggles, or sliders.
+  - **Form Elements:** Toggles, Switches, Sliders, Checkboxes, and Active Tab states must be **Neutral** (Zinc/Slate 900 or Black). They should not draw attention away from the content.
+  - **Backgrounds:** Use `bg-white` or subtle `bg-gray-50`. Avoid colored backgrounds for panels.
+  - **Typography:** Use `text-gray-900` for headings and `text-gray-600` for body text.
 
 ### Architecture: Section-Based Builder
 This project is a "Property Website Generator" based on a dynamic list of sections.

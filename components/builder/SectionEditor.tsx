@@ -67,7 +67,7 @@ export function SectionEditor({
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b">
                   <div className="flex items-center gap-2">
-                    <Sparkle weight="fill" className="w-4 h-4 text-primary" />
+                    <Sparkle weight="fill" className="w-4 h-4 text-foreground" />
                     <span className="font-medium text-sm">Edit Section</span>
                   </div>
                   <Button
