@@ -6,7 +6,8 @@ import { Switch } from '@/components/ui/switch'
 import { 
   Field, 
   FieldGroup, 
-  FieldLabel 
+  FieldLabel,
+  FieldSeparator 
 } from '@/components/ui/field'
 import { 
   Carousel, 
@@ -70,7 +71,7 @@ export function HeroSettings({
   }, [api, onSelect])
 
   return (
-    <FieldGroup className="gap-4">
+    <FieldGroup className="gap-5">
       {/* Layout Variant Carousel */}
       <Field>
         <FieldLabel>Layout</FieldLabel>
@@ -91,15 +92,6 @@ export function HeroSettings({
         </Carousel>
       </Field>
 
-      {/* Font Family */}
-      <Field>
-        <FieldLabel>Font Family</FieldLabel>
-        <FontSelector 
-          value={theme.headingFontFamily}
-          onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
-        />
-      </Field>
-
       {/* Background Image */}
       <Field>
         <FieldLabel>Background Image</FieldLabel>
@@ -107,6 +99,17 @@ export function HeroSettings({
           value={data.backgroundImage}
           onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
           placeholder="Drop an image or click to upload"
+        />
+      </Field>
+
+      <FieldSeparator />
+
+      {/* Font Family */}
+      <Field>
+        <FieldLabel>Font Family</FieldLabel>
+        <FontSelector 
+          value={theme.headingFontFamily}
+          onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
         />
       </Field>
 
