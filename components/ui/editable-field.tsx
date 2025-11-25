@@ -50,7 +50,7 @@ export function EditableField({
           <Button
             size="icon"
             variant="secondary"
-            className="absolute -right-2 -top-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-50"
+            className="absolute -left-2 -top-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-50"
           >
             <Pencil className="size-4 h-4" weight="fill" />
           </Button>

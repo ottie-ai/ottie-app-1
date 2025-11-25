@@ -50,7 +50,7 @@ export function EditableText({
           <Button
             size="icon"
             variant="secondary"
-            className="absolute -top-2 -right-2 size-7 opacity-0 group-hover/editable:opacity-100 transition-opacity shadow-lg z-10"
+            className="absolute -top-2 -left-2 size-7 opacity-0 group-hover/editable:opacity-100 transition-opacity shadow-lg z-10"
           >
             <Pencil className="size-4 h-4" weight="fill" />
           </Button>
