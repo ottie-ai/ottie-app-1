@@ -48,8 +48,8 @@ export function HeroFull({ data, theme }: SectionComponentProps<HeroSectionData>
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
         </div>
       ) : (
-        <div 
-          className="absolute inset-0 z-0 bg-neutral-900"
+        <div
+          className="absolute inset-0 z-0 bg-background"
         />
       )}
 

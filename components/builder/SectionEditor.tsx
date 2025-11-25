@@ -4,7 +4,6 @@ import { useState, ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkle, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 
 interface SectionEditorProps {
   children: ReactNode
@@ -63,7 +62,7 @@ export function SectionEditor({
               exit={{ opacity: 0, scale: 0.9, y: -10 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              <Card className="w-80 shadow-2xl border-border/50 backdrop-blur-sm bg-card/95">
+              <div className="w-80 rounded-lg shadow-2xl border border-border/50 backdrop-blur-sm bg-background/95">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b">
                   <div className="flex items-center gap-2">
@@ -81,9 +80,9 @@ export function SectionEditor({
                 </div>
 
                 {/* Settings Content */}
-                <CardContent className="p-4 max-h-[60vh] overflow-y-auto">
+                <div className="p-4 max-h-[60vh] overflow-y-auto">
                   {settingsPanel}
-                </CardContent>
+                </div>
 
                 {/* Footer */}
                 <div className="px-4 py-3 border-t bg-muted/30">
@@ -105,7 +104,7 @@ export function SectionEditor({
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -113,4 +112,3 @@ export function SectionEditor({
     </div>
   )
 }
-

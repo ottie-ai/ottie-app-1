@@ -135,7 +135,7 @@ export default function Home() {
   }, [])
 
   return (
-    <div style={{ cursor: 'none' }}>
+    <div className="with-noise" style={{ cursor: 'none' }}>
       <Navbar />
       {/* Hero Section with Background Effect */}
       <div className="relative min-h-screen overflow-hidden">
@@ -186,7 +186,7 @@ export default function Home() {
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 max-w-3xl text-gray-900 dark:text-foreground">
+          <Typography variant="h1" className="mb-1 max-w-3xl text-foreground">
             <WordReveal 
               text="Turn any listing into a premium showcase. Instantly. For free."
               delay={0.1}
@@ -235,7 +235,7 @@ export default function Home() {
             <div className="pt-1">
               <Link 
                 href="#" 
-                className="text-sm text-foreground hover:text-orange-500 underline underline-offset-4 transition-colors"
+                className="text-sm text-foreground hover:text-primary underline underline-offset-4 transition-colors"
               >
                 or fill in data manually
               </Link>

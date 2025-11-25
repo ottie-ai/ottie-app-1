@@ -2,17 +2,23 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 
 ### Tech Stack & Guidelines
 - **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
-- **UI Library:** Shadcn UI + Tailwind CSS. Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.When using UI components, always prefer existing shadcn/ui components from @/components/ui. Do not generate plain HTML alternatives.
-- **Icons:** Phosphor Icons (`@phosphor-icons/react`).
+- **UI Library:** 
+# Shadcn UI Workflow
+- When I ask for a UI component (like Button, Slider, Dialog), FIRST check if it exists in `@/components/ui`.
+- If the component is missing, DO NOT generate the code manually or create a new file yourself.
+- Instead, use the terminal to install it via the CLI command: `npx shadcn@latest add <component_name>`.
+- Only after installation, import the component from `@/components/ui`.
+- Never replace Shadcn components with standard HTML elements (e.g., never use `<input type="range">` instead of `<Slider>`).
+- Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.
+- **Icons:** Phosphor Icons (`@phosphor-icons/react`) for templates. Lucide icons for shadcn components.
 - **Animation:** Framer Motion (`framer-motion`). Add subtle, premium entry animations (fade-in, slide-up) to all major UI sections and micro-interactions (hover scales, tap effects) to interactive elements.
 - **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
 - **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.
 
 ### Design System & Theming
-- **Color Usage:** Use the `primary` (accent) color SPARINGLY. It should only be used for:
-  - Primary Call-to-Action (CTA) buttons.
-  - Tiny decorative elements (e.g., active tab underline, a small icon).
-- **Neutral UI:** All other UI elements (Secondary buttons, Toggles, Sliders, Borders, Backgrounds) must use `gray-100` to `gray-900` (or `muted/accent` from Shadcn variables). Do not colorize whole panels or inputs with the primary color. The UI should feel "Premium Neutral," not colorful.
+- **Strict Shadcn Compliance:** Always use the default semantic classes provided by shadcn/ui (e.g., `bg-background`, `text-foreground`, `border-input`, `bg-primary`).
+- **No Hardcoded Colors:** Do NOT replace semantic classes with hardcoded Tailwind colors (like `bg-gray-100`, `text-slate-900`) unless explicitly requested.
+- **Respect Defaults:** Trust the component's default `className` props. Do not add extra padding, margins, or color overrides that deviate from the standard library look.
 
 ### Architecture: Section-Based Builder
 This project is a "Property Website Generator" based on a dynamic list of sections.

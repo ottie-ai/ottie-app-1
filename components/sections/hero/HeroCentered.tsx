@@ -41,10 +41,10 @@ export function HeroCentered({ data, theme }: SectionComponentProps<HeroSectionD
       {/* Fallback gradient background */}
       {!backgroundImage && (
         <div 
-          className="absolute inset-0 z-0"
-          style={{ 
-            background: `linear-gradient(135deg, ${theme?.primaryColor || '#3b82f6'} 0%, ${theme?.secondaryColor || '#8b5cf6'} 100%)`
-          }}
+          className={`absolute inset-0 z-0 ${!theme?.primaryColor ? 'bg-gradient-to-br from-primary to-secondary' : ''}`}
+          style={theme?.primaryColor ? { 
+            background: `linear-gradient(135deg, ${theme.primaryColor} 0%, ${theme.secondaryColor || theme.primaryColor} 100%)`
+          } : undefined}
         />
       )}
 

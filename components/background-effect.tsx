@@ -223,9 +223,9 @@ export default function BackgroundEffect() {
     const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
-    // Function to set fixed colors - orange/fire theme
+    // Function to set fixed colors
     function updateColors() {
-      const palette = colorPalettes.fire; // Fixed to fire/orange colors
+      const palette = colorPalettes.original; // Fixed to original colors (blue/purple)
       // Update the uniforms with direct property assignment
       uniforms.primaryColor.value.x = palette.primary[0];
       uniforms.primaryColor.value.y = palette.primary[1];

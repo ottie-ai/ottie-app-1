@@ -34,11 +34,11 @@ export function SectionRenderer({ section, theme, className }: SectionRendererPr
     // In development, show a helpful message
     if (process.env.NODE_ENV === 'development') {
       return (
-        <div className="p-8 bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg text-center">
-          <p className="text-amber-800 font-medium">
+        <div className="p-8 bg-destructive/10 border-2 border-dashed border-destructive/30 rounded-lg text-center">
+          <p className="text-destructive font-medium">
             Component not found: {section.type}/{section.variant}
           </p>
-          <p className="text-amber-600 text-sm mt-1">
+          <p className="text-destructive/80 text-sm mt-1">
             Register this component in components/builder/registry.ts
           </p>
         </div>

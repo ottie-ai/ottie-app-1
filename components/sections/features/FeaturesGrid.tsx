@@ -56,8 +56,8 @@ export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSect
               >
                 {IconComponent && (
                   <IconComponent 
-                    className="w-8 h-8 mb-3" 
-                    style={{ color: theme?.primaryColor || '#3b82f6' }}
+                    className="w-8 h-8 mb-3 text-primary" 
+                    style={theme?.primaryColor ? { color: theme.primaryColor } : undefined}
                   />
                 )}
                 <span 

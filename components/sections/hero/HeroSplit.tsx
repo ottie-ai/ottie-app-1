@@ -29,11 +29,11 @@ export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData
           <div className="space-y-6">
             {price && (
               <span 
-                className="inline-block px-4 py-2 text-sm font-semibold rounded-full"
-                style={{ 
-                  backgroundColor: theme?.primaryColor || '#3b82f6',
+                className="inline-block px-4 py-2 text-sm font-semibold rounded-full bg-primary text-primary-foreground"
+                style={theme?.primaryColor ? { 
+                  backgroundColor: theme.primaryColor,
                   color: '#ffffff'
-                }}
+                } : undefined}
               >
                 {price}
               </span>
@@ -77,9 +77,7 @@ export function HeroSplit({ data, theme }: SectionComponentProps<HeroSectionData
               <Button 
                 size="lg"
                 className="mt-4"
-                style={{ 
-                  backgroundColor: theme?.primaryColor || '#3b82f6',
-                }}
+                style={theme?.primaryColor ? { backgroundColor: theme.primaryColor } : undefined}
                 asChild={!!ctaLink}
               >
                 {ctaLink ? (
