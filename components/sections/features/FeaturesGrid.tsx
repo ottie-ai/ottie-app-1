@@ -1,22 +1,22 @@
 'use client'
 
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
-import { Bed, Bath, Ruler, Car, Home, Trees, Waves, Wifi, Wind, Flame, Tv, UtensilsCrossed } from 'lucide-react'
+import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife } from '@phosphor-icons/react'
 
 // Icon mapping
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string; size?: number; weight?: string }>> = {
   bed: Bed,
-  bath: Bath,
+  bath: Bathtub,
   ruler: Ruler,
   car: Car,
-  home: Home,
-  trees: Trees,
-  pool: Waves,
-  wifi: Wifi,
-  ac: Wind,
-  heating: Flame,
-  tv: Tv,
-  kitchen: UtensilsCrossed,
+  home: House,
+  trees: Tree,
+  pool: SwimmingPool,
+  wifi: WifiHigh,
+  ac: Fan,
+  heating: Fire,
+  tv: Television,
+  kitchen: ForkKnife,
 }
 
 /**
