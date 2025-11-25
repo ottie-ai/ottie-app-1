@@ -1,10 +1,10 @@
 'use client'
 
 import { ThemeConfig } from '@/types/builder'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FontSelector } from '@/components/builder/FontSelector'
 import { getVariants } from '@/components/builder/registry'
 
@@ -30,19 +30,18 @@ export function HeroSettings({
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Layout
         </Label>
-        <div className="flex flex-wrap gap-2">
-          {heroVariants.map(v => (
-            <Button
-              key={v}
-              size="sm"
-              variant={variant === v ? 'default' : 'outline'}
-              onClick={() => onVariantChange(v)}
-              className="capitalize"
-            >
-              {v}
-            </Button>
-          ))}
-        </div>
+        <Select value={variant} onValueChange={onVariantChange}>
+          <SelectTrigger className="w-full capitalize">
+            <SelectValue placeholder="Select layout" />
+          </SelectTrigger>
+          <SelectContent>
+            {heroVariants.map(v => (
+              <SelectItem key={v} value={v} className="capitalize">
+                {v}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Font Family */}

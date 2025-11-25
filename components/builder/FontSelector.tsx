@@ -14,46 +14,33 @@ import {
 interface FontSelectorProps {
   value: string
   onChange: (value: string) => void
-  label?: string
 }
 
 /**
  * Font selector dropdown with categorized Google Fonts
  */
-export function FontSelector({ value, onChange, label }: FontSelectorProps) {
+export function FontSelector({ value, onChange }: FontSelectorProps) {
   const fontsByCategory = getFontsByCategory()
   
   return (
-    <div className="space-y-2">
-      {label && (
-        <label className="text-sm font-medium text-muted-foreground">
-          {label}
-        </label>
-      )}
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select a font" />
-        </SelectTrigger>
-        <SelectContent>
-          {Object.entries(fontsByCategory).map(([category, fonts]) => (
-            <SelectGroup key={category}>
-              <SelectLabel>
-                {categoryInfo[category]?.label || category}
-              </SelectLabel>
-              {fonts.map((font) => (
-                <SelectItem 
-                  key={font.value} 
-                  value={font.value}
-                >
-                  <span style={{ fontFamily: font.value }}>
-                    {font.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select a font" />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(fontsByCategory).map(([category, fonts]) => (
+          <SelectGroup key={category}>
+            <SelectLabel>
+              {categoryInfo[category]?.label || category}
+            </SelectLabel>
+            {fonts.map((font) => (
+              <SelectItem key={font.value} value={font.value}>
+                {font.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
