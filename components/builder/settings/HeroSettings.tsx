@@ -1,12 +1,20 @@
 'use client'
 
+import { useEffect, useCallback } from 'react'
 import { ThemeConfig } from '@/types/builder'
 import { Switch } from '@/components/ui/switch'
-import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselPrevious, 
+  CarouselNext,
+  type CarouselApi 
+} from '@/components/ui/carousel'
 import { FontSelector } from '@/components/builder/FontSelector'
 import { getVariants } from '@/components/builder/registry'
+import { useState } from 'react'
 
 interface HeroSettingsProps {
   theme: ThemeConfig
@@ -22,84 +30,71 @@ export function HeroSettings({
   onVariantChange 
 }: HeroSettingsProps) {
   const heroVariants = getVariants('hero')
+  const [api, setApi] = useState<CarouselApi>()
+  
+  // Find current variant index
+  const currentIndex = heroVariants.indexOf(variant)
+
+  // Sync carousel with variant changes
+  useEffect(() => {
+    if (!api) return
+    if (currentIndex >= 0) {
+      api.scrollTo(currentIndex)
+    }
+  }, [api, currentIndex])
+
+  // Handle carousel slide change
+  const onSelect = useCallback(() => {
+    if (!api) return
+    const selectedIndex = api.selectedScrollSnap()
+    const selectedVariant = heroVariants[selectedIndex]
+    if (selectedVariant && selectedVariant !== variant) {
+      onVariantChange(selectedVariant)
+    }
+  }, [api, heroVariants, variant, onVariantChange])
+
+  useEffect(() => {
+    if (!api) return
+    api.on('select', onSelect)
+    return () => {
+      api.off('select', onSelect)
+    }
+  }, [api, onSelect])
 
   return (
-    <div className="space-y-6">
-      {/* Layout Variant */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Layout
-        </Label>
-        <Select value={variant} onValueChange={onVariantChange}>
-          <SelectTrigger className="w-full capitalize">
-            <SelectValue placeholder="Select layout" />
-          </SelectTrigger>
-          <SelectContent>
-            {heroVariants.map(v => (
-              <SelectItem key={v} value={v} className="capitalize">
-                {v}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div className="space-y-4">
+      {/* Layout Variant Carousel */}
+      <div className="grid gap-2">
+        <Label>Layout</Label>
+        <Carousel setApi={setApi} opts={{ loop: true }}>
+          <div className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
+            <CarouselPrevious className="static translate-y-0 size-7" />
+            <CarouselContent className="flex-1 mx-2">
+              {heroVariants.map((v) => (
+                <CarouselItem key={v} className="pl-0">
+                  <div className="flex items-center justify-center">
+                    <span className="text-sm font-medium capitalize">{v}</span>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselNext className="static translate-y-0 size-7" />
+          </div>
+        </Carousel>
       </div>
 
       {/* Font Family */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Font Family
-        </Label>
+      <div className="grid gap-2">
+        <Label>Font Family</Label>
         <FontSelector 
           value={theme.headingFontFamily}
           onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
         />
       </div>
 
-      {/* Font Size */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Font Size
-          </Label>
-          <span className="text-xs font-mono text-foreground">
-            {Math.round(theme.headingFontSize * 100)}%
-          </span>
-        </div>
-        <Slider
-          value={[theme.headingFontSize]}
-          onValueChange={([value]) => onThemeChange({ ...theme, headingFontSize: value })}
-          min={0.7}
-          max={1.3}
-          step={0.05}
-          className="w-full"
-        />
-      </div>
-
-      {/* Letter Spacing */}
-      <div className="space-y-2">
-        <div className="flex justify-between">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Letter Spacing
-          </Label>
-          <span className="text-xs font-mono text-foreground">
-            {theme.headingLetterSpacing > 0 ? '+' : ''}{theme.headingLetterSpacing.toFixed(2)}em
-          </span>
-        </div>
-        <Slider
-          value={[theme.headingLetterSpacing]}
-          onValueChange={([value]) => onThemeChange({ ...theme, headingLetterSpacing: value })}
-          min={-0.05}
-          max={0.15}
-          step={0.01}
-          className="w-full"
-        />
-      </div>
-
       {/* Uppercase Toggle */}
       <div className="flex items-center justify-between">
-        <Label htmlFor="uppercase-hero" className="text-sm cursor-pointer">
-          Uppercase Titles
-        </Label>
+        <Label htmlFor="uppercase-hero">Uppercase Titles</Label>
         <Switch
           id="uppercase-hero"
           checked={theme.uppercaseTitles}
