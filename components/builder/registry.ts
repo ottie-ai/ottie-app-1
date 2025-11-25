@@ -1,7 +1,8 @@
 // Component Registry for Page Builder
 // Maps section types and variants to their React components
 
-import { SectionType, SectionVariant, SectionComponent, SectionData } from '@/types/builder'
+import { SectionType, SectionVariant, SectionComponentProps } from '@/types/builder'
+import React from 'react'
 
 // Import Hero variants
 import { HeroSplit } from '@/components/sections/hero/HeroSplit'
@@ -12,11 +13,17 @@ import { HeroFull } from '@/components/sections/hero/HeroFull'
 import { FeaturesGrid } from '@/components/sections/features/FeaturesGrid'
 
 /**
+ * Generic section component type that accepts any data shape
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySectionComponent = React.ComponentType<SectionComponentProps<any>>
+
+/**
  * Registry structure: { sectionType: { variant: Component } }
  */
 type RegistryMap = {
   [K in SectionType]?: {
-    [variant: string]: SectionComponent<SectionData>
+    [variant: string]: AnySectionComponent
   }
 }
 
@@ -61,7 +68,7 @@ export const componentRegistry: RegistryMap = {
 export function getComponent(
   type: SectionType,
   variant: SectionVariant
-): SectionComponent<SectionData> | undefined {
+): AnySectionComponent | undefined {
   return componentRegistry[type]?.[variant]
 }
 
