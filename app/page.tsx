@@ -115,7 +115,28 @@ export default function Home() {
     }
   }, [isLoading, loadingPhase, loadingMessageIndex])
 
+  const sphereRef = useRef<HTMLDivElement>(null)
+
   const handleGenerate = () => {
+    // Get current animation progress and set as starting point for full animation
+    if (sphereRef.current) {
+      const computedStyle = window.getComputedStyle(sphereRef.current)
+      const transform = computedStyle.transform
+      
+      // Apply current transform as inline style before switching animation
+      sphereRef.current.style.transform = transform
+      
+      // Force reflow
+      void sphereRef.current.offsetHeight
+      
+      // Clear inline transform so CSS animation takes over
+      requestAnimationFrame(() => {
+        if (sphereRef.current) {
+          sphereRef.current.style.transform = ''
+        }
+      })
+    }
+    
     setIsLoading(true)
     setLoadingMessageIndex(0)
     setLoadingPhase('waiting')
@@ -128,12 +149,15 @@ export default function Home() {
     <div className="dark bg-black min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
       <div className={`sphere-scale-wrapper ${isLoading ? 'sphere-expanded' : ''}`}>
-        <div className="sphere-background">
+        <div 
+          ref={sphereRef}
+          className={`sphere-background ${isLoading ? 'sphere-active' : ''}`}
+        >
           {Array.from({ length: 36 }, (_, i) => (
             <div key={i + 1} className={`ring${i + 1}`} />
           ))}
         </div>
-        </div>
+      </div>
 
       {/* Loading Text Overlay */}
       {isLoading && loadingPhase !== 'waiting' && (
