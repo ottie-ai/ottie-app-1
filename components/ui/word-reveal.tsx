@@ -8,7 +8,6 @@ interface WordRevealProps {
   className?: string
   delay?: number
   wordDelay?: number
-  as?: keyof JSX.IntrinsicElements
   triggerOnScroll?: boolean
 }
 
@@ -17,11 +16,10 @@ export function WordReveal({
   className, 
   delay = 0,
   wordDelay = 0.05,
-  as: Component = 'span',
   triggerOnScroll = false
 }: WordRevealProps) {
   const [isVisible, setIsVisible] = useState(!triggerOnScroll)
-  const ref = useRef<HTMLElement>(null)
+  const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     if (!triggerOnScroll) {
@@ -49,7 +47,7 @@ export function WordReveal({
   const words = text.split(' ')
 
   return (
-    <Component ref={ref as React.RefObject<HTMLSpanElement>} className={className}>
+    <span ref={ref} className={className}>
       {words.map((word, index) => (
         <span
           key={index}
@@ -65,7 +63,7 @@ export function WordReveal({
           {index < words.length - 1 && '\u00A0'}
         </span>
       ))}
-    </Component>
+    </span>
   )
 }
 
