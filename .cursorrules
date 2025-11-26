@@ -2,6 +2,7 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 
 ### Tech Stack & Guidelines
 - **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
+- **Tailwind CSS:** Version 4 with CSS-based configuration in `globals.css`. No `tailwind.config.ts` file.
 - **UI Library:** 
 # Shadcn UI Workflow
 - Use new-york-v4 style everywhere
@@ -26,6 +27,7 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 - **Animation:** Framer Motion (`framer-motion`). Add subtle, premium entry animations (fade-in, slide-up) to all major UI sections and micro-interactions (hover scales, tap effects) to interactive elements.
 - **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
 - **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.
+- **Theming:** Use `next-themes` for dark mode. Theme toggle is in Settings > Appearance (Light/Dark/System).
 
 ### Design System & Theming
 - **Strict Shadcn Compliance:** Always use the default semantic classes provided by shadcn/ui (e.g., `bg-background`, `text-foreground`, `border-input`, `bg-primary`).
@@ -35,15 +37,30 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 ### Architecture: Section-Based Builder
 This project is a "Property Website Generator" based on a dynamic list of sections.
 - **Modular Sections:** All page sections (Hero, Features, Gallery) must be isolated components in `components/sections/[type]/`.
-- **Registry Pattern:** Use a central registry to map JSON keys (type/variant) to React components. Avoid giant switch statements in renderers.
+- **Registry Pattern:** Use a central registry (`components/builder/registry.ts`) to map JSON keys (type/variant) to React components. Avoid giant switch statements in renderers.
 - **Data Driven:** The UI should be fully driven by a JSON configuration object (`PageConfig`).
+- **Color Schemes:** Each section can have a `colorScheme` property (`'light' | 'dark'`). The page background transitions smoothly between sections.
+- **Fonts:** Custom fonts defined in `lib/fonts.ts`. Each font has a `defaultWeight` property. Use `getFontWeight()` helper to get the correct weight.
+
+### Dashboard Structure
+- **Layout:** Uses shadcn Sidebar component with collapsible navigation.
+- **Pages:** `/dashboard` (home), `/dashboard/pages` (my pages), `/dashboard/settings`, `/dashboard/client-portals` (coming soon).
+- **Settings:** Profile, Company, Appearance (theme), Notifications, Plan & Billing, Danger Zone. No cards, direct content with separators.
+- **Sticky Elements:** Top header and settings sidebar are sticky. Main content scrolls independently.
+
+### Template Editor (Preview)
+- **Workspace Navbar:** Fixed floating bar with logo, company dropdown, settings popover, publish button.
+- **Section Editor:** Wraps each section with "Remix Section" button that opens settings popover.
+- **Inline Editing:** Use `EditableText` component for inline text editing with AI enhance button.
 
 ### Coding Standards
 - **Mobile-First:** Always write Tailwind classes with mobile as default, then `md:`, `lg:` overrides.
 - **Error Handling:** Wrap Server Actions in `try/catch` and return structured `{ success, error, data }` objects.
 - **Type Safety:** Share types between backend (Server Actions) and frontend components via `types/` folder.
-- **Performance:** Optimize images using `next/image`. Use `phosphor` dynamically if possible to save bundle size.
+- **Performance:** Optimize images using `next/image`. Use CSS `transform: scale()` for animations instead of width/height.
+- **Scroll Animations:** Use `IntersectionObserver` or Framer Motion's `useInView` for scroll-triggered animations. Avoid React state updates on scroll to prevent re-renders.
 
 ### Workflow
 - When generating new sections, always ask: "Does this need a new variant in the registry?"
 - Keep components small (< 200 lines). Extract sub-components if they grow too large.
+- For dialogs wider than default, use `sm:max-w-{size}` to override shadcn's default `sm:max-w-lg`.

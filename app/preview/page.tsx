@@ -166,8 +166,8 @@ export default function PreviewPage() {
       }
       
       // Only update color scheme for non-hero sections
-      if (activeSection && !inHeroSection) {
-        const scheme = editingColorScheme[activeSection.id] ?? activeSection.colorScheme ?? 'light'
+      if (activeSection !== null && !inHeroSection) {
+        const scheme = editingColorScheme[activeSection.id] ?? (activeSection as Section).colorScheme ?? 'light'
         if (scheme !== currentColorScheme) {
           setCurrentColorScheme(scheme)
         }
