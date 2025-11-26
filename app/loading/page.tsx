@@ -1,19 +1,56 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './loading.css'
 
 const loadingMessages = [
-  'Analysing website...',
-  'Processing content...',
-  'Generating layout...',
-  'Finalizing your site...',
+  'Analysing website',
+  'Processing content',
+  'Generating layout',
+  'Finalizing your site',
 ]
+
+// Find the longest message for sizing
+const longestMessage = loadingMessages.reduce((a, b) => a.length > b.length ? a : b)
 
 export default function LoadingPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
   const [isComplete, setIsComplete] = useState(false)
+  const [fontSize, setFontSize] = useState('8vw')
+  const textRef = useRef<HTMLParagraphElement>(null)
+  const measureRef = useRef<HTMLSpanElement>(null)
+
+  // Calculate font size based on longest message
+  useEffect(() => {
+    const calculateFontSize = () => {
+      if (!measureRef.current) return
+      
+      const targetWidth = window.innerWidth * 0.6
+      let size = 8 // Start with 8vw equivalent
+      
+      // Binary search for the right size
+      let low = 1
+      let high = 15
+      
+      while (high - low > 0.1) {
+        const mid = (low + high) / 2
+        measureRef.current.style.fontSize = `${mid}vw`
+        
+        if (measureRef.current.offsetWidth > targetWidth) {
+          high = mid
+        } else {
+          low = mid
+        }
+      }
+      
+      setFontSize(`${low}vw`)
+    }
+
+    calculateFontSize()
+    window.addEventListener('resize', calculateFontSize)
+    return () => window.removeEventListener('resize', calculateFontSize)
+  }, [])
 
   useEffect(() => {
     if (isComplete) return
@@ -55,9 +92,18 @@ export default function LoadingPage() {
         ))}
       </div>
       
+      {/* Hidden element to measure longest text */}
+      <span 
+        ref={measureRef} 
+        className="loading-text-measure"
+        aria-hidden="true"
+      >
+        {longestMessage}
+      </span>
+
       {/* Loading text */}
       <div className="loading-text-container">
-        <p className="loading-text">
+        <p className="loading-text" ref={textRef} style={{ fontSize }}>
           {words.map((word, index) => (
             <span
               key={`${currentIndex}-${index}`}
@@ -74,7 +120,7 @@ export default function LoadingPage() {
           ))}
         </p>
         <p className="loading-duration">
-          <span className="shimmer-text">Expected duration ~1 min</span>
+          <span className="shimmer-text">Expected duration ~30 seconds</span>
         </p>
       </div>
     </div>

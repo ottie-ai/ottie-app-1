@@ -1,7 +1,7 @@
 .loading-container {
   width: 100%;
   min-height: 100vh;
-  background-color: rgb(24, 24, 24);
+  background-color: rgb(0, 0, 0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -94,11 +94,24 @@
 }
 
 .loading-text {
-  font-size: 6rem;
   font-weight: 300;
   letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
+  white-space: nowrap;
+  /* TEMPORARY: Testing Antiga font - remove this line to revert */
+  font-family: 'Antiga', sans-serif;
+}
+
+/* Hidden element for measuring text width */
+.loading-text-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  /* TEMPORARY: Testing Antiga font - remove this line to revert */
+  font-family: 'Antiga', sans-serif;
 }
 
 .loading-text.visible {
@@ -122,6 +135,28 @@
   filter: blur(0);
   transform: translateY(0);
   animation: wordRevealOut 0.8s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+/* Animated dots */
+.loading-dots {
+  display: inline-block;
+  margin-left: 0.3em;
+  letter-spacing: 0.4em;
+}
+
+.loading-dot {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(8px);
+  animation: wordRevealIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.loading-dot.exiting {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  animation: wordRevealOut 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
 @keyframes wordRevealIn {
