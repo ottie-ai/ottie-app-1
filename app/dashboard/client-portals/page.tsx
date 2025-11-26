@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Users, Sparkle, Check } from '@phosphor-icons/react'
+import { Users, Sparkles, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -30,28 +30,28 @@ export default function ClientPortalsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">Client Portals</h1>
-          <Badge variant="secondary">Coming Soon</Badge>
+          <Badge className="bg-blue-500 hover:bg-blue-500 text-white">Coming Soon</Badge>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-6">
+      {/* Main Content - scrollable */}
+      <main className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
         <div className="max-w-2xl w-full text-center space-y-8">
           {/* Icon */}
           <div className="flex justify-center">
             <div className="relative">
               <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="size-12 text-primary" weight="duotone" />
+                <Users className="size-12 text-primary" />
               </div>
               <div className="absolute -top-1 -right-1 size-8 rounded-full bg-primary flex items-center justify-center">
-                <Sparkle className="size-4 text-primary-foreground" weight="fill" />
+                <Sparkles className="size-4 text-primary-foreground" />
               </div>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function ClientPortalsPage() {
               <ul className="grid gap-2 sm:grid-cols-2">
                 {features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-primary flex-shrink-0" weight="bold" />
+                    <Check className="size-4 text-primary flex-shrink-0" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -99,7 +99,7 @@ export default function ClientPortalsPage() {
             <CardContent>
               {submitted ? (
                 <div className="flex items-center justify-center gap-2 py-4 text-primary">
-                  <Check className="size-5" weight="bold" />
+                  <Check className="size-5" />
                   <span className="font-medium">You&apos;re on the list! We&apos;ll notify you when it&apos;s ready.</span>
                 </div>
               ) : (

@@ -11,7 +11,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <DashboardSidebar />
-      <SidebarInset>
+      <SidebarInset className="h-screen overflow-hidden">
         {children}
       </SidebarInset>
     </SidebarProvider>

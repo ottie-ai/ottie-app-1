@@ -2,17 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import {
-  House,
-  Files,
-  Gear,
+  Home,
+  FileText,
+  Settings,
   CreditCard,
-  Question,
-  SignOut,
+  HelpCircle,
+  LogOut,
   Plus,
-  MagnifyingGlass,
+  Search,
   Users,
-} from '@phosphor-icons/react'
+  Sun,
+  Moon,
+  ChevronsUpDown,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -31,6 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,18 +43,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CaretUpDown } from '@phosphor-icons/react'
 
 const mainNavItems = [
   {
     title: 'Home',
     url: '/dashboard',
-    icon: House,
+    icon: Home,
   },
   {
     title: 'My Pages',
     url: '/dashboard/pages',
-    icon: Files,
+    icon: FileText,
   },
   {
     title: 'Client Portals',
@@ -63,7 +67,7 @@ const bottomNavItems = [
   {
     title: 'Settings',
     url: '/dashboard/settings',
-    icon: Gear,
+    icon: Settings,
   },
   {
     title: 'Billing',
@@ -73,13 +77,14 @@ const bottomNavItems = [
   {
     title: 'Help & Support',
     url: '/dashboard/help',
-    icon: Question,
+    icon: HelpCircle,
   },
 ]
 
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
+  const { theme, setTheme } = useTheme()
   const isCollapsed = state === 'collapsed'
 
   return (
@@ -93,7 +98,7 @@ export function DashboardSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                     <svg 
                       className="size-4" 
                       viewBox="0 0 104 105" 
@@ -103,10 +108,10 @@ export function DashboardSidebar() {
                     </svg>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Ottie</span>
-                    <span className="truncate text-xs text-muted-foreground">Free Plan</span>
+                    <span className="truncate font-medium">Ottie</span>
+                    <span className="truncate text-xs">Free Plan</span>
                   </div>
-                  <CaretUpDown className="ml-auto size-4" />
+                  <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -134,7 +139,7 @@ export function DashboardSidebar() {
           <SidebarGroupContent className="relative">
             {!isCollapsed && (
               <div className="relative">
-                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input 
                   placeholder="Search pages..." 
                   className="pl-9 h-9"
@@ -148,7 +153,7 @@ export function DashboardSidebar() {
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
             <Button className="w-full justify-start gap-2" size="sm">
-              <Plus className="size-4" weight="bold" />
+              <Plus className="size-4" />
               {!isCollapsed && <span>New Page</span>}
             </Button>
           </SidebarGroupContent>
@@ -172,7 +177,7 @@ export function DashboardSidebar() {
                       <item.icon className="size-4" />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                        <Badge className="text-[10px] px-1.5 py-0 h-5 bg-blue-500 hover:bg-blue-500 text-white">
                           {item.badge}
                         </Badge>
                       )}
@@ -205,6 +210,33 @@ export function DashboardSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Dark Mode Toggle */}
+              <SidebarMenuItem>
+                <div className="flex items-center justify-between w-full px-2 py-1.5">
+                  {!isCollapsed && (
+                    <div className="flex items-center gap-2">
+                      <Sun className="size-4 text-muted-foreground" />
+                      <Switch 
+                        checked={theme === 'dark'}
+                        onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                      />
+                      <Moon className="size-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  {isCollapsed && (
+                    <button
+                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                      className="flex items-center justify-center w-full"
+                    >
+                      {theme === 'dark' ? (
+                        <Sun className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
+                      ) : (
+                        <Moon className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -227,7 +259,7 @@ export function DashboardSidebar() {
                     <span className="truncate font-semibold">John Doe</span>
                     <span className="truncate text-xs text-muted-foreground">john@example.com</span>
                   </div>
-                  <CaretUpDown className="ml-auto size-4" />
+                  <ChevronsUpDown className="ml-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -244,7 +276,7 @@ export function DashboardSidebar() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive">
-                  <SignOut className="mr-2 size-4" />
+                  <LogOut className="mr-2 size-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -255,4 +287,3 @@ export function DashboardSidebar() {
     </Sidebar>
   )
 }
-

@@ -2,16 +2,16 @@
 
 import { 
   Plus, 
-  DotsThree, 
+  MoreHorizontal, 
   Eye, 
-  PencilSimple, 
-  Trash, 
+  Pencil, 
+  Trash2, 
   Copy,
   Globe,
   Clock,
-  ArrowUp,
-  ArrowDown,
-} from '@phosphor-icons/react'
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -71,22 +71,22 @@ const stats = [
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Dashboard</h1>
         </div>
         <Button size="sm" className="gap-2">
-          <Plus className="size-4" weight="bold" />
+          <Plus className="size-4" />
           New Page
         </Button>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 space-y-6">
+      {/* Main Content - scrollable */}
+      <main className="flex-1 p-6 space-y-6 overflow-y-auto">
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
@@ -96,9 +96,9 @@ export default function DashboardPage() {
                   {stat.label}
                 </CardTitle>
                 {stat.trend === 'up' ? (
-                  <ArrowUp className="size-4 text-green-500" weight="bold" />
+                  <TrendingUp className="size-4 text-green-500" />
                 ) : (
-                  <ArrowDown className="size-4 text-red-500" weight="bold" />
+                  <TrendingDown className="size-4 text-red-500" />
                 )}
               </CardHeader>
               <CardContent>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                       Preview
                     </Button>
                     <Button size="sm">
-                      <PencilSimple className="size-4 mr-1" />
+                      <Pencil className="size-4 mr-1" />
                       Edit
                     </Button>
                   </div>
@@ -193,7 +193,7 @@ export default function DashboardPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="size-8">
-                          <DotsThree className="size-4" weight="bold" />
+                          <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -202,7 +202,7 @@ export default function DashboardPage() {
                           Preview
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <PencilSimple className="size-4 mr-2" />
+                          <Pencil className="size-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem>
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive">
-                          <Trash className="size-4 mr-2" />
+                          <Trash2 className="size-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
