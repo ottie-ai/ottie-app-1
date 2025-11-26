@@ -5,6 +5,8 @@ export interface FontOption {
   value: string
   category: 'luxury' | 'modern' | 'corporate' | 'lifestyle'
   weights: number[]
+  /** Default font weight for headings - user cannot change this */
+  defaultWeight: number
   description?: string
 }
 
@@ -21,6 +23,7 @@ export const headingFonts: FontOption[] = [
     value: 'Canela',
     category: 'luxury',
     weights: [100],
+    defaultWeight: 100,
     description: 'Ultra-thin, refined serif. Perfect for luxury brands.',
   },
   {
@@ -28,13 +31,15 @@ export const headingFonts: FontOption[] = [
     value: 'Playfair Display',
     category: 'luxury',
     weights: [400, 500, 600, 700],
+    defaultWeight: 400,
     description: 'The king of luxury websites. High contrast, bold.',
   },
   {
     name: 'Cormorant Garamond',
     value: 'Cormorant Garamond',
     category: 'luxury',
-    weights: [400, 500, 600, 700],
+    weights: [300, 400, 500, 600, 700],
+    defaultWeight: 300,
     description: 'Very elegant, thin, looks like a fashion magazine.',
   },
   {
@@ -42,6 +47,7 @@ export const headingFonts: FontOption[] = [
     value: 'Cinzel',
     category: 'luxury',
     weights: [400, 500, 600, 700],
+    defaultWeight: 400,
     description: 'Classic, Roman style. For ultra-premium properties.',
   },
   {
@@ -49,6 +55,7 @@ export const headingFonts: FontOption[] = [
     value: 'Prata',
     category: 'luxury',
     weights: [400],
+    defaultWeight: 400,
     description: 'Sophisticated serif that looks great in large sizes.',
   },
   {
@@ -56,6 +63,7 @@ export const headingFonts: FontOption[] = [
     value: 'Bodoni Moda',
     category: 'luxury',
     weights: [400, 500, 600, 700],
+    defaultWeight: 400,
     description: 'Extreme contrast, very fashionable and modern luxury.',
   },
 
@@ -67,6 +75,7 @@ export const headingFonts: FontOption[] = [
     value: 'Inter',
     category: 'modern',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'The standard for modern web. Readable, neutral.',
   },
   {
@@ -74,6 +83,7 @@ export const headingFonts: FontOption[] = [
     value: 'Montserrat',
     category: 'modern',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'Geometric, wide. Feels confident and urban.',
   },
   {
@@ -81,6 +91,7 @@ export const headingFonts: FontOption[] = [
     value: 'Plus Jakarta Sans',
     category: 'modern',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'Very popular in tech. Feels fresh and modern.',
   },
   {
@@ -88,6 +99,7 @@ export const headingFonts: FontOption[] = [
     value: 'Manrope',
     category: 'modern',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'Modern grotesque, pleasant for reading numbers.',
   },
   {
@@ -95,6 +107,7 @@ export const headingFonts: FontOption[] = [
     value: 'Outfit',
     category: 'modern',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'A bit bolder, geometric. Great for modern brands.',
   },
 
@@ -106,6 +119,7 @@ export const headingFonts: FontOption[] = [
     value: 'Lato',
     category: 'corporate',
     weights: [400, 700],
+    defaultWeight: 400,
     description: 'Very friendly, rounded, but still professional.',
   },
   {
@@ -113,6 +127,7 @@ export const headingFonts: FontOption[] = [
     value: 'Roboto',
     category: 'corporate',
     weights: [400, 500, 700],
+    defaultWeight: 500,
     description: 'A classic. Offends no one, works everywhere.',
   },
   {
@@ -120,6 +135,7 @@ export const headingFonts: FontOption[] = [
     value: 'Open Sans',
     category: 'corporate',
     weights: [400, 500, 600, 700],
+    defaultWeight: 600,
     description: 'Neutral, open, very readable on mobile.',
   },
   {
@@ -127,6 +143,7 @@ export const headingFonts: FontOption[] = [
     value: 'Merriweather',
     category: 'corporate',
     weights: [400, 700],
+    defaultWeight: 400,
     description: 'A serif built for screen reading. Feels serious.',
   },
   {
@@ -134,6 +151,7 @@ export const headingFonts: FontOption[] = [
     value: 'Libre Baskerville',
     category: 'corporate',
     weights: [400, 700],
+    defaultWeight: 400,
     description: 'Traditional, banking style. Feels solid.',
   },
 
@@ -145,6 +163,7 @@ export const headingFonts: FontOption[] = [
     value: 'DM Sans',
     category: 'lifestyle',
     weights: [400, 500, 600, 700],
+    defaultWeight: 500,
     description: 'Modern, but friendlier than Inter. Airbnb vibe.',
   },
   {
@@ -152,13 +171,15 @@ export const headingFonts: FontOption[] = [
     value: 'Fraunces',
     category: 'lifestyle',
     weights: [400, 500, 600, 700],
+    defaultWeight: 400,
     description: 'Old-school serif with modern twist. Boutique feel.',
   },
   {
     name: 'Josefin Sans',
     value: 'Josefin Sans',
     category: 'lifestyle',
-    weights: [400, 500, 600, 700],
+    weights: [300, 400, 500, 600, 700],
+    defaultWeight: 300,
     description: 'Geometric, thin, elegant. Feels feminine and soft.',
   },
   {
@@ -166,6 +187,7 @@ export const headingFonts: FontOption[] = [
     value: 'Archivo',
     category: 'lifestyle',
     weights: [400, 500, 600, 700],
+    defaultWeight: 600,
     description: 'Strong, American style. Good for industrial lofts.',
   },
   {
@@ -173,6 +195,7 @@ export const headingFonts: FontOption[] = [
     value: 'Lora',
     category: 'lifestyle',
     weights: [400, 500, 600, 700],
+    defaultWeight: 400,
     description: 'Beautiful serif with calligraphic elements.',
   },
 ]
@@ -217,6 +240,15 @@ export function getGoogleFontsUrl(fonts: string[], weights: number[] = [400, 500
  */
 export function getFontByValue(value: string): FontOption | undefined {
   return headingFonts.find(f => f.value === value)
+}
+
+/**
+ * Get the default font weight for a given font
+ * Each font has a predefined weight that looks best
+ */
+export function getFontWeight(fontValue: string): number {
+  const font = getFontByValue(fontValue)
+  return font?.defaultWeight ?? 400
 }
 
 /**

@@ -8,6 +8,7 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
 import { WordReveal } from '@/components/ui/word-reveal'
 import { scrollSpringConfig } from '@/hooks/useScrollAnimation'
+import { getFontWeight } from '@/lib/fonts'
 
 /**
  * HeroFull - Full-screen cinematic hero with large centered title
@@ -15,6 +16,7 @@ import { scrollSpringConfig } from '@/hooks/useScrollAnimation'
  */
 export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const sectionRef = useRef<HTMLElement>(null)
   
   const {
@@ -92,10 +94,10 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
               description="Update the main title text."
             >
               <h1 
-                className={`text-center text-[clamp(2rem,12vw,20rem)] text-white font-thin leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                className={`text-center text-[clamp(2rem,12vw,20rem)] text-white leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
                 style={{ 
                   fontFamily: headingFont,
-                  fontWeight: 100,
+                  fontWeight: fontWeight,
                   letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
                 }}
               >
@@ -105,10 +107,10 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
           </div>
         ) : (
           <h1 
-            className={`text-center text-[clamp(2rem,12vw,20rem)] text-white font-thin leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+            className={`text-center text-[clamp(2rem,12vw,20rem)] text-white leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
             style={{ 
               fontFamily: headingFont,
-              fontWeight: 100,
+              fontWeight: fontWeight,
               letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
             }}
           >
@@ -119,15 +121,15 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
 
       {/* Bottom Content - all elements aligned at same bottom level */}
       <motion.div 
-        className="absolute bottom-0 left-0 right-0 z-20 px-6 md:px-10 pb-10 md:pb-12"
+        className="absolute bottom-0 left-0 right-0 z-20 px-6 md:px-10 pb-20 md:pb-12"
         style={{
           y: subtitleY,
           opacity: subtitleOpacity,
         }}
       >
         <div className="flex items-end">
-          {/* Left - Description */}
-          <div className="max-w-xl flex-1">
+          {/* Left - Description - with right padding on mobile to avoid CTA button */}
+          <div className="max-w-xl flex-1 pr-20 md:pr-0">
             {subheadline && (
               onDataChange ? (
                 <EditableText
@@ -137,7 +139,7 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
                   description="Update the description text."
                 >
                   <p 
-                    className="text-white/80 text-2xl md:text-3xl leading-relaxed tracking-wide"
+                    className="text-white/80 text-base md:text-3xl leading-relaxed tracking-wide"
                     style={{ fontFamily: headingFont }}
                   >
                     <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
@@ -145,7 +147,7 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
                 </EditableText>
               ) : (
                 <p 
-                  className="text-white/80 text-2xl md:text-3xl leading-relaxed tracking-wide"
+                  className="text-white/80 text-base md:text-3xl leading-relaxed tracking-wide"
                   style={{ fontFamily: headingFont }}
                 >
                   <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />

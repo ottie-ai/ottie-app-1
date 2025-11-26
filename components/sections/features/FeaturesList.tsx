@@ -33,7 +33,7 @@ export function FeaturesList({ data, theme }: SectionComponentProps<FeaturesSect
       <div className="container mx-auto px-4">
         {title && (
           <h2 
-            className={`text-2xl md:text-3xl font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
             style={{ 
               color: theme?.textColor,
               fontFamily: headingFont,

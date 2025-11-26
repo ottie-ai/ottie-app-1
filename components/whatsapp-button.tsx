@@ -42,20 +42,21 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
   }
 
   const getIcon = () => {
+    const iconClass = cn('size-6 md:size-10', iconColor)
     switch (type) {
       case 'whatsapp':
-        return <WhatsappLogo className={cn('size-10', iconColor)} weight="fill" />
+        return <WhatsappLogo className={iconClass} weight="fill" />
       case 'phone':
-        return <Phone className={cn('size-10', iconColor)} weight="fill" />
+        return <Phone className={iconClass} weight="fill" />
       case 'email':
-        return <Envelope className={cn('size-10', iconColor)} weight="fill" />
+        return <Envelope className={iconClass} weight="fill" />
       default:
         return null
     }
   }
 
   return (
-    <div className="fixed right-6 md:right-10 bottom-10 md:bottom-12 z-50">
+    <div className="fixed right-4 md:right-10 bottom-6 md:bottom-12 z-50">
       <a
         ref={magneticRef}
         href={getHref()}
@@ -65,19 +66,19 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
       >
         {/* Radio wave rings - emanating outward with equal spacing */}
         <span 
-          className={cn('absolute w-[100px] h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
+          className={cn('absolute w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
           style={{
             animation: 'radioWave 3s linear infinite',
           }}
         />
         <span 
-          className={cn('absolute w-[100px] h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
+          className={cn('absolute w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
           style={{
             animation: 'radioWave 3s linear infinite 1s',
           }}
         />
         <span 
-          className={cn('absolute w-[100px] h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
+          className={cn('absolute w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-full border transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]', ringColor)}
           style={{
             animation: 'radioWave 3s linear infinite 2s',
           }}
@@ -85,7 +86,7 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
         
         {/* Circle with icon - inverts based on color scheme */}
         <span className={cn(
-          'relative flex items-center justify-center w-[100px] h-[100px] rounded-full transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          'relative flex items-center justify-center w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-full transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
           buttonBg
         )}>
           {getIcon()}

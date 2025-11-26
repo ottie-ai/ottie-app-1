@@ -6,6 +6,7 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
+import { getFontWeight } from '@/lib/fonts'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -28,6 +29,7 @@ const iconMap: Record<string, ComponentType<IconProps>> = {
  */
 export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComponentProps<FeaturesSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, features } = data
   const isDark = colorScheme === 'dark'
 
@@ -38,12 +40,13 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
           <AnimateOnScroll animation="fade-up" delay={0.5}>
             <h2 
               className={cn(
-                'text-2xl md:text-3xl font-semibold text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
                 theme?.uppercaseTitles ? 'uppercase' : '',
                 isDark ? 'text-white' : 'text-foreground'
               )}
               style={{ 
                 fontFamily: headingFont,
+                fontWeight: fontWeight,
                 transform: `scale(${theme?.headingFontSize || 1})`,
                 letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
               }}

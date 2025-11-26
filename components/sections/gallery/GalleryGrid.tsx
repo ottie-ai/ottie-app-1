@@ -5,12 +5,14 @@ import { SectionComponentProps, GallerySectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
+import { getFontWeight } from '@/lib/fonts'
 
 /**
  * GalleryGrid - Grid layout for property photos
  */
 export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionComponentProps<GallerySectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, images } = data
   const isDark = colorScheme === 'dark'
 
@@ -21,12 +23,13 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
           <AnimateOnScroll animation="fade-up" delay={0.5}>
             <h2 
               className={cn(
-                'text-2xl md:text-3xl font-semibold text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
                 theme?.uppercaseTitles ? 'uppercase' : '',
                 isDark ? 'text-white' : 'text-foreground'
               )}
               style={{ 
                 fontFamily: headingFont,
+                fontWeight: fontWeight,
               }}
             >
               {title}

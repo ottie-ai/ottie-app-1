@@ -6,12 +6,14 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { Phone, Envelope } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
+import { getFontWeight } from '@/lib/fonts'
 
 /**
  * AgentCard - Card layout for agent information
  */
 export function AgentCard({ data, theme, colorScheme = 'light' }: SectionComponentProps<AgentSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { name, title, photo, bio, phone, email, company, license } = data
   const isDark = colorScheme === 'dark'
 
@@ -39,12 +41,13 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
             <AnimateOnScroll animation="fade-left" delay={0.6} className="flex-1 text-center md:text-left">
               <h2 
                 className={cn(
-                  'text-2xl md:text-3xl font-semibold mb-2 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  'text-[clamp(2rem,5vw,4rem)] mb-2 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
                   theme?.uppercaseTitles ? 'uppercase' : '',
                   isDark ? 'text-white' : 'text-foreground'
                 )}
                 style={{ 
                   fontFamily: headingFont,
+                  fontWeight: fontWeight,
                 }}
               >
                 {name}

@@ -8,12 +8,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Phone, Envelope, MapPin } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
+import { getFontWeight } from '@/lib/fonts'
 
 /**
  * ContactSimple - Simple contact form section
  */
 export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionComponentProps<ContactSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, subtitle, showForm, address, phone, email } = data
   const isDark = colorScheme === 'dark'
 
@@ -25,12 +27,13 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
             {title && (
               <h2 
                 className={cn(
-                  'text-2xl md:text-3xl font-semibold mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  'text-[clamp(2rem,5vw,4rem)] mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
                   theme?.uppercaseTitles ? 'uppercase' : '',
                   isDark ? 'text-white' : 'text-foreground'
                 )}
                 style={{ 
                   fontFamily: headingFont,
+                  fontWeight: fontWeight,
                 }}
               >
                 {title}
