@@ -39,7 +39,7 @@ export default function Home() {
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
-  const [loadingPhase, setLoadingPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
+  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
 
   useEffect(() => {
     const currentLink = realEstateLinks[currentLinkIndex]
@@ -83,6 +83,14 @@ export default function Home() {
   useEffect(() => {
     if (!isLoading) return
 
+    // Initial delay before showing first message
+    if (loadingPhase === 'waiting') {
+      const timer = setTimeout(() => {
+        setLoadingPhase('entering')
+      }, 1000) // Wait for content to fade out and sphere to scale
+      return () => clearTimeout(timer)
+    }
+
     if (loadingPhase === 'entering') {
       const timer = setTimeout(() => {
         setLoadingPhase('visible')
@@ -110,7 +118,7 @@ export default function Home() {
   const handleGenerate = () => {
     setIsLoading(true)
     setLoadingMessageIndex(0)
-    setLoadingPhase('entering')
+    setLoadingPhase('waiting')
   }
 
   const currentLoadingMessage = loadingMessages[loadingMessageIndex]
@@ -125,10 +133,10 @@ export default function Home() {
             <div key={i + 1} className={`ring${i + 1}`} />
           ))}
         </div>
-      </div>
+        </div>
 
       {/* Loading Text Overlay */}
-      {isLoading && (
+      {isLoading && loadingPhase !== 'waiting' && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <p className="loading-text-home">
