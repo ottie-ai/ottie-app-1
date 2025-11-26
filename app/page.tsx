@@ -1,22 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Check } from '@phosphor-icons/react'
 import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import Navbar from '@/components/navbar'
-
-const BackgroundEffect = dynamic(() => import('@/components/background-effect'), {
-  ssr: false,
-  loading: () => <div>Loading...</div>
-})
+import './sphere.css'
 
 const realEstateLinks = [
   'zillow.com/123-Main-St',
@@ -74,119 +67,27 @@ export default function Home() {
     }
   }, [charIndex, isTyping, currentLinkIndex])
 
-  // Parallax scroll effect for screenshots
-  const [showImages, setShowImages] = useState(false)
-  const leftImageRef = useRef<HTMLDivElement>(null)
-  const rightImageRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // Start fade-in animation after delay
-    const showTimer = setTimeout(() => {
-      setShowImages(true)
-    }, 700)
-
-    let ticking = false
-    let cleanup: (() => void) | null = null
-
-    // Wait for animation to complete before enabling parallax
-    const enableParallax = setTimeout(() => {
-      // Remove transition property to prevent scroll lag
-      if (leftImageRef.current) leftImageRef.current.style.transition = 'none'
-      if (rightImageRef.current) rightImageRef.current.style.transition = 'none'
-
-      const handleScroll = () => {
-        if (!ticking) {
-          window.requestAnimationFrame(() => {
-            const scrollY = window.scrollY || window.pageYOffset
-            const scrollFactor = 0.3 // Parallax speed
-
-            if (leftImageRef.current) {
-              // Left image moves down as you scroll
-              leftImageRef.current.style.transform = `translate3d(0, calc(30% + ${scrollY * scrollFactor}px), 0)`
-            }
-
-            if (rightImageRef.current) {
-              // Right image moves up as you scroll
-              rightImageRef.current.style.transform = `translate3d(0, calc(30% - ${scrollY * scrollFactor}px), 0)`
-            }
-
-            ticking = false
-          })
-          ticking = true
-        }
-      }
-
-      // Initial call to set position
-      handleScroll()
-
-      // Add scroll listeners
-      window.addEventListener('scroll', handleScroll, { passive: true })
-
-      cleanup = () => {
-        window.removeEventListener('scroll', handleScroll)
-      }
-    }, 1500) // Wait for animation to complete (0.7s delay + 0.8s duration)
-
-    return () => {
-      clearTimeout(showTimer)
-      clearTimeout(enableParallax)
-      if (cleanup) cleanup()
-    }
-  }, [])
-
   return (
-    <div className="with-noise" style={{ cursor: 'none' }}>
+    <div className="dark bg-black min-h-screen">
+      {/* Sphere Background - centered like loading page */}
+      <div className="sphere-background">
+        {Array.from({ length: 36 }, (_, i) => (
+          <div key={i + 1} className={`ring${i + 1}`} />
+        ))}
+      </div>
+
       <Navbar />
-      {/* Hero Section with Background Effect */}
+      {/* Hero Section */}
       <div className="relative min-h-screen overflow-hidden">
-        {/* Left Screenshot - Desktop only */}
-        <div
-          ref={leftImageRef}
-          className={`hidden lg:block absolute left-[5%] bottom-0 w-[300px] xl:w-[400px] z-10 pointer-events-none transition-all duration-1000 ease-out ${
-            showImages ? 'opacity-100 translate-y-[30%]' : 'opacity-0 translate-y-[calc(30%+40px)]'
-          }`}
-        >
-          <div className="relative w-full aspect-[9/16]">
-            <Image
-              src="/images/screenshot-placeholder.svg"
-              alt="Generated website preview"
-              fill
-              className="object-contain brightness-150 contrast-75"
-              priority
-            />
-          </div>
-        </div>
-
-        {/* Right Screenshot - Desktop only, slightly higher */}
-        <div
-          ref={rightImageRef}
-          className={`hidden lg:block absolute right-[5%] bottom-[8%] w-[300px] xl:w-[400px] z-10 pointer-events-none transition-all duration-1000 ease-out ${
-            showImages ? 'opacity-100 translate-y-[30%]' : 'opacity-0 translate-y-[calc(30%+40px)]'
-          }`}
-        >
-          <div className="relative w-full aspect-[9/16]">
-            <Image
-              src="/images/screenshot-placeholder.svg"
-              alt="Generated website preview"
-              fill
-              className="object-contain brightness-150 contrast-75"
-              priority
-            />
-          </div>
-        </div>
-
-        <div className="absolute inset-0 opacity-0 animate-[fadeIn_1s_ease-out_0.2s_forwards]">
-          <BackgroundEffect />
-        </div>
         <div className="content relative z-20">
           <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
-          <Typography variant="small" className="mb-4 text-muted-foreground uppercase tracking-wider animate-fade-in-up">
+          <Typography variant="small" className="mb-4 text-white/60 uppercase tracking-wider animate-fade-in-up">
             Ottie App
           </Typography>
 
           {/* Heading */}
-          <Typography variant="h1" className="mb-1 max-w-3xl text-foreground">
+          <Typography variant="h1" className="mb-1 max-w-3xl text-white">
             <WordReveal 
               text="Turn any listing into a premium showcase. Instantly. For free."
               delay={0.1}
@@ -195,7 +96,7 @@ export default function Home() {
           </Typography>
 
           {/* Subheading */}
-          <Typography variant="lead" className="mb-6 max-w-xl leading-snug">
+          <Typography variant="lead" className="mb-6 max-w-xl leading-snug text-white/70">
             <WordReveal 
               text="Create a beautiful, dedicated property website in seconds - no coding, no setup, no cost."
               delay={0.8}
@@ -213,21 +114,21 @@ export default function Home() {
                 placeholder=""
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                className="w-full"
+                className="w-full bg-white/10 border-white/20 text-white placeholder:text-white/40"
               />
               {!link && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-sm">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40 text-sm">
                   {placeholder}
                   <span className="animate-pulse">|</span>
                 </div>
               )}
             </div>
             
-            <MagneticButton className="w-full" magneticDistance={120} magneticStrength={0.4}>
+            <MagneticButton className="w-full bg-white text-black hover:bg-white/90" magneticDistance={120} magneticStrength={0.4}>
               Generate Free Site
             </MagneticButton>
             
-            <Typography variant="small" className="text-center text-muted-foreground pt-1 text-xs">
+            <Typography variant="small" className="text-center text-white/50 pt-1 text-xs">
               No registration required until you&apos;re ready to publish.
             </Typography>
             
@@ -235,7 +136,7 @@ export default function Home() {
             <div className="pt-1">
               <Link 
                 href="#" 
-                className="text-sm text-foreground hover:text-primary underline underline-offset-4 transition-colors"
+                className="text-sm text-white hover:text-white/80 underline underline-offset-4 transition-colors"
               >
                 or fill in data manually
               </Link>
@@ -260,7 +161,7 @@ export default function Home() {
                 ].map((src, i) => (
                   <div
                     key={i}
-                    className="relative h-10 w-10 rounded-full border-2 border-background overflow-hidden"
+                    className="relative h-10 w-10 rounded-full border-2 border-black overflow-hidden"
                   >
                     <Image
                       src={src}
@@ -289,7 +190,7 @@ export default function Home() {
             </div>
 
               {/* Testimonial Text */}
-              <Typography variant="small" className="text-muted-foreground">
+              <Typography variant="small" className="text-white/60">
                 Loved by 1200+ realtors
               </Typography>
             </div>
@@ -298,14 +199,14 @@ export default function Home() {
             <div className="flex items-center justify-center gap-2 animate-fade-in-up-delay-5">
               <Link 
                 href="/privacy" 
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                className="text-xs text-white/50 hover:text-white underline underline-offset-2 transition-colors"
               >
                 Privacy Policy
               </Link>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">GDPR compliant</span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">SOC2 ready</span>
+              <span className="text-xs text-white/50">•</span>
+              <span className="text-xs text-white/50">GDPR compliant</span>
+              <span className="text-xs text-white/50">•</span>
+              <span className="text-xs text-white/50">SOC2 ready</span>
             </div>
           </div>
           </div>
@@ -313,57 +214,37 @@ export default function Home() {
       </div>
 
       {/* Feature Points Section - Below the fold */}
-      <section className="relative bg-background min-h-screen flex items-center justify-center py-20">
-        {/* Mobile Screenshots - Below hero */}
-        <div className="lg:hidden w-full px-4 mb-8 flex flex-col items-center gap-6">
-          <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
-            <Image
-              src="/images/screenshot-placeholder.svg"
-              alt="Generated website preview"
-              fill
-              className="object-contain brightness-150 contrast-75"
-            />
-          </div>
-          <div className="relative w-full max-w-[300px] aspect-[9/16] animate-fade-in-up-delay-6">
-            <Image
-              src="/images/screenshot-placeholder.svg"
-              alt="Generated website preview"
-              fill
-              className="object-contain brightness-150 contrast-75"
-            />
-          </div>
-        </div>
-
+      <section className="relative bg-black min-h-screen flex items-center justify-center py-20">
         <div className="w-full max-w-4xl px-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                No more catalog confusion — <span className="font-semibold text-foreground">each listing gets its own site</span>.
+              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-white/60">
+                No more catalog confusion — <span className="font-semibold text-white">each listing gets its own site</span>.
               </Typography>
             </div>
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                <span className="font-semibold text-foreground">Impress buyers instantly</span> — beautiful on every device.
+              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-white/60">
+                <span className="font-semibold text-white">Impress buyers instantly</span> — beautiful on every device.
               </Typography>
             </div>
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                <span className="font-semibold text-foreground">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
+              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-white/60">
+                <span className="font-semibold text-white">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
               </Typography>
             </div>
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                Built for <span className="font-semibold text-foreground">speed, SEO, and seamless lead capture</span>.
+              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-white/60">
+                Built for <span className="font-semibold text-white">speed, SEO, and seamless lead capture</span>.
               </Typography>
             </div>
             <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-foreground mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-muted-foreground">
-                <span className="font-semibold text-foreground">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-foreground">Never sold, never shared</span>.
+              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+              <Typography variant="small" className="text-white/60">
+                <span className="font-semibold text-white">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-white">Never sold, never shared</span>.
               </Typography>
             </div>
           </div>
@@ -372,4 +253,3 @@ export default function Home() {
     </div>
   )
 }
-

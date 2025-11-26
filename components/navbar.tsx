@@ -10,15 +10,15 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className="text-xl font-semibold text-foreground">Ottie</span>
+            <span className="text-xl font-semibold text-white">Ottie</span>
           </Link>
 
           {/* Right side - Login and Signup */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10" asChild>
               <Link href="/login">Login</Link>
             </Button>
-            <Button variant="default" asChild>
+            <Button variant="default" className="bg-white text-black hover:bg-white/90" asChild>
               <Link href="/signup">Sign Up</Link>
             </Button>
           </div>
