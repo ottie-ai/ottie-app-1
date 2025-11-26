@@ -10,17 +10,9 @@
   width: 60vmin;
   height: 60vmin;
   transform-style: preserve-3d;
-  /* Mobile: use idle animation */
+  /* Idle animation - runs until mouse moves on desktop */
   animation: spinSphereIdle 4s infinite alternate ease-in-out;
-}
-
-/* Desktop: disable animation for mouse tracking */
-@media (min-width: 768px) {
-  .sphere-background:not(.sphere-active) {
-    animation: none;
-    transform: rotateZ(126deg) rotateX(-126deg) rotateZ(126deg);
-    transition: transform 0.1s ease-out;
-  }
+  transition: transform 0.1s ease-out;
 }
 
 /* Active/loading state - full rotation */

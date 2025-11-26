@@ -154,6 +154,7 @@ export default function Home() {
 
   // Mouse tracking for sphere rotation in idle mode (desktop only)
   const [isMobile, setIsMobile] = useState(false)
+  const [hasMouseMoved, setHasMouseMoved] = useState(false)
   
   useEffect(() => {
     // Check if mobile/touch device
@@ -171,6 +172,12 @@ export default function Home() {
     const handleMouseMove = (e: MouseEvent) => {
       const sphere = sphereRef.current
       if (!sphere) return
+      
+      // First mouse move - disable CSS animation and switch to mouse tracking
+      if (!hasMouseMoved) {
+        setHasMouseMoved(true)
+        sphere.style.animation = 'none'
+      }
       
       // Calculate mouse position relative to center of screen
       const centerX = window.innerWidth / 2
@@ -192,7 +199,7 @@ export default function Home() {
     window.addEventListener('mousemove', handleMouseMove)
     
     return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [isLoading, isMobile])
+  }, [isLoading, isMobile, hasMouseMoved])
 
   const handleGenerate = () => {
     // Get current animation progress and set as starting point for full animation
@@ -223,7 +230,7 @@ export default function Home() {
   const loadingWords = currentLoadingMessage.split(' ')
 
   return (
-    <div className="dark bg-black min-h-screen overflow-hidden">
+    <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
       <div 
         ref={sphereWrapperRef}
@@ -407,7 +414,7 @@ export default function Home() {
       {/* Feature Points Section - Below the fold */}
       <section 
         ref={secondSectionRef}
-        className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-4xl px-4 text-center">
           <Typography variant="h2" className="mb-12 text-white border-none">
@@ -466,7 +473,7 @@ export default function Home() {
       {/* Third Section - CTA */}
       <section 
         ref={thirdSectionRef}
-        className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-2xl px-4 text-center">
           <Typography variant="h2" className="mb-6 text-white border-none">
