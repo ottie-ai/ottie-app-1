@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Check } from '@phosphor-icons/react'
 import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
+import { ScrollReveal } from '@/components/ui/scroll-reveal'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
 import Navbar from '@/components/navbar'
@@ -40,6 +41,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
+  
+  // Scroll-based sphere scaling
+  const secondSectionRef = useRef<HTMLElement>(null)
+  const thirdSectionRef = useRef<HTMLElement>(null)
+  const sphereWrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const currentLink = realEstateLinks[currentLinkIndex]
@@ -79,6 +85,35 @@ export default function Home() {
     }
   }, [charIndex, isTyping, currentLinkIndex])
 
+  // Scroll observer for sections - directly manipulate DOM to avoid re-renders
+  useEffect(() => {
+    if (isLoading) return
+    
+    const handleScroll = () => {
+      const secondSection = secondSectionRef.current
+      const thirdSection = thirdSectionRef.current
+      const sphereWrapper = sphereWrapperRef.current
+      if (!secondSection || !thirdSection || !sphereWrapper) return
+      
+      const secondRect = secondSection.getBoundingClientRect()
+      const thirdRect = thirdSection.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      
+      sphereWrapper.classList.remove('sphere-scrolled', 'sphere-third')
+      
+      if (thirdRect.top < viewportHeight * 0.7) {
+        sphereWrapper.classList.add('sphere-third')
+      } else if (secondRect.top < viewportHeight * 0.7) {
+        sphereWrapper.classList.add('sphere-scrolled')
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [isLoading])
+
   // Loading message animation
   useEffect(() => {
     if (!isLoading) return
@@ -117,6 +152,48 @@ export default function Home() {
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
+  // Mouse tracking for sphere rotation in idle mode (desktop only)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    // Check if mobile/touch device
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+  
+  useEffect(() => {
+    if (isLoading || isMobile) return
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const sphere = sphereRef.current
+      if (!sphere) return
+      
+      // Calculate mouse position relative to center of screen
+      const centerX = window.innerWidth / 2
+      const centerY = window.innerHeight / 2
+      
+      // Normalize to -1 to 1 range
+      const x = (e.clientX - centerX) / centerX
+      const y = (e.clientY - centerY) / centerY
+      
+      // Apply rotation based on mouse position (subtle effect)
+      // Base: 126° (7 seconds into animation)
+      const baseRotation = 126
+      const rotateX = y * 15 // Max 15 degrees offset
+      const rotateY = x * 15 // Max 15 degrees offset
+      
+      sphere.style.transform = `rotateZ(${baseRotation + rotateY}deg) rotateX(${-baseRotation + rotateX}deg) rotateZ(${baseRotation}deg)`
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [isLoading, isMobile])
+
   const handleGenerate = () => {
     // Get current animation progress and set as starting point for full animation
     if (sphereRef.current) {
@@ -148,7 +225,10 @@ export default function Home() {
   return (
     <div className="dark bg-black min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
-      <div className={`sphere-scale-wrapper ${isLoading ? 'sphere-expanded' : ''}`}>
+      <div 
+        ref={sphereWrapperRef}
+        className={`sphere-scale-wrapper ${isLoading ? 'sphere-expanded' : ''}`}
+      >
         <div 
           ref={sphereRef}
           className={`sphere-background ${isLoading ? 'sphere-active' : ''}`}
@@ -189,9 +269,11 @@ export default function Home() {
       <Navbar />
       {/* Hero Section */}
       <div className={`relative min-h-screen overflow-hidden transition-all duration-1000 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-        <div className="content relative z-20">
-          <div className="quote-container flex flex-col h-full pt-[20vh]">
-          {/* Eyebrow */}
+        <div className="relative z-20 min-h-screen flex flex-col">
+          {/* Main content - centered */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="quote-container flex flex-col items-center text-center">
+              {/* Eyebrow */}
           <Typography variant="small" className="mb-4 text-white/60 uppercase tracking-wider animate-fade-in-up">
             Ottie App
           </Typography>
@@ -243,26 +325,21 @@ export default function Home() {
               Generate Free Site
             </MagneticButton>
             
-            <Typography variant="small" className="text-center text-white/50 pt-1 text-xs">
-              No registration required until you&apos;re ready to publish.
-            </Typography>
-            
-            {/* Manual Start Link */}
-            <div className="pt-1">
-              <Link 
-                href="#" 
-                className="text-sm text-white hover:text-white/80 underline underline-offset-4 transition-colors"
-              >
-                or fill in data manually
-              </Link>
+              {/* Manual Start Link */}
+              <div className="pt-1">
+                <Link 
+                  href="#" 
+                  className="text-sm text-white hover:text-white/80 underline underline-offset-4 transition-colors"
+                >
+                  or fill in data manually
+                </Link>
+              </div>
+            </div>
             </div>
           </div>
 
-          {/* Spacer - pushes testimonial to bottom */}
-          <div className="flex-grow"></div>
-
-          {/* Bottom Section - Testimonial and Footer */}
-          <div className="w-full flex flex-col items-center gap-6 pb-[15px] animate-fade-in-up-delay-4">
+          {/* Bottom Section - Testimonial and Footer - absolute at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 w-full flex flex-col items-center gap-6 pb-[15px] animate-fade-in-up-delay-4">
             {/* Testimonial Section */}
             <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
@@ -324,45 +401,97 @@ export default function Home() {
               <span className="text-xs text-white/50">SOC2 ready</span>
             </div>
           </div>
-          </div>
         </div>
       </div>
 
       {/* Feature Points Section - Below the fold */}
-      <section className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
-        <div className="w-full max-w-4xl px-4">
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-white/60">
-                No more catalog confusion — <span className="font-semibold text-white">each listing gets its own site</span>.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-white/60">
-                <span className="font-semibold text-white">Impress buyers instantly</span> — beautiful on every device.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-white/60">
-                <span className="font-semibold text-white">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-white/60">
-                Built for <span className="font-semibold text-white">speed, SEO, and seamless lead capture</span>.
-              </Typography>
-            </div>
-            <div className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
-              <Typography variant="small" className="text-white/60">
-                <span className="font-semibold text-white">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-white">Never sold, never shared</span>.
-              </Typography>
-            </div>
+      <section 
+        ref={secondSectionRef}
+        className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+      >
+        <div className="w-full max-w-4xl px-4 text-center">
+          <Typography variant="h2" className="mb-12 text-white border-none">
+            <WordReveal 
+              text="Why realtors love Ottie"
+              triggerOnScroll
+              delay={0}
+              wordDelay={0.1}
+            />
+          </Typography>
+          <div className="space-y-3 text-left">
+            <ScrollReveal delay={0.5}>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <Typography variant="small" className="text-white/60">
+                  No more catalog confusion — <span className="font-semibold text-white">each listing gets its own site</span>.
+                </Typography>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={0.6}>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <Typography variant="small" className="text-white/60">
+                  <span className="font-semibold text-white">Impress buyers instantly</span> — beautiful on every device.
+                </Typography>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={0.7}>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <Typography variant="small" className="text-white/60">
+                  <span className="font-semibold text-white">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
+                </Typography>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={0.8}>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <Typography variant="small" className="text-white/60">
+                  Built for <span className="font-semibold text-white">speed, SEO, and seamless lead capture</span>.
+                </Typography>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={0.9}>
+              <div className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
+                <Typography variant="small" className="text-white/60">
+                  <span className="font-semibold text-white">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-white">Never sold, never shared</span>.
+                </Typography>
+              </div>
+            </ScrollReveal>
           </div>
+        </div>
+      </section>
+
+      {/* Third Section - CTA */}
+      <section 
+        ref={thirdSectionRef}
+        className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+      >
+        <div className="w-full max-w-2xl px-4 text-center">
+          <Typography variant="h2" className="mb-6 text-white border-none">
+            <WordReveal 
+              text="Ready to showcase your listings?"
+              triggerOnScroll
+              delay={0}
+              wordDelay={0.1}
+            />
+          </Typography>
+          <Typography variant="lead" className="mb-8 text-white/70">
+            <WordReveal 
+              text="Join thousands of realtors who are already using Ottie to create stunning property websites."
+              triggerOnScroll
+              delay={0.3}
+              wordDelay={0.05}
+            />
+          </Typography>
+          <MagneticButton 
+            className="bg-white text-black hover:bg-white/90 px-8 py-3" 
+            magneticDistance={100} 
+            magneticStrength={0.3}
+          >
+            Get Started Free
+          </MagneticButton>
         </div>
       </section>
     </div>

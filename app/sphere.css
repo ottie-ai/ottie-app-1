@@ -10,8 +10,17 @@
   width: 60vmin;
   height: 60vmin;
   transform-style: preserve-3d;
-  /* Idle: 2 seconds from center of original animation (162° to 198°), back and forth */
+  /* Mobile: use idle animation */
   animation: spinSphereIdle 4s infinite alternate ease-in-out;
+}
+
+/* Desktop: disable animation for mouse tracking */
+@media (min-width: 768px) {
+  .sphere-background:not(.sphere-active) {
+    animation: none;
+    transform: rotateZ(126deg) rotateX(-126deg) rotateZ(126deg);
+    transition: transform 0.1s ease-out;
+  }
 }
 
 /* Active/loading state - full rotation */
@@ -190,6 +199,14 @@
 
 .sphere-scale-wrapper.sphere-expanded {
   transform: scale(1.5);
+}
+
+.sphere-scale-wrapper.sphere-scrolled {
+  transform: scale(0.7);
+}
+
+.sphere-scale-wrapper.sphere-third {
+  transform: scale(0.4);
 }
 
 /* Loading text styles for homepage */

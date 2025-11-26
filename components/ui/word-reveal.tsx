@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface WordRevealProps {
@@ -9,6 +9,7 @@ interface WordRevealProps {
   delay?: number
   wordDelay?: number
   as?: keyof JSX.IntrinsicElements
+  triggerOnScroll?: boolean
 }
 
 export function WordReveal({ 
@@ -16,24 +17,45 @@ export function WordReveal({
   className, 
   delay = 0,
   wordDelay = 0.05,
-  as: Component = 'span'
+  as: Component = 'span',
+  triggerOnScroll = false
 }: WordRevealProps) {
-  const [mounted, setMounted] = useState(false)
+  const [isVisible, setIsVisible] = useState(!triggerOnScroll)
+  const ref = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    if (!triggerOnScroll) {
+      setIsVisible(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.2 }
+    )
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
+  }, [triggerOnScroll])
 
   const words = text.split(' ')
 
   return (
-    <Component className={className}>
+    <Component ref={ref as React.RefObject<HTMLSpanElement>} className={className}>
       {words.map((word, index) => (
         <span
           key={index}
           className={cn(
             'inline-block',
-            mounted ? 'animate-word-reveal' : 'opacity-0 blur-sm'
+            isVisible ? 'animate-word-reveal' : 'opacity-0 blur-sm'
           )}
           style={{
             animationDelay: `${delay + index * wordDelay}s`,
