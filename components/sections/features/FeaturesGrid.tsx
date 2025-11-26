@@ -4,6 +4,8 @@ import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
 import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
+import { cn } from '@/lib/utils'
+import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -24,55 +26,74 @@ const iconMap: Record<string, ComponentType<IconProps>> = {
 /**
  * FeaturesGrid - Grid layout for property features
  */
-export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSectionData>) {
+export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComponentProps<FeaturesSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { title, features } = data
+  const isDark = colorScheme === 'dark'
 
   return (
-    <section className="relative py-16 md:py-24 bg-background rounded-t-[2rem] -mt-8 z-30 shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.3)]">
-      <div className="container mx-auto px-4">
+    <section className="relative min-h-screen z-30 bg-transparent flex items-center">
+      <div className="container mx-auto px-4 py-16 md:py-24">
         {title && (
-          <h2 
-            className={`text-2xl md:text-3xl font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
-            style={{ 
-              color: theme?.textColor,
-              fontFamily: headingFont,
-              transform: `scale(${theme?.headingFontSize || 1})`,
-              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-            }}
-          >
-            {title}
-          </h2>
+          <AnimateOnScroll animation="fade-up" delay={0.5}>
+            <h2 
+              className={cn(
+                'text-2xl md:text-3xl font-semibold text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                theme?.uppercaseTitles ? 'uppercase' : '',
+                isDark ? 'text-white' : 'text-foreground'
+              )}
+              style={{ 
+                fontFamily: headingFont,
+                transform: `scale(${theme?.headingFontSize || 1})`,
+                letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+              }}
+            >
+              {title}
+            </h2>
+          </AnimateOnScroll>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto" staggerDelay={0.1} baseDelay={0.7}>
           {features.map((feature, index) => {
             const IconComponent = feature.icon ? iconMap[feature.icon.toLowerCase()] : null
 
             return (
-              <div 
-                key={index}
-                className="flex flex-col items-center text-center p-6 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-              >
-                {IconComponent && (
-                  <IconComponent 
-                    className="w-8 h-8 mb-3 text-primary" 
-                    style={theme?.primaryColor ? { color: theme.primaryColor } : undefined}
-                  />
-                )}
-                <span 
-                  className="text-2xl md:text-3xl font-semibold mb-1"
-                  style={{ color: theme?.textColor }}
+              <StaggerItem key={index}>
+                <div 
+                  className={cn(
+                    'flex flex-col items-center text-center p-6 rounded-xl transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                    isDark 
+                      ? 'bg-white/5 hover:bg-white/10 border border-white/10' 
+                      : 'bg-black/5 hover:bg-black/10 border border-black/10'
+                  )}
                 >
-                  {feature.value}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {feature.label}
-                </span>
-              </div>
+                  {IconComponent && (
+                    <IconComponent 
+                      className={cn(
+                        'w-8 h-8 mb-3 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                        isDark ? 'text-white/70' : 'text-primary'
+                      )}
+                    />
+                  )}
+                  <span 
+                    className={cn(
+                      'text-2xl md:text-3xl font-semibold mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                      isDark ? 'text-white' : 'text-foreground'
+                    )}
+                  >
+                    {feature.value}
+                  </span>
+                  <span className={cn(
+                    'text-sm transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                    isDark ? 'text-white/60' : 'text-muted-foreground'
+                  )}>
+                    {feature.label}
+                  </span>
+                </div>
+              </StaggerItem>
             )
           })}
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   )

@@ -2,21 +2,32 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { ANIMATION_CONFIG } from './animate-on-scroll'
 
 interface WordRevealProps {
   text: string
   className?: string
+  /** Delay before animation starts (in seconds) */
   delay?: number
+  /** Delay between each word (in seconds) - defaults to global config */
   wordDelay?: number
+  /** Whether to trigger animation on scroll into view */
   triggerOnScroll?: boolean
+  /** Threshold for scroll trigger (0-1) */
+  threshold?: number
 }
 
+/**
+ * Word-by-word reveal animation
+ * Uses global animation config for consistent timing across the app
+ */
 export function WordReveal({ 
   text, 
   className, 
-  delay = 0,
-  wordDelay = 0.05,
-  triggerOnScroll = false
+  delay = ANIMATION_CONFIG.baseDelay,
+  wordDelay = ANIMATION_CONFIG.wordDelay,
+  triggerOnScroll = false,
+  threshold = ANIMATION_CONFIG.threshold,
 }: WordRevealProps) {
   const [isVisible, setIsVisible] = useState(!triggerOnScroll)
   const ref = useRef<HTMLSpanElement>(null)
@@ -34,7 +45,7 @@ export function WordReveal({
           observer.disconnect()
         }
       },
-      { threshold: 0.2 }
+      { threshold }
     )
 
     if (ref.current) {
@@ -42,7 +53,7 @@ export function WordReveal({
     }
 
     return () => observer.disconnect()
-  }, [triggerOnScroll])
+  }, [triggerOnScroll, threshold])
 
   const words = text.split(' ')
 
@@ -66,4 +77,3 @@ export function WordReveal({
     </span>
   )
 }
-

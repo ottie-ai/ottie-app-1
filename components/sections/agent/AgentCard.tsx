@@ -4,38 +4,46 @@ import Image from 'next/image'
 import { SectionComponentProps, AgentSectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { Phone, Envelope } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
+import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
 
 /**
  * AgentCard - Card layout for agent information
  */
-export function AgentCard({ data, theme }: SectionComponentProps<AgentSectionData>) {
+export function AgentCard({ data, theme, colorScheme = 'light' }: SectionComponentProps<AgentSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { name, title, photo, bio, phone, email, company, license } = data
+  const isDark = colorScheme === 'dark'
 
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
-      <div className="container mx-auto px-4">
+    <section className="min-h-screen bg-transparent flex items-center">
+      <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
             {/* Agent Photo */}
             {photo && (
-              <div className="relative w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0">
-                <Image
-                  src={photo}
-                  alt={name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 192px, 256px"
-                />
-              </div>
+              <AnimateOnScroll animation="fade-right" delay={0.5}>
+                <div className="relative w-48 h-48 md:w-64 md:h-64 rounded-2xl overflow-hidden flex-shrink-0">
+                  <Image
+                    src={photo}
+                    alt={name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 192px, 256px"
+                  />
+                </div>
+              </AnimateOnScroll>
             )}
 
             {/* Agent Info */}
-            <div className="flex-1 text-center md:text-left">
+            <AnimateOnScroll animation="fade-left" delay={0.6} className="flex-1 text-center md:text-left">
               <h2 
-                className={`text-2xl md:text-3xl font-semibold mb-2 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                className={cn(
+                  'text-2xl md:text-3xl font-semibold mb-2 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  theme?.uppercaseTitles ? 'uppercase' : '',
+                  isDark ? 'text-white' : 'text-foreground'
+                )}
                 style={{ 
-                  color: theme?.textColor,
                   fontFamily: headingFont,
                 }}
               >
@@ -43,15 +51,24 @@ export function AgentCard({ data, theme }: SectionComponentProps<AgentSectionDat
               </h2>
               
               {title && (
-                <p className="text-muted-foreground text-lg mb-1">{title}</p>
+                <p className={cn(
+                  'text-lg mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  isDark ? 'text-white/70' : 'text-muted-foreground'
+                )}>{title}</p>
               )}
               
               {company && (
-                <p className="text-muted-foreground mb-4">{company}</p>
+                <p className={cn(
+                  'mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  isDark ? 'text-white/60' : 'text-muted-foreground'
+                )}>{company}</p>
               )}
 
               {bio && (
-                <p className="text-muted-foreground mb-6 leading-relaxed">{bio}</p>
+                <p className={cn(
+                  'mb-6 leading-relaxed transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  isDark ? 'text-white/70' : 'text-muted-foreground'
+                )}>{bio}</p>
               )}
 
               {/* Contact Info */}
@@ -59,7 +76,10 @@ export function AgentCard({ data, theme }: SectionComponentProps<AgentSectionDat
                 {phone && (
                   <a 
                     href={`tel:${phone}`}
-                    className="inline-flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    className={cn(
+                      'inline-flex items-center gap-2 text-sm transition-colors',
+                      isDark ? 'text-white/80 hover:text-white' : 'hover:text-primary'
+                    )}
                   >
                     <Phone className="size-4" weight="fill" />
                     {phone}
@@ -68,7 +88,10 @@ export function AgentCard({ data, theme }: SectionComponentProps<AgentSectionDat
                 {email && (
                   <a 
                     href={`mailto:${email}`}
-                    className="inline-flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                    className={cn(
+                      'inline-flex items-center gap-2 text-sm transition-colors',
+                      isDark ? 'text-white/80 hover:text-white' : 'hover:text-primary'
+                    )}
                   >
                     <Envelope className="size-4" weight="fill" />
                     {email}
@@ -77,9 +100,12 @@ export function AgentCard({ data, theme }: SectionComponentProps<AgentSectionDat
               </div>
 
               {license && (
-                <p className="text-xs text-muted-foreground mt-4">{license}</p>
+                <p className={cn(
+                  'text-xs mt-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                  isDark ? 'text-white/50' : 'text-muted-foreground'
+                )}>{license}</p>
               )}
-            </div>
+            </AnimateOnScroll>
           </div>
         </div>
       </div>

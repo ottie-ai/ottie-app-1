@@ -6,6 +6,11 @@
 export type CTAType = 'none' | 'whatsapp' | 'phone' | 'email'
 
 /**
+ * Color scheme for sections - determines background and text colors
+ */
+export type ColorScheme = 'light' | 'dark'
+
+/**
  * Available section types in the page builder
  */
 export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact'
@@ -33,6 +38,8 @@ export interface Section<T extends SectionData = SectionData> {
   variant: SectionVariant
   /** Section-specific data/content */
   data: T
+  /** Color scheme for this section (light/dark) */
+  colorScheme?: ColorScheme
 }
 
 /**
@@ -171,6 +178,8 @@ export interface SectionVariants {
 export interface SectionComponentProps<T extends SectionData = SectionData> {
   data: T
   theme?: ThemeConfig
+  /** Color scheme for this section */
+  colorScheme?: ColorScheme
   /** Callback for editing data - if provided, component shows edit buttons */
   onDataChange?: (data: T) => void
 }

@@ -1,16 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { SectionRenderer } from '@/components/builder/SectionRenderer'
 import { SectionEditor } from '@/components/builder/SectionEditor'
 import { HeroRemixPanel } from '@/components/builder/settings/PageSettings'
 import { PageSettingsPanel } from '@/components/builder/settings/PageSettings'
 import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
-import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData } from '@/types/builder'
+import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData, ColorScheme } from '@/types/builder'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { WorkspaceNavbar } from '@/components/workspace-navbar'
 import { FloatingCTAButton } from '@/components/whatsapp-button'
+import { cn } from '@/lib/utils'
 
 // Example theme configuration
 const exampleTheme: ThemeConfig = {
@@ -28,12 +29,13 @@ const exampleTheme: ThemeConfig = {
   ctaValue: '',
 }
 
-// Example sections data
+// Example sections data with color schemes
 const initialSections: Section[] = [
   {
     id: 'hero-1',
     type: 'hero',
     variant: 'full',
+    colorScheme: 'dark',
     data: {
       headline: '21 Maine Street',
       subheadline: 'Herman Thompson Jr., a financial planner with Innovative Financial Group in Atlanta, Ga. says he checks his portfolio when he makes a trade.',
@@ -48,6 +50,7 @@ const initialSections: Section[] = [
     id: 'features-1',
     type: 'features',
     variant: 'grid',
+    colorScheme: 'light',
     data: {
       title: 'Property Features',
       features: [
@@ -62,6 +65,7 @@ const initialSections: Section[] = [
     id: 'gallery-1',
     type: 'gallery',
     variant: 'grid',
+    colorScheme: 'dark',
     data: {
       title: 'Photo Gallery',
       images: [
@@ -77,6 +81,7 @@ const initialSections: Section[] = [
     id: 'agent-1',
     type: 'agent',
     variant: 'card',
+    colorScheme: 'light',
     data: {
       name: 'Sarah Johnson',
       title: 'Senior Real Estate Agent',
@@ -92,6 +97,7 @@ const initialSections: Section[] = [
     id: 'contact-1',
     type: 'contact',
     variant: 'simple',
+    colorScheme: 'dark',
     data: {
       title: 'Schedule a Viewing',
       subtitle: 'Interested in this property? Get in touch with us to schedule a private viewing.',
@@ -107,11 +113,81 @@ const initialSections: Section[] = [
 export default function PreviewPage() {
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [theme, setTheme] = useState<ThemeConfig>(exampleTheme)
+  // Initialize with second section's color scheme (first non-hero section)
+  // Hero has its own background image, so light/dark starts from section 2
+  const firstNonHeroSection = initialSections.find(s => s.type !== 'hero')
+  const [currentColorScheme, setCurrentColorScheme] = useState<ColorScheme>(
+    firstNonHeroSection?.colorScheme ?? 'light'
+  )
+  // Track if we're still in hero section (background should be hidden)
+  const [isInHero, setIsInHero] = useState(true)
+  
+  // Refs for section elements
+  const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   
   // Temporary state for editing (before save)
   const [editingTheme, setEditingTheme] = useState<ThemeConfig>(exampleTheme)
   const [editingVariant, setEditingVariant] = useState<Record<string, string>>({})
   const [editingData, setEditingData] = useState<Record<string, Section['data']>>({})
+  const [editingColorScheme, setEditingColorScheme] = useState<Record<string, ColorScheme>>({})
+
+  // Scroll detection for color scheme changes
+  // Hero section is excluded - it has its own background image
+  // Light/dark background only applies to non-hero sections
+  useEffect(() => {
+    const handleScroll = () => {
+      // Use a point 60% down the viewport to detect sections
+      const detectionPoint = window.scrollY + window.innerHeight * 0.6
+      
+      let activeSection: Section | null = null
+      let inHeroSection = false
+      
+      // Find the section that contains the detection point
+      sectionRefs.current.forEach((element, id) => {
+        const rect = element.getBoundingClientRect()
+        const elementTop = window.scrollY + rect.top
+        const elementBottom = elementTop + rect.height
+        
+        if (detectionPoint >= elementTop && detectionPoint <= elementBottom) {
+          const section = sections.find(s => s.id === id)
+          if (section) {
+            if (section.type === 'hero') {
+              inHeroSection = true
+            } else {
+              activeSection = section
+            }
+          }
+        }
+      })
+      
+      // Update hero state
+      if (inHeroSection !== isInHero) {
+        setIsInHero(inHeroSection)
+      }
+      
+      // Only update color scheme for non-hero sections
+      if (activeSection && !inHeroSection) {
+        const scheme = editingColorScheme[activeSection.id] ?? activeSection.colorScheme ?? 'light'
+        if (scheme !== currentColorScheme) {
+          setCurrentColorScheme(scheme)
+        }
+      }
+    }
+    
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll() // Initial check
+    
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [sections, currentColorScheme, editingColorScheme, isInHero])
+
+  // Register section ref
+  const registerSectionRef = useCallback((id: string, element: HTMLDivElement | null) => {
+    if (element) {
+      sectionRefs.current.set(id, element)
+    } else {
+      sectionRefs.current.delete(id)
+    }
+  }, [])
 
   // Get current variant for a section
   const getSectionVariant = (sectionId: string, currentVariant: string) => {
@@ -121,6 +197,11 @@ export default function PreviewPage() {
   // Get current data for a section
   const getSectionData = (section: Section) => {
     return editingData[section.id] ?? section.data
+  }
+
+  // Get current color scheme for a section
+  const getSectionColorScheme = (section: Section): ColorScheme => {
+    return editingColorScheme[section.id] ?? section.colorScheme ?? 'light'
   }
 
   // Update section variant
@@ -133,22 +214,28 @@ export default function PreviewPage() {
     setEditingData(prev => ({ ...prev, [sectionId]: data }))
   }
 
+  // Update section color scheme
+  const updateSectionColorScheme = (sectionId: string, colorScheme: ColorScheme) => {
+    setEditingColorScheme(prev => ({ ...prev, [sectionId]: colorScheme }))
+  }
+
   // Save changes for a section
   const handleSave = (sectionId: string) => {
     // Apply theme changes
     setTheme(editingTheme)
     
-    // Apply variant and data changes
-      setSections(prev => 
+    // Apply variant, data, and color scheme changes
+    setSections(prev => 
       prev.map(section => {
         if (section.id !== sectionId) return section
         return {
           ...section,
           variant: editingVariant[sectionId] ?? section.variant,
-          data: editingData[sectionId] ?? section.data
+          data: editingData[sectionId] ?? section.data,
+          colorScheme: editingColorScheme[sectionId] ?? section.colorScheme,
         }
       })
-      )
+    )
     
     // Clear editing state for this section
     setEditingVariant(prev => {
@@ -157,6 +244,11 @@ export default function PreviewPage() {
       return newState
     })
     setEditingData(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
+    setEditingColorScheme(prev => {
       const newState = { ...prev }
       delete newState[sectionId]
       return newState
@@ -176,17 +268,35 @@ export default function PreviewPage() {
       delete newState[sectionId]
       return newState
     })
+    setEditingColorScheme(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
   }
 
-  const heroSection = sections.find((section) => section.type === 'hero')
   const navbarSettingsPanel = (
     <PageSettingsPanel theme={editingTheme} onThemeChange={setEditingTheme} />
   )
 
   return (
     <div className="min-h-screen">
-      {/* Fixed CTA Button */}
-      <FloatingCTAButton type={editingTheme.ctaType} value={editingTheme.ctaValue} />
+      {/* Fixed background that transitions between light/dark */}
+      {/* Only visible after hero section */}
+      <div 
+        className="fixed inset-0 -z-10 transition-all duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{
+          backgroundColor: currentColorScheme === 'dark' ? '#000000' : '#ffffff',
+          opacity: isInHero ? 0 : 1,
+        }}
+      />
+      
+      {/* Fixed CTA Button - always white/dark style on hero, then follows section color */}
+      <FloatingCTAButton 
+        type={editingTheme.ctaType} 
+        value={editingTheme.ctaValue}
+        colorScheme={isInHero ? 'dark' : currentColorScheme}
+      />
       
       {/* Workspace Navbar */}
       <WorkspaceNavbar
@@ -204,32 +314,45 @@ export default function PreviewPage() {
 
       {/* Page Content with Section Editors */}
       <div>
-      <FontTransition font={editingTheme.headingFontFamily}>
-        {sections.map((section) => {
-          const currentVariant = getSectionVariant(section.id, section.variant)
+        <FontTransition font={editingTheme.headingFontFamily}>
+          {sections.map((section, index) => {
+            const currentVariant = getSectionVariant(section.id, section.variant)
             const currentData = getSectionData(section)
-            const displaySection = { ...section, variant: currentVariant, data: currentData }
+            const colorScheme = getSectionColorScheme(section)
+            const displaySection = { ...section, variant: currentVariant, data: currentData, colorScheme }
 
-          if (section.type === 'hero') {
-            return (
-              <SectionEditor
-                key={section.id}
-                onSave={() => handleSave(section.id)}
+            const sectionContent = (
+              <div 
+                ref={(el) => registerSectionRef(section.id, el)}
+                className="w-full"
+              >
+                <SectionRenderer
+                  section={displaySection}
+                  theme={editingTheme}
+                  colorScheme={colorScheme}
+                  onDataChange={(data) => updateSectionData(section.id, data)}
+                />
+              </div>
+            )
+
+            if (section.type === 'hero') {
+              return (
+                <SectionEditor
+                  key={section.id}
+                  onSave={() => handleSave(section.id)}
                   isFirstSection={true}
                   remixPanel={
                     <HeroRemixPanel
                       variant={currentVariant}
                       data={currentData as HeroSectionData}
+                      colorScheme={colorScheme}
                       onVariantChange={(v) => updateSectionVariant(section.id, v)}
                       onDataChange={(data) => updateSectionData(section.id, data)}
+                      onColorSchemeChange={(cs) => updateSectionColorScheme(section.id, cs)}
                     />
                   }
                 >
-                  <SectionRenderer
-                    section={displaySection}
-                    theme={editingTheme}
-                    onDataChange={(data) => updateSectionData(section.id, data)}
-                  />
+                  {sectionContent}
                 </SectionEditor>
               )
             }
@@ -243,45 +366,31 @@ export default function PreviewPage() {
                     <FeaturesRemixPanel
                       variant={currentVariant}
                       data={currentData as FeaturesSectionData}
-                    onVariantChange={(v) => updateSectionVariant(section.id, v)}
+                      colorScheme={colorScheme}
+                      onVariantChange={(v) => updateSectionVariant(section.id, v)}
                       onDataChange={(data) => updateSectionData(section.id, data)}
-                  />
-                }
-              >
-                  <SectionRenderer 
-                    section={displaySection} 
-                    theme={editingTheme}
-                    onDataChange={(data) => updateSectionData(section.id, data)}
-                  />
-              </SectionEditor>
+                      onColorSchemeChange={(cs) => updateSectionColorScheme(section.id, cs)}
+                    />
+                  }
+                >
+                  {sectionContent}
+                </SectionEditor>
+              )
+            }
+
+            // Other sections without editor for now
+            return (
+              <div key={section.id} ref={(el) => registerSectionRef(section.id, el)}>
+                <SectionRenderer
+                  section={displaySection}
+                  theme={editingTheme}
+                  colorScheme={colorScheme}
+                />
+              </div>
             )
-          }
-
-          // Other sections without editor for now
-          return (
-            <SectionRenderer
-              key={section.id}
-              section={section}
-              theme={editingTheme}
-            />
-          )
-        })}
-      </FontTransition>
+          })}
+        </FontTransition>
       </div>
-
-      {/* Debug: Show current JSON state - hidden by default */}
-      {false && (
-        <div className="container mx-auto px-4 py-12">
-          <details className="bg-muted rounded-lg p-4">
-            <summary className="cursor-pointer font-medium text-sm">
-              View Page JSON
-            </summary>
-            <pre className="mt-4 text-xs overflow-auto p-4 bg-background rounded border">
-              {JSON.stringify({ sections, theme }, null, 2)}
-            </pre>
-          </details>
-        </div>
-      )}
     </div>
   )
 }

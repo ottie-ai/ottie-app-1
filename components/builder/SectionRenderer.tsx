@@ -1,6 +1,6 @@
 'use client'
 
-import { Section, ThemeConfig } from '@/types/builder'
+import { Section, ThemeConfig, ColorScheme } from '@/types/builder'
 import { getComponent } from './registry'
 
 interface SectionRendererProps {
@@ -10,6 +10,8 @@ interface SectionRendererProps {
   theme?: ThemeConfig
   /** Optional class name for wrapper */
   className?: string
+  /** Color scheme override */
+  colorScheme?: ColorScheme
   /** Callback for editing section data */
   onDataChange?: (data: Section['data']) => void
 }
@@ -28,8 +30,9 @@ interface SectionRendererProps {
  * />
  * ```
  */
-export function SectionRenderer({ section, theme, className, onDataChange }: SectionRendererProps) {
+export function SectionRenderer({ section, theme, className, colorScheme, onDataChange }: SectionRendererProps) {
   const Component = getComponent(section.type, section.variant)
+  const sectionColorScheme = colorScheme ?? section.colorScheme ?? 'light'
 
   // Component not found in registry
   if (!Component) {
@@ -56,8 +59,9 @@ export function SectionRenderer({ section, theme, className, onDataChange }: Sec
       className={className}
       data-section-type={section.type}
       data-section-variant={section.variant}
+      data-color-scheme={sectionColorScheme}
     >
-      <Component data={section.data} theme={theme} onDataChange={onDataChange} />
+      <Component data={section.data} theme={theme} colorScheme={sectionColorScheme} onDataChange={onDataChange} />
     </div>
   )
 }

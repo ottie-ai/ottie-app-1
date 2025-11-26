@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback, useState } from 'react'
-import { FeaturesSectionData } from '@/types/builder'
+import { FeaturesSectionData, ColorScheme } from '@/types/builder'
 import { 
   Field, 
   FieldGroup, 
@@ -16,6 +16,50 @@ import {
   type CarouselApi 
 } from '@/components/ui/carousel'
 import { getVariants } from '@/components/builder/registry'
+import { Sun, Moon } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
+
+// ============================================
+// Color Scheme Selector Component
+// ============================================
+
+interface ColorSchemeSelectorProps {
+  value: ColorScheme
+  onChange: (value: ColorScheme) => void
+}
+
+function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange('light')}
+        className={cn(
+          'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
+          value === 'light' 
+            ? 'bg-primary text-primary-foreground border-primary' 
+            : 'bg-muted/50 border-input hover:bg-muted'
+        )}
+      >
+        <Sun className="size-4" weight={value === 'light' ? 'fill' : 'regular'} />
+        <span className="text-sm font-medium">Light</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('dark')}
+        className={cn(
+          'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
+          value === 'dark' 
+            ? 'bg-primary text-primary-foreground border-primary' 
+            : 'bg-muted/50 border-input hover:bg-muted'
+        )}
+      >
+        <Moon className="size-4" weight={value === 'dark' ? 'fill' : 'regular'} />
+        <span className="text-sm font-medium">Dark</span>
+      </button>
+    </div>
+  )
+}
 
 // ============================================
 // Remix Panel - Layout
@@ -24,13 +68,17 @@ import { getVariants } from '@/components/builder/registry'
 interface FeaturesRemixPanelProps {
   variant: string
   data: FeaturesSectionData
+  colorScheme?: ColorScheme
   onVariantChange: (variant: string) => void
   onDataChange: (data: FeaturesSectionData) => void
+  onColorSchemeChange?: (colorScheme: ColorScheme) => void
 }
 
 export function FeaturesRemixPanel({ 
-  variant, 
+  variant,
+  colorScheme = 'light',
   onVariantChange,
+  onColorSchemeChange,
 }: FeaturesRemixPanelProps) {
   const featuresVariants = getVariants('features')
   const [api, setApi] = useState<CarouselApi>()
@@ -80,6 +128,14 @@ export function FeaturesRemixPanel({
             <CarouselNext className="static translate-y-0 size-7" />
           </div>
         </Carousel>
+      </Field>
+
+      <Field>
+        <FieldLabel>Color Scheme</FieldLabel>
+        <ColorSchemeSelector 
+          value={colorScheme} 
+          onChange={(cs) => onColorSchemeChange?.(cs)} 
+        />
       </Field>
     </FieldGroup>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback, useState } from 'react'
-import { ThemeConfig, HeroSectionData, CTAType } from '@/types/builder'
+import { ThemeConfig, HeroSectionData, CTAType, ColorScheme } from '@/types/builder'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { 
@@ -28,6 +28,50 @@ import {
 import { FontSelector } from '@/components/builder/FontSelector'
 import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/builder/registry'
+import { Sun, Moon } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
+
+// ============================================
+// Color Scheme Selector Component
+// ============================================
+
+interface ColorSchemeSelectorProps {
+  value: ColorScheme
+  onChange: (value: ColorScheme) => void
+}
+
+function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange('light')}
+        className={cn(
+          'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
+          value === 'light' 
+            ? 'bg-primary text-primary-foreground border-primary' 
+            : 'bg-muted/50 border-input hover:bg-muted'
+        )}
+      >
+        <Sun className="size-4" weight={value === 'light' ? 'fill' : 'regular'} />
+        <span className="text-sm font-medium">Light</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('dark')}
+        className={cn(
+          'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
+          value === 'dark' 
+            ? 'bg-primary text-primary-foreground border-primary' 
+            : 'bg-muted/50 border-input hover:bg-muted'
+        )}
+      >
+        <Moon className="size-4" weight={value === 'dark' ? 'fill' : 'regular'} />
+        <span className="text-sm font-medium">Dark</span>
+      </button>
+    </div>
+  )
+}
 
 // ============================================
 // Remix Panel - Layout & Background Image
@@ -36,15 +80,19 @@ import { getVariants } from '@/components/builder/registry'
 interface HeroRemixPanelProps {
   variant: string
   data: HeroSectionData
+  colorScheme?: ColorScheme
   onVariantChange: (variant: string) => void
   onDataChange: (data: HeroSectionData) => void
+  onColorSchemeChange?: (colorScheme: ColorScheme) => void
 }
 
 export function HeroRemixPanel({ 
   variant, 
   data,
+  colorScheme = 'dark',
   onVariantChange,
-  onDataChange
+  onDataChange,
+  onColorSchemeChange
 }: HeroRemixPanelProps) {
   const heroVariants = getVariants('hero')
   const [api, setApi] = useState<CarouselApi>()
@@ -94,6 +142,14 @@ export function HeroRemixPanel({
             <CarouselNext className="static translate-y-0 size-7" />
           </div>
         </Carousel>
+      </Field>
+
+      <Field>
+        <FieldLabel>Color Scheme</FieldLabel>
+        <ColorSchemeSelector 
+          value={colorScheme} 
+          onChange={(cs) => onColorSchemeChange?.(cs)} 
+        />
       </Field>
 
       <Field>
