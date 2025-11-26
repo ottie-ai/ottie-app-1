@@ -21,6 +21,13 @@ const realEstateLinks = [
   'homes.com/654-Pine-Drive',
 ]
 
+const loadingMessages = [
+  'Analysing website',
+  'Processing content',
+  'Generating layout',
+  'Finalizing your site',
+]
+
 export default function Home() {
   const [link, setLink] = useState('')
   const [placeholder, setPlaceholder] = useState('')
@@ -28,6 +35,11 @@ export default function Home() {
   const [isTyping, setIsTyping] = useState(true)
   const [charIndex, setCharIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  
+  // Loading state
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  const [loadingPhase, setLoadingPhase] = useState<'entering' | 'visible' | 'exiting'>('entering')
 
   useEffect(() => {
     const currentLink = realEstateLinks[currentLinkIndex]
@@ -67,18 +79,84 @@ export default function Home() {
     }
   }, [charIndex, isTyping, currentLinkIndex])
 
+  // Loading message animation
+  useEffect(() => {
+    if (!isLoading) return
+
+    if (loadingPhase === 'entering') {
+      const timer = setTimeout(() => {
+        setLoadingPhase('visible')
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+
+    if (loadingPhase === 'visible') {
+      const timer = setTimeout(() => {
+        setLoadingPhase('exiting')
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+
+    if (loadingPhase === 'exiting') {
+      const timer = setTimeout(() => {
+        // Loop through messages
+        setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
+        setLoadingPhase('entering')
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading, loadingPhase, loadingMessageIndex])
+
+  const handleGenerate = () => {
+    setIsLoading(true)
+    setLoadingMessageIndex(0)
+    setLoadingPhase('entering')
+  }
+
+  const currentLoadingMessage = loadingMessages[loadingMessageIndex]
+  const loadingWords = currentLoadingMessage.split(' ')
+
   return (
-    <div className="dark bg-black min-h-screen">
-      {/* Sphere Background - centered like loading page */}
-      <div className="sphere-background">
-        {Array.from({ length: 36 }, (_, i) => (
-          <div key={i + 1} className={`ring${i + 1}`} />
-        ))}
+    <div className="dark bg-black min-h-screen overflow-hidden">
+      {/* Sphere Background - animated with scale wrapper */}
+      <div className={`sphere-scale-wrapper ${isLoading ? 'sphere-expanded' : ''}`}>
+        <div className="sphere-background">
+          {Array.from({ length: 36 }, (_, i) => (
+            <div key={i + 1} className={`ring${i + 1}`} />
+          ))}
+        </div>
       </div>
+
+      {/* Loading Text Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="text-center">
+            <p className="loading-text-home">
+              {loadingWords.map((word, index) => (
+                <span
+                  key={`${loadingMessageIndex}-${index}`}
+                  className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
+                  style={{
+                    animationDelay: loadingPhase === 'exiting'
+                      ? `${(loadingWords.length - 1 - index) * 0.15}s`
+                      : `${index * 0.18}s`,
+                  }}
+                >
+                  {word}
+                  {index < loadingWords.length - 1 && '\u00A0'}
+                </span>
+              ))}
+            </p>
+            <p className="loading-duration-home">
+              <span className="shimmer-text-home">Expected duration ~30 seconds</span>
+            </p>
+          </div>
+        </div>
+      )}
 
       <Navbar />
       {/* Hero Section */}
-      <div className="relative min-h-screen overflow-hidden">
+      <div className={`relative min-h-screen overflow-hidden transition-all duration-1000 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="content relative z-20">
           <div className="quote-container flex flex-col h-full pt-[20vh]">
           {/* Eyebrow */}
@@ -124,7 +202,12 @@ export default function Home() {
               )}
             </div>
             
-            <MagneticButton className="w-full bg-white text-black hover:bg-white/90" magneticDistance={120} magneticStrength={0.4}>
+            <MagneticButton 
+              className="w-full bg-white text-black hover:bg-white/90" 
+              magneticDistance={120} 
+              magneticStrength={0.4}
+              onClick={handleGenerate}
+            >
               Generate Free Site
             </MagneticButton>
             
@@ -214,7 +297,7 @@ export default function Home() {
       </div>
 
       {/* Feature Points Section - Below the fold */}
-      <section className="relative bg-black min-h-screen flex items-center justify-center py-20">
+      <section className={`relative bg-black min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         <div className="w-full max-w-4xl px-4">
           <div className="space-y-3">
             <div className="flex items-start gap-3">

@@ -1,17 +1,10 @@
 /* Sphere background for homepage - centered like loading page */
 .sphere-background {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  margin: auto;
+  position: relative;
   width: 60vmin;
   height: 60vmin;
   animation: spinSphere 20s infinite linear;
   transform-style: preserve-3d;
-  z-index: 1;
-  pointer-events: none;
 }
 
 .sphere-background [class^="ring"] {
@@ -72,6 +65,112 @@
   }
   to {
     transform: rotateZ(360deg) rotateX(-360deg) rotateZ(360deg);
+  }
+}
+
+/* Sphere scale wrapper for smooth expansion */
+.sphere-scale-wrapper {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  pointer-events: none;
+  transform: scale(1);
+  transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.sphere-scale-wrapper.sphere-expanded {
+  transform: scale(1.5);
+}
+
+/* Loading text styles for homepage */
+.loading-text-home {
+  font-size: clamp(2rem, 6vw, 5rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.loading-word-home {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(8px);
+  animation: wordRevealInHome 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.loading-word-home.exiting {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  animation: wordRevealOutHome 0.8s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+@keyframes wordRevealInHome {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes wordRevealOutHome {
+  0% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(-8px);
+  }
+}
+
+/* Duration text with shimmer effect */
+.loading-duration-home {
+  margin-top: 2rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.shimmer-text-home {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.4) 40%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.4) 60%,
+    rgba(255, 255, 255, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerHome 2s linear infinite;
+}
+
+@keyframes shimmerHome {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
   }
 }
 
