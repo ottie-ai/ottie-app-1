@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import {
   Home,
   FileText,
@@ -13,9 +12,8 @@ import {
   Plus,
   Search,
   Users,
-  Sun,
-  Moon,
   ChevronsUpDown,
+  ExternalLink,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -35,7 +33,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { PricingDialog } from '@/components/dashboard/pricing-dialog'
 
 const mainNavItems = [
   {
@@ -71,8 +69,9 @@ const bottomNavItems = [
   },
   {
     title: 'Billing',
-    url: '/dashboard/billing',
+    url: 'https://billing.stripe.com',
     icon: CreditCard,
+    external: true,
   },
   {
     title: 'Help & Support',
@@ -84,7 +83,6 @@ const bottomNavItems = [
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
-  const { theme, setTheme } = useTheme()
   const isCollapsed = state === 'collapsed'
 
   return (
@@ -120,9 +118,11 @@ export function DashboardSidebar() {
                 side="bottom"
                 sideOffset={4}
               >
-                <DropdownMenuItem>
-                  Upgrade to Pro
-                </DropdownMenuItem>
+                <PricingDialog>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    Upgrade to Pro
+                  </DropdownMenuItem>
+                </PricingDialog>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   Account Settings
@@ -200,43 +200,24 @@ export function DashboardSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
-                    isActive={pathname === item.url}
+                    isActive={!('external' in item) && pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link href={item.url}>
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
-                    </Link>
+                    {'external' in item && item.external ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer">
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                        <ExternalLink className="!size-3 text-muted-foreground" />
+                      </a>
+                    ) : (
+                      <Link href={item.url}>
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {/* Dark Mode Toggle */}
-              <SidebarMenuItem>
-                <div className="flex items-center justify-between w-full px-2 py-1.5">
-                  {!isCollapsed && (
-                    <div className="flex items-center gap-2">
-                      <Sun className="size-4 text-muted-foreground" />
-                      <Switch 
-                        checked={theme === 'dark'}
-                        onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-                      />
-                      <Moon className="size-4 text-muted-foreground" />
-                    </div>
-                  )}
-                  {isCollapsed && (
-                    <button
-                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                      className="flex items-center justify-center w-full"
-                    >
-                      {theme === 'dark' ? (
-                        <Sun className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      ) : (
-                        <Moon className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      )}
-                    </button>
-                  )}
-                </div>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

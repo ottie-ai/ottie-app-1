@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef } from 'react'
+import { useTheme } from 'next-themes'
+import { Sun, Moon, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,19 +13,23 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { PricingDialog } from '@/components/dashboard/pricing-dialog'
 
 const navItems = [
   { id: 'profile', label: 'Profile' },
   { id: 'company', label: 'Company' },
+  { id: 'appearance', label: 'Appearance' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'plan', label: 'Plan & Billing' },
   { id: 'danger', label: 'Danger Zone' },
 ]
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme()
   const sectionRefs = {
     profile: useRef<HTMLDivElement>(null),
     company: useRef<HTMLDivElement>(null),
+    appearance: useRef<HTMLDivElement>(null),
     notifications: useRef<HTMLDivElement>(null),
     plan: useRef<HTMLDivElement>(null),
     danger: useRef<HTMLDivElement>(null),
@@ -50,7 +56,7 @@ export default function SettingsPage() {
       {/* Main Content with Side Navigation */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Side Navigation - fixed sidebar */}
-        <nav className="hidden md:flex w-64 shrink-0 flex-col gap-1 border-r p-4 overflow-y-auto">
+        <nav className="hidden md:flex w-64 shrink-0 flex-col gap-1 border-r p-4 overflow-y-auto scrollbar-hide">
           <p className="text-sm font-medium text-muted-foreground mb-2">Settings</p>
           {navItems.map((item) => (
             <button
@@ -68,7 +74,7 @@ export default function SettingsPage() {
         </nav>
 
         {/* Content - scrollable */}
-        <main className="flex-1 p-6 space-y-6 max-w-3xl overflow-y-auto">
+        <main className="flex-1 p-6 space-y-6 max-w-3xl overflow-y-auto scrollbar-hide">
           {/* Profile Section */}
           <div ref={sectionRefs.profile} id="profile" className="scroll-mt-6">
             <Card>
@@ -152,6 +158,55 @@ export default function SettingsPage() {
             </Card>
           </div>
 
+          {/* Appearance Section */}
+          <div ref={sectionRefs.appearance} id="appearance" className="scroll-mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>
+                  Customize how Ottie looks on your device
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Theme</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select your preferred theme
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant={theme === 'light' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('light')}
+                      className="flex-1 gap-2"
+                    >
+                      <Sun className="size-4" />
+                      Light
+                    </Button>
+                    <Button
+                      variant={theme === 'dark' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('dark')}
+                      className="flex-1 gap-2"
+                    >
+                      <Moon className="size-4" />
+                      Dark
+                    </Button>
+                    <Button
+                      variant={theme === 'system' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setTheme('system')}
+                      className="flex-1 gap-2"
+                    >
+                      <Monitor className="size-4" />
+                      System
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Notifications Section */}
           <div ref={sectionRefs.notifications} id="notifications" className="scroll-mt-6">
             <Card>
@@ -224,7 +279,9 @@ export default function SettingsPage() {
                   </ul>
                 </div>
 
-                <Button className="w-full">Upgrade to Pro</Button>
+                <PricingDialog>
+                  <Button className="w-full">Upgrade to Pro</Button>
+                </PricingDialog>
               </CardContent>
             </Card>
           </div>
