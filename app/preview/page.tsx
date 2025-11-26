@@ -139,11 +139,12 @@ export default function PreviewPage() {
       // Use a point 60% down the viewport to detect sections
       const detectionPoint = window.scrollY + window.innerHeight * 0.6
       
-      let activeSection: Section | null = null
+      let activeSectionId: string | null = null
+      let activeSectionColorScheme: ColorScheme | undefined = undefined
       let inHeroSection = false
       
       // Find the section that contains the detection point
-      sectionRefs.current.forEach((element, id) => {
+      for (const [id, element] of sectionRefs.current.entries()) {
         const rect = element.getBoundingClientRect()
         const elementTop = window.scrollY + rect.top
         const elementBottom = elementTop + rect.height
@@ -154,11 +155,12 @@ export default function PreviewPage() {
             if (section.type === 'hero') {
               inHeroSection = true
             } else {
-              activeSection = section
+              activeSectionId = section.id
+              activeSectionColorScheme = section.colorScheme
             }
           }
         }
-      })
+      }
       
       // Update hero state
       if (inHeroSection !== isInHero) {
@@ -166,8 +168,8 @@ export default function PreviewPage() {
       }
       
       // Only update color scheme for non-hero sections
-      if (activeSection !== null && !inHeroSection) {
-        const scheme = editingColorScheme[activeSection.id] ?? (activeSection as Section).colorScheme ?? 'light'
+      if (activeSectionId && !inHeroSection) {
+        const scheme = editingColorScheme[activeSectionId] ?? activeSectionColorScheme ?? 'light'
         if (scheme !== currentColorScheme) {
           setCurrentColorScheme(scheme)
         }
