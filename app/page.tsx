@@ -201,24 +201,53 @@ export default function Home() {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [isLoading, isMobile, hasMouseMoved])
 
+  // Loading animation ref
+  const loadingAnimationRef = useRef<number | null>(null)
+  const loadingStartTimeRef = useRef<number>(0)
+  const loadingStartRotationRef = useRef<number>(126)
+  
+  // Loading rotation animation
+  useEffect(() => {
+    if (!isLoading || !sphereRef.current) {
+      if (loadingAnimationRef.current) {
+        cancelAnimationFrame(loadingAnimationRef.current)
+      }
+      return
+    }
+    
+    const animateLoading = (time: number) => {
+      if (!sphereRef.current) return
+      
+      if (loadingStartTimeRef.current === 0) {
+        loadingStartTimeRef.current = time
+      }
+      
+      const elapsed = time - loadingStartTimeRef.current
+      const rotationSpeed = 18 // degrees per second (360° / 20s)
+      const rotation = loadingStartRotationRef.current + (elapsed / 1000) * rotationSpeed
+      
+      sphereRef.current.style.transform = `rotateZ(${rotation}deg) rotateX(${-rotation}deg) rotateZ(${rotation}deg)`
+      
+      loadingAnimationRef.current = requestAnimationFrame(animateLoading)
+    }
+    
+    loadingAnimationRef.current = requestAnimationFrame(animateLoading)
+    
+    return () => {
+      if (loadingAnimationRef.current) {
+        cancelAnimationFrame(loadingAnimationRef.current)
+      }
+    }
+  }, [isLoading])
+  
   const handleGenerate = () => {
-    // Get current animation progress and set as starting point for full animation
     if (sphereRef.current) {
-      const computedStyle = window.getComputedStyle(sphereRef.current)
-      const transform = computedStyle.transform
+      // Stop any current animation
+      sphereRef.current.style.animation = 'none'
       
-      // Apply current transform as inline style before switching animation
-      sphereRef.current.style.transform = transform
-      
-      // Force reflow
-      void sphereRef.current.offsetHeight
-      
-      // Clear inline transform so CSS animation takes over
-      requestAnimationFrame(() => {
-        if (sphereRef.current) {
-          sphereRef.current.style.transform = ''
-        }
-      })
+      // Reset loading animation timer
+      loadingStartTimeRef.current = 0
+      loadingStartRotationRef.current = 126
     }
     
     setIsLoading(true)

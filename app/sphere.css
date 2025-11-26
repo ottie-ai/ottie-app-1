@@ -15,9 +15,9 @@
   transition: transform 0.1s ease-out;
 }
 
-/* Active/loading state - full rotation */
+/* Active/loading state - keep current rotation, just scale up */
 .sphere-background.sphere-active {
-  animation: spinSphere 20s infinite linear;
+  /* Animation is disabled via JS, sphere stays at captured transform */
 }
 
 .sphere-background [class^="ring"] {
