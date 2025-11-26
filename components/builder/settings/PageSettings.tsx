@@ -28,7 +28,7 @@ import {
 import { FontSelector } from '@/components/builder/FontSelector'
 import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/builder/registry'
-import { Sun, Moon } from '@phosphor-icons/react'
+import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ============================================
@@ -53,7 +53,7 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
             : 'bg-muted/50 border-input hover:bg-muted'
         )}
       >
-        <Sun className="size-4" weight={value === 'light' ? 'fill' : 'regular'} />
+        <Sun className="size-4" />
         <span className="text-sm font-medium">Light</span>
       </button>
       <button
@@ -66,7 +66,7 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
             : 'bg-muted/50 border-input hover:bg-muted'
         )}
       >
-        <Moon className="size-4" weight={value === 'dark' ? 'fill' : 'regular'} />
+        <Moon className="size-4" />
         <span className="text-sm font-medium">Dark</span>
       </button>
     </div>

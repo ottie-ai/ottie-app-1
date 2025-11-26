@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CaretUpDown, GearSix, ArrowLeft } from '@phosphor-icons/react'
+import { ChevronsUpDown, Settings, ArrowLeft } from 'lucide-react'
 
 interface WorkspaceNavbarProps {
   userName?: string
@@ -61,7 +61,7 @@ export function WorkspaceNavbar({
         {/* Left side - Back button */}
         <div className="flex items-center">
           <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="size-4" weight="bold" />
+            <ArrowLeft className="size-4" />
             <span className="hidden md:inline">Back to Dashboard</span>
           </Button>
         </div>
@@ -84,7 +84,7 @@ export function WorkspaceNavbar({
                 <span className="text-sm font-medium hidden sm:inline">{companyName}</span>
               </div>
               <Badge variant="secondary" className="hidden md:inline-flex">Free</Badge>
-              <CaretUpDown className="size-4 text-muted-foreground" weight="bold" />
+              <ChevronsUpDown className="size-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
             <DropdownMenuContent align="center" className="w-56">
@@ -129,7 +129,7 @@ export function WorkspaceNavbar({
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <GearSix className="size-4" weight="fill" />
+                  <Settings className="size-4" />
                   <span className="hidden md:inline">Settings</span>
                 </Button>
               </PopoverTrigger>

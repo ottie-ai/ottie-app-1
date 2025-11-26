@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -15,6 +15,13 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel'
 
 const pricingTiers = [
   {
@@ -110,8 +117,8 @@ export function PricingDialog({ children }: PricingDialogProps) {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-6xl">
-        <DialogHeader>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Upgrade your plan</DialogTitle>
           <DialogDescription>
             Choose the plan that best fits your needs
@@ -119,7 +126,7 @@ export function PricingDialog({ children }: PricingDialogProps) {
         </DialogHeader>
 
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-3 py-2">
+        <div className="flex items-center justify-center gap-3 py-2 shrink-0">
           <Label htmlFor="billing-toggle" className={cn("text-sm", !isAnnual && "font-medium")}>
             Monthly
           </Label>
@@ -134,7 +141,81 @@ export function PricingDialog({ children }: PricingDialogProps) {
           </Label>
         </div>
         
-        <div className="grid grid-cols-4 gap-4 pt-2">
+        {/* Mobile Carousel */}
+        <div className="md:hidden flex-1 overflow-y-auto py-4">
+          <Carousel className="w-full px-2" opts={{ startIndex: 2, align: 'center' }}>
+            <CarouselContent className="-ml-4">
+              {pricingTiers.map((tier) => {
+                const savings = isAnnual ? getAnnualSavings(tier.monthlyPrice) : null
+                
+                return (
+                  <CarouselItem key={tier.id} className="pl-4 basis-[90%] pt-4 pb-1">
+                    <div
+                      onClick={() => !tier.disabled && setSelectedTier(tier.id)}
+                      className={cn(
+                        'relative flex flex-col rounded-xl border p-5 transition-all min-h-[420px]',
+                        !tier.disabled && 'cursor-pointer',
+                        selectedTier === tier.id && !tier.disabled
+                          ? 'border-foreground ring-1 ring-foreground'
+                          : !tier.disabled && 'hover:border-foreground/30',
+                        tier.disabled && 'opacity-50 cursor-default'
+                      )}
+                    >
+                      {tier.popular && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                            Popular
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="mb-4">
+                        <h3 className="font-semibold text-lg">{tier.name}</h3>
+                        <p className="text-sm text-muted-foreground">{tier.description}</p>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <span className="text-3xl font-bold">{getPrice(tier.monthlyPrice)}</span>
+                        {tier.monthlyPrice !== null && (
+                          <span className="text-muted-foreground">/month</span>
+                        )}
+                        {savings && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Save ${savings}/year
+                          </p>
+                        )}
+                      </div>
+                      
+                      <ul className="space-y-2.5 mb-6 flex-1">
+                        {tier.features.map((feature, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm">
+                            <Check className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      
+                      <Button
+                        variant={tier.popular ? 'default' : 'outline'}
+                        className="w-full mt-auto"
+                        disabled={tier.disabled}
+                      >
+                        {tier.cta}
+                      </Button>
+                    </div>
+                  </CarouselItem>
+                )
+              })}
+            </CarouselContent>
+            <div className="flex justify-center gap-2 mt-4">
+              <CarouselPrevious className="static translate-y-0" />
+              <CarouselNext className="static translate-y-0" />
+            </div>
+          </Carousel>
+        </div>
+
+        {/* Desktop Grid */}
+        <div className="hidden md:grid grid-cols-4 gap-4 pt-6">
           {pricingTiers.map((tier) => {
             const savings = isAnnual ? getAnnualSavings(tier.monthlyPrice) : null
             

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Pencil, Sparkle } from '@phosphor-icons/react'
+import { Pencil, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -63,7 +63,7 @@ export function EditableText({
               isOpen ? "opacity-100" : "opacity-0 group-hover/editable:opacity-100"
             )}
           >
-            <Pencil className="size-4 h-4" weight="fill" />
+            <Pencil className="size-4" />
           </Button>
         </PopoverTrigger>
 
@@ -88,7 +88,7 @@ export function EditableText({
                     variant="ghost"
                     className="absolute bottom-2 right-2 size-8"
                   >
-                    <Sparkle className="size-4" weight="fill" />
+                    <Sparkles className="size-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

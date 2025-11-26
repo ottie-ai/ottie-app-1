@@ -11,7 +11,18 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 - Only after installation, import the component from `@/components/ui`.
 - Never replace Shadcn components with standard HTML elements (e.g., never use `<input type="range">` instead of `<Slider>`).
 - Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.
-- **Icons:** Phosphor Icons (`@phosphor-icons/react`) for templates. Lucide icons for shadcn components.
+- **Icons:** 
+  - **Lucide React (`lucide-react`)** for ALL system/UI components:
+    - Dashboard and all subpages
+    - Workspace navbar, settings panels, editor buttons
+    - Editable text/field components
+    - Privacy page, main landing page
+    - Any shadcn-based UI
+  - **Phosphor Icons (`@phosphor-icons/react`)** ONLY for end-user template content:
+    - Template sections: Hero, Features, Gallery, Contact, Agent
+    - Floating CTA button (WhatsApp/Phone/Email)
+    - Any icons visible in the generated property website
+  - Use `weight="fill"` for Phosphor icons when appropriate.
 - **Animation:** Framer Motion (`framer-motion`). Add subtle, premium entry animations (fade-in, slide-up) to all major UI sections and micro-interactions (hover scales, tap effects) to interactive elements.
 - **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
 - **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.

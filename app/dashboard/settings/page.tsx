@@ -4,7 +4,6 @@ import { useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -74,241 +73,229 @@ export default function SettingsPage() {
         </nav>
 
         {/* Content - scrollable */}
-        <main className="flex-1 p-6 space-y-6 max-w-3xl overflow-y-auto scrollbar-hide">
+        <main className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="p-6 space-y-12 max-w-2xl">
           {/* Profile Section */}
-          <div ref={sectionRefs.profile} id="profile" className="scroll-mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Profile</CardTitle>
-                <CardDescription>
-                  Manage your personal information and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Avatar */}
-                <div className="flex items-center gap-4">
-                  <Avatar className="size-20">
-                    <AvatarImage src="" alt="John Doe" />
-                    <AvatarFallback className="text-2xl">JD</AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1">
-                    <Button variant="outline" size="sm">Change photo</Button>
-                    <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
-                  </div>
-                </div>
+          <section ref={sectionRefs.profile} id="profile" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Profile</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage your personal information and preferences
+              </p>
+            </div>
+            
+            {/* Avatar */}
+            <div className="flex items-center gap-4">
+              <Avatar className="size-20">
+                <AvatarImage src="" alt="John Doe" />
+                <AvatarFallback className="text-2xl">JD</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <Button variant="outline" size="sm">Change photo</Button>
+                <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
+              </div>
+            </div>
 
-                <Separator />
+            {/* Name */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input id="firstName" defaultValue="John" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" defaultValue="Doe" />
+              </div>
+            </div>
 
-                {/* Name */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name</Label>
-                    <Input id="firstName" defaultValue="John" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name</Label>
-                    <Input id="lastName" defaultValue="Doe" />
-                  </div>
-                </div>
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" defaultValue="john@example.com" />
+            </div>
 
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="john@example.com" />
-                </div>
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" />
+            </div>
 
-                {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone number</Label>
-                  <Input id="phone" type="tel" placeholder="+1 (555) 000-0000" />
-                </div>
+            <Button>Save changes</Button>
+          </section>
 
-                <Button>Save changes</Button>
-              </CardContent>
-            </Card>
-          </div>
+          <Separator />
 
           {/* Company Section */}
-          <div ref={sectionRefs.company} id="company" className="scroll-mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Company</CardTitle>
-                <CardDescription>
-                  Your company information for branding
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company name</Label>
-                  <Input id="companyName" placeholder="Acme Real Estate" />
-                </div>
+          <section ref={sectionRefs.company} id="company" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Company</h2>
+              <p className="text-sm text-muted-foreground">
+                Your company information for branding
+              </p>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input id="website" type="url" placeholder="https://example.com" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company name</Label>
+              <Input id="companyName" placeholder="Acme Real Estate" />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="license">License number</Label>
-                  <Input id="license" placeholder="DRE #01234567" />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input id="website" type="url" placeholder="https://example.com" />
+            </div>
 
-                <Button>Save changes</Button>
-              </CardContent>
-            </Card>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="license">License number</Label>
+              <Input id="license" placeholder="DRE #01234567" />
+            </div>
+
+            <Button>Save changes</Button>
+          </section>
+
+          <Separator />
 
           {/* Appearance Section */}
-          <div ref={sectionRefs.appearance} id="appearance" className="scroll-mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Appearance</CardTitle>
-                <CardDescription>
-                  Customize how Ottie looks on your device
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Theme</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Select your preferred theme
-                  </p>
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant={theme === 'light' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTheme('light')}
-                      className="flex-1 gap-2"
-                    >
-                      <Sun className="size-4" />
-                      Light
-                    </Button>
-                    <Button
-                      variant={theme === 'dark' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTheme('dark')}
-                      className="flex-1 gap-2"
-                    >
-                      <Moon className="size-4" />
-                      Dark
-                    </Button>
-                    <Button
-                      variant={theme === 'system' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setTheme('system')}
-                      className="flex-1 gap-2"
-                    >
-                      <Monitor className="size-4" />
-                      System
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <section ref={sectionRefs.appearance} id="appearance" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Appearance</h2>
+              <p className="text-sm text-muted-foreground">
+                Customize how Ottie looks on your device
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Theme</Label>
+              <p className="text-sm text-muted-foreground">
+                Select your preferred theme
+              </p>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant={theme === 'light' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTheme('light')}
+                  className="flex-1 gap-2"
+                >
+                  <Sun className="size-4" />
+                  Light
+                </Button>
+                <Button
+                  variant={theme === 'dark' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTheme('dark')}
+                  className="flex-1 gap-2"
+                >
+                  <Moon className="size-4" />
+                  Dark
+                </Button>
+                <Button
+                  variant={theme === 'system' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTheme('system')}
+                  className="flex-1 gap-2"
+                >
+                  <Monitor className="size-4" />
+                  System
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
 
           {/* Notifications Section */}
-          <div ref={sectionRefs.notifications} id="notifications" className="scroll-mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>
-                  Configure how you receive notifications
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Email notifications</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive emails about page views and leads
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
+          <section ref={sectionRefs.notifications} id="notifications" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Notifications</h2>
+              <p className="text-sm text-muted-foreground">
+                Configure how you receive notifications
+              </p>
+            </div>
 
-                <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Email notifications</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive emails about page views and leads
+                </p>
+              </div>
+              <Switch defaultChecked />
+            </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Weekly reports</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get a weekly summary of your page performance
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Weekly reports</Label>
+                <p className="text-sm text-muted-foreground">
+                  Get a weekly summary of your page performance
+                </p>
+              </div>
+              <Switch defaultChecked />
+            </div>
 
-                <Separator />
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Marketing emails</Label>
+                <p className="text-sm text-muted-foreground">
+                  Receive tips and product updates
+                </p>
+              </div>
+              <Switch />
+            </div>
+          </section>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Marketing emails</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive tips and product updates
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Separator />
 
           {/* Plan Section */}
-          <div ref={sectionRefs.plan} id="plan" className="scroll-mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Current Plan
-                  <Badge variant="secondary">Free</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Manage your subscription and billing
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Free Plan</span>
-                    <span className="text-muted-foreground">$0/month</span>
-                  </div>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Up to 3 pages</li>
-                    <li>• Basic analytics</li>
-                    <li>• Ottie branding</li>
-                  </ul>
-                </div>
+          <section ref={sectionRefs.plan} id="plan" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                Current Plan
+                <Badge variant="secondary">Free</Badge>
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Manage your subscription and billing
+              </p>
+            </div>
 
-                <PricingDialog>
-                  <Button className="w-full">Upgrade to Pro</Button>
-                </PricingDialog>
-              </CardContent>
-            </Card>
-          </div>
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Free Plan</span>
+                <span className="text-muted-foreground">$0/month</span>
+              </div>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Up to 3 pages</li>
+                <li>• Basic analytics</li>
+                <li>• Ottie branding</li>
+              </ul>
+            </div>
+
+            <PricingDialog>
+              <Button className="w-full">Upgrade to Pro</Button>
+            </PricingDialog>
+          </section>
+
+          <Separator />
 
           {/* Danger Zone */}
-          <div ref={sectionRefs.danger} id="danger" className="scroll-mt-6">
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                <CardDescription>
-                  Irreversible actions for your account
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <p className="font-medium">Delete account</p>
-                    <p className="text-sm text-muted-foreground">
-                      Permanently delete your account and all data
-                    </p>
-                  </div>
-                  <Button variant="destructive" size="sm">
-                    Delete account
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <section ref={sectionRefs.danger} id="danger" className="scroll-mt-6 space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
+              <p className="text-sm text-muted-foreground">
+                Irreversible actions for your account
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="font-medium">Delete account</p>
+                <p className="text-sm text-muted-foreground">
+                  Permanently delete your account and all data
+                </p>
+              </div>
+              <Button variant="destructive" size="sm">
+                Delete account
+              </Button>
+            </div>
+          </section>
           </div>
         </main>
       </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode } from 'react'
-import { Sparkle } from '@phosphor-icons/react'
+import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
@@ -38,7 +38,7 @@ export function SectionEditor({
                 size="sm"
                 className="gap-2 shadow-lg"
               >
-                <Sparkle weight="fill" className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" />
                 Remix Section
               </Button>
             </PopoverTrigger>

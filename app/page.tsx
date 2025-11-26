@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check } from '@phosphor-icons/react'
+import { Check } from 'lucide-react'
 import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
 import { ScrollReveal } from '@/components/ui/scroll-reveal'
