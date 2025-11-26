@@ -29,7 +29,7 @@ export function FeaturesGrid({ data, theme }: SectionComponentProps<FeaturesSect
   const { title, features } = data
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="relative py-16 md:py-24 bg-background rounded-t-[2rem] -mt-8 z-30 shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.3)]">
       <div className="container mx-auto px-4">
         {title && (
           <h2 

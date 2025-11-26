@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useCallback, useState } from 'react'
-import { ThemeConfig, HeroSectionData } from '@/types/builder'
+import { ThemeConfig, HeroSectionData, CTAType } from '@/types/builder'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { 
   Field, 
   FieldGroup, 
-  FieldLabel 
+  FieldLabel,
+  FieldSeparator
 } from '@/components/ui/field'
 import { 
   Carousel, 
@@ -16,6 +18,13 @@ import {
   CarouselNext,
   type CarouselApi 
 } from '@/components/ui/carousel'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { FontSelector } from '@/components/builder/FontSelector'
 import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/builder/registry'
@@ -100,18 +109,34 @@ export function HeroRemixPanel({
 }
 
 // ============================================
-// Settings Panel - Font & Typography
+// Page Settings Panel - Global settings for the entire page
 // ============================================
 
-interface HeroSettingsPanelProps {
+interface PageSettingsPanelProps {
   theme: ThemeConfig
   onThemeChange: (theme: ThemeConfig) => void
 }
 
-export function HeroSettingsPanel({ 
+const ctaOptions: { value: CTAType; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+]
+
+const ctaPlaceholders: Record<CTAType, string> = {
+  none: '',
+  whatsapp: '+1234567890',
+  phone: '+1234567890',
+  email: 'hello@example.com',
+}
+
+export function PageSettingsPanel({ 
   theme, 
   onThemeChange
-}: HeroSettingsPanelProps) {
+}: PageSettingsPanelProps) {
+  const ctaType = theme.ctaType || 'whatsapp'
+  
   return (
     <FieldGroup className="gap-5">
       <Field>
@@ -130,6 +155,42 @@ export function HeroSettingsPanel({
               onCheckedChange={(checked) => onThemeChange({ ...theme, uppercaseTitles: checked })}
             />
       </Field>
+
+      <FieldSeparator />
+
+      <Field>
+        <FieldLabel>Floating CTA Button</FieldLabel>
+        <Select 
+          value={ctaType} 
+          onValueChange={(value: CTAType) => onThemeChange({ ...theme, ctaType: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select CTA type" />
+          </SelectTrigger>
+          <SelectContent>
+            {ctaOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      {ctaType !== 'none' && (
+        <Field>
+          <FieldLabel>
+            {ctaType === 'whatsapp' ? 'WhatsApp Number' : 
+             ctaType === 'phone' ? 'Phone Number' : 'Email Address'}
+          </FieldLabel>
+          <Input
+            type={ctaType === 'email' ? 'email' : 'tel'}
+            value={theme.ctaValue || ''}
+            onChange={(e) => onThemeChange({ ...theme, ctaValue: e.target.value })}
+            placeholder={ctaPlaceholders[ctaType]}
+          />
+        </Field>
+      )}
     </FieldGroup>
   )
 }

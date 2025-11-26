@@ -12,6 +12,15 @@ import { HeroFull } from '@/components/sections/hero/HeroFull'
 // Import Features variants
 import { FeaturesGrid, FeaturesList, FeaturesMinimal } from '@/components/sections/features'
 
+// Import Gallery variants
+import { GalleryGrid } from '@/components/sections/gallery'
+
+// Import Agent variants
+import { AgentCard } from '@/components/sections/agent'
+
+// Import Contact variants
+import { ContactSimple } from '@/components/sections/contact'
+
 /**
  * Generic section component type that accepts any data shape
  */
@@ -47,16 +56,13 @@ export const componentRegistry: RegistryMap = {
     minimal: FeaturesMinimal,
   },
   gallery: {
-    // grid: GalleryGrid,
-    // carousel: GalleryCarousel,
+    grid: GalleryGrid,
   },
   agent: {
-    // card: AgentCard,
-    // split: AgentSplit,
+    card: AgentCard,
   },
   contact: {
-    // simple: ContactSimple,
-    // split: ContactSplit,
+    simple: ContactSimple,
   },
 }
 

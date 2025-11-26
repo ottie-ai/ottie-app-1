@@ -1,6 +1,11 @@
 // Page Builder Type Definitions
 
 /**
+ * CTA button types for floating action button
+ */
+export type CTAType = 'none' | 'whatsapp' | 'phone' | 'email'
+
+/**
  * Available section types in the page builder
  */
 export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact'
@@ -54,6 +59,10 @@ export interface ThemeConfig {
   textColor: string
   /** Border radius size */
   borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'full'
+  /** Floating CTA button type */
+  ctaType?: CTAType
+  /** CTA value (phone number, email, etc.) */
+  ctaValue?: string
 }
 
 /**

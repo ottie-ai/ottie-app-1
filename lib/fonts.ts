@@ -17,6 +17,13 @@ export const headingFonts: FontOption[] = [
   // 1. Luxury & Elegant (Villas, Historic Estates, High-end)
   // ============================================
   {
+    name: 'Canela',
+    value: 'Canela',
+    category: 'luxury',
+    weights: [100],
+    description: 'Ultra-thin, refined serif. Perfect for luxury brands.',
+  },
+  {
     name: 'Playfair Display',
     value: 'Playfair Display',
     category: 'luxury',

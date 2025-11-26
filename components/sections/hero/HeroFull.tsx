@@ -1,41 +1,60 @@
 'use client'
 
+import { useRef } from 'react'
 import Image from 'next/image'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
+import { WordReveal } from '@/components/ui/word-reveal'
 
 /**
- * HeroFull - Full-screen cinematic hero with editorial layout
+ * HeroFull - Full-screen cinematic hero with large centered title
  * Inspired by luxury real estate and editorial design
  */
 export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const sectionRef = useRef<HTMLElement>(null)
   
   const {
     headline,
     subheadline,
     backgroundImage,
     propertyImage,
-    price,
-    address,
   } = data
 
   // Use backgroundImage or propertyImage
   const imageUrl = backgroundImage || propertyImage
 
-  // Format current date
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  // Scroll progress for this section
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"]
   })
 
+  // Background parallax - moves up slower
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '30%'])
+  
+  // Title transforms - shrinks and moves to top center
+  const titleScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.15])
+  const titleY = useTransform(scrollYProgress, [0, 0.5], ['0%', '-180%'])
+  const titleOpacity = useTransform(scrollYProgress, [0.4, 0.6], [1, 0])
+  
+  // Subtitle transforms - fades out and moves down
+  const subtitleY = useTransform(scrollYProgress, [0, 0.3], ['0px', '50px'])
+  const subtitleOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0])
+  
+  // Scroll indicator - fades out quickly
+  const scrollIndicatorOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0])
+
   return (
-    <section className="relative min-h-screen w-full overflow-hidden -mt-12 pt-12">
-      {/* Background Image */}
+    <section ref={sectionRef} className="relative h-screen w-full overflow-hidden">
+      {/* Background Image with Parallax */}
       {imageUrl ? (
-        <div className="absolute inset-0 z-0 -top-12">
+        <motion.div 
+          className="absolute inset-0 z-0"
+          style={{ y: backgroundY }}
+        >
           <Image
             src={imageUrl}
             alt=""
@@ -44,105 +63,104 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
             priority
             sizes="100vw"
           />
-          {/* Gradient overlays for better text readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
-        </div>
+          {/* Subtle gradient overlay for text readability */}
+          <div className="absolute inset-0 bg-black/30" />
+        </motion.div>
       ) : (
-        <div
-          className="absolute inset-0 z-0 bg-background"
-        />
+        <div className="absolute inset-0 z-0 bg-background" />
       )}
 
-      {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col">
-        {/* Top - Address */}
-        {address && (
-          <div className="pt-16 md:pt-20 text-center">
-            <p className="text-white/90 text-sm md:text-base tracking-wide">
-              {address}
-            </p>
+      {/* Large Title - transforms on scroll */}
+      <motion.div 
+        className="absolute inset-x-0 top-[20%] md:top-[25%] z-10 flex justify-center items-center pointer-events-none px-[5%]"
+        style={{ 
+          scale: titleScale,
+          y: titleY,
+          opacity: titleOpacity,
+        }}
+      >
+        {onDataChange ? (
+          <div className="pointer-events-auto w-full flex justify-center">
+            <EditableText
+              value={headline}
+              onChange={(value) => onDataChange({ ...data, headline: value })}
+              label="Edit Title"
+              description="Update the main title text."
+            >
+              <h1 
+                className={`text-center text-[clamp(2rem,12vw,20rem)] text-white font-thin leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                style={{ 
+                  fontFamily: headingFont,
+                  fontWeight: 100,
+                  letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+                }}
+              >
+                <WordReveal text={headline} delay={0.5} wordDelay={0.15} />
+              </h1>
+            </EditableText>
           </div>
+        ) : (
+          <h1 
+            className={`text-center text-[clamp(2rem,12vw,20rem)] text-white font-thin leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+            style={{ 
+              fontFamily: headingFont,
+              fontWeight: 100,
+              letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+            }}
+          >
+            <WordReveal text={headline} delay={0.5} wordDelay={0.15} />
+          </h1>
         )}
+      </motion.div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Bottom Content */}
-        <div className="pb-12 md:pb-16 lg:pb-20 px-6 md:px-12 lg:px-20">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 lg:gap-16">
-              {/* Left side - Date & Headline */}
-              <div className="lg:max-w-[65%]">
-                {/* Date & Category */}
-                <div className="flex items-center gap-2 text-white/70 text-sm mb-4 md:mb-6">
-                  <span>{currentDate}</span>
-                  {price && (
-                    <>
-                      <span>·</span>
-                      <span>{price}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Headline */}
-                {onDataChange ? (
-                  <EditableText
-                    value={headline}
-                    onChange={(value) => onDataChange({ ...data, headline: value })}
-                    label="Edit Headline"
-                    description="Update the main headline text."
-                  >
-                    <h1 
-                      className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
-                      style={{ 
-                        fontFamily: headingFont,
-                        transform: `scale(${theme?.headingFontSize || 1})`,
-                        letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-                      }}
-                    >
-                      {headline}
-                    </h1>
-                  </EditableText>
-                ) : (
-                <h1 
-                  className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl text-white leading-[1.1] ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
-                  style={{ 
-                    fontFamily: headingFont,
-                    transform: `scale(${theme?.headingFontSize || 1})`,
-                    letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-                  }}
+      {/* Bottom Content - fades out on scroll */}
+      <motion.div 
+        className="absolute bottom-0 left-0 right-0 z-20 pb-8 md:pb-12 px-6 md:px-10"
+        style={{
+          y: subtitleY,
+          opacity: subtitleOpacity,
+        }}
+      >
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          {/* Left - Description */}
+          <div className="max-w-xl">
+            {subheadline && (
+              onDataChange ? (
+                <EditableText
+                  value={subheadline}
+                  onChange={(value) => onDataChange({ ...data, subheadline: value })}
+                  label="Edit Description"
+                  description="Update the description text."
                 >
-                  {headline}
-                </h1>
-                )}
-              </div>
-
-              {/* Right side - Description */}
-              {subheadline && (
-                <div className="lg:max-w-[320px] lg:pb-2">
-                  {onDataChange ? (
-                    <EditableText
-                      value={subheadline}
-                      onChange={(value) => onDataChange({ ...data, subheadline: value })}
-                      label="Edit Description"
-                      description="Update the description text."
-                    >
-                      <p className="text-white/80 text-sm md:text-base leading-relaxed">
-                        {subheadline}
-                      </p>
-                    </EditableText>
-                  ) : (
-                  <p className="text-white/80 text-sm md:text-base leading-relaxed">
-                    {subheadline}
+                  <p 
+                    className="text-white/80 text-2xl md:text-3xl leading-relaxed tracking-wide"
+                    style={{ fontFamily: headingFont }}
+                  >
+                    <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
                   </p>
-                  )}
-                </div>
-              )}
-            </div>
+                </EditableText>
+              ) : (
+                <p 
+                  className="text-white/80 text-2xl md:text-3xl leading-relaxed tracking-wide"
+                  style={{ fontFamily: headingFont }}
+                >
+                  <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
+                </p>
+              )
+            )}
           </div>
+
+          {/* Center - Scroll indicator */}
+          <motion.div 
+            className="hidden md:block absolute left-1/2 -translate-x-1/2 bottom-8"
+            style={{ opacity: scrollIndicatorOpacity }}
+          >
+            <span className="text-white/60 text-xs uppercase tracking-[0.2em] animate-word-reveal" style={{ animationDelay: '1.5s' }}>
+              Scroll Down
+            </span>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }

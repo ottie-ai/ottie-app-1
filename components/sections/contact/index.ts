@@ -1,0 +1,2 @@
+export { ContactSimple } from './ContactSimple'
+

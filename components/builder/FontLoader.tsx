@@ -3,18 +3,24 @@
 import { useEffect } from 'react'
 import { getGoogleFontsUrl } from '@/lib/fonts'
 
+// Local fonts that don't need Google Fonts loading
+const LOCAL_FONTS = ['Canela']
+
 interface FontLoaderProps {
   fonts: string[]
 }
 
 /**
- * Dynamically loads Google Fonts
+ * Dynamically loads Google Fonts (skips local fonts)
  */
 export function FontLoader({ fonts }: FontLoaderProps) {
   useEffect(() => {
-    if (fonts.length === 0) return
+    // Filter out local fonts
+    const googleFonts = fonts.filter(font => !LOCAL_FONTS.includes(font))
 
-    const url = getGoogleFontsUrl(fonts)
+    if (googleFonts.length === 0) return
+
+    const url = getGoogleFontsUrl(googleFonts)
     const linkId = 'google-fonts-loader'
     
     // Check if link already exists

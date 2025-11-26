@@ -88,8 +88,8 @@ export default function Home() {
   // Scroll observer for sections - directly manipulate DOM to avoid re-renders
   useEffect(() => {
     if (isLoading) return
-    
-    const handleScroll = () => {
+
+      const handleScroll = () => {
       const secondSection = secondSectionRef.current
       const thirdSection = thirdSectionRef.current
       const sphereWrapper = sphereWrapperRef.current
@@ -138,7 +138,7 @@ export default function Home() {
         setLoadingPhase('exiting')
       }, 2000)
       return () => clearTimeout(timer)
-    }
+            }
 
     if (loadingPhase === 'exiting') {
       const timer = setTimeout(() => {
@@ -178,7 +178,7 @@ export default function Home() {
         setHasMouseMoved(true)
         sphere.style.animation = 'none'
       }
-      
+
       // Calculate mouse position relative to center of screen
       const centerX = window.innerWidth / 2
       const centerY = window.innerHeight / 2
@@ -197,7 +197,7 @@ export default function Home() {
     }
 
     window.addEventListener('mousemove', handleMouseMove)
-    
+
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [isLoading, isMobile, hasMouseMoved])
 
@@ -232,7 +232,7 @@ export default function Home() {
     }
     
     loadingAnimationRef.current = requestAnimationFrame(animateLoading)
-    
+
     return () => {
       if (loadingAnimationRef.current) {
         cancelAnimationFrame(loadingAnimationRef.current)
@@ -261,10 +261,10 @@ export default function Home() {
   return (
     <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
-      <div 
+        <div
         ref={sphereWrapperRef}
         className={`sphere-scale-wrapper ${isLoading ? 'sphere-expanded' : ''}`}
-      >
+        >
         <div 
           ref={sphereRef}
           className={`sphere-background ${isLoading ? 'sphere-active' : ''}`}
@@ -272,8 +272,8 @@ export default function Home() {
           {Array.from({ length: 36 }, (_, i) => (
             <div key={i + 1} className={`ring${i + 1}`} />
           ))}
+          </div>
         </div>
-      </div>
 
       {/* Loading Text Overlay */}
       {isLoading && loadingPhase !== 'waiting' && (
@@ -289,7 +289,7 @@ export default function Home() {
                       ? `${(loadingWords.length - 1 - index) * 0.15}s`
                       : `${index * 0.18}s`,
                   }}
-                >
+        >
                   {word}
                   {index < loadingWords.length - 1 && '\u00A0'}
                 </span>
@@ -309,7 +309,7 @@ export default function Home() {
           {/* Main content - centered */}
           <div className="flex-1 flex items-center justify-center">
             <div className="quote-container flex flex-col items-center text-center">
-              {/* Eyebrow */}
+          {/* Eyebrow */}
           <Typography variant="small" className="mb-4 text-white/60 uppercase tracking-wider animate-fade-in-up">
             Ottie App
           </Typography>
@@ -361,14 +361,14 @@ export default function Home() {
               Generate Free Site
             </MagneticButton>
             
-              {/* Manual Start Link */}
-              <div className="pt-1">
-                <Link 
-                  href="#" 
+            {/* Manual Start Link */}
+            <div className="pt-1">
+              <Link 
+                href="#" 
                   className="text-sm text-white hover:text-white/80 underline underline-offset-4 transition-colors"
-                >
-                  or fill in data manually
-                </Link>
+              >
+                or fill in data manually
+              </Link>
               </div>
             </div>
             </div>
@@ -435,7 +435,7 @@ export default function Home() {
               <span className="text-xs text-white/50">GDPR compliant</span>
               <span className="text-xs text-white/50">•</span>
               <span className="text-xs text-white/50">SOC2 ready</span>
-            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -456,44 +456,44 @@ export default function Home() {
           </Typography>
           <div className="space-y-3 text-left">
             <ScrollReveal delay={0.5}>
-              <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
                 <Typography variant="small" className="text-white/60">
                   No more catalog confusion — <span className="font-semibold text-white">each listing gets its own site</span>.
-                </Typography>
-              </div>
+              </Typography>
+            </div>
             </ScrollReveal>
             <ScrollReveal delay={0.6}>
-              <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
                 <Typography variant="small" className="text-white/60">
                   <span className="font-semibold text-white">Impress buyers instantly</span> — beautiful on every device.
-                </Typography>
-              </div>
+              </Typography>
+            </div>
             </ScrollReveal>
             <ScrollReveal delay={0.7}>
-              <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
                 <Typography variant="small" className="text-white/60">
                   <span className="font-semibold text-white">Share anywhere</span> — WhatsApp, ads, email, with a unique property link.
-                </Typography>
-              </div>
+              </Typography>
+            </div>
             </ScrollReveal>
             <ScrollReveal delay={0.8}>
-              <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
                 <Typography variant="small" className="text-white/60">
                   Built for <span className="font-semibold text-white">speed, SEO, and seamless lead capture</span>.
-                </Typography>
-              </div>
+              </Typography>
+            </div>
             </ScrollReveal>
             <ScrollReveal delay={0.9}>
-              <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-white mt-0.5 flex-shrink-0" />
                 <Typography variant="small" className="text-white/60">
                   <span className="font-semibold text-white">Agent-first privacy</span> — your data stays yours. <span className="font-semibold text-white">Never sold, never shared</span>.
-                </Typography>
-              </div>
+              </Typography>
+            </div>
             </ScrollReveal>
           </div>
         </div>
