@@ -39,12 +39,12 @@ export default function DashboardLayout({
   return (
     <>
       <UserJotLoader />
-      <SidebarProvider>
-        <DashboardSidebar />
-        <SidebarInset className="h-screen overflow-hidden">
-          {children}
-        </SidebarInset>
-      </SidebarProvider>
+    <SidebarProvider>
+      <DashboardSidebar />
+      <SidebarInset className="h-screen overflow-hidden">
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
     </>
   )
 }
