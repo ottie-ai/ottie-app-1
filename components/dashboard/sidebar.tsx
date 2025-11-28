@@ -17,6 +17,12 @@ import {
   ExternalLink,
   Sun,
   Moon,
+  Sparkles,
+  MessageSquare,
+  Lightbulb,
+  Bug,
+  ChevronRight,
+  BookOpen,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -69,11 +75,6 @@ const bottomNavItems = [
     title: 'Settings',
     url: '/dashboard/settings',
     icon: Settings,
-  },
-  {
-    title: 'Help & Support',
-    url: '/dashboard/help',
-    icon: HelpCircle,
   },
 ]
 
@@ -277,6 +278,51 @@ export function DashboardSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Help & Support */}
+              <SidebarMenuItem>
+                <DropdownMenu suppressHydrationWarning>
+                  <DropdownMenuTrigger asChild suppressHydrationWarning>
+                    <SidebarMenuButton 
+                      asChild={false}
+                      isActive={false}
+                      tooltip="Help & Support"
+                    >
+                      <HelpCircle className="size-4" />
+                      <span>Help & Support</span>
+                      <ChevronRight className="ml-auto size-4" />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-56 rounded-lg"
+                    align="end"
+                    side="right"
+                    sideOffset={4}
+                  >
+                    <DropdownMenuItem>
+                      <Sparkles className="mr-2 size-4" />
+                      AI Copilot
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <MessageSquare className="mr-2 size-4" />
+                      Contact Support
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <BookOpen className="mr-2 size-4" />
+                      Documentation
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openUserJot}>
+                      <Lightbulb className="mr-2 size-4" />
+                      Suggest Feature
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={openUserJot}>
+                      <Bug className="mr-2 size-4" />
+                      Flag Bug
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
 
               {/* Feedback Button */}
               <SidebarMenuItem>
