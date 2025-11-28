@@ -131,7 +131,7 @@ export function DashboardSidebar() {
       <SidebarHeader className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu suppressHydrationWarning>
+            <DropdownMenu>
               <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
@@ -281,7 +281,7 @@ export function DashboardSidebar() {
 
               {/* Help & Support */}
               <SidebarMenuItem>
-                <DropdownMenu suppressHydrationWarning>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild suppressHydrationWarning>
                     <SidebarMenuButton 
                       asChild={false}
@@ -357,7 +357,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu suppressHydrationWarning>
+            <DropdownMenu>
               <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
