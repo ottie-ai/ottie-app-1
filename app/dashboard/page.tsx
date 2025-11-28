@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { GlowCard } from '@/components/ui/glow-card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -126,9 +127,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Pages Grid */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 p-2 -m-2">
             {/* New Page Card */}
-            <Card className="border-dashed hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer group">
+            <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer group">
               <CardContent className="flex flex-col items-center justify-center h-[280px] text-muted-foreground group-hover:text-primary transition-colors">
                 <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
                   <Plus className="size-6" />
@@ -136,13 +137,13 @@ export default function DashboardPage() {
                 <span className="font-medium">Create New Page</span>
                 <span className="text-xs mt-1">Start from scratch or use AI</span>
               </CardContent>
-            </Card>
+            </GlowCard>
 
             {/* Page Cards */}
             {mockPages.map((page) => (
-              <Card key={page.id} className="overflow-hidden group">
+              <GlowCard key={page.id} className="group">
                 {/* Thumbnail */}
-                <div className="relative aspect-[16/10] bg-muted overflow-hidden">
+                <div className="relative aspect-[16/10] bg-muted overflow-hidden rounded-t-lg">
                   <img 
                     src={page.thumbnail} 
                     alt={page.title}
@@ -218,7 +219,7 @@ export default function DashboardPage() {
                     </DropdownMenu>
                   </div>
                 </CardContent>
-              </Card>
+              </GlowCard>
             ))}
           </div>
         </div>

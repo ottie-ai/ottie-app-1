@@ -191,17 +191,22 @@ export function PricingDialog({ children }: PricingDialogProps) {
                     <div
                       onClick={() => !tier.disabled && setSelectedTier(tier.id)}
                       className={cn(
-                        'relative flex flex-col rounded-xl border p-5 transition-all min-h-[520px]',
+                        'relative flex flex-col rounded-xl p-5 transition-all min-h-[520px]',
                         !tier.disabled && 'cursor-pointer',
-                        selectedTier === tier.id && !tier.disabled
-                          ? 'border-foreground ring-1 ring-foreground'
-                          : !tier.disabled && 'hover:border-foreground/30',
+                        tier.popular 
+                          ? 'gradient-ottie-card-border'
+                          : cn(
+                              'border',
+                              selectedTier === tier.id && !tier.disabled
+                                ? 'border-foreground ring-1 ring-foreground'
+                                : !tier.disabled && 'hover:border-foreground/30'
+                            ),
                         tier.disabled && 'opacity-50 cursor-default'
                       )}
                     >
                       {tier.popular && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                          <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
+                          <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
                             Most Popular
                           </span>
                         </div>
@@ -325,21 +330,26 @@ export function PricingDialog({ children }: PricingDialogProps) {
                   key={tier.id}
                   onClick={() => !tier.disabled && setSelectedTier(tier.id)}
                   className={cn(
-                    'relative flex flex-col rounded-xl border p-5 transition-all',
+                    'relative flex flex-col rounded-xl p-5 transition-all',
                     !tier.disabled && 'cursor-pointer',
-                    selectedTier === tier.id && !tier.disabled
-                      ? 'border-foreground ring-1 ring-foreground'
-                      : !tier.disabled && 'hover:border-foreground/30',
+                    tier.popular 
+                      ? 'gradient-ottie-card-border'
+                      : cn(
+                          'border',
+                          selectedTier === tier.id && !tier.disabled
+                            ? 'border-foreground ring-1 ring-foreground'
+                            : !tier.disabled && 'hover:border-foreground/30'
+                        ),
                     tier.disabled && 'opacity-50 cursor-default'
                   )}
                 >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
+                {tier.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
                   
                   <div className="mb-3">
                     <h3 className="font-semibold text-lg">{tier.name}</h3>

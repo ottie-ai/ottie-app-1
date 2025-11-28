@@ -697,14 +697,15 @@ function PricingSection({ isLoading }: { isLoading: boolean }) {
               <ScrollReveal key={tier.id} delay={0.6 + index * 0.1}>
                 <div
                   className={cn(
-                    'relative flex flex-col rounded-2xl border border-white/10 p-6 transition-all h-full',
-                    'hover:border-white/20 hover:bg-white/[0.02]',
-                    tier.popular && 'border-white/30 bg-white/[0.03]'
+                    'relative flex flex-col rounded-2xl p-6 transition-all h-full',
+                    tier.popular 
+                      ? 'gradient-ottie-card-border bg-white/[0.03]' 
+                      : 'border border-white/10 hover:border-white/20 hover:bg-white/[0.02]'
                   )}
                 >
                   {tier.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-white text-black text-xs font-medium px-3 py-1 rounded-full">
+                      <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full">
                         Most Popular
                       </span>
                     </div>
