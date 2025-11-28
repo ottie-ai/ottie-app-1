@@ -24,12 +24,12 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
             <h2 
               className={cn(
                 'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                theme?.uppercaseTitles ? 'uppercase' : '',
-                isDark ? 'text-white' : 'text-foreground'
+                theme?.uppercaseTitles ? 'uppercase' : ''
               )}
               style={{ 
                 fontFamily: headingFont,
                 fontWeight: fontWeight,
+                color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
               }}
             >
               {title}

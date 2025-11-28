@@ -64,7 +64,7 @@ export function WordReveal({
           key={index}
           className={cn(
             'inline-block',
-            isVisible ? 'animate-word-reveal' : 'opacity-0 blur-sm'
+            isVisible ? 'animate-word-reveal' : 'opacity-0'
           )}
           style={{
             animationDelay: `${delay + index * wordDelay}s`,

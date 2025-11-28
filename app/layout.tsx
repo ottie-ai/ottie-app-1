@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { ThemeProvider } from "@/components/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -7,6 +6,15 @@ export const metadata: Metadata = {
   description: "A Next.js 14 fullstack application",
 }
 
+/**
+ * Root Layout
+ * 
+ * NOTE: ThemeProvider is NOT included here to allow different pages
+ * to have their own theme handling:
+ * - Dashboard: Has its own layout with ThemeProvider
+ * - Preview: Has its own layout with ThemeProvider (only for admin UI)
+ * - Homepage: No ThemeProvider (uses hardcoded dark styling)
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -15,14 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="bg-background text-foreground">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
       </body>
     </html>
   )

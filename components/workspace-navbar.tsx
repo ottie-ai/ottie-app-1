@@ -57,7 +57,7 @@ export function WorkspaceNavbar({
         filter: { duration: 0.6 }
       }}
     >
-      <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-white shadow-lg">
+      <div className="flex h-12 items-center px-2 rounded-lg border border-border/20 bg-background shadow-lg">
         {/* Left side - Back button */}
         <div className="flex items-center">
           <Button variant="ghost" size="sm" className="gap-1">

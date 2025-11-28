@@ -41,14 +41,14 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
             <h2 
               className={cn(
                 'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                theme?.uppercaseTitles ? 'uppercase' : '',
-                isDark ? 'text-white' : 'text-foreground'
+                theme?.uppercaseTitles ? 'uppercase' : ''
               )}
               style={{ 
                 fontFamily: headingFont,
                 fontWeight: fontWeight,
                 transform: `scale(${theme?.headingFontSize || 1})`,
                 letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+                color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
               }}
             >
               {title}
@@ -72,24 +72,26 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
                 >
                   {IconComponent && (
                     <IconComponent 
-                      className={cn(
-                        'w-8 h-8 mb-3 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                        isDark ? 'text-white/70' : 'text-primary'
-                      )}
+                      className="w-8 h-8 mb-3 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                      style={{ 
+                        color: isDark ? 'rgba(255,255,255,0.7)' : (theme?.primaryColor || '#3b82f6')
+                      }}
                     />
                   )}
                   <span 
-                    className={cn(
-                      'text-2xl md:text-3xl font-semibold mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                      isDark ? 'text-white' : 'text-foreground'
-                    )}
+                    className="text-2xl md:text-3xl font-semibold mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ 
+                      color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                    }}
                   >
                     {feature.value}
                   </span>
-                  <span className={cn(
-                    'text-sm transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/60' : 'text-muted-foreground'
-                  )}>
+                  <span 
+                    className="text-sm transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ 
+                      color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280'
+                    }}
+                  >
                     {feature.label}
                   </span>
                 </div>

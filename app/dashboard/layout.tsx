@@ -1,5 +1,6 @@
 'use client'
 
+import { ThemeProvider } from '@/components/theme-provider'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
 import { useUserJotIdentify } from '@/components/dashboard/use-userjot-identify'
@@ -37,15 +38,20 @@ export default function DashboardLayout({
   useUserJotIdentify(user)
 
   return (
-    <>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
       <UserJotLoader />
-    <SidebarProvider>
-      <DashboardSidebar />
-      <SidebarInset className="h-screen overflow-hidden">
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
-    </>
+      <SidebarProvider>
+        <DashboardSidebar />
+        <SidebarInset className="h-screen overflow-hidden">
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </ThemeProvider>
   )
 }
 

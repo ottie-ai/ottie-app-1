@@ -28,12 +28,12 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
               <h2 
                 className={cn(
                   'text-[clamp(2rem,5vw,4rem)] mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                  theme?.uppercaseTitles ? 'uppercase' : '',
-                  isDark ? 'text-white' : 'text-foreground'
+                  theme?.uppercaseTitles ? 'uppercase' : ''
                 )}
                 style={{ 
                   fontFamily: headingFont,
                   fontWeight: fontWeight,
+                  color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
                 }}
               >
                 {title}
@@ -41,10 +41,10 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
             )}
             
             {subtitle && (
-              <p className={cn(
-                'text-lg transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                isDark ? 'text-white/70' : 'text-muted-foreground'
-              )}>{subtitle}</p>
+              <p 
+                className="text-lg transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+              >{subtitle}</p>
             )}
           </div>
         </AnimateOnScroll>
@@ -53,34 +53,43 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
           <div className="grid md:grid-cols-2 gap-12">
             {/* Contact Info */}
             <AnimateOnScroll animation="fade-right" delay={0.6} className="space-y-6">
-              <h3 className={cn(
-                'text-lg font-medium mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                isDark ? 'text-white' : 'text-foreground'
-              )}>Get in Touch</h3>
+              <h3 
+                className="text-lg font-medium mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                style={{ color: isDark ? '#ffffff' : (theme?.textColor || '#111827') }}
+              >Get in Touch</h3>
               
               {address && (
                 <div className="flex items-start gap-3">
-                  <MapPin className={cn(
-                    'size-5 flex-shrink-0 mt-0.5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/60' : 'text-muted-foreground'
-                  )} weight="fill" />
-                  <p className={cn(
-                    'transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/70' : 'text-muted-foreground'
-                  )}>{address}</p>
+                  <MapPin 
+                    className="size-5 flex-shrink-0 mt-0.5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
+                    weight="fill" 
+                  />
+                  <p 
+                    className="transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+                  >{address}</p>
                 </div>
               )}
               
               {phone && (
                 <div className="flex items-center gap-3">
-                  <Phone className={cn(
-                    'size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/60' : 'text-muted-foreground'
-                  )} weight="fill" />
-                  <a href={`tel:${phone}`} className={cn(
-                    'transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground'
-                  )}>
+                  <Phone 
+                    className="size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
+                    weight="fill" 
+                  />
+                  <a 
+                    href={`tel:${phone}`} 
+                    className="transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.7)' : '#6b7280'
+                    }}
+                  >
                     {phone}
                   </a>
                 </div>
@@ -88,14 +97,22 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
               
               {email && (
                 <div className="flex items-center gap-3">
-                  <Envelope className={cn(
-                    'size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/60' : 'text-muted-foreground'
-                  )} weight="fill" />
-                  <a href={`mailto:${email}`} className={cn(
-                    'transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark ? 'text-white/70 hover:text-white' : 'text-muted-foreground hover:text-foreground'
-                  )}>
+                  <Envelope 
+                    className="size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
+                    weight="fill" 
+                  />
+                  <a 
+                    href={`mailto:${email}`} 
+                    className="transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.7)' : '#6b7280'
+                    }}
+                  >
                     {email}
                   </a>
                 </div>

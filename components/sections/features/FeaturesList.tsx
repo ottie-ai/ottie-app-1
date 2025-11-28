@@ -4,6 +4,7 @@ import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
 import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
+import { cn } from '@/lib/utils'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -24,12 +25,16 @@ const iconMap: Record<string, ComponentType<IconProps>> = {
 /**
  * FeaturesList - Horizontal list layout for property features
  */
-export function FeaturesList({ data, theme }: SectionComponentProps<FeaturesSectionData>) {
+export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComponentProps<FeaturesSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { title, features } = data
+  const isDark = colorScheme === 'dark'
 
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
+    <section className={cn(
+      "py-16 md:py-24",
+      isDark ? "bg-black/10" : "bg-gray-50"
+    )}>
       <div className="container mx-auto px-4">
         {title && (
           <h2 
@@ -56,23 +61,37 @@ export function FeaturesList({ data, theme }: SectionComponentProps<FeaturesSect
               >
                 {IconComponent && (
                   <div 
-                    className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10"
-                    style={theme?.primaryColor ? { backgroundColor: `${theme.primaryColor}15` } : undefined}
+                    className="flex items-center justify-center w-12 h-12 rounded-full"
+                    style={theme?.primaryColor ? { 
+                      backgroundColor: `${theme.primaryColor}15` 
+                    } : { 
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(59,130,246,0.1)' 
+                    }}
                   >
                     <IconComponent 
-                      className="w-6 h-6 text-primary" 
-                      style={theme?.primaryColor ? { color: theme.primaryColor } : undefined}
+                      className="w-6 h-6" 
+                      style={theme?.primaryColor ? { 
+                        color: theme.primaryColor 
+                      } : { 
+                        color: isDark ? 'rgba(255,255,255,0.8)' : '#3b82f6' 
+                      }}
                     />
                   </div>
                 )}
                 <div className="flex flex-col">
                   <span 
-                    className="text-xl md:text-2xl font-bold"
-                    style={{ color: theme?.textColor }}
+                    className={cn(
+                      "text-xl md:text-2xl font-bold",
+                      isDark ? "text-white" : ""
+                    )}
+                    style={!isDark && theme?.textColor ? { color: theme.textColor } : undefined}
                   >
                     {feature.value}
                   </span>
-                  <span className="text-sm text-muted-foreground">
+                  <span className={cn(
+                    "text-sm",
+                    isDark ? "text-white/60" : "text-gray-600"
+                  )}>
                     {feature.label}
                   </span>
                 </div>

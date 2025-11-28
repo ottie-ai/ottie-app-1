@@ -333,8 +333,10 @@ body {
 }
 
 .animate-word-reveal {
-  animation: wordReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
+  filter: blur(20px);
+  transform: translateY(12px);
+  animation: wordReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: opacity, filter, transform;
 }
 

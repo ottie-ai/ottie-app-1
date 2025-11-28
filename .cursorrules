@@ -33,6 +33,12 @@ You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Rout
 - **Strict Shadcn Compliance:** Always use the default semantic classes provided by shadcn/ui (e.g., `bg-background`, `text-foreground`, `border-input`, `bg-primary`).
 - **No Hardcoded Colors:** Do NOT replace semantic classes with hardcoded Tailwind colors (like `bg-gray-100`, `text-slate-900`) unless explicitly requested.
 - **Respect Defaults:** Trust the component's default `className` props. Do not add extra padding, margins, or color overrides that deviate from the standard library look.
+- **Theme Provider Scope:**
+  - Root layout (`app/layout.tsx`) does NOT include ThemeProvider
+  - Dashboard layout (`app/dashboard/layout.tsx`) includes ThemeProvider for admin UI
+  - Preview layout (`app/preview/layout.tsx`) includes ThemeProvider ONLY for admin UI (navbar, edit buttons)
+  - Homepage (`app/(home)/page.tsx`) has NO ThemeProvider - uses hardcoded styling
+  - Template sections are NEVER affected by ThemeProvider - they use their own `colorScheme` prop
 
 ### Architecture: Section-Based Builder
 This project is a "Property Website Generator" based on a dynamic list of sections.
@@ -52,6 +58,53 @@ This project is a "Property Website Generator" based on a dynamic list of sectio
 - **Workspace Navbar:** Fixed floating bar with logo, company dropdown, settings popover, publish button.
 - **Section Editor:** Wraps each section with "Remix Section" button that opens settings popover.
 - **Inline Editing:** Use `EditableText` component for inline text editing with AI enhance button.
+
+### CRITICAL: Admin UI vs Template Content Separation
+**THIS IS THE MOST IMPORTANT RULE - NEVER VIOLATE THIS:**
+
+The application has THREE distinct areas with COMPLETELY SEPARATE styling:
+
+1. **Admin UI** (uses global theme/dark mode):
+   - Everything in `/app/dashboard/*` (dashboard layout)
+   - `WorkspaceNavbar` component (in preview page)
+   - `SectionEditor` buttons ("Remix Section" buttons in preview)
+   - Settings panels, popovers, dialogs in preview
+   - These MUST use semantic classes (`bg-background`, `text-foreground`, etc.)
+   - These MUST respect dark mode from ThemeProvider
+
+2. **Template/Preview Content** (NEVER affected by admin theme):
+   - All sections rendered by `SectionRenderer` (Hero, Features, Gallery, etc.)
+   - Template sections in `/app/preview/page.tsx`
+   - These use their OWN `colorScheme` prop (`'light' | 'dark'`)
+   - These are user-editable content (like Elementor)
+   - NEVER apply global theme classes to template sections
+   - Template sections have their own styling independent of admin UI
+
+3. **Homepage** (has its own hardcoded styling):
+   - `/app/(home)/page.tsx` - the landing page
+   - Uses hardcoded `dark bg-[#08000d]` styling
+   - NOT affected by ThemeProvider
+   - Has its own layout without ThemeProvider
+
+**Rules when editing code:**
+- When editing admin UI components (dashboard, workspace navbar, edit buttons):
+  - ALWAYS use semantic classes (`bg-background`, not `bg-white`)
+  - ALWAYS respect dark mode
+  - NEVER hardcode colors that break dark mode
+  
+- When editing template sections (Hero, Features, Gallery, etc.):
+  - NEVER use global theme classes
+  - Use the `colorScheme` prop passed to the section
+  - Template styling is independent of admin UI theme
+  
+- When editing homepage:
+  - Keep hardcoded dark styling
+  - Don't apply ThemeProvider to it
+  
+- When adding new components:
+  - FIRST ask: "Is this admin UI or template content?"
+  - Admin UI → use semantic classes, respect theme
+  - Template content → use colorScheme prop, ignore global theme
 
 ### Coding Standards
 - **Mobile-First:** Always write Tailwind classes with mobile as default, then `md:`, `lg:` overrides.

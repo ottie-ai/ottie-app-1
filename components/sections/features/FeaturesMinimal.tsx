@@ -6,9 +6,10 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 /**
  * FeaturesMinimal - Clean minimal layout with large numbers
  */
-export function FeaturesMinimal({ data, theme }: SectionComponentProps<FeaturesSectionData>) {
+export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionComponentProps<FeaturesSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { title, features } = data
+  const isDark = colorScheme === 'dark'
 
   return (
     <section className="py-20 md:py-32">
@@ -17,7 +18,7 @@ export function FeaturesMinimal({ data, theme }: SectionComponentProps<FeaturesS
           <h2 
             className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-16 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
             style={{ 
-              color: theme?.textColor,
+              color: isDark ? '#ffffff' : (theme?.textColor || '#1f2937'),
               fontFamily: headingFont,
               transform: `scale(${theme?.headingFontSize || 1})`,
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
@@ -27,7 +28,7 @@ export function FeaturesMinimal({ data, theme }: SectionComponentProps<FeaturesS
           </h2>
         )}
 
-        <div className="flex flex-wrap justify-center divide-x divide-border max-w-4xl mx-auto">
+        <div className={`flex flex-wrap justify-center divide-x max-w-4xl mx-auto ${isDark ? 'divide-white/20' : 'divide-gray-200'}`}>
           {features.map((feature, index) => (
             <div 
               key={index}
@@ -43,7 +44,8 @@ export function FeaturesMinimal({ data, theme }: SectionComponentProps<FeaturesS
                 {feature.value}
               </span>
               <span 
-                className={`text-sm md:text-base text-muted-foreground tracking-wide ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                className={`text-sm md:text-base tracking-wide ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
               >
                 {feature.label}
               </span>

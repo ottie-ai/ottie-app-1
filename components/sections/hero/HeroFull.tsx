@@ -73,7 +73,7 @@ export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<He
           <div className="absolute inset-0 bg-black/30" />
         </motion.div>
       ) : (
-        <div className="absolute inset-0 z-0 bg-background" />
+        <div className="absolute inset-0 z-0 bg-white" />
       )}
 
       {/* Large Title - transforms on scroll */}

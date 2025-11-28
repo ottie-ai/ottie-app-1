@@ -28,7 +28,7 @@ export function SectionEditor({
       {/* Section Content */}
       {children}
 
-      {/* Editor Buttons */}
+      {/* Editor Buttons - Admin UI, should respect theme */}
       <div className={`absolute ${isFirstSection ? 'top-28' : 'top-16'} right-4 z-40 flex gap-2`}>
         {/* Remix Section Button */}
         {remixPanel && (
@@ -36,7 +36,7 @@ export function SectionEditor({
             <PopoverTrigger asChild>
               <Button
                 size="sm"
-                className="gap-2 shadow-lg"
+                className="gap-2 shadow-lg bg-background border border-border"
               >
                 <Sparkles className="w-4 h-4" />
                 Remix Section
