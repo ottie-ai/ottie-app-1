@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -7,7 +8,6 @@ import {
   Home,
   FileText,
   Settings,
-  CreditCard,
   HelpCircle,
   LogOut,
   Plus,
@@ -71,12 +71,6 @@ const bottomNavItems = [
     icon: Settings,
   },
   {
-    title: 'Billing',
-    url: 'https://billing.stripe.com',
-    icon: CreditCard,
-    external: true,
-  },
-  {
     title: 'Help & Support',
     url: '/dashboard/help',
     icon: HelpCircle,
@@ -88,13 +82,38 @@ export function DashboardSidebar() {
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const openUserJot = () => {
+    if (typeof window === 'undefined') return
+
+    const win = window as any
+    
+    // Use the official UserJot API to show widget
+    if (win.uj && win.uj.showWidget) {
+      win.uj.showWidget({ section: 'feedback' })
+    } else if (win.$ujq) {
+      // Queue the command if SDK is still loading
+      win.$ujq.push(['showWidget', { section: 'feedback' }])
+    } else {
+      // Initialize queue and push command
+      win.$ujq = []
+      win.$ujq.push(['showWidget', { section: 'feedback' }])
+    }
+  }
+
+
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark')
   }
 
   return (
-    <Sidebar collapsible="icon" className="relative overflow-hidden">
+    <Sidebar collapsible="icon" className="relative overflow-hidden" suppressHydrationWarning>
       {/* Background Sphere - exact same as homepage, just scaled down */}
       {!isCollapsed && (
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/4 pointer-events-none z-0">
@@ -111,8 +130,8 @@ export function DashboardSidebar() {
       <SidebarHeader className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu suppressHydrationWarning>
+              <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
@@ -221,14 +240,18 @@ export function DashboardSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={toggleTheme}
-                  tooltip={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                  tooltip={mounted ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : 'Toggle Theme'}
                 >
-                  {theme === 'dark' ? (
-                    <Sun className="size-4" />
+                  {mounted ? (
+                    theme === 'dark' ? (
+                      <Sun className="size-4" />
+                    ) : (
+                      <Moon className="size-4" />
+                    )
                   ) : (
-                    <Moon className="size-4" />
+                    <Sun className="size-4" />
                   )}
-                  <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                  <span>{mounted ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : 'Toggle Theme'}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -254,6 +277,31 @@ export function DashboardSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Feedback Button */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={openUserJot}
+                  tooltip="Got Feedback?"
+                  suppressHydrationWarning
+                >
+                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="url(#ottie-gradient-feedback)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <defs>
+                      <linearGradient id="ottie-gradient-feedback" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fda90f" />
+                        <stop offset="50%" stopColor="#e5a4b4" />
+                        <stop offset="100%" stopColor="#c89eff" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+                    <path d="M20 3v4"/>
+                    <path d="M22 5h-4"/>
+                    <path d="M4 17v2"/>
+                    <path d="M5 18H3"/>
+                  </svg>
+                  <span className="gradient-ottie-text">Got Feedback?</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -263,8 +311,8 @@ export function DashboardSidebar() {
       <SidebarFooter className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropdownMenu suppressHydrationWarning>
+              <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"

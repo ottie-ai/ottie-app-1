@@ -129,7 +129,7 @@ export default function DashboardPage() {
           {/* Pages Grid */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 p-2 -m-2">
             {/* New Page Card */}
-            <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer group">
+            <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer group" initialGlow>
               <CardContent className="flex flex-col items-center justify-center h-[280px] text-muted-foreground group-hover:text-primary transition-colors">
                 <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
                   <Plus className="size-6" />

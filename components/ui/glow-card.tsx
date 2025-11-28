@@ -9,10 +9,11 @@ interface GlowCardProps extends React.ComponentProps<typeof Card> {
   children: React.ReactNode
   className?: string
   glowClassName?: string
+  initialGlow?: boolean
 }
 
 const GlowCard = React.forwardRef<HTMLDivElement, GlowCardProps>(
-  ({ children, className, glowClassName, ...props }, ref) => {
+  ({ children, className, glowClassName, initialGlow = false, ...props }, ref) => {
     const cardRef = useRef<HTMLDivElement>(null)
     const [isHovered, setIsHovered] = useState(false)
 
@@ -43,14 +44,33 @@ const GlowCard = React.forwardRef<HTMLDivElement, GlowCardProps>(
       card.style.setProperty('--pointer-edge', `${edgeCloseness}`)
     }, [])
 
+    const handleMouseEnter = useCallback(() => {
+      const card = cardRef.current
+      if (!card) return
+      
+      // Set initial position to bottom center
+      if (initialGlow) {
+        card.style.setProperty('--pointer-x', '50%')
+        card.style.setProperty('--pointer-y', '100%')
+        card.style.setProperty('--pointer-angle', '180deg')
+        card.style.setProperty('--pointer-edge', '1')
+      }
+      
+      setIsHovered(true)
+    }, [initialGlow])
+
+    const handleMouseLeave = useCallback(() => {
+      setIsHovered(false)
+    }, [])
+
     return (
       <Card
         ref={cardRef}
         className={cn('glow-card !p-0 !gap-0', className)}
         onMouseMove={handleMouseMove}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        data-hovered={isHovered}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        data-hovered={isHovered ? "true" : undefined}
         {...props}
       >
         <span className={cn('glow-card-glow', glowClassName)} />

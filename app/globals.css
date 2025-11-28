@@ -539,7 +539,7 @@ canvas {
   position: relative;
   border: 2px solid transparent;
   background: 
-    linear-gradient(hsl(var(--card)) 0 100%) padding-box,
+    linear-gradient(white 0 100%) padding-box,
     linear-gradient(var(--gradient-angle, 135deg), #fda90f 0%, #e5a4b4 50%, #a855f7 100%) border-box;
   animation: rotateGradient 8s linear infinite;
 }
@@ -664,7 +664,7 @@ canvas {
     );
 }
 
-.glow-card[data-hovered="true"] .glow-card-border {
+.dark .glow-card[data-hovered="true"] .glow-card-border {
   opacity: calc(var(--pointer-edge) * 1.5);
 }
 
@@ -703,6 +703,6 @@ canvas {
     0 0 50px 6px rgba(168, 85, 247, 0.25);
 }
 
-.glow-card[data-hovered="true"] .glow-card-glow {
+.dark .glow-card[data-hovered="true"] .glow-card-glow {
   opacity: calc(var(--pointer-edge) * 0.8);
 }

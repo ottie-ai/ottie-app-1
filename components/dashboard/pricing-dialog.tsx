@@ -197,8 +197,8 @@ export function PricingDialog({ children }: PricingDialogProps) {
                           ? 'gradient-ottie-card-border'
                           : cn(
                               'border',
-                              selectedTier === tier.id && !tier.disabled
-                                ? 'border-foreground ring-1 ring-foreground'
+                        selectedTier === tier.id && !tier.disabled
+                          ? 'border-foreground ring-1 ring-foreground'
                                 : !tier.disabled && 'hover:border-foreground/30'
                             ),
                         tier.disabled && 'opacity-50 cursor-default'
@@ -229,7 +229,7 @@ export function PricingDialog({ children }: PricingDialogProps) {
                           </p>
                         )}
                       </div>
-
+                      
                       {/* Listings & Price per listing */}
                       <div className="mb-4 pb-4 border-b">
                         <p className="text-sm font-medium">
@@ -321,28 +321,28 @@ export function PricingDialog({ children }: PricingDialogProps) {
         {/* Desktop Grid */}
         <div className="hidden md:block pt-6 flex-1 overflow-y-auto">
           <div className="grid grid-cols-4 gap-4">
-            {pricingTiers.map((tier) => {
+          {pricingTiers.map((tier) => {
               const savings = isAnnual ? getAnnualSavings(tier) : null
               const pricePerListing = getPricePerListing(tier)
-              
-              return (
-                <div
-                  key={tier.id}
-                  onClick={() => !tier.disabled && setSelectedTier(tier.id)}
-                  className={cn(
+            
+            return (
+              <div
+                key={tier.id}
+                onClick={() => !tier.disabled && setSelectedTier(tier.id)}
+                className={cn(
                     'relative flex flex-col rounded-xl p-5 transition-all',
-                    !tier.disabled && 'cursor-pointer',
+                  !tier.disabled && 'cursor-pointer',
                     tier.popular 
                       ? 'gradient-ottie-card-border'
                       : cn(
                           'border',
-                          selectedTier === tier.id && !tier.disabled
-                            ? 'border-foreground ring-1 ring-foreground'
+                  selectedTier === tier.id && !tier.disabled
+                    ? 'border-foreground ring-1 ring-foreground'
                             : !tier.disabled && 'hover:border-foreground/30'
                         ),
-                    tier.disabled && 'opacity-50 cursor-default'
-                  )}
-                >
+                  tier.disabled && 'opacity-50 cursor-default'
+                )}
+              >
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full">
@@ -350,25 +350,25 @@ export function PricingDialog({ children }: PricingDialogProps) {
                     </span>
                   </div>
                 )}
-                  
+                
                   <div className="mb-3">
-                    <h3 className="font-semibold text-lg">{tier.name}</h3>
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
-                  </div>
-                  
+                  <h3 className="font-semibold text-lg">{tier.name}</h3>
+                  <p className="text-sm text-muted-foreground">{tier.description}</p>
+                </div>
+                
                   {/* Price */}
                   <div className="mb-2">
                     <span className="text-3xl font-bold">{getPrice(tier)}</span>
                     {tier.monthlyPrice !== 0 && (
-                      <span className="text-muted-foreground">/month</span>
-                    )}
-                    {savings && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Save ${savings}/year
-                      </p>
-                    )}
-                  </div>
-
+                    <span className="text-muted-foreground">/month</span>
+                  )}
+                  {savings && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Save ${savings}/year
+                    </p>
+                  )}
+                </div>
+                
                   {/* Listings & Price per listing */}
                   <div className="mb-4 pb-4 border-b">
                     <p className="text-sm font-medium">
@@ -393,29 +393,29 @@ export function PricingDialog({ children }: PricingDialogProps) {
                         {tier.includesFrom}
                       </li>
                     )}
-                    {tier.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm">
+                  {tier.features.map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm">
                         <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
                         <span>{feature.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Button
-                    variant={tier.popular ? 'default' : 'outline'}
-                    className="w-full"
-                    disabled={tier.disabled}
-                  >
-                    {tier.cta}
-                  </Button>
+                    </li>
+                  ))}
+                </ul>
+                
+                <Button
+                  variant={tier.popular ? 'default' : 'outline'}
+                  className="w-full"
+                  disabled={tier.disabled}
+                >
+                  {tier.cta}
+                </Button>
                   {tier.trial && (
                     <p className="text-xs text-center text-muted-foreground mt-2">
                       14-day free trial
                     </p>
                   )}
-                </div>
-              )
-            })}
+              </div>
+            )
+          })}
           </div>
 
           {/* Enterprise Section - Full Width */}
