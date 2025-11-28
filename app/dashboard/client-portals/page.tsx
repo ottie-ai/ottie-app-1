@@ -37,7 +37,7 @@ export default function ClientPortalsPage() {
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex items-center gap-2">
           <h1 className="text-lg font-semibold">Client Portals</h1>
-          <Badge className="bg-blue-500 hover:bg-blue-500 text-white">Coming Soon</Badge>
+          <Badge className="gradient-ottie hover:opacity-90 text-white border-0">Coming Soon</Badge>
         </div>
       </header>
 
@@ -47,11 +47,11 @@ export default function ClientPortalsPage() {
           {/* Icon */}
           <div className="flex justify-center">
             <div className="relative">
-              <div className="size-24 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="size-12 text-primary" />
+              <div className="size-24 rounded-full gradient-ottie-subtle flex items-center justify-center">
+                <Users className="size-12 gradient-ottie-text" />
               </div>
-              <div className="absolute -top-1 -right-1 size-8 rounded-full bg-primary flex items-center justify-center">
-                <Sparkles className="size-4 text-primary-foreground" />
+              <div className="absolute -top-1 -right-1 size-8 rounded-full gradient-ottie flex items-center justify-center">
+                <Sparkles className="size-4 text-white" />
               </div>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function ClientPortalsPage() {
               <ul className="grid gap-2 sm:grid-cols-2">
                 {features.map((feature, index) => (
                   <li key={index} className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-primary flex-shrink-0" />
+                    <Check className="size-4 flex-shrink-0 gradient-ottie-text" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -98,9 +98,9 @@ export default function ClientPortalsPage() {
             </CardHeader>
             <CardContent>
               {submitted ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-primary">
-                  <Check className="size-5" />
-                  <span className="font-medium">You&apos;re on the list! We&apos;ll notify you when it&apos;s ready.</span>
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <Check className="size-5 gradient-ottie-text" />
+                  <span className="font-medium gradient-ottie-text">You&apos;re on the list! We&apos;ll notify you when it&apos;s ready.</span>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="flex gap-2 max-w-md mx-auto">

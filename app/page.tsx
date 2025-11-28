@@ -9,8 +9,93 @@ import { WordReveal } from '@/components/ui/word-reveal'
 import { ScrollReveal } from '@/components/ui/scroll-reveal'
 import { Input } from '@/components/ui/input'
 import { MagneticButton } from '@/components/ui/magnetic-button'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import Navbar from '@/components/navbar'
 import './sphere.css'
+
+// Pricing data
+const pricingTiers = [
+  {
+    id: 'free',
+    name: 'Free',
+    monthlyPrice: 0,
+    annualPrice: 0,
+    listings: 1,
+    teamSeats: '1 Team Seat',
+    description: 'Perfect for trying out',
+    features: [
+      'Real-time Editor',
+      'Fast & Secure Hosting',
+    ],
+    cta: 'Get Started',
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    monthlyPrice: 39,
+    annualPrice: 33,
+    listings: 3,
+    teamSeats: '1 Team Seat',
+    description: 'For individual agents',
+    features: [
+      'Real-time Editor',
+      'Fast & Secure Hosting',
+      'Lead management',
+      'Visitor Analytics / Basic',
+      '3D Tours & Video Embed',
+      'Listing Status Labels',
+      'Social Media Kit Generator',
+      'QR Code Generator',
+    ],
+    cta: 'Start Free Trial',
+    trial: true,
+  },
+  {
+    id: 'growth',
+    name: 'Growth',
+    monthlyPrice: 99,
+    annualPrice: 84,
+    listings: 10,
+    teamSeats: '1 Team Seat',
+    description: 'For top-performing agents',
+    includesFrom: 'Everything in Starter',
+    features: [
+      'Visitor Analytics / Detailed',
+      'White label',
+      'Custom domain',
+      'Password protected site',
+      'Advanced templates',
+      'Lead sync (HubSpot, Pipedrive)',
+      'Visitor Check-in App',
+      'Viewing Scheduler',
+      'Content Lock for Leads',
+    ],
+    cta: 'Start Free Trial',
+    popular: true,
+    trial: true,
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    monthlyPrice: 199,
+    annualPrice: 169,
+    listings: 25,
+    extraListingPrice: 5,
+    teamSeats: 'Unlimited Team Seats',
+    description: 'For agencies & teams',
+    includesFrom: 'Everything in Growth',
+    features: [
+      'Unlimited Team Seats',
+      'Lead routing to agents',
+      'Team management',
+    ],
+    cta: 'Start Free Trial',
+    trial: true,
+  },
+]
 
 const realEstateLinks = [
   'zillow.com/123-Main-St',
@@ -499,6 +584,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <PricingSection isLoading={isLoading} />
+
       {/* Third Section - CTA */}
       <section 
         ref={thirdSectionRef}
@@ -531,5 +619,224 @@ export default function Home() {
         </div>
       </section>
     </div>
+  )
+}
+
+// Pricing Section Component
+function PricingSection({ isLoading }: { isLoading: boolean }) {
+  const [isAnnual, setIsAnnual] = useState(true)
+
+  const getPrice = (tier: typeof pricingTiers[0]) => {
+    if (tier.monthlyPrice === 0) return '$0'
+    return isAnnual ? `$${tier.annualPrice}` : `$${tier.monthlyPrice}`
+  }
+
+  const getPricePerListing = (tier: typeof pricingTiers[0]) => {
+    if (tier.monthlyPrice === 0) return null
+    const price = isAnnual ? tier.annualPrice : tier.monthlyPrice
+    return (price / tier.listings).toFixed(2)
+  }
+
+  const getAnnualSavings = (tier: typeof pricingTiers[0]) => {
+    if (tier.monthlyPrice === 0) return null
+    return (tier.monthlyPrice - tier.annualPrice) * 12
+  }
+
+  return (
+    <section 
+      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+    >
+      <div className="w-full max-w-6xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <Typography variant="h2" className="mb-4 text-white border-none">
+            <WordReveal 
+              text="Simple, transparent pricing"
+              triggerOnScroll
+              delay={0}
+              wordDelay={0.1}
+            />
+          </Typography>
+          <Typography variant="lead" className="text-white/60 max-w-2xl mx-auto">
+            <WordReveal 
+              text="Start for free, upgrade as you grow. All paid plans include a 14-day free trial."
+              triggerOnScroll
+              delay={0.3}
+              wordDelay={0.05}
+            />
+          </Typography>
+        </div>
+
+        {/* Billing Toggle */}
+        <ScrollReveal delay={0.5}>
+          <div className="flex items-center justify-center gap-3 mb-12">
+            <Label className={cn("text-sm text-white/60", !isAnnual && "text-white font-medium")}>
+              Monthly
+            </Label>
+            <Switch
+              checked={isAnnual}
+              onCheckedChange={setIsAnnual}
+              className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/20"
+            />
+            <Label className={cn("text-sm text-white/60 flex items-center gap-2", isAnnual && "text-white font-medium")}>
+              Annual
+              <Badge className="bg-white/10 text-white/80 hover:bg-white/10 text-xs border-0">
+                Save 15%
+              </Badge>
+            </Label>
+          </div>
+        </ScrollReveal>
+
+        {/* Pricing Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          {pricingTiers.map((tier, index) => {
+            const savings = isAnnual ? getAnnualSavings(tier) : null
+            const pricePerListing = getPricePerListing(tier)
+
+            return (
+              <ScrollReveal key={tier.id} delay={0.6 + index * 0.1}>
+                <div
+                  className={cn(
+                    'relative flex flex-col rounded-2xl border border-white/10 p-6 transition-all h-full',
+                    'hover:border-white/20 hover:bg-white/[0.02]',
+                    tier.popular && 'border-white/30 bg-white/[0.03]'
+                  )}
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-white text-black text-xs font-medium px-3 py-1 rounded-full">
+                        Most Popular
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Tier Header */}
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-lg text-white">{tier.name}</h3>
+                    <p className="text-sm text-white/50">{tier.description}</p>
+                  </div>
+                  
+                  {/* Price */}
+                  <div className="mb-2">
+                    <span className="text-4xl font-bold text-white">{getPrice(tier)}</span>
+                    {tier.monthlyPrice !== 0 && (
+                      <span className="text-white/50">/month</span>
+                    )}
+                    {savings && (
+                      <p className="text-xs text-emerald-400 mt-1">
+                        Save ${savings}/year
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Listings & Price per listing */}
+                  <div className="mb-6 pb-6 border-b border-white/10">
+                    <p className="text-sm font-medium text-white/80">
+                      {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
+                      {tier.extraListingPrice && (
+                        <span className="text-white/40 font-normal"> + ${tier.extraListingPrice}/extra</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-white/40">{tier.teamSeats}</p>
+                    {pricePerListing && (
+                      <p className="text-xs text-white/30 mt-1">
+                        ${pricePerListing}/listing
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Features */}
+                  <ul className="space-y-2.5 mb-6 flex-1">
+                    {tier.includesFrom && (
+                      <li className="flex items-start gap-2 text-sm font-medium text-white pb-1">
+                        <Check className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+                        {tier.includesFrom}
+                      </li>
+                    )}
+                    {tier.features.slice(0, tier.includesFrom ? 4 : 6).map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-start gap-2 text-sm text-white/60">
+                        <Check className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+                        {feature}
+                      </li>
+                    ))}
+                    {tier.features.length > (tier.includesFrom ? 4 : 6) && (
+                      <li className="text-xs text-white/30 pt-1">
+                        +{tier.features.length - (tier.includesFrom ? 4 : 6)} more features
+                      </li>
+                    )}
+                  </ul>
+                  
+                  {/* CTA Button */}
+                  <MagneticButton
+                    className={cn(
+                      'w-full',
+                      tier.popular 
+                        ? 'bg-white text-black hover:bg-white/90' 
+                        : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                    )}
+                    magneticDistance={60}
+                    magneticStrength={0.2}
+                  >
+                    {tier.cta}
+                  </MagneticButton>
+                  {tier.trial && (
+                    <p className="text-xs text-center text-white/30 mt-3">
+                      14-day free trial
+                    </p>
+                  )}
+                </div>
+              </ScrollReveal>
+            )
+          })}
+        </div>
+
+        {/* Enterprise Section - Full Width */}
+        <ScrollReveal delay={1.0}>
+          <div className="mt-6 rounded-2xl border border-white/10 p-6 md:p-8 hover:border-white/20 hover:bg-white/[0.02] transition-all">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex-1">
+                <h3 className="font-semibold text-xl text-white mb-2">Enterprise</h3>
+                <p className="text-white/50 mb-4">For large brokerages and franchises with custom needs</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    Starts from 100 listings
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    Everything in Pro
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    API access
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    Dedicated account manager
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    Custom integrations
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60">
+                    <Check className="size-4 text-emerald-400 shrink-0" />
+                    SLA guarantee
+                  </div>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <MagneticButton
+                  className="bg-white/10 text-white hover:bg-white/20 border border-white/10 px-8"
+                  magneticDistance={60}
+                  magneticStrength={0.2}
+                >
+                  Contact Sales
+                </MagneticButton>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+      </div>
+    </section>
   )
 }

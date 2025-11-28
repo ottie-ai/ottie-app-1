@@ -517,3 +517,43 @@ canvas {
     @apply bg-background text-foreground;
   }
 }
+
+/* Ottie Brand Gradient - Orange to Purple (from sphere) */
+.gradient-ottie {
+  background: linear-gradient(135deg, #fda90f 0%, #f5a82d 25%, #e5a4b4 50%, #d9a1e1 75%, #c89eff 100%);
+}
+
+.gradient-ottie-text {
+  background: linear-gradient(135deg, #fda90f 0%, #f5a82d 25%, #e5a4b4 50%, #d9a1e1 75%, #c89eff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-ottie-border {
+  border-image: linear-gradient(135deg, #fda90f 0%, #f5a82d 25%, #e5a4b4 50%, #d9a1e1 75%, #c89eff 100%) 1;
+}
+
+/* Subtle gradient for backgrounds */
+.gradient-ottie-subtle {
+  background: linear-gradient(135deg, rgba(253, 169, 15, 0.15) 0%, rgba(200, 158, 255, 0.15) 100%);
+}
+
+/* Hover gradient effect */
+.hover-gradient-ottie {
+  position: relative;
+  overflow: hidden;
+}
+
+.hover-gradient-ottie::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #fda90f 0%, #f5a82d 25%, #e5a4b4 50%, #d9a1e1 75%, #c89eff 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hover-gradient-ottie:hover::before {
+  opacity: 1;
+}

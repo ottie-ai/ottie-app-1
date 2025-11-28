@@ -2,6 +2,7 @@
 
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { DashboardSidebar } from '@/components/dashboard/sidebar'
+import '../sphere.css'
 
 export default function DashboardLayout({
   children,

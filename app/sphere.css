@@ -286,3 +286,24 @@
   }
 }
 
+/* Sidebar Sphere - exact same as homepage loading animation */
+.sphere-sidebar-wrapper {
+  transform: scale(0.7);
+  transform-origin: center center;
+}
+
+/* Sidebar uses continuous loading rotation like homepage, but much slower */
+.sphere-sidebar-wrapper .sphere-background {
+  animation: spinSphereLoading 80s infinite linear;
+}
+
+/* Continuous loading rotation - same as homepage loading state */
+@keyframes spinSphereLoading {
+  from {
+    transform: rotateZ(0deg) rotateX(0deg) rotateZ(0deg);
+  }
+  to {
+    transform: rotateZ(360deg) rotateX(-360deg) rotateZ(360deg);
+  }
+}
+

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,17 +23,39 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel'
 
-const pricingTiers = [
+interface Feature {
+  name: string
+}
+
+interface PricingTier {
+  id: string
+  name: string
+  monthlyPrice: number
+  annualPrice: number
+  listings: number
+  extraListingPrice?: number
+  teamSeats: string
+  description: string
+  includesFrom?: string // e.g., "Everything in Starter"
+  features: Feature[]
+  cta: string
+  disabled?: boolean
+  popular?: boolean
+  trial?: boolean
+}
+
+const pricingTiers: PricingTier[] = [
   {
     id: 'free',
     name: 'Free',
     monthlyPrice: 0,
-    description: 'Perfect for getting started',
+    annualPrice: 0,
+    listings: 1,
+    teamSeats: '1 Team Seat',
+    description: 'Perfect for trying out',
     features: [
-      'Up to 3 pages',
-      'Basic analytics',
-      'Ottie branding',
-      'Email support',
+      { name: 'Real-time Editor' },
+      { name: 'Fast & Secure Hosting' },
     ],
     cta: 'Current Plan',
     disabled: true,
@@ -41,49 +63,65 @@ const pricingTiers = [
   {
     id: 'starter',
     name: 'Starter',
-    monthlyPrice: 19,
+    monthlyPrice: 39,
+    annualPrice: 33,
+    listings: 3,
+    teamSeats: '1 Team Seat',
     description: 'For individual agents',
     features: [
-      'Up to 10 pages',
-      'Advanced analytics',
-      'Remove Ottie branding',
-      'Custom domain',
-      'Priority support',
+      { name: 'Real-time Editor' },
+      { name: 'Fast & Secure Hosting' },
+      { name: 'Lead management' },
+      { name: 'Visitor Analytics / Basic' },
+      { name: '3D Tours & Video Embed' },
+      { name: 'Listing Status Labels' },
+      { name: 'Social Media Kit Generator' },
+      { name: 'QR Code Generator' },
     ],
-    cta: 'Upgrade',
-    popular: false,
+    cta: 'Start 14-day trial',
+    trial: true,
+  },
+  {
+    id: 'growth',
+    name: 'Growth',
+    monthlyPrice: 99,
+    annualPrice: 84,
+    listings: 10,
+    teamSeats: '1 Team Seat',
+    description: 'For top-performing agents',
+    includesFrom: 'Everything in Starter',
+    features: [
+      { name: 'Visitor Analytics / Detailed' },
+      { name: 'White label' },
+      { name: 'Custom domain' },
+      { name: 'Password protected site' },
+      { name: 'Advanced templates' },
+      { name: 'Lead sync (HubSpot, Pipedrive)' },
+      { name: 'Visitor Check-in App' },
+      { name: 'Viewing Scheduler' },
+      { name: 'Content Lock for Leads' },
+    ],
+    cta: 'Start 14-day trial',
+    popular: true,
+    trial: true,
   },
   {
     id: 'pro',
     name: 'Pro',
-    monthlyPrice: 49,
-    description: 'For growing teams',
+    monthlyPrice: 199,
+    annualPrice: 169,
+    listings: 25,
+    extraListingPrice: 5,
+    teamSeats: 'Unlimited Team Seats',
+    description: 'For agencies & teams',
+    includesFrom: 'Everything in Growth',
     features: [
-      'Unlimited pages',
-      'Advanced analytics',
-      'Remove Ottie branding',
-      'Custom domain',
-      'Priority support',
-      'Team collaboration',
-      'API access',
+      { name: 'Unlimited Team Seats' },
+      { name: 'Lead routing to agents' },
+      { name: 'Team management' },
     ],
-    cta: 'Upgrade',
-    popular: true,
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    monthlyPrice: null,
-    description: 'For large organizations',
-    features: [
-      'Everything in Pro',
-      'Dedicated account manager',
-      'Custom integrations',
-      'SLA guarantee',
-      'On-premise deployment',
-    ],
-    cta: 'Contact Sales',
-    popular: false,
+    cta: 'Start 14-day trial',
+    trial: true,
   },
 ]
 
@@ -92,24 +130,23 @@ interface PricingDialogProps {
 }
 
 export function PricingDialog({ children }: PricingDialogProps) {
-  const [selectedTier, setSelectedTier] = useState('pro')
+  const [selectedTier, setSelectedTier] = useState('growth')
   const [isAnnual, setIsAnnual] = useState(true)
 
-  const getPrice = (monthlyPrice: number | null) => {
-    if (monthlyPrice === null) return 'Custom'
-    if (monthlyPrice === 0) return '$0'
-    if (isAnnual) {
-      // 10 months price for annual (2 months free)
-      const annualTotal = monthlyPrice * 10
-      const monthlyEquivalent = Math.round(annualTotal / 12)
-      return `$${monthlyEquivalent}`
-    }
-    return `$${monthlyPrice}`
+  const getPrice = (tier: PricingTier) => {
+    if (tier.monthlyPrice === 0) return '$0'
+    return isAnnual ? `$${tier.annualPrice}` : `$${tier.monthlyPrice}`
   }
 
-  const getAnnualSavings = (monthlyPrice: number | null) => {
-    if (monthlyPrice === null || monthlyPrice === 0) return null
-    return monthlyPrice * 2 // 2 months free
+  const getPricePerListing = (tier: PricingTier) => {
+    if (tier.monthlyPrice === 0) return null
+    const price = isAnnual ? tier.annualPrice : tier.monthlyPrice
+    return (price / tier.listings).toFixed(2)
+  }
+
+  const getAnnualSavings = (tier: PricingTier) => {
+    if (tier.monthlyPrice === 0) return null
+    return (tier.monthlyPrice - tier.annualPrice) * 12
   }
 
   return (
@@ -121,7 +158,7 @@ export function PricingDialog({ children }: PricingDialogProps) {
         <DialogHeader className="shrink-0">
           <DialogTitle>Upgrade your plan</DialogTitle>
           <DialogDescription>
-            Choose the plan that best fits your needs
+            Choose the plan that best fits your needs. All paid plans include a 14-day free trial.
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +174,7 @@ export function PricingDialog({ children }: PricingDialogProps) {
           />
           <Label htmlFor="billing-toggle" className={cn("text-sm flex items-center gap-2", isAnnual && "font-medium")}>
             Annual
-            <Badge variant="secondary" className="text-xs">Save 17%</Badge>
+            <Badge variant="secondary" className="text-xs">Save 15%</Badge>
           </Label>
         </div>
         
@@ -146,14 +183,15 @@ export function PricingDialog({ children }: PricingDialogProps) {
           <Carousel className="w-full px-2" opts={{ startIndex: 2, align: 'center' }}>
             <CarouselContent className="-ml-4">
               {pricingTiers.map((tier) => {
-                const savings = isAnnual ? getAnnualSavings(tier.monthlyPrice) : null
+                const savings = isAnnual ? getAnnualSavings(tier) : null
+                const pricePerListing = getPricePerListing(tier)
                 
                 return (
                   <CarouselItem key={tier.id} className="pl-4 basis-[90%] pt-4 pb-1">
                     <div
                       onClick={() => !tier.disabled && setSelectedTier(tier.id)}
                       className={cn(
-                        'relative flex flex-col rounded-xl border p-5 transition-all min-h-[420px]',
+                        'relative flex flex-col rounded-xl border p-5 transition-all min-h-[520px]',
                         !tier.disabled && 'cursor-pointer',
                         selectedTier === tier.id && !tier.disabled
                           ? 'border-foreground ring-1 ring-foreground'
@@ -164,19 +202,20 @@ export function PricingDialog({ children }: PricingDialogProps) {
                       {tier.popular && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-                            Popular
+                            Most Popular
                           </span>
                         </div>
                       )}
                       
-                      <div className="mb-4">
+                      <div className="mb-3">
                         <h3 className="font-semibold text-lg">{tier.name}</h3>
                         <p className="text-sm text-muted-foreground">{tier.description}</p>
                       </div>
                       
-                      <div className="mb-4">
-                        <span className="text-3xl font-bold">{getPrice(tier.monthlyPrice)}</span>
-                        {tier.monthlyPrice !== null && (
+                      {/* Price */}
+                      <div className="mb-2">
+                        <span className="text-3xl font-bold">{getPrice(tier)}</span>
+                        {tier.monthlyPrice !== 0 && (
                           <span className="text-muted-foreground">/month</span>
                         )}
                         {savings && (
@@ -185,14 +224,42 @@ export function PricingDialog({ children }: PricingDialogProps) {
                           </p>
                         )}
                       </div>
+
+                      {/* Listings & Price per listing */}
+                      <div className="mb-4 pb-4 border-b">
+                        <p className="text-sm font-medium">
+                          {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
+                          {tier.extraListingPrice && (
+                            <span className="text-muted-foreground font-normal"> + ${tier.extraListingPrice}/extra</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                        {pricePerListing && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ${pricePerListing}/listing
+                          </p>
+                        )}
+                      </div>
                       
-                      <ul className="space-y-2.5 mb-6 flex-1">
-                        {tier.features.map((feature, index) => (
+                      {/* Features */}
+                      <ul className="space-y-2 mb-6 flex-1">
+                        {tier.includesFrom && (
+                          <li className="flex items-start gap-2 text-sm font-medium text-foreground pb-1">
+                            <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                            {tier.includesFrom}
+                          </li>
+                        )}
+                        {tier.features.slice(0, tier.includesFrom ? 5 : 6).map((feature, index) => (
                           <li key={index} className="flex items-start gap-2 text-sm">
-                            <Check className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                            <span>{feature}</span>
+                            <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                            <span>{feature.name}</span>
                           </li>
                         ))}
+                        {tier.features.length > (tier.includesFrom ? 5 : 6) && (
+                          <li className="text-xs text-muted-foreground pt-1">
+                            +{tier.features.length - (tier.includesFrom ? 5 : 6)} more features
+                          </li>
+                        )}
                       </ul>
                       
                       <Button
@@ -202,6 +269,11 @@ export function PricingDialog({ children }: PricingDialogProps) {
                       >
                         {tier.cta}
                       </Button>
+                      {tier.trial && (
+                        <p className="text-xs text-center text-muted-foreground mt-2">
+                          14-day free trial • No credit card required
+                        </p>
+                      )}
                     </div>
                   </CarouselItem>
                 )
@@ -212,73 +284,172 @@ export function PricingDialog({ children }: PricingDialogProps) {
               <CarouselNext className="static translate-y-0" />
             </div>
           </Carousel>
+
+          {/* Enterprise Section - Mobile */}
+          <div className="mx-2 mt-4 rounded-xl border p-5">
+            <h3 className="font-semibold text-lg mb-1">Enterprise</h3>
+            <p className="text-sm text-muted-foreground mb-3">For large brokerages and franchises</p>
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="size-4 text-green-600 shrink-0" />
+                Starts from 100 listings
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="size-4 text-green-600 shrink-0" />
+                Everything in Pro
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="size-4 text-green-600 shrink-0" />
+                API access
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Check className="size-4 text-green-600 shrink-0" />
+                Dedicated account manager
+              </div>
+            </div>
+            <Button variant="outline" className="w-full">
+              Contact Sales
+            </Button>
+          </div>
         </div>
 
         {/* Desktop Grid */}
-        <div className="hidden md:grid grid-cols-4 gap-4 pt-6">
-          {pricingTiers.map((tier) => {
-            const savings = isAnnual ? getAnnualSavings(tier.monthlyPrice) : null
-            
-            return (
-              <div
-                key={tier.id}
-                onClick={() => !tier.disabled && setSelectedTier(tier.id)}
-                className={cn(
-                  'relative flex flex-col rounded-xl border p-5 transition-all',
-                  !tier.disabled && 'cursor-pointer',
-                  selectedTier === tier.id && !tier.disabled
-                    ? 'border-foreground ring-1 ring-foreground'
-                    : !tier.disabled && 'hover:border-foreground/30',
-                  tier.disabled && 'opacity-50 cursor-default'
-                )}
-              >
-                {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full">
-                      Popular
-                    </span>
-                  </div>
-                )}
-                
-                <div className="mb-4">
-                  <h3 className="font-semibold text-lg">{tier.name}</h3>
-                  <p className="text-sm text-muted-foreground">{tier.description}</p>
-                </div>
-                
-                <div className="mb-4">
-                  <span className="text-3xl font-bold">{getPrice(tier.monthlyPrice)}</span>
-                  {tier.monthlyPrice !== null && (
-                    <span className="text-muted-foreground">/month</span>
+        <div className="hidden md:block pt-6 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-4 gap-4">
+            {pricingTiers.map((tier) => {
+              const savings = isAnnual ? getAnnualSavings(tier) : null
+              const pricePerListing = getPricePerListing(tier)
+              
+              return (
+                <div
+                  key={tier.id}
+                  onClick={() => !tier.disabled && setSelectedTier(tier.id)}
+                  className={cn(
+                    'relative flex flex-col rounded-xl border p-5 transition-all',
+                    !tier.disabled && 'cursor-pointer',
+                    selectedTier === tier.id && !tier.disabled
+                      ? 'border-foreground ring-1 ring-foreground'
+                      : !tier.disabled && 'hover:border-foreground/30',
+                    tier.disabled && 'opacity-50 cursor-default'
                   )}
-                  {savings && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Save ${savings}/year
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-foreground text-background text-xs font-medium px-3 py-1 rounded-full">
+                        Most Popular
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="mb-3">
+                    <h3 className="font-semibold text-lg">{tier.name}</h3>
+                    <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  </div>
+                  
+                  {/* Price */}
+                  <div className="mb-2">
+                    <span className="text-3xl font-bold">{getPrice(tier)}</span>
+                    {tier.monthlyPrice !== 0 && (
+                      <span className="text-muted-foreground">/month</span>
+                    )}
+                    {savings && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Save ${savings}/year
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Listings & Price per listing */}
+                  <div className="mb-4 pb-4 border-b">
+                    <p className="text-sm font-medium">
+                      {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
+                      {tier.extraListingPrice && (
+                        <span className="text-muted-foreground font-normal"> + ${tier.extraListingPrice}/extra</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                    {pricePerListing && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ${pricePerListing}/listing
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Features */}
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {tier.includesFrom && (
+                      <li className="flex items-start gap-2 text-sm font-medium text-foreground pb-1">
+                        <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                        {tier.includesFrom}
+                      </li>
+                    )}
+                    {tier.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                        <span>{feature.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button
+                    variant={tier.popular ? 'default' : 'outline'}
+                    className="w-full"
+                    disabled={tier.disabled}
+                  >
+                    {tier.cta}
+                  </Button>
+                  {tier.trial && (
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                      14-day free trial
                     </p>
                   )}
                 </div>
-                
-                <ul className="space-y-2.5 mb-6 flex-1">
-                  {tier.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <Check className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <Button
-                  variant={tier.popular ? 'default' : 'outline'}
-                  className="w-full"
-                  disabled={tier.disabled}
-                >
-                  {tier.cta}
+              )
+            })}
+          </div>
+
+          {/* Enterprise Section - Full Width */}
+          <div className="mt-4 rounded-xl border p-5 hover:border-foreground/30 transition-all">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-1">Enterprise</h3>
+                <p className="text-sm text-muted-foreground mb-3">For large brokerages and franchises with custom needs</p>
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    Starts from 100 listings
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    Everything in Pro
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    API access
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    Dedicated account manager
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    Custom integrations
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0" />
+                    SLA guarantee
+                  </div>
+                </div>
+              </div>
+              <div className="shrink-0">
+                <Button variant="outline">
+                  Contact Sales
                 </Button>
               </div>
-            )
-          })}
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-

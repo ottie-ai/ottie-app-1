@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import {
   Home,
   FileText,
@@ -14,6 +15,8 @@ import {
   Users,
   ChevronsUpDown,
   ExternalLink,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -84,10 +87,28 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === 'collapsed'
+  const { theme, setTheme } = useTheme()
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark')
+  }
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
+    <Sidebar collapsible="icon" className="relative overflow-hidden">
+      {/* Background Sphere - exact same as homepage, just scaled down */}
+      {!isCollapsed && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/4 pointer-events-none z-0">
+          <div className="sphere-sidebar-wrapper opacity-80">
+            <div className="sphere-background">
+              {Array.from({ length: 36 }, (_, i) => (
+                <div key={i + 1} className={`ring${i + 1}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SidebarHeader className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -96,9 +117,9 @@ export function DashboardSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <div className="gradient-ottie flex aspect-square size-8 items-center justify-center rounded-lg">
                     <svg 
-                      className="size-4" 
+                      className="size-4 text-white" 
                       viewBox="0 0 104 105" 
                       fill="none"
                     >
@@ -133,7 +154,7 @@ export function DashboardSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="relative z-10">
         {/* Search */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent className="relative">
@@ -177,7 +198,7 @@ export function DashboardSidebar() {
                       <item.icon className="size-4" />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
-                        <Badge className="text-[10px] px-1.5 py-0 h-5 bg-blue-500 hover:bg-blue-500 text-white">
+                        <Badge className="text-[10px] px-1.5 py-0 h-5 gradient-ottie hover:opacity-90 text-white border-0">
                           {item.badge}
                         </Badge>
                       )}
@@ -196,6 +217,21 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Theme Toggle */}
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={toggleTheme}
+                  tooltip={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="size-4" />
+                  ) : (
+                    <Moon className="size-4" />
+                  )}
+                  <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {bottomNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
@@ -221,9 +257,10 @@ export function DashboardSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="relative z-10">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
