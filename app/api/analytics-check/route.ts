@@ -26,9 +26,15 @@ export async function GET(request: NextRequest) {
   // Check if client IP is in excluded list
   const isExcluded = excludedIps.length > 0 && excludedIps.includes(clientIp)
 
+  // Debug logging
+  console.log('[Analytics Check] Client IP:', clientIp)
+  console.log('[Analytics Check] Excluded IPs:', excludedIps)
+  console.log('[Analytics Check] Is excluded:', isExcluded)
+
   return NextResponse.json({
     enabled: !isExcluded,
     clientIp: clientIp,
+    excludedIps: excludedIps,
   })
 }
 

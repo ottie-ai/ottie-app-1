@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
  * Excludes visits from IPs listed in ANALYTICS_EXCLUDED_IPS
  */
 export function AnalyticsWrapper() {
-  const [enabled, setEnabled] = useState(true) // Default to enabled for better UX
+  const [enabled, setEnabled] = useState<boolean | null>(null) // null = checking, true/false = result
 
   useEffect(() => {
     // Check if Analytics should be enabled
@@ -16,12 +16,22 @@ export function AnalyticsWrapper() {
       .then(res => res.json())
       .then(data => {
         setEnabled(data.enabled)
+        // Debug log
+        if (!data.enabled) {
+          console.log('[Analytics] Disabled for IP:', data.clientIp)
+        }
       })
-      .catch(() => {
-        // If API fails, default to enabled
+      .catch((error) => {
+        // If API fails, default to enabled (but log error)
+        console.warn('[Analytics] API check failed, defaulting to enabled:', error)
         setEnabled(true)
       })
   }, [])
+
+  // Don't render anything until we know if Analytics should be enabled
+  if (enabled === null) {
+    return null
+  }
 
   // Only render Analytics if enabled
   if (!enabled) {
