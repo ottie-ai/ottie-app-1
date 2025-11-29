@@ -3,8 +3,12 @@ import { AnalyticsWrapper } from "@/components/analytics-wrapper"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Ottie App",
-  description: "A Next.js 14 fullstack application",
+  title: {
+    default: "Ottie - Real Estate Client Portal Generator",
+    template: "%s | Ottie",
+  },
+  description: "Create beautiful, professional real estate client portals in minutes. Generate stunning property websites with AI-powered tools.",
+  keywords: ["real estate", "property websites", "client portals", "real estate marketing", "property listings"],
 }
 
 /**

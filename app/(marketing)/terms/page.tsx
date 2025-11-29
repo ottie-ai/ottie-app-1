@@ -1,12 +1,16 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Typography } from "@/components/ui/typography"
 import Navbar from "@/components/marketing/navbar"
 
-export default function Terms() {
+export const metadata: Metadata = {
+  title: 'Terms of Service',
+  description: 'Terms of Service for Ottie - Real Estate Client Portal Generator. Read our terms and conditions.',
+}
+
+export default function TermsPage() {
   const lastUpdated = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",

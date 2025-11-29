@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
@@ -5,6 +6,28 @@ import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
 import type { ThemeConfig, Section } from '@/types/builder'
+
+export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
+  const { site } = await params
+  const siteConfig = await getSiteConfig(site)
+  
+  if (!siteConfig) {
+    return {
+      title: 'Site Not Found',
+      description: 'The requested site could not be found.',
+    }
+  }
+
+  // Extract site title from first section (usually Hero)
+  const heroSection = siteConfig.sections?.find((s: Section) => s.type === 'hero')
+  const siteTitle = (heroSection?.data as any)?.title || 'Property Site'
+  const siteSubtitle = (heroSection?.data as any)?.subtitle || ''
+
+  return {
+    title: siteTitle,
+    description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
+  }
+}
 
 /**
  * Public Site Page - Dynamically Rendered Client Sites

@@ -6,6 +6,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserProfile } from '@/contexts/user-profile-context'
+import { useWorkspace } from '@/hooks/use-workspace'
+import { useWorkspaces } from '@/hooks/use-workspaces'
+import { normalizePlan, isMultiUserPlan } from '@/lib/utils'
 import { signOut } from '@/lib/supabase/auth'
 import {
   Home,
@@ -14,6 +17,7 @@ import {
   HelpCircle,
   LogOut,
   Plus,
+  UserPlus,
   Search,
   Users,
   ChevronsUpDown,
@@ -49,6 +53,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -89,7 +94,26 @@ export function DashboardSidebar() {
   const { theme, setTheme } = useTheme()
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
+  const { workspace } = useWorkspace()
+  const { workspaces } = useWorkspaces()
   const [mounted, setMounted] = useState(false)
+  
+  // Get display name - workspace name for multi-user plans, "Ottie" for single-user
+  const displayName = workspace && isMultiUserPlan(workspace.plan)
+    ? workspace.name
+    : 'Ottie'
+  
+  // Handle workspace switching
+  const handleSwitchWorkspace = async (workspaceId: string) => {
+    if (typeof window === 'undefined') return
+    
+    // Store selected workspace ID in localStorage
+    localStorage.setItem('current_workspace_id', workspaceId)
+    
+    // Refresh the page to reload with new workspace
+    router.refresh()
+    window.location.reload()
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -173,11 +197,13 @@ export function DashboardSidebar() {
                       <path d="M64.1533 0C64.4902 12.9567 69.5982 23.6894 79.6943 31.8545C86.6667 37.4932 94.7378 40.4266 103.639 40.7432V64.3857C85.1152 64.3976 64.5748 80.2318 64.1436 104.999H40.8438C40.6221 93.8065 36.6974 84.1025 28.7451 76.1826C20.8373 68.307 11.1917 64.3918 0 64.1738V40.8877C22.7104 40.5504 40.5972 22.4718 40.8721 0H64.1533ZM52.5244 36.8252C48.1079 42.9632 42.9675 48.1732 36.8076 52.5088C42.9832 56.8524 48.1253 62.0588 52.4561 68.1006C54.1821 65.9963 55.7127 63.9624 57.4229 62.0938C59.140 60.2175 61.0364 58.5055 63.0225 56.5693C64.7176 55.2107 66.413 53.8517 68.1543 52.4561C62.0948 48.1837 56.9302 42.9915 52.5244 36.8252Z" fill="currentColor"/>
                     </svg>
                   </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">Ottie</span>
-                    <span className="truncate text-xs">Free Plan</span>
+                  <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                    <span className="truncate font-medium">{displayName}</span>
+                    <span className="truncate text-xs capitalize">
+                      {workspace ? normalizePlan(workspace.plan) : 'free'} Plan
+                    </span>
                   </div>
-                  <ChevronsUpDown className="ml-auto" />
+                  <ChevronsUpDown className="ml-auto shrink-0" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -186,15 +212,86 @@ export function DashboardSidebar() {
                 side="bottom"
                 sideOffset={4}
               >
-                <PricingDialog>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                    Upgrade to Pro
-                  </DropdownMenuItem>
-                </PricingDialog>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  Account Settings
-                </DropdownMenuItem>
+                {/* Current Plan Section */}
+                {workspace && (
+                  <>
+                    <div className="px-2 py-1.5">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground mb-2">
+                        Your current plan
+                      </DropdownMenuLabel>
+                      <div className={`flex items-center gap-2 rounded-md border bg-muted/50 p-2 ${!isMultiUserPlan(workspace.plan) ? 'justify-between' : 'justify-start'}`}>
+                        <Badge variant="secondary" className="capitalize text-xs">
+                          {normalizePlan(workspace.plan)}
+                        </Badge>
+                        {!isMultiUserPlan(workspace.plan) && (
+                          <PricingDialog>
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              className="h-7 text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Upgrade
+                            </Button>
+                          </PricingDialog>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {workspaces.length > 1 && (
+                  <>
+                    <DropdownMenuLabel>Switch Workspace</DropdownMenuLabel>
+                    {workspaces.map(({ workspace: ws, membership }) => (
+                      <DropdownMenuItem
+                        key={ws.id}
+                        onClick={() => handleSwitchWorkspace(ws.id)}
+                        className={workspace?.id === ws.id ? 'bg-accent' : ''}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="truncate">{ws.name}</span>
+                          {workspace?.id === ws.id && (
+                            <span className="text-xs text-muted-foreground ml-2">Current</span>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {workspace && isMultiUserPlan(workspace.plan) ? (
+                  <>
+                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        Invite Users
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings?tab=workspace">Workspace Settings</Link>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <PricingDialog>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        Upgrade
+                      </DropdownMenuItem>
+                    </PricingDialog>
+                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4" />
+                        Invite Users
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings">Account Settings</Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

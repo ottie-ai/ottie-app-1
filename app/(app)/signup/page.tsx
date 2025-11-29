@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import { PageTitle } from '@/components/page-title'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -115,6 +116,10 @@ function RegisterForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
+      <PageTitle 
+        title="Sign Up" 
+        description="Create your Ottie account and start building beautiful real estate client portals."
+      />
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>

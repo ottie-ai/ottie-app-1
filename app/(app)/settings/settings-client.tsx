@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
@@ -14,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog,
@@ -30,7 +32,9 @@ import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspaces
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
-import type { Profile, Workspace } from '@/types/database'
+import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
+import type { Profile, Workspace, Membership } from '@/types/database'
+import { Users, Mail, Plus, AlertCircle } from 'lucide-react'
 
 // Serializable user data passed from server component
 // We don't use the full User type because it's not fully serializable
@@ -58,9 +62,10 @@ interface SettingsClientProps {
     isGoogleSignIn: boolean
   }
   initialWorkspace: Workspace | null
+  initialMembership: Membership | null
 }
 
-export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace }: SettingsClientProps) {
+export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace, initialMembership }: SettingsClientProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
@@ -69,7 +74,15 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   // Use client-side user if available (more reliable), otherwise fall back to server user
   const user = clientUser || serverUser
   
-  const [activeTab, setActiveTab] = useState('profile')
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get('tab') || 'profile'
+  const [activeTab, setActiveTab] = useState(initialTab)
+  
+  // Update active tab when URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'profile'
+    setActiveTab(tab)
+  }, [searchParams])
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
   const [workspace, setWorkspace] = useState<Workspace | null>(initialWorkspace)
   const [saving, setSaving] = useState(false)
@@ -77,8 +90,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(!initialProfile && !!clientUser?.id)
   
-  // Check if workspace settings should be shown (only for multi-user plans)
-  const showWorkspaceSettings = workspace ? isMultiUserPlan(workspace.plan) : false
+  // Check if workspace settings should be shown (only for multi-user plans and owner/admin role)
+  const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
+  const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
+  
+  // Load workspace members
+  const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null)
 
   // Delete account dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -245,8 +262,10 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       setShowUnsavedDialog(true)
     } else {
       setActiveTab(newTab)
+      // Update URL with tab parameter
+      router.push(`/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`)
     }
-  }, [hasUnsavedChanges])
+  }, [hasUnsavedChanges, router])
 
   // Handle dialog actions
   const handleSaveAndContinue = async () => {
@@ -350,7 +369,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   // Handle avatar deletion
   const handleDeleteAvatar = async () => {
     if (!user?.id) {
-      setError('User not authenticated. Please refresh the page.')
+      const errorMsg = 'User not authenticated. Please refresh the page.'
+      setError(errorMsg)
+      toast.error(errorMsg)
       return
     }
 
@@ -366,6 +387,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
     if ('error' in result) {
       setError(result.error)
+      toast.error(result.error)
     } else if (result.success && result.profile) {
       setProfile(result.profile)
       setAvatarUrl('')
@@ -379,6 +401,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       // Refresh user profile in all components
       refreshUserProfile()
       setSuccess(true)
+      toast.success('Avatar removed successfully!')
       setTimeout(() => setSuccess(false), 3000)
     }
 
@@ -404,7 +427,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
     e.preventDefault()
 
     if (!user?.id) {
-      setError('User not authenticated. Please refresh the page.')
+      const errorMsg = 'User not authenticated. Please refresh the page.'
+      setError(errorMsg)
+      toast.error(errorMsg)
       return
     }
 
@@ -424,6 +449,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
     if (result.error) {
       setError(result.error)
+      toast.error(result.error)
     } else if (result.success && result.profile) {
       setProfile(result.profile)
       // Update original values after successful save
@@ -438,9 +464,11 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       // Refresh user profile in all components (sidebar, navbar, etc.)
       refreshUserProfile()
       setSuccess(true)
+      toast.success('Profile updated successfully!')
       // Show warning if avatar upload failed but profile was saved
       if ('warning' in result && result.warning) {
         setError(result.warning)
+        toast.warning(result.warning)
         setTimeout(() => setError(null), 5000)
       } else {
         setTimeout(() => setSuccess(false), 3000)
@@ -457,14 +485,18 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
       if (!validTypes.includes(file.type)) {
-        setError('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.')
+        const errorMsg = 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.'
+        setError(errorMsg)
+        toast.error(errorMsg)
         return
       }
 
       // Validate file size (max 2MB)
       const maxSize = 2 * 1024 * 1024 // 2MB
       if (file.size > maxSize) {
-        setError('File size too large. Maximum size is 2MB.')
+        const errorMsg = 'File size too large. Maximum size is 2MB.'
+        setError(errorMsg)
+        toast.error(errorMsg)
         return
       }
 
@@ -509,6 +541,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   {showWorkspaceSettings && (
                     <TabsTrigger value="workspace">Workspace</TabsTrigger>
                   )}
+                  <TabsTrigger value="team">Team</TabsTrigger>
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="plan">Plan & Billing</TabsTrigger>
@@ -534,17 +567,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </div>
                 ) : (
                 <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-4">
-                  {/* Error/Success Messages */}
-                  {error && (
-                    <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                      {error}
-                    </div>
-                  )}
-                  {success && (
-                    <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
-                      Profile updated successfully!
-                    </div>
-                  )}
 
                 {/* Avatar */}
                 <div className="flex items-start justify-between">
@@ -682,7 +704,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           id="workspaceName" 
                           value={workspace?.name || ''} 
                           placeholder="Acme Real Estate" 
-                          className="w-64" 
+                          className="w-64"
+                          readOnly
                         />
                       </div>
                     </div>
@@ -845,9 +868,118 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </ul>
                 </div>
 
-                <PricingDialog>
-                  <Button className="w-full">Upgrade to Pro</Button>
-                </PricingDialog>
+                {workspace && (normalizePlan(workspace.plan) === 'agency' || normalizePlan(workspace.plan) === 'enterprise') ? (
+                  <div className="rounded-lg border p-4 text-center space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Need custom plan?
+                    </p>
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href="mailto:sales@getottie.com">Contact Sales</a>
+                    </Button>
+                  </div>
+                ) : (
+                  <PricingDialog>
+                    <Button className="w-full">Upgrade</Button>
+                  </PricingDialog>
+                )}
+              </TabsContent>
+
+              {/* Team Tab */}
+              <TabsContent value="team" className="mt-6 space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Team
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your workspace members and invitations
+                  </p>
+                </div>
+
+                {/* Banner for single-user workspaces */}
+                {workspace && !isMultiUserPlan(workspace.plan) && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          Upgrade to invite team members
+                        </p>
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          To invite users to your workspace, upgrade to the Agency or Enterprise plan.
+                        </p>
+                        <PricingDialog>
+                          <Button size="sm" variant="outline" className="mt-2">
+                            Upgrade Plan
+                          </Button>
+                        </PricingDialog>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Members List */}
+                <div className="rounded-lg border">
+                  <div className="p-4 border-b flex items-center justify-between">
+                    <h3 className="font-medium">Members</h3>
+                    {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                      <Button size="sm" variant="outline" disabled>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Invite User
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {membersLoading ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      Loading members...
+                    </div>
+                  ) : members.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      No members found
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {members.map(({ membership, profile }) => (
+                        <div key={membership.id} className="p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={profile.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {profile.full_name
+                                  ? profile.full_name
+                                      .split(' ')
+                                      .map(n => n[0])
+                                      .join('')
+                                      .toUpperCase()
+                                      .slice(0, 2)
+                                  : profile.email?.[0]?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">
+                                {profile.full_name || profile.email || 'Unknown User'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {profile.email}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="capitalize">
+                              {membership.role}
+                            </Badge>
+                            {membership.user_id === user?.id && (
+                              <Badge variant="outline" className="text-xs">
+                                You
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
 
               {/* Danger Zone Tab */}
@@ -1010,6 +1142,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
                 if ('error' in result) {
                   setError(result.error)
+                  toast.error(result.error)
                   setDeleteLoading(false)
                   setShowDeleteDialog(false)
                 } else {

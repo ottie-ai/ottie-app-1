@@ -27,8 +27,8 @@ export function useUserJotIdentify(user: UserJotUser | null) {
       
       // Prepare identify data
       const identifyData: any = {
-        id: user.id,
-        email: user.email,
+            id: user.id,
+            email: user.email,
       }
       
       // Add optional fields only if they exist

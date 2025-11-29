@@ -9,6 +9,7 @@ import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
 import { UserProfileProvider, useUserProfile } from '@/contexts/user-profile-context'
 import { usePathname } from 'next/navigation'
+import { Toaster } from 'sonner'
 import '../sphere.css'
 
 /**
@@ -55,6 +56,7 @@ export default function AppRootLayout({
           )}
         </UserProfileProvider>
       </AuthGuard>
+      <Toaster position="top-right" richColors />
     </ThemeProvider>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PageTitle } from '@/components/page-title'
 import { Users, Sparkles, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,6 +32,10 @@ export default function ClientPortalsPage() {
 
   return (
     <div className="flex flex-col h-full">
+      <PageTitle 
+        title="Client Portals" 
+        description="Manage client portals and team collaboration."
+      />
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />

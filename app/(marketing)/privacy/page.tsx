@@ -1,10 +1,14 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Typography } from "@/components/ui/typography"
 import Navbar from "@/components/marketing/navbar"
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
+  description: 'Privacy Policy for Ottie - Real Estate Client Portal Generator. Learn how we protect your data and privacy.',
+}
 
 export default function Privacy() {
   const lastUpdated = new Date().toLocaleDateString("en-US", {

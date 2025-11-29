@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
   MoreHorizontal, 
@@ -84,6 +85,10 @@ const mockSites = [
 export default function SitesPage() {
   return (
     <div className="flex flex-col h-full">
+      <PageTitle 
+        title="Sites" 
+        description="Manage your real estate sites, create new listings, and track performance."
+      />
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />

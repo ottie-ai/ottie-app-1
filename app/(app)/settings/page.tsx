@@ -1,7 +1,13 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsClient } from './settings-client'
 import { getCurrentUserWorkspace } from '@/lib/supabase/queries'
-import type { Profile, Workspace } from '@/types/database'
+import type { Profile, Workspace, Membership } from '@/types/database'
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: "Manage your account settings, profile, workspace, and preferences.",
+}
 
 /**
  * Settings Page - Server Component
@@ -39,11 +45,13 @@ export default async function SettingsPage() {
   // AuthGuard will handle redirect if user is not authenticated
   const initialProfile: Profile | null = profile || null
   
-  // Fetch workspace data if user exists
+  // Fetch workspace data and membership if user exists
   let workspace: Workspace | null = null
+  let membership: Membership | null = null
   if (user && !authError) {
     const workspaceData = await getCurrentUserWorkspace(user.id)
     workspace = workspaceData?.workspace || null
+    membership = workspaceData?.membership || null
   }
   
   // Extract user metadata for fallback
@@ -95,6 +103,7 @@ export default async function SettingsPage() {
       initialProfile={initialProfile}
       userMetadata={userMetadata}
       initialWorkspace={workspace}
+      initialMembership={membership}
     />
   )
 }

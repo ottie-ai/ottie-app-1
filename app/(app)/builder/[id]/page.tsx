@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { PageTitle } from '@/components/page-title'
 import { useRouter } from 'next/navigation'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { SectionEditor } from '@/components/workspace/SectionEditor'
@@ -299,6 +300,10 @@ export default function EditorPage() {
 
   return (
     <div className="min-h-screen">
+      <PageTitle 
+        title="Editor" 
+        description="Edit your real estate site with our powerful visual editor."
+      />
       {/* Fixed background that transitions between light/dark */}
       {/* Only visible after hero section */}
       <div 

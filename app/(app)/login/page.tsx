@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import { PageTitle } from '@/components/page-title'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -89,6 +90,10 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
+      <PageTitle 
+        title="Login" 
+        description="Sign in to your Ottie account to manage your real estate sites."
+      />
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
