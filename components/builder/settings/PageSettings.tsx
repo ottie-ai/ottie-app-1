@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select'
 import { FontSelector } from '@/components/builder/FontSelector'
 import { FileUpload } from '@/components/ui/file-upload'
-import { getVariants } from '@/components/builder/registry'
+import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -165,7 +165,7 @@ export function HeroRemixPanel({
 }
 
 // ============================================
-// Page Settings Panel - Global settings for the entire page
+// Site Settings Panel - Global settings for the entire site
 // ============================================
 
 interface PageSettingsPanelProps {

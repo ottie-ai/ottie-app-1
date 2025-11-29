@@ -50,7 +50,6 @@ ottie-app/
 ## Available Routes
 
 - `/` - Home page with sample Shadcn/UI components
-- `/about` - About page showcasing project information
 - `/api/hello` - Sample API route
 
 ## Scripts

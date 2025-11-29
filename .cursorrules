@@ -1,119 +1,72 @@
-You are an expert Senior Fullstack Engineer specialized in Next.js 14+ (App Router), TypeScript, Supabase, and Tailwind CSS.
+# Project Overview
+You are an expert Senior Fullstack Engineer working on "Ottie" - a Real Estate Client Portal Generator (SaaS). 
+The project uses Next.js 14 (App Router), TypeScript, Supabase, and Tailwind CSS v4.
 
-### Tech Stack & Guidelines
-- **Framework:** Next.js 14 (App Router). Use Server Components (`RSC`) by default. Only add `'use client'` when absolutely necessary for interactivity (hooks, event listeners).
-- **Tailwind CSS:** Version 4 with CSS-based configuration in `globals.css`. No `tailwind.config.ts` file.
-- **UI Library:** 
-# Shadcn UI Workflow
-- Use new-york-v4 style everywhere
-- When I ask for a UI component (like Button, Slider, Dialog), FIRST check if it exists in `@/components/ui`.
-- If the component is missing, DO NOT generate the code manually or create a new file yourself.
-- Instead, use the terminal to install it via the CLI command: `npx shadcn@latest add <component_name>`.
-- Only after installation, import the component from `@/components/ui`.
-- Never replace Shadcn components with standard HTML elements (e.g., never use `<input type="range">` instead of `<Slider>`).
-- Do not invent custom CSS classes unless for complex animations. Use `cn()` for class merging.
-- **Icons:** 
-  - **Lucide React (`lucide-react`)** for ALL system/UI components:
-    - Dashboard and all subpages
-    - Workspace navbar, settings panels, editor buttons
-    - Editable text/field components
-    - Privacy page, main landing page
-    - Any shadcn-based UI
-  - **Phosphor Icons (`@phosphor-icons/react`)** ONLY for end-user template content:
-    - Template sections: Hero, Features, Gallery, Contact, Agent
-    - Floating CTA button (WhatsApp/Phone/Email)
-    - Any icons visible in the generated property website
-  - Use `weight="fill"` for Phosphor icons when appropriate.
-- **Animation:** Framer Motion (`framer-motion`). Add subtle, premium entry animations (fade-in, slide-up) to all major UI sections and micro-interactions (hover scales, tap effects) to interactive elements.
-- **Backend:** Supabase for DB & Auth. Use Server Actions for all data mutations and API calls. Never expose API keys on the client.
-- **Language:** Strict TypeScript. No `any`. Always define interfaces for Props and Data.
-- **Theming:** Use `next-themes` for dark mode. Theme toggle is in Settings > Appearance (Light/Dark/System).
+## 🧠 CONTEXT ZONES (CRITICAL)
+Before writing any code, CHECK THE FILE PATH to determine the context. The app has 3 completely separate styling logics:
 
-### Design System & Theming
-- **Strict Shadcn Compliance:** Always use the default semantic classes provided by shadcn/ui (e.g., `bg-background`, `text-foreground`, `border-input`, `bg-primary`).
-- **No Hardcoded Colors:** Do NOT replace semantic classes with hardcoded Tailwind colors (like `bg-gray-100`, `text-slate-900`) unless explicitly requested.
-- **Respect Defaults:** Trust the component's default `className` props. Do not add extra padding, margins, or color overrides that deviate from the standard library look.
-- **Theme Provider Scope:**
-  - Root layout (`app/layout.tsx`) does NOT include ThemeProvider
-  - Dashboard layout (`app/dashboard/layout.tsx`) includes ThemeProvider for admin UI
-  - Preview layout (`app/preview/layout.tsx`) includes ThemeProvider ONLY for admin UI (navbar, edit buttons)
-  - Homepage (`app/(home)/page.tsx`) has NO ThemeProvider - uses hardcoded styling
-  - Template sections are NEVER affected by ThemeProvider - they use their own `colorScheme` prop
+### 1. 🔵 ADMIN DASHBOARD & UI CHROME
+- **Paths:** `/app/(app)/workspace/**/*`, `/app/(app)/layout.tsx`, `/components/ui/**/*`, `/components/workspace/**/*`, `/components/builder/settings/**/*`
+- **Role:** The SaaS interface, Settings, Editor controls (including "Remix Section" buttons and settings panels).
+- **Styling:** STRICT Shadcn UI compliance.
+- **Theme:** Uses `next-themes`. MUST use semantic classes (`bg-background`, `text-foreground`, `border-input`).
+- **Icons:** `lucide-react` ONLY.
+- **Forbidden:** Do NOT use hardcoded colors (e.g., `bg-white`). Always verify dark mode compatibility.
 
-### Architecture: Section-Based Builder
-This project is a "Property Website Generator" based on a dynamic list of sections.
-- **Modular Sections:** All page sections (Hero, Features, Gallery) must be isolated components in `components/sections/[type]/`.
-- **Registry Pattern:** Use a central registry (`components/builder/registry.ts`) to map JSON keys (type/variant) to React components. Avoid giant switch statements in renderers.
-- **Data Driven:** The UI should be fully driven by a JSON configuration object (`PageConfig`).
-- **Color Schemes:** Each section can have a `colorScheme` property (`'light' | 'dark'`). The page background transitions smoothly between sections.
-- **Fonts:** Custom fonts defined in `lib/fonts.ts`. Each font has a `defaultWeight` property. Use `getFontWeight()` helper to get the correct weight.
+### 2. 🟢 TEMPLATE RENDERER (The "Elementor" Part)
+- **Paths:** `/app/(app)/builder/**/*`, `/components/templates/**/*`, `/components/builder/FontLoader.tsx`, `/components/builder/FontTransition.tsx`
+- **Note:** 
+  - `/components/workspace/SectionEditor.tsx` is ADMIN UI (edit buttons)
+  - `/components/builder/settings/**/*` is ADMIN UI (settings panels)
+- **Role:** User-generated content (Hero, Gallery, Features).
+- **Styling:** ISOLATED component styling.
+- **Theme:** IGNORES global theme/dark mode. Controlled solely by `colorScheme` prop (`'light' | 'dark'`).
+- **Icons:** `@phosphor-icons/react` (Use `weight="fill"` where appropriate).
+- **Rule:** Never apply `bg-background` or global theme classes here. These sections must look identical regardless of the Admin UI theme.
 
-### Dashboard Structure
-- **Layout:** Uses shadcn Sidebar component with collapsible navigation.
-- **Pages:** `/dashboard` (home), `/dashboard/pages` (my pages), `/dashboard/settings`, `/dashboard/client-portals` (coming soon).
-- **Settings:** Profile, Company, Appearance (theme), Notifications, Plan & Billing, Danger Zone. No cards, direct content with separators.
-- **Sticky Elements:** Top header and settings sidebar are sticky. Main content scrolls independently.
+### 3. 🟣 MARKETING HOMEPAGE
+- **Paths:** `/app/(marketing)/**/*` (includes `/app/(marketing)/page.tsx`, `/app/(marketing)/privacy/page.tsx`, `/app/(marketing)/terms/page.tsx`), `/components/marketing/**/*`
+- **Role:** The landing page for the SaaS itself and public pages (Privacy, Terms).
+- **Styling:** Custom, hardcoded aesthetic.
+- **Theme:** NO ThemeProvider. Hardcoded dark style (`bg-[#08000d]`).
 
-### Template Editor (Preview)
-- **Workspace Navbar:** Fixed floating bar with logo, company dropdown, settings popover, publish button.
-- **Section Editor:** Wraps each section with "Remix Section" button that opens settings popover.
-- **Inline Editing:** Use `EditableText` component for inline text editing with AI enhance button.
+---
 
-### CRITICAL: Admin UI vs Template Content Separation
-**THIS IS THE MOST IMPORTANT RULE - NEVER VIOLATE THIS:**
+## 🛠 Tech Stack & Rules
 
-The application has THREE distinct areas with COMPLETELY SEPARATE styling:
+### UI & Tailwind CSS v4
+- **Config:** CSS-based configuration in `globals.css` (No `tailwind.config.ts`).
+- **Shadcn UI (New York v4):**
+  - IF adding a new standard UI component (Button, Dialog), RUN: `npx shadcn@latest add <component_name>`.
+  - Do NOT manually create files in `/components/ui`.
+  - Do NOT invent custom CSS classes. Use `cn()` for merging.
 
-1. **Admin UI** (uses global theme/dark mode):
-   - Everything in `/app/dashboard/*` (dashboard layout)
-   - `WorkspaceNavbar` component (in preview page)
-   - `SectionEditor` buttons ("Remix Section" buttons in preview)
-   - Settings panels, popovers, dialogs in preview
-   - These MUST use semantic classes (`bg-background`, `text-foreground`, etc.)
-   - These MUST respect dark mode from ThemeProvider
+### Architecture: Section Builder
+- **Registry:** All template sections map via `components/templates/registry.ts`.
+- **Isolation:** Each section (Hero, Features) must be self-contained in `components/templates/[type]/`.
+- **Data Driven:** UI is driven by a JSON `PageConfig` object.
 
-2. **Template/Preview Content** (NEVER affected by admin theme):
-   - All sections rendered by `SectionRenderer` (Hero, Features, Gallery, etc.)
-   - Template sections in `/app/preview/page.tsx`
-   - These use their OWN `colorScheme` prop (`'light' | 'dark'`)
-   - These are user-editable content (like Elementor)
-   - NEVER apply global theme classes to template sections
-   - Template sections have their own styling independent of admin UI
+### Components Organization
+- **`/components/marketing/`** - Components for marketing/homepage (navbar, etc.)
+- **`/components/workspace/`** - Components for workspace/admin UI (sidebar, SectionEditor, pricing-dialog, etc.)
+- **`/components/builder/`** - Builder UI tools (FontSelector, FontLoader, FontTransition, settings panels)
+- **`/components/templates/`** - Template section components (Hero, Features, Gallery, etc.) and renderer (SectionRenderer, registry)
+- **`/components/ui/`** - Shared UI components (Shadcn UI) - used everywhere
+- **`/components/theme-provider.tsx`** - Theme provider - used everywhere
 
-3. **Homepage** (has its own hardcoded styling):
-   - `/app/(home)/page.tsx` - the landing page
-   - Uses hardcoded `dark bg-[#08000d]` styling
-   - NOT affected by ThemeProvider
-   - Has its own layout without ThemeProvider
+### Backend (Supabase)
+- **Auth:** Use Supabase Auth.
+- **Data:** Use Server Actions for mutations.
+- **Types:** Strict TypeScript interfaces for all data props.
 
-**Rules when editing code:**
-- When editing admin UI components (dashboard, workspace navbar, edit buttons):
-  - ALWAYS use semantic classes (`bg-background`, not `bg-white`)
-  - ALWAYS respect dark mode
-  - NEVER hardcode colors that break dark mode
-  
-- When editing template sections (Hero, Features, Gallery, etc.):
-  - NEVER use global theme classes
-  - Use the `colorScheme` prop passed to the section
-  - Template styling is independent of admin UI theme
-  
-- When editing homepage:
-  - Keep hardcoded dark styling
-  - Don't apply ThemeProvider to it
-  
-- When adding new components:
-  - FIRST ask: "Is this admin UI or template content?"
-  - Admin UI → use semantic classes, respect theme
-  - Template content → use colorScheme prop, ignore global theme
-
-### Coding Standards
-- **Mobile-First:** Always write Tailwind classes with mobile as default, then `md:`, `lg:` overrides.
-- **Error Handling:** Wrap Server Actions in `try/catch` and return structured `{ success, error, data }` objects.
-- **Type Safety:** Share types between backend (Server Actions) and frontend components via `types/` folder.
-- **Performance:** Optimize images using `next/image`. Use CSS `transform: scale()` for animations instead of width/height.
-- **Scroll Animations:** Use `IntersectionObserver` or Framer Motion's `useInView` for scroll-triggered animations. Avoid React state updates on scroll to prevent re-renders.
-
-### Workflow
-- When generating new sections, always ask: "Does this need a new variant in the registry?"
-- Keep components small (< 200 lines). Extract sub-components if they grow too large.
-- For dialogs wider than default, use `sm:max-w-{size}` to override shadcn's default `sm:max-w-lg`.
+## ⚡️ Workflow Rules
+1. **New Template Sections:** When asked to create a section (e.g., "Testimonials"), creates it in `components/templates/testimonials/` and register it in the registry. Use **Phosphor Icons**.
+2. **New Admin Features:** When asked to create a workspace feature, use **Lucide Icons** and standard Shadcn components. All platform routes are in `/app/(app)/` route group.
+3. **Inline Editing:** In the Template Editor (`/app/(app)/builder/[id]`), use `EditableText` for text elements to allow inline editing.
+4. **Route Groups & URLs:** 
+   - `/app/(marketing)/` - Public pages (homepage, privacy, terms) → URLs: `/`, `/privacy`, `/terms`
+   - `/app/(auth)/` - Public auth pages (login, signup, callback) → URLs: `/login`, `/signup`, `/auth/callback`
+   - `/app/(app)/` - Protected platform routes - requires authentication via `(app)/layout.tsx`
+     - `/app/(app)/workspace/` - Workspace routes → URLs: `/overview`, `/sites`, `/settings`, `/client-portals`
+     - `/app/(app)/builder/[id]/` - Builder routes → URL: `/builder/[id]`
+   - `/app/(z-sites)/[site]/` - Client subdomain routes → URLs: `client.ottie.com/*` (z- prefix ensures lower priority than (app) routes)

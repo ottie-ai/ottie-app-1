@@ -1,4 +1,4 @@
-// Page Builder Type Definitions
+// Site Builder Type Definitions
 
 /**
  * CTA button types for floating action button
@@ -11,7 +11,7 @@ export type CTAType = 'none' | 'whatsapp' | 'phone' | 'email'
 export type ColorScheme = 'light' | 'dark'
 
 /**
- * Available section types in the page builder
+ * Available section types in the site builder
  */
 export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact'
 
@@ -43,7 +43,7 @@ export interface Section<T extends SectionData = SectionData> {
 }
 
 /**
- * Theme configuration for the entire page
+ * Theme configuration for the entire site
  */
 export interface ThemeConfig {
   /** Primary font family for body text */
@@ -73,14 +73,14 @@ export interface ThemeConfig {
 }
 
 /**
- * Complete page configuration
+ * Complete site configuration
  */
 export interface PageConfig {
   /** Array of sections in display order */
   sections: Section[]
   /** Global theme settings */
   theme: ThemeConfig
-  /** Page metadata */
+  /** Site metadata */
   meta?: {
     title?: string
     description?: string

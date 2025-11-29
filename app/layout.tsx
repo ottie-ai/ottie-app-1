@@ -12,7 +12,7 @@ export const metadata: Metadata = {
  * NOTE: ThemeProvider is NOT included here to allow different pages
  * to have their own theme handling:
  * - Dashboard: Has its own layout with ThemeProvider
- * - Preview: Has its own layout with ThemeProvider (only for admin UI)
+ * - Editor: Has its own layout with ThemeProvider (only for admin UI)
  * - Homepage: No ThemeProvider (uses hardcoded dark styling)
  */
 export default function RootLayout({

@@ -15,7 +15,7 @@ import {
   CarouselNext,
   type CarouselApi 
 } from '@/components/ui/carousel'
-import { getVariants } from '@/components/builder/registry'
+import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
