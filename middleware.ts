@@ -37,8 +37,18 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   // Restricted mode - check domain and IP
   const hostname = request.headers.get('host') || ''
   const hostnameWithoutPort = hostname.split(':')[0]
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-                   request.headers.get('x-real-ip') ||
+  
+  // Extract client IP from headers (Next.js 15+ removed request.ip)
+  // Priority: x-forwarded-for (first IP in chain) > x-real-ip > cf-connecting-ip > unknown
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+  const cfConnectingIp = request.headers.get('cf-connecting-ip') // Cloudflare
+  
+  // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
+  // The first IP is usually the original client IP
+  const clientIp = forwardedFor?.split(',')[0]?.trim() ||
+                   realIp?.trim() ||
+                   cfConnectingIp?.trim() ||
                    'unknown'
   
   // Always allow localhost for development
