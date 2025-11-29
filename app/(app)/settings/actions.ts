@@ -28,6 +28,7 @@ export const getCurrentUserProfile = cache(async (userId: string): Promise<Profi
     .from('profiles')
     .select('*')
     .eq('id', userId)
+    .is('deleted_at', null)
     .single()
 
   if (error) {
@@ -40,8 +41,7 @@ export const getCurrentUserProfile = cache(async (userId: string): Promise<Profi
 
 /**
  * Get user profile (uncached)
- * Used for refreshing profile data after updates
- * This bypasses React cache to ensure fresh data
+ * Used when we need to force a fresh fetch (e.g., after profile update)
  */
 export async function getUserProfileUncached(userId: string): Promise<Profile | null> {
   if (!userId) return null
@@ -51,6 +51,7 @@ export async function getUserProfileUncached(userId: string): Promise<Profile | 
     .from('profiles')
     .select('*')
     .eq('id', userId)
+    .is('deleted_at', null)
     .single()
 
   if (error) {
@@ -61,6 +62,9 @@ export async function getUserProfileUncached(userId: string): Promise<Profile | 
   return data
 }
 
+/**
+ * Update user profile
+ */
 export async function updateUserProfile(userId: string, formData: FormData) {
   if (!userId) {
     return { error: 'Not authenticated' }
@@ -68,64 +72,96 @@ export async function updateUserProfile(userId: string, formData: FormData) {
 
   const supabase = await createClient()
 
+  // Get form data
   const fullName = formData.get('fullName') as string
   const avatarFile = formData.get('avatarFile') as File | null
   const avatarUrl = formData.get('avatarUrl') as string | null
 
-  // Get current profile to check for old avatar and preserve it if not changing
-  const { data: currentProfile } = await supabase
-    .from('profiles')
-    .select('avatar_url')
-    .eq('id', userId)
-    .single()
+  // Prepare profile update
+  const updates: { full_name?: string; avatar_url?: string | null } = {}
 
-  // Start with current avatar URL to preserve it if not changing
-  let finalAvatarUrl: string | null | undefined = currentProfile?.avatar_url ?? null
-  let uploadError: string | null = null
+  if (fullName !== null) {
+    updates.full_name = fullName.trim() || undefined
+  }
 
-  // If a file is uploaded, upload it to storage first
-  // Note: uploadAvatar function already deletes all old avatars before uploading new one
-  if (avatarFile && avatarFile.size > 0) {
-    const uploadResult = await uploadAvatar(userId, avatarFile)
-    if ('error' in uploadResult) {
-      // Store error but don't fail the entire update - allow saving other fields
-      uploadError = uploadResult.error
-      // Keep the current avatar URL if upload fails
-      finalAvatarUrl = currentProfile?.avatar_url ?? null
-    } else {
-      finalAvatarUrl = uploadResult.url
-      // Old avatars are already deleted by uploadAvatar function
+  // Handle avatar upload if file is provided
+  if (avatarFile && avatarFile instanceof File && avatarFile.size > 0) {
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(avatarFile.type)) {
+      return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
+    }
+
+    // Validate file size (max 2MB)
+    const maxSize = 2 * 1024 * 1024 // 2MB
+    if (avatarFile.size > maxSize) {
+      return { error: 'File size too large. Maximum size is 2MB.' }
+    }
+
+    try {
+      // First, delete all existing avatars for this user from storage
+      // This ensures user always has only one avatar
+      try {
+        const { data: existingFiles } = await supabase.storage
+          .from('avatars')
+          .list(userId)
+        
+        if (existingFiles && existingFiles.length > 0) {
+          const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
+          await supabase.storage
+            .from('avatars')
+            .remove(filesToDelete)
+        }
+      } catch (deleteError) {
+        // Don't fail upload if deletion fails - continue with upload
+        console.error('Error deleting old avatars:', deleteError)
+      }
+
+      // Generate unique filename: userId-timestamp.extension
+      const fileExt = avatarFile.name.split('.').pop()
+      const fileName = `${userId}-${Date.now()}.${fileExt}`
+      const filePath = `${userId}/${fileName}`
+
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: false, // Don't overwrite existing files
+        })
+
+      if (uploadError) {
+        console.error('Error uploading avatar:', uploadError)
+        // Provide more specific error messages
+        if (uploadError.message?.includes('Bucket not found')) {
+          return { error: 'Storage bucket not found. Please create the "avatars" bucket in Supabase Storage.' }
+        }
+        if (uploadError.message?.includes('new row violates row-level security policy')) {
+          return { error: 'Permission denied. Please check Storage policies for the "avatars" bucket.' }
+        }
+        return { error: `Failed to upload avatar: ${uploadError.message || 'Unknown error'}` }
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      if (!urlData?.publicUrl) {
+        return { error: 'Failed to get avatar URL' }
+      }
+
+      updates.avatar_url = urlData.publicUrl
+    } catch (error) {
+      console.error('Error uploading avatar:', error)
+      return { error: 'An unexpected error occurred. Please try again.' }
     }
   } else if (avatarUrl !== null) {
-    // If avatarUrl is explicitly provided (even if empty string), use it
-    // This handles the case where avatar is being removed (empty string)
-    finalAvatarUrl = avatarUrl || null
-  }
-  // Otherwise, finalAvatarUrl remains as currentProfile?.avatar_url (preserved)
-
-  const updates: {
-    full_name?: string | null
-    avatar_url?: string | null
-    updated_at: string
-  } = {
-    updated_at: new Date().toISOString()
+    // If avatarUrl is provided (even if empty), use it
+    updates.avatar_url = avatarUrl || null
   }
 
-  if (fullName !== undefined) {
-    updates.full_name = fullName || null
-  }
-
-  // Only update avatar_url in database if it actually changed
-  // (file upload, explicit URL change, or removal)
-  if (avatarFile && avatarFile.size > 0) {
-    // File upload - avatar_url will be updated
-    updates.avatar_url = finalAvatarUrl ?? null
-  } else if (avatarUrl !== null) {
-    // Explicit URL change (including removal with empty string)
-    updates.avatar_url = finalAvatarUrl ?? null
-  }
-  // Otherwise, don't update avatar_url in database
-
+  // Update profile
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -135,131 +171,13 @@ export async function updateUserProfile(userId: string, formData: FormData) {
 
   if (error) {
     console.error('Error updating profile:', error)
-    // Provide more specific error messages
-    if (error.message?.includes('row-level security')) {
-      return { error: 'Permission denied. Please check your database permissions.' }
-    }
-    return { error: `Failed to update profile: ${error.message || 'Unknown error'}` }
+    return { error: 'Failed to update profile' }
   }
 
-  // Update user metadata in Auth - only update full_name, not avatar_url
-  // We don't sync avatar_url to user_metadata - app always uses profile.avatar_url
-  // Google avatar in user_metadata can stay as-is from signup
-  try {
-    const metadataUpdates: Record<string, any> = {}
-    
-    if (fullName !== undefined) {
-      metadataUpdates.full_name = fullName || null
-    }
-    
-    // Only update if there's something to update
-    if (Object.keys(metadataUpdates).length > 0) {
-      await supabase.auth.updateUser({
-        data: metadataUpdates
-      })
-    }
-  } catch (metadataError) {
-    // Don't fail the entire update if metadata update fails
-    console.error('Error updating user metadata:', metadataError)
-  }
-
-  // Revalidate the settings page cache to show updated data
-  // This ensures the server component will fetch fresh data on next render
+  // Revalidate settings page
   revalidatePath('/settings')
-  
-  // Return success even if upload failed, but include warning
-  if (uploadError) {
-    return { 
-      success: true, 
-      profile: data as Profile,
-      warning: `Profile updated, but avatar upload failed: ${uploadError}` 
-    }
-  }
-  
+
   return { success: true, profile: data as Profile }
-}
-
-/**
- * Upload avatar to Supabase Storage
- * Uploads a file to the 'avatars' bucket and returns the public URL
- */
-export async function uploadAvatar(userId: string, file: File): Promise<{ success: true; url: string } | { error: string }> {
-  if (!userId) {
-    return { error: 'Not authenticated' }
-  }
-
-  const supabase = await createClient()
-
-  // Validate file type
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-  if (!validTypes.includes(file.type)) {
-    return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
-  }
-
-  // Validate file size (max 2MB)
-  const maxSize = 2 * 1024 * 1024 // 2MB
-  if (file.size > maxSize) {
-    return { error: 'File size too large. Maximum size is 2MB.' }
-  }
-
-  try {
-    // First, delete all existing avatars for this user from storage
-    // This ensures user always has only one avatar
-    try {
-      const { data: existingFiles } = await supabase.storage
-        .from('avatars')
-        .list(userId)
-      
-      if (existingFiles && existingFiles.length > 0) {
-        const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
-        await supabase.storage
-          .from('avatars')
-          .remove(filesToDelete)
-      }
-    } catch (deleteError) {
-      // Don't fail upload if deletion fails - continue with upload
-      console.error('Error deleting old avatars:', deleteError)
-    }
-
-    // Generate unique filename: userId-timestamp.extension
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${userId}-${Date.now()}.${fileExt}`
-    const filePath = `${userId}/${fileName}`
-
-    // Upload file to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false, // Don't overwrite existing files
-      })
-
-    if (uploadError) {
-      console.error('Error uploading avatar:', uploadError)
-      // Provide more specific error messages
-      if (uploadError.message?.includes('Bucket not found')) {
-        return { error: 'Storage bucket not found. Please create the "avatars" bucket in Supabase Storage.' }
-      }
-      if (uploadError.message?.includes('new row violates row-level security policy')) {
-        return { error: 'Permission denied. Please check Storage policies for the "avatars" bucket.' }
-      }
-      return { error: `Failed to upload avatar: ${uploadError.message || 'Unknown error'}` }
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath)
-
-    if (!urlData?.publicUrl) {
-      return { error: 'Failed to get avatar URL' }
-    }
-
-    return { success: true, url: urlData.publicUrl }
-  } catch (error) {
-    console.error('Error uploading avatar:', error)
-    return { error: 'An unexpected error occurred. Please try again.' }
-  }
 }
 
 /**
@@ -289,7 +207,7 @@ export async function deleteAvatar(userId: string, avatarUrl: string): Promise<v
  * Remove avatar from user profile
  * Deletes the avatar from storage and removes the URL from profile
  */
-export async function removeAvatar(userId: string): Promise<{ success: true; profile: Profile } | { error: string }> {
+export async function removeAvatar(userId: string): Promise<{ success: true } | { error: string }> {
   if (!userId) {
     return { error: 'Not authenticated' }
   }
@@ -321,91 +239,75 @@ export async function removeAvatar(userId: string): Promise<{ success: true; pro
     return { error: 'Failed to remove avatar' }
   }
 
-  // Don't update user_metadata - app always uses profile.avatar_url
-  // Google avatar in user_metadata can stay as-is from signup
-
-  // Revalidate the settings page cache
+  // Revalidate settings page
   revalidatePath('/settings')
-  
-  return { success: true, profile: data as Profile }
+
+  return { success: true }
 }
 
 /**
- * Check if user is owner in any workspace with multiple users
- * Returns list of workspaces that will be deleted
+ * Check workspaces for deletion
+ * Returns list of workspaces owned by user and their member counts
  */
 export async function checkWorkspacesForDeletion(userId: string): Promise<{
-  workspacesToDelete: Array<{ id: string; name: string; memberCount: number }>
+  workspaces: Array<{
+    id: string
+    name: string
+    memberCount: number
+  }>
   hasMultiUserWorkspace: boolean
 }> {
-  if (!userId) {
-    return { workspacesToDelete: [], hasMultiUserWorkspace: false }
-  }
-
   const supabase = await createClient()
 
-  // Find all workspaces where user is owner
-  const { data: ownerMemberships, error: ownerError } = await supabase
+  // Get all workspaces where user is owner
+  const { data: memberships, error } = await supabase
     .from('memberships')
-    .select('workspace_id')
+    .select(`
+      workspace_id,
+      workspace:workspaces!inner(id, name)
+    `)
     .eq('user_id', userId)
     .eq('role', 'owner')
+    .is('workspace.deleted_at', null)
 
-  if (ownerError || !ownerMemberships || ownerMemberships.length === 0) {
-    return { workspacesToDelete: [], hasMultiUserWorkspace: false }
+  if (error) {
+    console.error('Error fetching workspaces:', error)
+    return { workspaces: [], hasMultiUserWorkspace: false }
   }
 
-  const workspaceIds = ownerMemberships.map(m => m.workspace_id)
-  const workspacesToDelete: Array<{ id: string; name: string; memberCount: number }> = []
-  let hasMultiUserWorkspace = false
+  // Get member counts for each workspace
+  const workspacesWithCounts = await Promise.all(
+    (memberships || []).map(async (membership) => {
+      const { count } = await supabase
+        .from('memberships')
+        .select('*', { count: 'exact', head: true })
+        .eq('workspace_id', membership.workspace_id)
 
-  // Get workspace details and member counts
-  for (const workspaceId of workspaceIds) {
-    // Get workspace details
-    const { data: workspace, error: wsError } = await supabase
-      .from('workspaces')
-      .select('id, name')
-      .eq('id', workspaceId)
-      .single()
-
-    if (wsError || !workspace) continue
-
-    // Count members in this workspace
-    const { data: members, error: membersError } = await supabase
-      .from('memberships')
-      .select('id')
-      .eq('workspace_id', workspaceId)
-
-    const memberCount = members?.length || 0
-
-    if (memberCount > 1) {
-      hasMultiUserWorkspace = true
-    }
-
-    workspacesToDelete.push({
-      id: workspace.id,
-      name: workspace.name,
-      memberCount,
+      return {
+        id: membership.workspace_id,
+        name: (membership.workspace as any).name,
+        memberCount: count || 0,
+      }
     })
-  }
+  )
 
-  return { workspacesToDelete, hasMultiUserWorkspace }
+  const hasMultiUserWorkspace = workspacesWithCounts.some(ws => ws.memberCount > 1)
+
+  return {
+    workspaces: workspacesWithCounts,
+    hasMultiUserWorkspace,
+  }
 }
 
 /**
- * Soft delete user account (anonymize instead of hard delete)
- * This preserves data for compliance and analytics while removing personal information.
- * 
- * Process:
- * - Anonymizes personal data in profile (email, full_name, avatar_url)
- * - Sets deleted_at timestamp in profile
- * - Anonymizes email in auth.users to allow re-registration with same email
- * - For single-user workspaces: deletes workspace and all associated data
- * - For multi-user workspaces: removes user from workspace but keeps workspace
- * - Deletes avatars from storage
- * 
- * Note: User can re-register with the same email because auth.users email is anonymized.
- * Profile remains anonymized (soft delete) for compliance/analytics purposes.
+ * Delete user account (soft delete)
+ * - Anonymizes profile data
+ * - Sets deleted_at timestamp
+ * - Deletes sites and integrations for single-user workspaces
+ * - Deletes single-user workspaces
+ * - Deletes all memberships
+ * - Deletes all avatars from storage
+ * - Anonymizes email in auth.users
  */
 export async function deleteUserAccount(userId: string): Promise<{ success: true } | { error: string }> {
   if (!userId) {
@@ -415,141 +317,101 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
   const supabase = await createClient()
 
   try {
-    // 1. Find all workspaces where user is owner
-    const { data: ownerMemberships, error: ownerError } = await supabase
+    // 1. Get all workspaces where user is owner
+    const { data: ownedWorkspaces } = await supabase
       .from('memberships')
       .select('workspace_id')
       .eq('user_id', userId)
       .eq('role', 'owner')
 
-    if (ownerError) {
-      console.error('Error finding owner workspaces:', ownerError)
-      return { error: 'Failed to find workspaces' }
-    }
-
-    const workspaceIdsToDelete = ownerMemberships?.map(m => m.workspace_id) || []
-
-    // 2. For single-user workspaces: Delete sites and integrations
-    // For multi-user workspaces: Keep them (other users need them)
-    if (workspaceIdsToDelete.length > 0) {
-      // Check which workspaces are single-user (only this user)
-      for (const workspaceId of workspaceIdsToDelete) {
-        const { data: members, error: membersError } = await supabase
+    if (ownedWorkspaces) {
+      for (const membership of ownedWorkspaces) {
+        // Check if workspace has multiple members
+        const { count } = await supabase
           .from('memberships')
-          .select('id')
-          .eq('workspace_id', workspaceId)
+          .select('*', { count: 'exact', head: true })
+          .eq('workspace_id', membership.workspace_id)
 
-        const memberCount = members?.length || 0
-
-        // Only delete sites/integrations if it's a single-user workspace
-        if (memberCount === 1) {
+        // If single-user workspace, delete sites and integrations
+        if (count === 1) {
           // Delete sites
-          const { error: deleteSitesError } = await supabase
+          await supabase
             .from('sites')
             .delete()
-            .eq('workspace_id', workspaceId)
-
-          if (deleteSitesError) {
-            console.error('Error deleting sites:', deleteSitesError)
-          }
+            .eq('workspace_id', membership.workspace_id)
 
           // Delete integrations
-          const { error: deleteIntegrationsError } = await supabase
+          await supabase
             .from('integrations')
             .delete()
-            .eq('workspace_id', workspaceId)
+            .eq('workspace_id', membership.workspace_id)
 
-          if (deleteIntegrationsError) {
-            console.error('Error deleting integrations:', deleteIntegrationsError)
-          }
-
-          // Delete workspace (single-user only)
-          const { error: deleteWorkspaceError } = await supabase
+          // Delete workspace
+          await supabase
             .from('workspaces')
             .delete()
-            .eq('id', workspaceId)
-
-          if (deleteWorkspaceError) {
-            console.error('Error deleting workspace:', deleteWorkspaceError)
-          }
+            .eq('id', membership.workspace_id)
         }
-        // For multi-user workspaces, we keep them but remove the user's membership
       }
     }
 
-    // 3. Delete all memberships (user is removed from all workspaces)
-    const { error: deleteMembershipsError } = await supabase
+    // 2. Delete all memberships for this user
+    await supabase
       .from('memberships')
       .delete()
       .eq('user_id', userId)
 
-    if (deleteMembershipsError) {
-      console.error('Error deleting memberships:', deleteMembershipsError)
-      return { error: 'Failed to delete memberships' }
-    }
-
-    // 4. Delete all avatars uploaded by the user from storage
+    // 3. Delete all avatars from storage
     try {
-      const { data: existingFiles, error: listError } = await supabase.storage
+      const { data: avatarFiles } = await supabase.storage
         .from('avatars')
         .list(userId)
 
-      if (existingFiles && existingFiles.length > 0) {
-        const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
-        const { error: deleteAvatarsError } = await supabase.storage
+      if (avatarFiles && avatarFiles.length > 0) {
+        const filesToDelete = avatarFiles.map(file => `${userId}/${file.name}`)
+        await supabase.storage
           .from('avatars')
           .remove(filesToDelete)
-
-        if (deleteAvatarsError) {
-          console.error('Error deleting avatars from storage:', deleteAvatarsError)
-          // Continue even if avatar deletion fails
-        }
       }
     } catch (avatarError) {
-      console.error('Error accessing storage for avatar deletion:', avatarError)
-      // Continue even if avatar deletion fails
+      console.error('Error deleting avatars:', avatarError)
+      // Continue with deletion even if avatar deletion fails
     }
 
-    // 5. Soft delete: Anonymize profile instead of deleting
-    // This preserves data for compliance/analytics while removing personal info
-    const anonymizedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`
-    const anonymizedName = 'Deleted User'
-    
-    const { error: updateProfileError } = await supabase
+    // 4. Anonymize profile (soft delete)
+    const { error: profileError } = await supabase
       .from('profiles')
       .update({
-        email: anonymizedEmail,
-        full_name: anonymizedName,
+        email: null,
+        full_name: null,
         avatar_url: null,
         deleted_at: new Date().toISOString(),
-        preferences: {} // Clear preferences
       })
       .eq('id', userId)
 
-    if (updateProfileError) {
-      console.error('Error soft deleting profile:', updateProfileError)
-      return { error: `Failed to delete profile: ${updateProfileError.message || 'Unknown error'}` }
+    if (profileError) {
+      console.error('Error anonymizing profile:', profileError)
+      return { error: 'Failed to delete account' }
     }
 
-    // 6. Anonymize email in auth.users to allow re-registration with same email
-    // This uses a security definer function that can update auth.users
-    // This is necessary so user can register again with the same email
-    // The profile remains anonymized (soft delete) for compliance/analytics
-    const { error: anonymizeAuthUserError } = await supabase.rpc('anonymize_auth_user', {
+    // 5. Anonymize email in auth.users (requires service role)
+    // This is done via RPC function that runs with security definer
+    const { error: authError } = await supabase.rpc('anonymize_auth_user', {
       user_uuid: userId,
-      anonymized_email: anonymizedEmail
     })
-    
-    if (anonymizeAuthUserError) {
-      console.error('Error anonymizing auth user:', anonymizeAuthUserError)
-      // Continue - profile is already anonymized, but user won't be able to re-register
-      // with same email until auth.users email is manually changed
+
+    if (authError) {
+      console.error('Error anonymizing auth user:', authError)
+      // Don't fail the entire operation if this fails - profile is already anonymized
     }
+
+    // Revalidate settings page
+    revalidatePath('/settings')
 
     return { success: true }
   } catch (error) {
-    console.error('Error deleting account:', error)
-    return { error: 'An unexpected error occurred' }
+    console.error('Error deleting user account:', error)
+    return { error: 'An unexpected error occurred. Please try again.' }
   }
 }
 
@@ -837,3 +699,82 @@ export async function updateWorkspaceAction(
   return { success: true, workspace: updatedWorkspace }
 }
 
+/**
+ * Update membership role
+ * Only allowed for workspace owners/admins
+ * Owner role cannot be changed
+ */
+export async function updateMembershipRole(
+  membershipId: string,
+  workspaceId: string,
+  userId: string,
+  newRole: 'admin' | 'agent'
+): Promise<{ success: true } | { error: string }> {
+  if (!membershipId || !workspaceId || !userId || !newRole) {
+    return { error: 'Missing required fields' }
+  }
+
+  // Validate role - this check is redundant since role type is 'admin' | 'agent', but keeping for safety
+  // TypeScript ensures newRole can never be 'owner' due to the function signature
+
+  if (newRole !== 'admin' && newRole !== 'agent') {
+    return { error: 'Invalid role. Must be admin or agent.' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: currentUserMembership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !currentUserMembership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (currentUserMembership.role !== 'owner' && currentUserMembership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can change member roles' }
+  }
+
+  // Get the membership being updated to check if it's owner
+  const { data: targetMembership, error: targetError } = await supabase
+    .from('memberships')
+    .select('role, user_id')
+    .eq('id', membershipId)
+    .eq('workspace_id', workspaceId)
+    .single()
+
+  if (targetError || !targetMembership) {
+    return { error: 'Target membership not found' }
+  }
+
+  // Prevent changing owner role
+  if (targetMembership.role === 'owner') {
+    return { error: 'Cannot change owner role. Owner role cannot be modified.' }
+  }
+
+  // Prevent user from changing their own role
+  if (targetMembership.user_id === userId) {
+    return { error: 'Cannot change your own role' }
+  }
+
+  // Update membership role
+  const { error: updateError } = await supabase
+    .from('memberships')
+    .update({ role: newRole })
+    .eq('id', membershipId)
+    .eq('workspace_id', workspaceId)
+
+  if (updateError) {
+    console.error('Error updating membership role:', updateError)
+    return { error: 'Failed to update membership role' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true }
+}

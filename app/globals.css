@@ -518,6 +518,13 @@ canvas {
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Mobile: Show all TabsContent sections stacked */
+  @media (max-width: 639px) {
+    [data-slot="tabs-content"][data-state="inactive"] {
+      display: block !important;
+    }
+  }
 }
 
 /* Ottie Brand Gradient - Orange to Purple (from sphere) */

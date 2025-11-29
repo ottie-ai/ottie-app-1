@@ -16,6 +16,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog,
@@ -29,14 +30,16 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspace } from '@/contexts/workspace-context'
 import type { Profile, Workspace, Membership } from '@/types/database'
-import { Users, Mail, Plus, AlertCircle } from 'lucide-react'
+import { Mail, Plus, AlertCircle } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import type { UserRole } from '@/types/database'
 
 // Serializable user data passed from server component
 // We don't use the full User type because it's not fully serializable
@@ -117,6 +120,24 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       setOriginalWorkspaceName(workspace.name)
     }
   }, [workspace?.id, workspace?.name])
+
+  // Detect if we're on mobile
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile)
+    }
+  }, [])
 
   // Delete account dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -409,10 +430,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
     if ('error' in result) {
       setError(result.error)
       toast.error(result.error)
-    } else if (result.success && result.profile) {
-      setProfile(result.profile)
-      setAvatarUrl('')
-      setOriginalAvatarUrl('')
+    } else if (result.success) {
+      // Refresh profile from server
+      const refreshedProfile = await getCurrentUserProfile(user.id)
+      if (refreshedProfile) {
+        setProfile(refreshedProfile)
+        setAvatarUrl(refreshedProfile.avatar_url || '')
+        setOriginalAvatarUrl(refreshedProfile.avatar_url || '')
+      }
       setAvatarFile(null)
       setAvatarPreview(null)
       // Reset file input
@@ -488,8 +513,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       toast.success('Profile updated successfully!')
       // Show warning if avatar upload failed but profile was saved
       if ('warning' in result && result.warning) {
-        setError(result.warning)
-        toast.warning(result.warning)
+        const warningMessage = typeof result.warning === 'string' ? result.warning : String(result.warning)
+        setError(warningMessage)
+        toast.warning(warningMessage)
         setTimeout(() => setError(null), 5000)
       } else {
         setTimeout(() => setSuccess(false), 3000)
@@ -555,9 +581,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
           {/* Content - scrollable and centered */}
           <div className="flex-1 overflow-y-auto scrollbar-hide">
             <div className="max-w-4xl mx-auto">
-              {/* Top Tabs - aligned with content */}
-              <div className="px-6 pt-6">
-                <TabsList>
+              {/* Top Tabs - hidden on mobile, shown on desktop */}
+              <div className="hidden sm:block px-4 sm:px-6 pt-4 sm:pt-6">
+                <TabsList className="flex-wrap">
                   <TabsTrigger value="profile">Account</TabsTrigger>
                   {showWorkspaceSettings && (
                     <TabsTrigger value="workspace">Workspace</TabsTrigger>
@@ -572,15 +598,17 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </TabsList>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
               {/* Account Tab */}
-              <TabsContent value="profile" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold">Account</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your personal information and preferences
-                  </p>
-                </div>
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Account</CardTitle>
+                    <CardDescription>
+                      Manage your personal information and preferences
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
 
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
@@ -590,7 +618,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-4">
 
                 {/* Avatar */}
-                <div className="flex items-start justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <Label htmlFor="avatar" className="text-sm font-medium pt-2">Avatar</Label>
                   <div className="flex items-center gap-4">
                     <div className="relative group">
@@ -610,7 +638,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-2 w-64">
+                    <div className="flex flex-col gap-2 w-full sm:w-64">
                       <Input
                         ref={fileInputRef}
                         id="avatarFile"
@@ -628,25 +656,27 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
                 <Separator />
 
-                  {/* Full Name */}
-                <div className="flex items-center justify-between">
-                    <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
+                {/* Full Name */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
                   <div className="flex items-center gap-3">
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="John Doe"
-                        className="w-64"
-                      />
+                    <Input 
+                      id="fullName" 
+                      value={fullName} 
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="John Doe" 
+                      className="w-full sm:w-64"
+                    />
                   </div>
                 </div>
 
                 <Separator />
 
                   {/* Email (Read-only) */}
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                  </div>
                     <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
                         <Input
@@ -654,7 +684,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           type="email"
                           value={userEmail}
                           disabled
-                          className="w-64 bg-muted"
+                          className="w-full sm:w-64 bg-muted"
                         />
                   </div>
                       {userMetadata.isGoogleSignIn ? (
@@ -717,17 +747,169 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               </div>
                 </form>
                 )}
-              </TabsContent>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="profile" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Duplicate content for desktop - same as mobile */}
+                  <div>
+                    <h2 className="text-lg font-semibold">Account</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your personal information and preferences
+                    </p>
+                  </div>
+
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <form id="profile-form-desktop" onSubmit={handleSaveProfile} className="space-y-4">
+                      {/* Avatar */}
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <Label htmlFor="avatar-desktop" className="text-sm font-medium pt-2">Avatar</Label>
+                        <div className="flex items-center gap-4">
+                          <div className="relative group">
+                            <Avatar className="size-20 shrink-0">
+                                <AvatarImage src={displayAvatar || undefined} alt={userName} />
+                                <AvatarFallback className="text-2xl">
+                                  {getInitials(userName, userEmail)}
+                                </AvatarFallback>
+                            </Avatar>
+                            {hasAvatar && (
+                              <div 
+                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center cursor-pointer" 
+                                onClick={handleDeleteAvatar}
+                                title="Delete avatar"
+                              >
+                                <Trash2 className="size-6 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 w-full sm:w-64">
+                            <Input
+                              ref={fileInputRef}
+                              id="avatarFile-desktop"
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                              onChange={handleFileChange}
+                              className="w-full cursor-pointer"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Upload a JPEG, PNG, GIF, or WebP image (max 2MB)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Full Name */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <Label htmlFor="fullName-desktop" className="text-sm font-medium">Full name</Label>
+                        <div className="flex items-center gap-3">
+                          <Input 
+                            id="fullName-desktop" 
+                            value={fullName} 
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder="John Doe" 
+                            className="w-full sm:w-64"
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Email (Read-only) */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="email-desktop" className="text-sm font-medium">Email</Label>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-3">
+                            <Input
+                              id="email-desktop"
+                              type="email"
+                              value={userEmail}
+                              disabled
+                              className="w-full sm:w-64 bg-muted"
+                            />
+                          </div>
+                          {userMetadata.isGoogleSignIn ? (
+                            <Badge variant="secondary" className="w-fit text-xs flex items-center gap-1.5">
+                              <svg className="h-3 w-3" viewBox="0 0 24 24">
+                                <path
+                                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                                  fill="#4285F4"
+                                />
+                                <path
+                                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                  fill="#34A853"
+                                />
+                                <path
+                                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                  fill="#FBBC05"
+                                />
+                                <path
+                                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                  fill="#EA4335"
+                                />
+                              </svg>
+                              Linked to Google Account
+                            </Badge>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex justify-start">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button 
+                                type="submit" 
+                                disabled={saving || (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl)}
+                              >
+                                {saving ? (
+                                  <>
+                                    <Loader2 className="size-4 mr-2 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="size-4 mr-2" />
+                                    Save changes
+                                  </>
+                                )}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {!saving && (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl) && (
+                            <TooltipContent>
+                              <p>No changes to save</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </div>
+                    </form>
+                  )}
+                </TabsContent>
+              )}
 
               {/* Workspace Tab - Only shown for multi-user plans (agency/enterprise) */}
               {showWorkspaceSettings && (
-                <TabsContent value="workspace" className="mt-6 space-y-6">
-                  <div>
-                    <h2 className="text-lg font-semibold">Workspace</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Manage your workspace settings and team
-                    </p>
-                  </div>
+                <>
+                  {isMobile ? (
+                    <Card className="mb-6">
+                      <CardHeader>
+                        <CardTitle>Workspace</CardTitle>
+                        <CardDescription>
+                          Manage your workspace settings and team
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
 
                   {/* Settings Fields */}
                     <form 
@@ -799,7 +981,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     className="space-y-4"
                   >
                     {/* Workspace Logo */}
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <Label htmlFor="workspaceLogo" className="text-sm font-medium pt-2">Logo</Label>
                       <div className="flex items-center gap-4">
                         <div className="relative group">
@@ -837,7 +1019,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-col gap-2 w-64">
+                        <div className="flex flex-col gap-2 w-full sm:w-64">
                           <Input
                             ref={workspaceLogoInputRef}
                             id="workspaceLogoFile"
@@ -883,7 +1065,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <Separator />
 
                     {/* Workspace Name */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <Label htmlFor="workspaceName" className="text-sm font-medium">Workspace name</Label>
                       <div className="flex items-center gap-3">
                         <Input 
@@ -891,7 +1073,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           value={workspaceName} 
                           onChange={(e) => setWorkspaceName(e.target.value)}
                           placeholder="Acme Real Estate" 
-                          className="w-64"
+                          className="w-full sm:w-64"
                           disabled={savingWorkspace}
                         />
                       </div>
@@ -900,20 +1082,20 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <Separator />
 
                     {/* Website */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <Label htmlFor="website" className="text-sm font-medium">Website</Label>
                       <div className="flex items-center gap-3">
-                        <Input id="website" type="url" placeholder="https://example.com" className="w-64" />
+                        <Input id="website" type="url" placeholder="https://example.com" className="w-full sm:w-64" />
                       </div>
                     </div>
 
                     <Separator />
 
                     {/* License */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <Label htmlFor="license" className="text-sm font-medium">License number</Label>
                       <div className="flex items-center gap-3">
-                        <Input id="license" placeholder="DRE #01234567" className="w-64" />
+                        <Input id="license" placeholder="DRE #01234567" className="w-full sm:w-64" />
                       </div>
                     </div>
 
@@ -948,24 +1130,310 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </Tooltip>
                     </div>
                   </form>
-                </TabsContent>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <TabsContent value="workspace" className="mt-0 sm:mt-6 space-y-6">
+                      <div>
+                        <h2 className="text-lg font-semibold">Workspace</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your workspace settings and team
+                        </p>
+                      </div>
+
+                      {/* Settings Fields */}
+                      <form 
+                        id="workspace-form-desktop"
+                        onSubmit={async (e) => {
+                          e.preventDefault()
+                          if (!workspace || !user?.id) return
+                          
+                          const hasNameChange = workspaceName.trim() !== originalWorkspaceName.trim()
+                          const hasLogoChange = workspaceLogoFile !== null
+
+                          if (!hasNameChange && !hasLogoChange) return
+
+                          setSavingWorkspace(true)
+
+                          // Upload logo first if there's a new file
+                          let logoUrl = workspaceLogoUrl
+                          if (workspaceLogoFile) {
+                            const uploadResult = await uploadWorkspaceLogo(workspace.id, user.id, workspaceLogoFile)
+                            if ('error' in uploadResult) {
+                              toast.error(uploadResult.error)
+                              setSavingWorkspace(false)
+                              return
+                            }
+                            logoUrl = uploadResult.url
+                          }
+
+                          // Update workspace name if changed
+                          if (hasNameChange) {
+                            const result = await updateWorkspaceName(workspace.id, user.id, workspaceName.trim())
+
+                            if ('error' in result) {
+                              toast.error(result.error)
+                              // Revert to original value on error
+                              setWorkspaceName(originalWorkspaceName)
+                              setSavingWorkspace(false)
+                              return
+                            } else {
+                              setWorkspace(result.workspace)
+                              setOriginalWorkspaceName(result.workspace.name)
+                              setWorkspaceName(result.workspace.name)
+                            }
+                          }
+
+                          // Update workspace logo if changed
+                          if (hasLogoChange) {
+                            const result = await updateWorkspaceAction(workspace.id, user.id, { logo_url: logoUrl })
+                            if ('error' in result) {
+                              toast.error(result.error)
+                              setSavingWorkspace(false)
+                              return
+                            } else {
+                              setWorkspace(result.workspace)
+                              setWorkspaceLogoUrl(logoUrl)
+                              setOriginalWorkspaceLogoUrl(logoUrl)
+                              setWorkspaceLogoFile(null)
+                              setWorkspaceLogoPreview(null)
+                              if (workspaceLogoInputRef.current) {
+                                workspaceLogoInputRef.current.value = ''
+                              }
+                            }
+                          }
+
+                          // Refresh workspace in sidebar and other components
+                          await refreshWorkspace()
+                          toast.success('Workspace updated successfully!')
+                          setSavingWorkspace(false)
+                        }}
+                        className="space-y-4"
+                      >
+                        {/* Workspace Logo */}
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <Label htmlFor="workspaceLogo-desktop" className="text-sm font-medium pt-2">Logo</Label>
+                          <div className="flex items-center gap-4">
+                            <div className="relative group">
+                              <Avatar className="size-20 shrink-0">
+                                <AvatarImage src={workspaceLogoPreview || workspaceLogoUrl || undefined} alt={workspaceName} />
+                                <AvatarFallback className="text-2xl">
+                                  {workspaceName.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {(workspaceLogoPreview || workspaceLogoUrl) && (
+                                <div 
+                                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center cursor-pointer" 
+                                  onClick={async () => {
+                                    if (!workspace || !user?.id) return
+                                    
+                                    const result = await removeWorkspaceLogo(workspace.id, user.id)
+                                    if ('error' in result) {
+                                      toast.error(result.error)
+                                    } else {
+                                      setWorkspace(result.workspace)
+                                      setWorkspaceLogoUrl('')
+                                      setOriginalWorkspaceLogoUrl('')
+                                      setWorkspaceLogoFile(null)
+                                      setWorkspaceLogoPreview(null)
+                                      if (workspaceLogoInputRef.current) {
+                                        workspaceLogoInputRef.current.value = ''
+                                      }
+                                      await refreshWorkspace()
+                                      toast.success('Logo removed successfully!')
+                                    }
+                                  }}
+                                  title="Delete logo"
+                                >
+                                  <Trash2 className="size-6 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2 w-full sm:w-64">
+                              <Input
+                                ref={workspaceLogoInputRef}
+                                id="workspaceLogoFile-desktop"
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    // Validate file type
+                                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+                                    if (!validTypes.includes(file.type)) {
+                                      toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.')
+                                      return
+                                    }
+
+                                    // Validate file size (max 2MB)
+                                    const maxSize = 2 * 1024 * 1024 // 2MB
+                                    if (file.size > maxSize) {
+                                      toast.error('File size too large. Maximum size is 2MB.')
+                                      return
+                                    }
+
+                                    setWorkspaceLogoFile(file)
+
+                                    // Create preview
+                                    const reader = new FileReader()
+                                    reader.onload = () => {
+                                      setWorkspaceLogoPreview(reader.result as string)
+                                    }
+                                    reader.readAsDataURL(file)
+                                  }
+                                }}
+                                className="w-full cursor-pointer"
+                                disabled={savingWorkspace}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Upload a JPEG, PNG, GIF, WebP, or SVG image (max 2MB)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Workspace Name */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <Label htmlFor="workspaceName-desktop" className="text-sm font-medium">Workspace name</Label>
+                          <div className="flex items-center gap-3">
+                            <Input 
+                              id="workspaceName-desktop" 
+                              value={workspaceName} 
+                              onChange={(e) => setWorkspaceName(e.target.value)}
+                              placeholder="Acme Real Estate" 
+                              className="w-full sm:w-64"
+                              disabled={savingWorkspace}
+                            />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Website */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <Label htmlFor="website-desktop" className="text-sm font-medium">Website</Label>
+                          <div className="flex items-center gap-3">
+                            <Input id="website-desktop" type="url" placeholder="https://example.com" className="w-full sm:w-64" />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* License */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <Label htmlFor="license-desktop" className="text-sm font-medium">License number</Label>
+                          <div className="flex items-center gap-3">
+                            <Input id="license-desktop" placeholder="DRE #01234567" className="w-full sm:w-64" />
+                          </div>
+                        </div>
+
+                        {/* Save Button */}
+                        <div className="flex justify-start">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-block">
+                                <Button 
+                                  type="submit"
+                                  disabled={savingWorkspace || ((!workspaceName.trim() || workspaceName.trim() === originalWorkspaceName.trim()) && !workspaceLogoFile)}
+                                >
+                                  {savingWorkspace ? (
+                                    <>
+                                      <Loader2 className="size-4 mr-2 animate-spin" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="size-4 mr-2" />
+                                      Save changes
+                                    </>
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {!savingWorkspace && ((!workspaceName.trim() || workspaceName.trim() === originalWorkspaceName.trim()) && !workspaceLogoFile) && (
+                              <TooltipContent>
+                                <p>No changes to save</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </div>
+                      </form>
+                    </TabsContent>
+                  )}
+                </>
               )}
 
               {/* Appearance Tab */}
-              <TabsContent value="appearance" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold">Appearance</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Customize how Ottie looks on your device
-                  </p>
-                </div>
-
-                {/* Settings Fields */}
-                <div className="space-y-4">
-                  {/* Theme */}
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="theme" className="text-sm font-medium">Theme</Label>
-                    <div className="flex items-center gap-3">
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Appearance</CardTitle>
+                    <CardDescription>
+                      Customize how Ottie looks on your device
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Settings Fields */}
+                    <div className="space-y-4">
+                      {/* Theme */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <Label htmlFor="theme" className="text-sm font-medium">Theme</Label>
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              variant={theme === 'light' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setTheme('light')}
+                              className="gap-2"
+                            >
+                              <Sun className="size-4" />
+                              Light
+                            </Button>
+                            <Button
+                              variant={theme === 'dark' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setTheme('dark')}
+                              className="gap-2"
+                            >
+                              <Moon className="size-4" />
+                              Dark
+                            </Button>
+                            <Button
+                              variant={theme === 'system' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setTheme('system')}
+                              className="gap-2"
+                            >
+                              <Monitor className="size-4" />
+                              System
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="appearance" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Duplicate appearance content for desktop */}
+                  <div>
+                    <h2 className="text-lg font-semibold">Appearance</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Customize how Ottie looks on your device
+                    </p>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label>Theme</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Choose your preferred theme
+                          </p>
+                        </div>
+                      </div>
                       <div className="flex gap-2">
                         <Button
                           variant={theme === 'light' ? 'default' : 'outline'}
@@ -997,17 +1465,19 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </div>
                     </div>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
 
               {/* Notifications Tab */}
-              <TabsContent value="notifications" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold">Notifications</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Configure how you receive notifications
-                  </p>
-                </div>
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Notifications</CardTitle>
+                    <CardDescription>
+                      Configure how you receive notifications
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
 
                 {/* Settings Fields */}
                 <div className="space-y-4">
@@ -1048,21 +1518,66 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <Switch />
                   </div>
                 </div>
-              </TabsContent>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="notifications" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Duplicate notifications content for desktop */}
+                  <div>
+                    <h2 className="text-lg font-semibold">Notifications</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Configure how you receive notifications
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Email notifications</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Receive emails about site views and leads
+                        </p>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Weekly reports</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Get a weekly summary of your site performance
+                        </p>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Marketing emails</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Receive tips and product updates
+                        </p>
+                      </div>
+                      <Switch />
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
 
               {/* Plan & Billing Tab */}
-              <TabsContent value="plan" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    Current Plan
-                    <Badge variant="secondary" className="capitalize">
-                      {workspace ? normalizePlan(workspace.plan) : 'free'}
-                    </Badge>
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your subscription and billing
-                  </p>
-                </div>
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      Current Plan
+                      <Badge variant="secondary" className="capitalize">
+                        {workspace ? normalizePlan(workspace.plan) : 'free'}
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your subscription and billing
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
 
                 <div className="rounded-lg border p-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -1092,22 +1607,74 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <Button className="w-full">Upgrade</Button>
                   </PricingDialog>
                 )}
-              </TabsContent>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="plan" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Duplicate plan content for desktop */}
+                  <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      Current Plan
+                      <Badge variant="secondary" className="capitalize">
+                        {workspace ? normalizePlan(workspace.plan) : 'free'}
+                      </Badge>
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your subscription and billing
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium capitalize">
+                        {workspace ? normalizePlan(workspace.plan) : 'Free'} Plan
+                      </span>
+                      <span className="text-muted-foreground">$0/month</span>
+                    </div>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Up to 3 sites</li>
+                      <li>• Basic analytics</li>
+                      <li>• Ottie branding</li>
+                    </ul>
+                  </div>
+                  {workspace && (normalizePlan(workspace.plan) === 'agency' || normalizePlan(workspace.plan) === 'enterprise') ? (
+                    <div className="rounded-lg border p-4 text-center space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Need custom plan?
+                      </p>
+                      <Button variant="outline" className="w-full" asChild>
+                        <a href="mailto:sales@getottie.com">Contact Sales</a>
+                      </Button>
+                    </div>
+                  ) : (
+                    <PricingDialog>
+                      <Button className="w-full">Upgrade</Button>
+                    </PricingDialog>
+                  )}
+                </TabsContent>
+              )}
 
               {/* Team Tab */}
-              <TabsContent value="team" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Team
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your workspace members and invitations
-                  </p>
-                </div>
-
-                {/* Banner for single-user workspaces */}
-                {workspace && !isMultiUserPlan(workspace.plan) && (
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div>
+                        <CardTitle>Team</CardTitle>
+                        <CardDescription>
+                          Manage your workspace members and invitations
+                        </CardDescription>
+                      </div>
+                      {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                        <Button size="sm" variant="outline" disabled>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Invite User
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Banner for single-user workspaces */}
+                    {workspace && !isMultiUserPlan(workspace.plan) && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -1129,17 +1696,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 )}
 
                 {/* Members List */}
-                <div className="rounded-lg border">
-                  <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="font-medium">Members</h3>
-                    {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
-                      <Button size="sm" variant="outline" disabled>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Invite User
-                      </Button>
-                    )}
-                  </div>
-                  
+                <div>
                   {membersLoading ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
                       Loading members...
@@ -1149,95 +1706,323 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       No members found
                     </div>
                   ) : (
-                    <div className="divide-y">
-                      {members.map(({ membership, profile }) => (
-                        <div key={membership.id} className="p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={profile.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {profile.full_name
-                                  ? profile.full_name
-                                      .split(' ')
-                                      .map(n => n[0])
-                                      .join('')
-                                      .toUpperCase()
-                                      .slice(0, 2)
-                                  : profile.email?.[0]?.toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium text-sm">
-                                {profile.full_name || profile.email || 'Unknown User'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {profile.email}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="capitalize">
-                              {membership.role}
-                            </Badge>
-                            {membership.user_id === user?.id && (
-                              <Badge variant="outline" className="text-xs">
-                                You
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-4 font-medium text-sm">Member</th>
+                          <th className="text-right p-4 font-medium text-sm">Role</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {members.map(({ membership, profile }) => (
+                          <tr key={membership.id} className="border-b">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage src={profile.avatar_url || undefined} />
+                                  <AvatarFallback>
+                                    {profile.full_name
+                                      ? profile.full_name
+                                          .split(' ')
+                                          .map(n => n[0])
+                                          .join('')
+                                          .toUpperCase()
+                                          .slice(0, 2)
+                                      : profile.email?.[0]?.toUpperCase() || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {profile.full_name || profile.email || 'Unknown User'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {profile.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center justify-end gap-2">
+                                {isOwnerOrAdmin && membership.role !== 'owner' && membership.user_id !== user?.id ? (
+                                  <Select
+                                    value={membership.role}
+                                    onValueChange={async (value: UserRole) => {
+                                      if (!workspace || !user?.id) return
+                                      
+                                      if (value === 'owner') {
+                                        toast.error('Cannot change role to owner')
+                                        return
+                                      }
+
+                                      const result = await updateMembershipRole(
+                                        membership.id,
+                                        workspace.id,
+                                        user.id,
+                                        value as 'admin' | 'agent'
+                                      )
+
+                                      if ('error' in result) {
+                                        toast.error(result.error)
+                                      } else {
+                                        toast.success('Role updated successfully')
+                                        // Refresh members list
+                                        window.location.reload()
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="admin">Admin</SelectItem>
+                                      <SelectItem value="agent">Agent</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Badge variant="secondary" className="capitalize">
+                                    {membership.role}
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
-              </TabsContent>
-
-              {/* Danger Zone Tab */}
-              <TabsContent value="danger" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Irreversible actions for your account
-                  </p>
-                </div>
-
-                {/* Settings Fields */}
-                <div className="space-y-4">
-                  {/* Delete Account */}
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <p className="font-medium">Delete account</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="team" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Team content is already duplicated above in the mobile section */}
+                  {/* For desktop, we'll use the same content but wrapped in TabsContent */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-semibold">
+                        Team
+                      </h2>
                       <p className="text-sm text-muted-foreground">
-                        Permanently delete your account and all data
+                        Manage your workspace members and invitations
                       </p>
                     </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={async () => {
-                        if (!user?.id) return
-                        
-                        setDeleteLoading(true)
-                        const checkResult = await checkWorkspacesForDeletion(user.id)
-                        setWorkspacesToDelete(checkResult.workspacesToDelete)
-                        setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
-                        setDeleteLoading(false)
-                        setShowDeleteDialog(true)
-                      }}
-                      disabled={deleteLoading || !user?.id}
-                    >
-                      {deleteLoading ? (
-                        <>
-                          <Loader2 className="size-4 mr-2 animate-spin" />
-                          Checking...
-                        </>
-                      ) : (
-                        'Delete account'
-                      )}
-                    </Button>
+                    {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                      <Button size="sm" variant="outline" disabled>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Invite User
+                      </Button>
+                    )}
                   </div>
-                </div>
-              </TabsContent>
+                  {workspace && !isMultiUserPlan(workspace.plan) && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                            Upgrade to invite team members
+                          </p>
+                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                            To invite users to your workspace, upgrade to the Agency or Enterprise plan.
+                          </p>
+                          <PricingDialog>
+                            <Button size="sm" variant="outline" className="mt-2">
+                              Upgrade Plan
+                            </Button>
+                          </PricingDialog>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    {membersLoading ? (
+                      <div className="p-8 text-center text-sm text-muted-foreground">
+                        Loading members...
+                      </div>
+                    ) : members.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-muted-foreground">
+                        No members found
+                      </div>
+                    ) : (
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-4 font-medium text-sm">Member</th>
+                            <th className="text-right p-4 font-medium text-sm">Role</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {members.map(({ membership, profile }) => (
+                            <tr key={membership.id} className="border-b">
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage src={profile.avatar_url || undefined} />
+                                    <AvatarFallback>
+                                      {profile.full_name
+                                        ? profile.full_name
+                                            .split(' ')
+                                            .map(n => n[0])
+                                            .join('')
+                                            .toUpperCase()
+                                            .slice(0, 2)
+                                        : profile.email?.[0]?.toUpperCase() || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium text-sm">
+                                      {profile.full_name || profile.email || 'Unknown User'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {profile.email}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center justify-end gap-2">
+                                  {isOwnerOrAdmin && membership.role !== 'owner' && membership.user_id !== user?.id ? (
+                                    <Select
+                                      value={membership.role}
+                                      onValueChange={async (value: UserRole) => {
+                                        if (!workspace || !user?.id) return
+                                        
+                                        if (value === 'owner') {
+                                          toast.error('Cannot change role to owner')
+                                          return
+                                        }
+
+                                        const result = await updateMembershipRole(
+                                          membership.id,
+                                          workspace.id,
+                                          user.id,
+                                          value as 'admin' | 'agent'
+                                        )
+
+                                        if ('error' in result) {
+                                          toast.error(result.error)
+                                        } else {
+                                          toast.success('Role updated successfully')
+                                          window.location.reload()
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="agent">Agent</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Badge variant="secondary" className="capitalize">
+                                      {membership.role}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
+
+              {/* Danger Zone Tab */}
+              {isMobile ? (
+                <Card className="mb-6 border-destructive/50">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                    <CardDescription>
+                      Irreversible actions for your account
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Settings Fields */}
+                    <div className="space-y-4">
+                      {/* Delete Account */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="space-y-0.5">
+                          <p className="font-medium">Delete account</p>
+                          <p className="text-sm text-muted-foreground">
+                            Permanently delete your account and all data
+                          </p>
+                        </div>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          onClick={async () => {
+                            if (!user?.id) return
+                            
+                            setDeleteLoading(true)
+                            const checkResult = await checkWorkspacesForDeletion(user.id)
+                            setWorkspacesToDelete(checkResult.workspaces)
+                            setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                            setDeleteLoading(false)
+                            setShowDeleteDialog(true)
+                          }}
+                          disabled={deleteLoading || !user?.id}
+                        >
+                          {deleteLoading ? (
+                            <>
+                              <Loader2 className="size-4 mr-2 animate-spin" />
+                              Checking...
+                            </>
+                          ) : (
+                            'Delete account'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="danger" className="mt-0 sm:mt-6 space-y-6">
+                  {/* Duplicate danger zone content for desktop */}
+                  <div>
+                    <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Irreversible actions for your account
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <p className="font-medium">Delete account</p>
+                        <p className="text-sm text-muted-foreground">
+                          Permanently delete your account and all data
+                        </p>
+                      </div>
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={async () => {
+                          if (!user?.id) return
+                          
+                          setDeleteLoading(true)
+                          const checkResult = await checkWorkspacesForDeletion(user.id)
+                          setWorkspacesToDelete(checkResult.workspaces)
+                          setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                          setDeleteLoading(false)
+                          setShowDeleteDialog(true)
+                        }}
+                        disabled={deleteLoading || !user?.id}
+                      >
+                        {deleteLoading ? (
+                          <>
+                            <Loader2 className="size-4 mr-2 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          'Delete Account'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
               </div>
             </div>
           </div>
