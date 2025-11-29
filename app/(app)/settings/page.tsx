@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { SettingsClient } from './settings-client'
 import type { Profile } from '@/types/database'
-import type { User } from '@supabase/supabase-js'
 
 /**
  * Settings Page - Server Component
@@ -82,7 +81,7 @@ export default async function SettingsPage() {
 
   return (
     <SettingsClient 
-      user={serializableUser as User}
+      user={serializableUser}
       initialProfile={initialProfile}
       userMetadata={userMetadata}
     />

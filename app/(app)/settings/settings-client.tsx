@@ -28,10 +28,25 @@ import {
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { updateUserProfile, getCurrentUserProfile } from './actions'
 import type { Profile } from '@/types/database'
-import type { User } from '@supabase/supabase-js'
+
+// Serializable user data passed from server component
+// We don't use the full User type because it's not fully serializable
+interface SerializableUser {
+  id: string
+  email: string
+  user_metadata: {
+    full_name: string | null
+    avatar_url: string | null
+    picture: string | null
+  }
+  app_metadata: {
+    provider: string | null
+  }
+  identities: { provider: string }[]
+}
 
 interface SettingsClientProps {
-  user: User
+  user: SerializableUser
   initialProfile: Profile | null
   userMetadata: {
     fullName: string
