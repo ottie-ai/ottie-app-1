@@ -5,11 +5,12 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Middleware for Subdomain Routing & Supabase Session Refresh
  * 
  * This middleware handles:
- * 1. Subdomain routing:
+ * 1. Access control (domain/IP restrictions)
+ * 2. Subdomain routing:
  *    - app.ottie.com (or app.localhost) -> Routes to (app) route group
  *    - ottie.com (or localhost) -> Routes to (marketing) route group  
  *    - *.ottie.com (any other subdomain) -> Routes to (z-sites)/[site] route group
- * 2. Supabase session refresh for authenticated routes
+ * 3. Supabase session refresh for authenticated routes
  * 
  * Note: In Next.js, route groups (parentheses) don't appear in URLs.
  * We need to ensure the correct route group is matched based on subdomain.
@@ -17,7 +18,86 @@ import { NextResponse, type NextRequest } from 'next/server'
  * However, for sites subdomain, we need to rewrite to the dynamic [site] route.
  */
 
+/**
+ * Check if access should be restricted based on domain/IP
+ * 
+ * Environment variables:
+ * - ACCESS_MODE: 'public' | 'restricted' (default: 'public')
+ * - ALLOWED_DOMAINS: comma-separated list of allowed domains (e.g., 'example.com,app.example.com')
+ * - ALLOWED_IPS: comma-separated list of allowed IPs (e.g., '1.2.3.4,5.6.7.8')
+ */
+function checkAccessControl(request: NextRequest): NextResponse | null {
+  const accessMode = process.env.ACCESS_MODE || 'public'
+  
+  // If public mode, allow all access
+  if (accessMode === 'public') {
+    return null
+  }
+  
+  // Restricted mode - check domain and IP
+  const hostname = request.headers.get('host') || ''
+  const hostnameWithoutPort = hostname.split(':')[0]
+  const clientIp = request.ip || 
+                   request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                   request.headers.get('x-real-ip') ||
+                   'unknown'
+  
+  // Always allow localhost for development
+  if (hostnameWithoutPort.includes('localhost') || hostnameWithoutPort === '127.0.0.1') {
+    return null
+  }
+  
+  // Get allowed domains and IPs from environment
+  const allowedDomains = (process.env.ALLOWED_DOMAINS || '')
+    .split(',')
+    .map(d => d.trim())
+    .filter(Boolean)
+  
+  const allowedIps = (process.env.ALLOWED_IPS || '')
+    .split(',')
+    .map(ip => ip.trim())
+    .filter(Boolean)
+  
+  // Check if domain is allowed
+  const isDomainAllowed = allowedDomains.length === 0 || 
+    allowedDomains.some(domain => {
+      // Exact match or subdomain match
+      return hostnameWithoutPort === domain || 
+             hostnameWithoutPort.endsWith('.' + domain) ||
+             hostnameWithoutPort === `www.${domain}`
+    })
+  
+  // Check if IP is allowed
+  const isIpAllowed = allowedIps.length === 0 || 
+    allowedIps.includes(clientIp)
+  
+  // Allow if domain OR IP is allowed (or both lists are empty)
+  if (isDomainAllowed || isIpAllowed || (allowedDomains.length === 0 && allowedIps.length === 0)) {
+    return null
+  }
+  
+  // Access denied - return 403
+  return new NextResponse(
+    JSON.stringify({ 
+      error: 'Access denied',
+      message: 'This site is currently restricted. Please contact the administrator.'
+    }),
+    { 
+      status: 403,
+      headers: { 
+        'Content-Type': 'application/json',
+      }
+    }
+  )
+}
+
 export async function middleware(request: NextRequest) {
+  // Check access control first (before routing)
+  const accessCheck = checkAccessControl(request)
+  if (accessCheck) {
+    return accessCheck
+  }
+  
   const url = request.nextUrl.clone()
   const pathname = url.pathname
   const hostname = request.headers.get('host') || ''
