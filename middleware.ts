@@ -57,8 +57,24 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
     .map(ip => ip.trim())
     .filter(Boolean)
   
-  // Check if domain is allowed
-  const isDomainAllowed = allowedDomains.length === 0 || 
+  // In restricted mode, if both lists are empty, deny all access (security)
+  if (allowedDomains.length === 0 && allowedIps.length === 0) {
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Access denied',
+        message: 'This site is currently restricted. Please contact the administrator.'
+      }),
+      { 
+        status: 403,
+        headers: { 
+          'Content-Type': 'application/json',
+        }
+      }
+    )
+  }
+  
+  // Check if domain is allowed (only if domain list is not empty)
+  const isDomainAllowed = allowedDomains.length > 0 && 
     allowedDomains.some(domain => {
       // Exact match or subdomain match
       return hostnameWithoutPort === domain || 
@@ -66,12 +82,12 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
              hostnameWithoutPort === `www.${domain}`
     })
   
-  // Check if IP is allowed
-  const isIpAllowed = allowedIps.length === 0 || 
+  // Check if IP is allowed (only if IP list is not empty)
+  const isIpAllowed = allowedIps.length > 0 && 
     allowedIps.includes(clientIp)
   
-  // Allow if domain OR IP is allowed (or both lists are empty)
-  if (isDomainAllowed || isIpAllowed || (allowedDomains.length === 0 && allowedIps.length === 0)) {
+  // Allow if domain OR IP is allowed
+  if (isDomainAllowed || isIpAllowed) {
     return null
   }
   
