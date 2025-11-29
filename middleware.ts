@@ -80,35 +80,31 @@ export async function middleware(request: NextRequest) {
       url.pathname = `/${subdomain}${pathname === '/' ? '' : pathname}`
       response = NextResponse.rewrite(url)
     } else {
-      // Root localhost - need to distinguish between workspace/builder routes and sites routes
-      // Workspace/builder routes should go to (app) route group
-      // Sites routes should go to (z-sites)/[site] route group
-      const workspaceRoutes = ['/overview', '/sites', '/settings', '/client-portals']
-      const isWorkspaceRoute = workspaceRoutes.includes(pathname) || pathname.startsWith('/builder/')
+      // Root localhost (localhost:3000) - only marketing routes allowed
+      // App routes should redirect to app.localhost subdomain
+      const appRoutes = ['/overview', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
+      const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
+                         pathname.startsWith('/builder/')
       
-      if (isWorkspaceRoute) {
-        // Workspace/builder route -> ensure it goes to (app) route group
-        // We can't rewrite to route group syntax, but we can add a header to help Next.js
-        // prioritize the correct route. However, Next.js should already prioritize static routes
-        // over dynamic ones, so we just pass through and let Next.js match correctly.
-        // The key is that (app)/workspace/overview is a static route, while (sites)/[site] is dynamic.
+      if (isAppRoute) {
+        // Redirect app routes to app.localhost subdomain
+        const port = hostname.split(':')[1] || '3000'
+        const appUrl = new URL(pathname, `http://app.localhost:${port}`)
+        appUrl.search = url.search // Preserve query params
+        return NextResponse.redirect(appUrl)
+      } else if (pathname === '/' || pathname.startsWith('/privacy') || pathname.startsWith('/terms')) {
+        // Marketing routes - no rewrite needed
         response = NextResponse.next()
-      } else if (pathname !== '/' && !pathname.startsWith('/privacy') && !pathname.startsWith('/terms') && 
-                 !pathname.startsWith('/login') && !pathname.startsWith('/signup') && !pathname.startsWith('/auth')) {
-          // Other paths on root localhost that aren't marketing/auth routes -> treat as site route
-          // Extract the first segment as site slug and rewrite to (z-sites)/[site] route
+      } else {
+        // Other paths -> treat as site route (z-sites)
         const pathSegments = pathname.split('/').filter(Boolean)
         if (pathSegments.length > 0) {
           const siteSlug = pathSegments[0]
-          // Rewrite to /[site] format for (sites) route group
           url.pathname = `/${siteSlug}${pathname.substring(`/${siteSlug}`.length) || '/'}`
           response = NextResponse.rewrite(url)
         } else {
           response = NextResponse.next()
         }
-      } else {
-        // Marketing/auth routes - no rewrite needed
-        response = NextResponse.next()
       }
     }
   }

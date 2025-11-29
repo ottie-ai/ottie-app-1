@@ -24,7 +24,9 @@ export default function LoginPage() {
 
   // Redirect if already authenticated (we're already on app subdomain)
   useEffect(() => {
+    console.log('[Login Page] Auth state:', { authLoading, user: user?.email, redirectTo })
     if (!authLoading && user) {
+      console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
       router.replace(redirectTo)
     }
   }, [user, authLoading, router, redirectTo])

@@ -8,6 +8,17 @@ let supabaseInstance: ReturnType<typeof createSupabaseClient> | null = null
  * Singleton pattern to ensure consistent session across the app
  */
 export function createClient() {
+  // Only use singleton on client side
+  if (typeof window === 'undefined') {
+    // Server-side: create new instance each time (won't have session)
+    return createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
+
+  // Client-side: use singleton
   if (supabaseInstance) {
     return supabaseInstance
   }
@@ -20,7 +31,7 @@ export function createClient() {
       auth: {
         persistSession: true,
         storageKey: 'sb-auth',
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storage: window.localStorage,
         autoRefreshToken: true,
         detectSessionInUrl: true,
       },

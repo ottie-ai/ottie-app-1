@@ -19,6 +19,10 @@ export function useAuth() {
     // Get initial session
     const initSession = async () => {
       console.log('[useAuth] Getting initial session...')
+      // Debug: Check localStorage
+      const storedSession = localStorage.getItem('sb-auth')
+      console.log('[useAuth] localStorage sb-auth:', storedSession ? 'exists' : 'not found')
+      
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
         console.log('[useAuth] getSession result:', { session: session?.user?.email, error })

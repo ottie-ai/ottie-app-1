@@ -33,7 +33,7 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 
   const supabase = await createClient()
-  
+
   const fullName = formData.get('fullName') as string
   const avatarUrl = formData.get('avatarUrl') as string | null
 

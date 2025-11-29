@@ -142,7 +142,7 @@ export default async function SitePage({
           <h1 className="text-4xl font-bold">Site Ready for Database Integration</h1>
           <p className="text-muted-foreground text-lg">
             Subdomain: <code className="bg-muted px-3 py-1 rounded-md font-mono">{site}</code>
-          </p>
+        </p>
         </div>
         
         <div className="bg-muted/50 rounded-lg p-6 space-y-4 text-left">
