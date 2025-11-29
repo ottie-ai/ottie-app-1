@@ -28,14 +28,23 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 function checkAccessControl(request: NextRequest): NextResponse | null {
   const accessMode = process.env.ACCESS_MODE || 'public'
+  const hostname = request.headers.get('host') || ''
+  
+  // DEBUG: Log access control values
+  console.log('[ACCESS CONTROL] ACCESS_MODE:', accessMode)
+  console.log('[ACCESS CONTROL] ALLOWED_DOMAINS:', process.env.ALLOWED_DOMAINS || '(empty)')
+  console.log('[ACCESS CONTROL] ALLOWED_IPS:', process.env.ALLOWED_IPS || '(empty)')
+  console.log('[ACCESS CONTROL] Hostname:', hostname)
   
   // If public mode, allow all access
   if (accessMode === 'public') {
+    console.log('[ACCESS CONTROL] Allowing access - public mode')
     return null
   }
   
+  console.log('[ACCESS CONTROL] Restricted mode - checking access')
+  
   // Restricted mode - check domain and IP
-  const hostname = request.headers.get('host') || ''
   const hostnameWithoutPort = hostname.split(':')[0]
   
   // Extract client IP from headers (Next.js 15+ removed request.ip)
@@ -69,6 +78,7 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   
   // In restricted mode, if both lists are empty, deny all access (security)
   if (allowedDomains.length === 0 && allowedIps.length === 0) {
+    console.log('[ACCESS CONTROL] Denying access - both lists are empty')
     return new NextResponse(
       JSON.stringify({ 
         error: 'Access denied',
@@ -97,11 +107,18 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
     allowedIps.includes(clientIp)
   
   // Allow if domain OR IP is allowed
+  console.log('[ACCESS CONTROL] Domain allowed:', isDomainAllowed, 'IP allowed:', isIpAllowed)
+  console.log('[ACCESS CONTROL] Client IP:', clientIp)
+  console.log('[ACCESS CONTROL] Allowed domains:', allowedDomains)
+  console.log('[ACCESS CONTROL] Allowed IPs:', allowedIps)
+  
   if (isDomainAllowed || isIpAllowed) {
+    console.log('[ACCESS CONTROL] Allowing access - domain or IP matches')
     return null
   }
   
   // Access denied - return 403
+  console.log('[ACCESS CONTROL] Denying access - no match found')
   return new NextResponse(
     JSON.stringify({ 
       error: 'Access denied',
