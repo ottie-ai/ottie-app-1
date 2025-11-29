@@ -33,7 +33,8 @@ export default function AppRootLayout({
   const isWorkspaceRoute = workspaceRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
   const isBuilderRoute = pathname.startsWith('/builder/')
 
-  // Get user data for UserJot
+  // Get user data for UserJot (only if user is authenticated)
+  // Pass null if user is not loaded yet to prevent invalid identify calls
   const userData = user
     ? {
         id: user.id,
@@ -42,15 +43,9 @@ export default function AppRootLayout({
         lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
         avatar: user.user_metadata?.avatar_url || '',
       }
-    : {
-        id: '',
-        email: '',
-        firstName: '',
-        lastName: '',
-        avatar: '',
-      }
+    : null
 
-  // Identify user with UserJot
+  // Identify user with UserJot (only when user is authenticated)
   useUserJotIdentify(userData)
 
   return (

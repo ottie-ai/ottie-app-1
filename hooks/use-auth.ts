@@ -16,16 +16,10 @@ export function useAuth() {
   useEffect(() => {
     const supabase = createClient()
 
-    // Get initial session
+    // Get initial session from cookies (shared with server-side)
     const initSession = async () => {
-      console.log('[useAuth] Getting initial session...')
-      // Debug: Check localStorage
-      const storedSession = localStorage.getItem('sb-auth')
-      console.log('[useAuth] localStorage sb-auth:', storedSession ? 'exists' : 'not found')
-      
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
-        console.log('[useAuth] getSession result:', { session: session?.user?.email, error })
         
         if (error) {
           console.error('[useAuth] Error getting session:', error)
@@ -49,7 +43,6 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[useAuth] Auth state changed:', event, session?.user?.email)
       setUser(session?.user ?? null)
       setLoading(false)
     })

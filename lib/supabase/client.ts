@@ -1,43 +1,17 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-
-let supabaseInstance: ReturnType<typeof createSupabaseClient> | null = null
+import { createBrowserClient } from '@supabase/ssr'
 
 /**
  * Creates a Supabase client for use in Client Components
- * Uses localStorage for session storage
- * Singleton pattern to ensure consistent session across the app
+ * Uses cookies for session storage (shared with server-side)
+ * 
+ * IMPORTANT: This uses @supabase/ssr package which stores session in cookies,
+ * making it accessible to both client and server components.
+ * This is the correct way to do SSR auth with Supabase in Next.js App Router.
  */
 export function createClient() {
-  // Only use singleton on client side
-  if (typeof window === 'undefined') {
-    // Server-side: create new instance each time (won't have session)
-    return createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  }
-
-  // Client-side: use singleton
-  if (supabaseInstance) {
-    return supabaseInstance
-  }
-
-  supabaseInstance = createSupabaseClient(
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        storageKey: 'sb-auth',
-        storage: window.localStorage,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-
-  return supabaseInstance
 }
-

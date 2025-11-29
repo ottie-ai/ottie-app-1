@@ -16,9 +16,13 @@ interface UserJotUser {
  */
 export function useUserJotIdentify(user: UserJotUser | null) {
   useEffect(() => {
-    if (!user || typeof window === 'undefined') return
+    // Don't identify if no user or invalid user data (empty ID means not authenticated)
+    if (!user || typeof window === 'undefined' || !user.id || user.id === '') {
+      return
+    }
 
     const identifyUser = () => {
+      // Check if SDK is initialized
       if ((window as any).uj && (window as any).uj.identify) {
         try {
           ;(window as any).uj.identify({
@@ -29,7 +33,9 @@ export function useUserJotIdentify(user: UserJotUser | null) {
             avatar: user.avatar,
           })
         } catch (e) {
-          console.error('Error identifying user with UserJot:', e)
+          // Silently fail - don't spam console with errors
+          // UserJot might not be fully initialized yet
+          console.debug('UserJot identify not ready yet:', e)
         }
       } else if ((window as any).$ujq) {
         // SDK is loading, queue the identify command
@@ -44,8 +50,16 @@ export function useUserJotIdentify(user: UserJotUser | null) {
           },
         ])
       } else {
-        // Retry if SDK not loaded yet
-        setTimeout(identifyUser, 100)
+        // Retry if SDK not loaded yet (max 10 retries = 1 second)
+        let retries = 0
+        const maxRetries = 10
+        const retry = () => {
+          if (retries < maxRetries) {
+            retries++
+            setTimeout(identifyUser, 100)
+          }
+        }
+        retry()
       }
     }
 
