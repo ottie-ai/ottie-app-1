@@ -8,6 +8,7 @@ import { useUserJotIdentify } from '@/components/workspace/use-userjot-identify'
 import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
 import { UserProfileProvider, useUserProfile } from '@/contexts/user-profile-context'
+import { WorkspaceProvider } from '@/contexts/workspace-context'
 import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
 import '../sphere.css'
@@ -43,17 +44,19 @@ export default function AppRootLayout({
     >
       <AuthGuard>
         <UserProfileProvider>
-          <UserJotWithProfile />
-          {isWorkspaceRoute ? (
-            <SidebarProvider>
-              <DashboardSidebar />
-              <SidebarInset className="h-screen overflow-hidden">
-                {children}
-              </SidebarInset>
-            </SidebarProvider>
-          ) : (
-            children
-          )}
+          <WorkspaceProvider>
+            <UserJotWithProfile />
+            {isWorkspaceRoute ? (
+              <SidebarProvider>
+                <DashboardSidebar />
+                <SidebarInset className="h-screen overflow-hidden">
+                  {children}
+                </SidebarInset>
+              </SidebarProvider>
+            ) : (
+              children
+            )}
+          </WorkspaceProvider>
         </UserProfileProvider>
       </AuthGuard>
       <Toaster position="top-right" richColors />

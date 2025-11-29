@@ -27,12 +27,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
+import { useWorkspace } from '@/contexts/workspace-context'
 import type { Profile, Workspace, Membership } from '@/types/database'
 import { Users, Mail, Plus, AlertCircle } from 'lucide-react'
 
@@ -85,10 +87,21 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   }, [searchParams])
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
   const [workspace, setWorkspace] = useState<Workspace | null>(initialWorkspace)
+  const [workspaceName, setWorkspaceName] = useState(initialWorkspace?.name || '')
+  const [originalWorkspaceName, setOriginalWorkspaceName] = useState(initialWorkspace?.name || '')
+  const [workspaceLogoFile, setWorkspaceLogoFile] = useState<File | null>(null)
+  const [workspaceLogoPreview, setWorkspaceLogoPreview] = useState<string | null>(null)
+  const [workspaceLogoUrl, setWorkspaceLogoUrl] = useState(initialWorkspace?.logo_url || '')
+  const [originalWorkspaceLogoUrl, setOriginalWorkspaceLogoUrl] = useState(initialWorkspace?.logo_url || '')
+  const workspaceLogoInputRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
+  const [savingWorkspace, setSavingWorkspace] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(!initialProfile && !!clientUser?.id)
+  
+  // Get workspace refresh function from hook
+  const { refresh: refreshWorkspace } = useWorkspace()
   
   // Check if workspace settings should be shown (only for multi-user plans and owner/admin role)
   const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
@@ -96,6 +109,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   
   // Load workspace members
   const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null)
+  
+  // Sync workspaceName when workspace changes
+  useEffect(() => {
+    if (workspace?.name) {
+      setWorkspaceName(workspace.name)
+      setOriginalWorkspaceName(workspace.name)
+    }
+  }, [workspace?.id, workspace?.name])
 
   // Delete account dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -666,19 +687,33 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
               {/* Save Button */}
               <div className="flex justify-start">
-                    <Button type="submit" disabled={saving}>
-                      {saving ? (
-                        <>
-                          <Loader2 className="size-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                  <Check className="size-4 mr-2" />
-                  Save changes
-                        </>
-                      )}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button 
+                        type="submit" 
+                        disabled={saving || (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl)}
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="size-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="size-4 mr-2" />
+                            Save changes
+                          </>
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!saving && (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl) && (
+                    <TooltipContent>
+                      <p>No changes to save</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               </div>
                 </form>
                 )}
@@ -695,17 +730,169 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </div>
 
                   {/* Settings Fields */}
-                  <div className="space-y-4">
+                    <form 
+                    id="workspace-form"
+                    onSubmit={async (e) => {
+                      e.preventDefault()
+                      if (!workspace || !user?.id) return
+                      
+                      const hasNameChange = workspaceName.trim() !== originalWorkspaceName.trim()
+                      const hasLogoChange = workspaceLogoFile !== null
+
+                      if (!hasNameChange && !hasLogoChange) return
+
+                      setSavingWorkspace(true)
+
+                      // Upload logo first if there's a new file
+                      let logoUrl = workspaceLogoUrl
+                      if (workspaceLogoFile) {
+                        const uploadResult = await uploadWorkspaceLogo(workspace.id, user.id, workspaceLogoFile)
+                        if ('error' in uploadResult) {
+                          toast.error(uploadResult.error)
+                          setSavingWorkspace(false)
+                          return
+                        }
+                        logoUrl = uploadResult.url
+                      }
+
+                      // Update workspace name if changed
+                      if (hasNameChange) {
+                        const result = await updateWorkspaceName(workspace.id, user.id, workspaceName.trim())
+
+                        if ('error' in result) {
+                          toast.error(result.error)
+                          // Revert to original value on error
+                          setWorkspaceName(originalWorkspaceName)
+                          setSavingWorkspace(false)
+                          return
+                        } else {
+                          setWorkspace(result.workspace)
+                          setOriginalWorkspaceName(result.workspace.name)
+                          setWorkspaceName(result.workspace.name)
+                        }
+                      }
+
+                      // Update workspace logo if changed
+                      if (hasLogoChange) {
+                        const result = await updateWorkspaceAction(workspace.id, user.id, { logo_url: logoUrl })
+                        if ('error' in result) {
+                          toast.error(result.error)
+                          setSavingWorkspace(false)
+                          return
+                        } else {
+                          setWorkspace(result.workspace)
+                          setWorkspaceLogoUrl(logoUrl)
+                          setOriginalWorkspaceLogoUrl(logoUrl)
+                          setWorkspaceLogoFile(null)
+                          setWorkspaceLogoPreview(null)
+                          if (workspaceLogoInputRef.current) {
+                            workspaceLogoInputRef.current.value = ''
+                          }
+                        }
+                      }
+
+                      // Refresh workspace in sidebar and other components
+                      await refreshWorkspace()
+                      toast.success('Workspace updated successfully!')
+                      setSavingWorkspace(false)
+                    }}
+                    className="space-y-4"
+                  >
+                    {/* Workspace Logo */}
+                    <div className="flex items-start justify-between">
+                      <Label htmlFor="workspaceLogo" className="text-sm font-medium pt-2">Logo</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="relative group">
+                          <Avatar className="size-20 shrink-0">
+                            <AvatarImage src={workspaceLogoPreview || workspaceLogoUrl || undefined} alt={workspaceName} />
+                            <AvatarFallback className="text-2xl">
+                              {workspaceName.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {(workspaceLogoPreview || workspaceLogoUrl) && (
+                            <div 
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center cursor-pointer" 
+                              onClick={async () => {
+                                if (!workspace || !user?.id) return
+                                
+                                const result = await removeWorkspaceLogo(workspace.id, user.id)
+                                if ('error' in result) {
+                                  toast.error(result.error)
+                                } else {
+                                  setWorkspace(result.workspace)
+                                  setWorkspaceLogoUrl('')
+                                  setOriginalWorkspaceLogoUrl('')
+                                  setWorkspaceLogoFile(null)
+                                  setWorkspaceLogoPreview(null)
+                                  if (workspaceLogoInputRef.current) {
+                                    workspaceLogoInputRef.current.value = ''
+                                  }
+                                  await refreshWorkspace()
+                                  toast.success('Logo removed successfully!')
+                                }
+                              }}
+                              title="Delete logo"
+                            >
+                              <Trash2 className="size-6 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 w-64">
+                          <Input
+                            ref={workspaceLogoInputRef}
+                            id="workspaceLogoFile"
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                // Validate file type
+                                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+                                if (!validTypes.includes(file.type)) {
+                                  toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.')
+                                  return
+                                }
+
+                                // Validate file size (max 2MB)
+                                const maxSize = 2 * 1024 * 1024 // 2MB
+                                if (file.size > maxSize) {
+                                  toast.error('File size too large. Maximum size is 2MB.')
+                                  return
+                                }
+
+                                setWorkspaceLogoFile(file)
+
+                                // Create preview
+                                const reader = new FileReader()
+                                reader.onload = () => {
+                                  setWorkspaceLogoPreview(reader.result as string)
+                                }
+                                reader.readAsDataURL(file)
+                              }
+                            }}
+                            className="w-full cursor-pointer"
+                            disabled={savingWorkspace}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Upload a JPEG, PNG, GIF, WebP, or SVG image (max 2MB)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
                     {/* Workspace Name */}
                     <div className="flex items-center justify-between">
                       <Label htmlFor="workspaceName" className="text-sm font-medium">Workspace name</Label>
                       <div className="flex items-center gap-3">
                         <Input 
                           id="workspaceName" 
-                          value={workspace?.name || ''} 
+                          value={workspaceName} 
+                          onChange={(e) => setWorkspaceName(e.target.value)}
                           placeholder="Acme Real Estate" 
                           className="w-64"
-                          readOnly
+                          disabled={savingWorkspace}
                         />
                       </div>
                     </div>
@@ -729,15 +916,38 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         <Input id="license" placeholder="DRE #01234567" className="w-64" />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Save Button */}
-                  <div className="flex justify-start">
-                    <Button>
-                      <Check className="size-4 mr-2" />
-                      Save changes
-                    </Button>
-                  </div>
+                    {/* Save Button */}
+                    <div className="flex justify-start">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block">
+                            <Button 
+                              type="submit"
+                              disabled={savingWorkspace || ((!workspaceName.trim() || workspaceName.trim() === originalWorkspaceName.trim()) && !workspaceLogoFile)}
+                            >
+                              {savingWorkspace ? (
+                                <>
+                                  <Loader2 className="size-4 mr-2 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="size-4 mr-2" />
+                                  Save changes
+                                </>
+                              )}
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {!savingWorkspace && ((!workspaceName.trim() || workspaceName.trim() === originalWorkspaceName.trim()) && !workspaceLogoFile) && (
+                          <TooltipContent>
+                            <p>No changes to save</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </div>
+                  </form>
                 </TabsContent>
               )}
 

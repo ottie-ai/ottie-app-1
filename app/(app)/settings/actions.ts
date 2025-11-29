@@ -3,7 +3,8 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { Profile } from '@/types/database'
+import { updateWorkspace } from '@/lib/supabase/queries'
+import type { Profile, Workspace } from '@/types/database'
 
 /**
  * Server Actions for Settings Page
@@ -550,5 +551,289 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     console.error('Error deleting account:', error)
     return { error: 'An unexpected error occurred' }
   }
+}
+
+/**
+ * Update workspace name
+ * Only allowed for workspace owners/admins
+ */
+export async function updateWorkspaceName(
+  workspaceId: string,
+  userId: string,
+  name: string
+): Promise<{ success: true; workspace: Workspace } | { error: string }> {
+  if (!workspaceId || !userId || !name) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can update workspace name' }
+  }
+
+  // Validate name
+  const trimmedName = name.trim()
+  if (!trimmedName || trimmedName.length < 1) {
+    return { error: 'Workspace name cannot be empty' }
+  }
+
+  if (trimmedName.length > 100) {
+    return { error: 'Workspace name must be 100 characters or less' }
+  }
+
+  // Update workspace
+  const updatedWorkspace = await updateWorkspace(workspaceId, { name: trimmedName })
+
+  if (!updatedWorkspace) {
+    return { error: 'Failed to update workspace name' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true, workspace: updatedWorkspace }
+}
+
+/**
+ * Upload workspace logo to Supabase Storage
+ * Uploads a file to the 'workspace-logos' bucket and returns the public URL
+ */
+export async function uploadWorkspaceLogo(
+  workspaceId: string,
+  userId: string,
+  file: File
+): Promise<{ success: true; url: string } | { error: string }> {
+  if (!workspaceId || !userId) {
+    return { error: 'Not authenticated' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can upload workspace logo' }
+  }
+
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+  if (!validTypes.includes(file.type)) {
+    return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.' }
+  }
+
+  // Validate file size (max 2MB)
+  const maxSize = 2 * 1024 * 1024 // 2MB
+  if (file.size > maxSize) {
+    return { error: 'File size too large. Maximum size is 2MB.' }
+  }
+
+  try {
+    // First, delete all existing logos for this workspace from storage
+    // This ensures workspace always has only one logo
+    try {
+      const { data: existingFiles } = await supabase.storage
+        .from('workspace-logos')
+        .list(workspaceId)
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => `${workspaceId}/${file.name}`)
+        await supabase.storage
+          .from('workspace-logos')
+          .remove(filesToDelete)
+      }
+    } catch (deleteError) {
+      // Don't fail upload if deletion fails - continue with upload
+      console.error('Error deleting old workspace logos:', deleteError)
+    }
+
+    // Generate unique filename: workspaceId-timestamp.extension
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${workspaceId}-${Date.now()}.${fileExt}`
+    const filePath = `${workspaceId}/${fileName}`
+
+    // Upload file to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('workspace-logos')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false, // Don't overwrite existing files
+      })
+
+    if (uploadError) {
+      console.error('Error uploading workspace logo:', uploadError)
+      // Provide more specific error messages
+      if (uploadError.message?.includes('Bucket not found')) {
+        return { error: 'Storage bucket not found. Please create the "workspace-logos" bucket in Supabase Storage.' }
+      }
+      if (uploadError.message?.includes('new row violates row-level security policy')) {
+        return { error: 'Permission denied. Please check Storage policies for the "workspace-logos" bucket.' }
+      }
+      return { error: `Failed to upload logo: ${uploadError.message || 'Unknown error'}` }
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('workspace-logos')
+      .getPublicUrl(filePath)
+
+    if (!urlData?.publicUrl) {
+      return { error: 'Failed to get logo URL' }
+    }
+
+    return { success: true, url: urlData.publicUrl }
+  } catch (error) {
+    console.error('Error uploading workspace logo:', error)
+    return { error: 'An unexpected error occurred. Please try again.' }
+  }
+}
+
+/**
+ * Delete workspace logo from Supabase Storage
+ */
+export async function deleteWorkspaceLogo(workspaceId: string, logoUrl: string): Promise<void> {
+  if (!workspaceId || !logoUrl) return
+
+  const supabase = await createClient()
+
+  // Extract file path from URL
+  // URL format: https://[project].supabase.co/storage/v1/object/public/workspace-logos/[path]
+  try {
+    const urlParts = logoUrl.split('/workspace-logos/')
+    if (urlParts.length === 2) {
+      const filePath = urlParts[1]
+      await supabase.storage.from('workspace-logos').remove([filePath])
+    }
+  } catch (error) {
+    // Silently fail - it's okay if we can't delete the old file
+    console.error('Error deleting old workspace logo:', error)
+  }
+}
+
+/**
+ * Remove workspace logo from workspace
+ * Deletes the logo from storage and removes the URL from workspace
+ */
+export async function removeWorkspaceLogo(
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true; workspace: Workspace } | { error: string }> {
+  if (!workspaceId || !userId) {
+    return { error: 'Not authenticated' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can remove workspace logo' }
+  }
+
+  // Get current workspace to find logo URL
+  const { data: currentWorkspace } = await supabase
+    .from('workspaces')
+    .select('logo_url')
+    .eq('id', workspaceId)
+    .single()
+
+  // Delete logo from storage if it exists and is from our storage
+  if (currentWorkspace?.logo_url && currentWorkspace.logo_url.includes('/workspace-logos/')) {
+    await deleteWorkspaceLogo(workspaceId, currentWorkspace.logo_url)
+  }
+
+  // Update workspace to remove logo URL
+  const { data, error } = await supabase
+    .from('workspaces')
+    .update({ logo_url: null })
+    .eq('id', workspaceId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error removing workspace logo:', error)
+    return { error: 'Failed to remove logo' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true, workspace: data as Workspace }
+}
+
+/**
+ * Update workspace (generic function for updating workspace fields)
+ * Only allowed for workspace owners/admins
+ */
+export async function updateWorkspaceAction(
+  workspaceId: string,
+  userId: string,
+  updates: { logo_url?: string | null }
+): Promise<{ success: true; workspace: Workspace } | { error: string }> {
+  if (!workspaceId || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can update workspace' }
+  }
+
+  // Update workspace
+  const updatedWorkspace = await updateWorkspace(workspaceId, updates)
+
+  if (!updatedWorkspace) {
+    return { error: 'Failed to update workspace' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true, workspace: updatedWorkspace }
 }
 
