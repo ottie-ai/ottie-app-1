@@ -26,9 +26,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
-import type { Profile } from '@/types/database'
+import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
+import { signOut as signOutAuth } from '@/lib/supabase/auth'
+import type { Profile, Workspace } from '@/types/database'
 
 // Serializable user data passed from server component
 // We don't use the full User type because it's not fully serializable
@@ -55,9 +57,10 @@ interface SettingsClientProps {
     email: string
     isGoogleSignIn: boolean
   }
+  initialWorkspace: Workspace | null
 }
 
-export function SettingsClient({ user: serverUser, initialProfile, userMetadata }: SettingsClientProps) {
+export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace }: SettingsClientProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
@@ -68,10 +71,20 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
   
   const [activeTab, setActiveTab] = useState('profile')
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
+  const [workspace, setWorkspace] = useState<Workspace | null>(initialWorkspace)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(!initialProfile && !!clientUser?.id)
+  
+  // Check if workspace settings should be shown (only for multi-user plans)
+  const showWorkspaceSettings = workspace ? isMultiUserPlan(workspace.plan) : false
+
+  // Delete account dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [workspacesToDelete, setWorkspacesToDelete] = useState<Array<{ id: string; name: string; memberCount: number }>>([])
+  const [hasMultiUserWorkspace, setHasMultiUserWorkspace] = useState(false)
 
   // Form state - initialize from server data
   // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl (which may contain Google avatar)
@@ -475,7 +488,11 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-lg font-semibold">Settings</h1>
-          <p className="text-xs text-muted-foreground">View and manage your workspace settings.</p>
+          <p className="text-xs text-muted-foreground">
+            {showWorkspaceSettings 
+              ? 'View and manage your workspace settings.' 
+              : 'View and manage your account settings.'}
+          </p>
         </div>
       </header>
 
@@ -489,7 +506,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
               <div className="px-6 pt-6">
                 <TabsList>
                   <TabsTrigger value="profile">Account</TabsTrigger>
-                  <TabsTrigger value="company">Company</TabsTrigger>
+                  {showWorkspaceSettings && (
+                    <TabsTrigger value="workspace">Workspace</TabsTrigger>
+                  )}
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="plan">Plan & Billing</TabsTrigger>
@@ -643,54 +662,61 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
                 )}
               </TabsContent>
 
-              {/* Company Tab */}
-              <TabsContent value="company" className="mt-6 space-y-6">
-                <div>
-                  <h2 className="text-lg font-semibold">Company</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Your company information for branding
-                  </p>
-                </div>
+              {/* Workspace Tab - Only shown for multi-user plans (agency/enterprise) */}
+              {showWorkspaceSettings && (
+                <TabsContent value="workspace" className="mt-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Workspace</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your workspace settings and team
+                    </p>
+                  </div>
 
-                {/* Settings Fields */}
-                <div className="space-y-4">
-                  {/* Company Name */}
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="companyName" className="text-sm font-medium">Company name</Label>
-                    <div className="flex items-center gap-3">
-                      <Input id="companyName" placeholder="Acme Real Estate" className="w-64" />
+                  {/* Settings Fields */}
+                  <div className="space-y-4">
+                    {/* Workspace Name */}
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="workspaceName" className="text-sm font-medium">Workspace name</Label>
+                      <div className="flex items-center gap-3">
+                        <Input 
+                          id="workspaceName" 
+                          value={workspace?.name || ''} 
+                          placeholder="Acme Real Estate" 
+                          className="w-64" 
+                        />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Website */}
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="website" className="text-sm font-medium">Website</Label>
+                      <div className="flex items-center gap-3">
+                        <Input id="website" type="url" placeholder="https://example.com" className="w-64" />
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* License */}
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="license" className="text-sm font-medium">License number</Label>
+                      <div className="flex items-center gap-3">
+                        <Input id="license" placeholder="DRE #01234567" className="w-64" />
+                      </div>
                     </div>
                   </div>
 
-                  <Separator />
-
-                  {/* Website */}
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="website" className="text-sm font-medium">Website</Label>
-                    <div className="flex items-center gap-3">
-                      <Input id="website" type="url" placeholder="https://example.com" className="w-64" />
-                    </div>
+                  {/* Save Button */}
+                  <div className="flex justify-start">
+                    <Button>
+                      <Check className="size-4 mr-2" />
+                      Save changes
+                    </Button>
                   </div>
-
-                  <Separator />
-
-                  {/* License */}
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="license" className="text-sm font-medium">License number</Label>
-                    <div className="flex items-center gap-3">
-                      <Input id="license" placeholder="DRE #01234567" className="w-64" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="flex justify-start">
-                  <Button>
-                    <Check className="size-4 mr-2" />
-                    Save changes
-                  </Button>
-                </div>
-              </TabsContent>
+                </TabsContent>
+              )}
 
               {/* Appearance Tab */}
               <TabsContent value="appearance" className="mt-6 space-y-6">
@@ -796,7 +822,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
                 <div>
                   <h2 className="text-lg font-semibold flex items-center gap-2">
                     Current Plan
-                    <Badge variant="secondary">Free</Badge>
+                    <Badge variant="secondary" className="capitalize">
+                      {workspace ? normalizePlan(workspace.plan) : 'free'}
+                    </Badge>
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     Manage your subscription and billing
@@ -805,7 +833,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
 
                 <div className="rounded-lg border p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Free Plan</span>
+                    <span className="font-medium capitalize">
+                      {workspace ? normalizePlan(workspace.plan) : 'Free'} Plan
+                    </span>
                     <span className="text-muted-foreground">$0/month</span>
                   </div>
                   <ul className="text-sm text-muted-foreground space-y-1">
@@ -839,8 +869,29 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
                         Permanently delete your account and all data
                       </p>
                     </div>
-                    <Button variant="destructive" size="sm">
-                      Delete account
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={async () => {
+                        if (!user?.id) return
+                        
+                        setDeleteLoading(true)
+                        const checkResult = await checkWorkspacesForDeletion(user.id)
+                        setWorkspacesToDelete(checkResult.workspacesToDelete)
+                        setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                        setDeleteLoading(false)
+                        setShowDeleteDialog(true)
+                      }}
+                      disabled={deleteLoading || !user?.id}
+                    >
+                      {deleteLoading ? (
+                        <>
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        'Delete account'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -875,6 +926,114 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
                 </>
               ) : (
                 'Save & Continue'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Account
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete your account? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {workspacesToDelete.length > 0 && (
+              <div className="space-y-2">
+                <p className="font-medium text-foreground text-sm">
+                  The following workspaces will also be deleted:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                  {workspacesToDelete.map((ws) => (
+                    <li key={ws.id}>
+                      <span className="font-medium text-foreground">{ws.name}</span>
+                      {ws.memberCount > 1 && (
+                        <span className="text-muted-foreground">
+                          {' '}({ws.memberCount} members - all data will be lost)
+                        </span>
+                      )}
+                      {ws.memberCount === 1 && (
+                        <span className="text-muted-foreground">
+                          {' '}(only you)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {hasMultiUserWorkspace && (
+                  <p className="text-sm text-destructive font-medium mt-2">
+                    ⚠️ Warning: Some workspaces have multiple members. All their data will be permanently deleted.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                This will permanently delete:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+                <li>Your profile and account</li>
+                <li>All workspaces where you are the owner</li>
+                <li>All sites associated with your workspaces</li>
+                <li>All integrations associated with your workspaces</li>
+                <li>All your memberships</li>
+                <li>All avatars you uploaded</li>
+                {hasMultiUserWorkspace && (
+                  <li className="text-destructive font-medium">
+                    All data in workspaces with multiple members
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!user?.id) return
+
+                setDeleteLoading(true)
+                setError(null)
+
+                const result = await deleteUserAccount(user.id)
+
+                if ('error' in result) {
+                  setError(result.error)
+                  setDeleteLoading(false)
+                  setShowDeleteDialog(false)
+                } else {
+                  // Sign out and redirect to login
+                  try {
+                    await signOutAuth()
+                  } catch (signOutError) {
+                    // Continue even if sign out fails - account is already deleted
+                    console.error('Error signing out:', signOutError)
+                  }
+                  router.push('/login')
+                  router.refresh()
+                }
+              }}
+              disabled={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Account'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -77,6 +77,33 @@ npx shadcn-ui@latest add dialog
 npx shadcn-ui@latest add dropdown-menu
 ```
 
+## Workspace & Plan Logic
+
+### Plan Types
+
+The application supports different subscription plans with different workspace capabilities:
+
+**Single-User Plans** (Free, Starter, Growth):
+- Only one user per workspace
+- User profile data is used instead of workspace data
+- No workspace settings tab in Settings page
+- User's name, avatar, and profile information is displayed everywhere workspace would normally appear
+- User = Workspace (they are treated as the same entity)
+
+**Multi-User Plans** (Agency, Enterprise):
+- Can have multiple users per workspace
+- Workspace settings tab is visible in Settings page
+- Workspace name, logo, and settings are displayed
+- Supports team collaboration features
+
+### Implementation
+
+- **Utility Functions**: `lib/utils.ts` contains `isMultiUserPlan()` and `isSingleUserPlan()` functions
+- **Workspace Hook**: `hooks/use-workspace.ts` provides workspace data for client components
+- **Server Queries**: `lib/supabase/queries.ts` contains `getCurrentUserWorkspace()` for server-side fetching
+- **Settings Page**: Conditionally shows workspace tab based on plan type
+- **WorkspaceNavbar**: Shows user name for single-user plans, workspace name for multi-user plans
+
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)

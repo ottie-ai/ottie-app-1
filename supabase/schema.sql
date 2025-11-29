@@ -25,13 +25,37 @@ create table public.profiles (
   full_name text,
   avatar_url text,
   preferences jsonb default '{}'::jsonb, -- UI preferences (theme, lang)
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  deleted_at timestamp with time zone -- Soft Delete: when account was deleted
 );
 
+-- Function to anonymize auth.users email (for soft delete to allow re-registration)
+-- This allows user to re-register with the same email while preserving anonymized data
+create or replace function public.anonymize_auth_user(user_uuid uuid, anonymized_email text)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  -- Anonymize email in auth.users so user can re-register with original email
+  -- Profile remains anonymized (soft delete) for compliance/analytics
+  update auth.users 
+  set email = anonymized_email,
+      raw_user_meta_data = jsonb_build_object('deleted', true),
+      updated_at = now()
+  where id = user_uuid;
+end;
+$$;
+
 -- Trigger: Auto-create profile
+-- Creates a new profile when a new auth.users record is created
+-- Note: When user deletes account, auth.users is deleted, which cascades to profile
+-- When user re-registers, a new auth.users is created with a NEW ID, so a new profile is created
 create function public.handle_new_user()
 returns trigger as $$
 begin
+  -- Always create a new profile for new auth.users
+  -- Since auth.users was deleted (cascade deleted profile), this is always a new user
   insert into public.profiles (id, email, full_name, avatar_url)
   values (
     new.id, 
@@ -50,6 +74,81 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Trigger: Auto-create workspace and membership after profile creation
+-- This creates a workspace for every new user (single-user plan by default)
+create or replace function public.handle_new_profile()
+returns trigger as $$
+declare
+  workspace_name text;
+  workspace_slug text;
+  new_workspace_id uuid;
+begin
+  -- Debug: Log that trigger was called
+  raise notice 'handle_new_profile: Trigger called for user_id: %, email: %, full_name: %', 
+    new.id, new.email, new.full_name;
+
+  -- Generate workspace name from user's full_name or email
+  -- Format: "{full_name}'s Workspace" or "{email}'s Workspace"
+  if new.full_name is not null and trim(new.full_name) != '' then
+    workspace_name := new.full_name || '''s Workspace';
+  else
+    -- Use email username (part before @) or full email
+    workspace_name := COALESCE(
+      split_part(new.email, '@', 1),
+      'User'
+    ) || '''s Workspace';
+  end if;
+
+  -- Debug: Log workspace name
+  raise notice 'handle_new_profile: Generated workspace_name: %', workspace_name;
+
+  -- Generate unique slug from workspace name
+  -- Convert to lowercase, replace spaces with hyphens, remove special chars
+  workspace_slug := lower(regexp_replace(
+    regexp_replace(workspace_name, '[^a-zA-Z0-9\s-]', '', 'g'),
+    '\s+', '-', 'g'
+  ));
+  
+  -- Ensure slug is unique by appending user ID if needed
+  -- We'll use a simple approach: slug + first 8 chars of user ID
+  workspace_slug := workspace_slug || '-' || substr(new.id::text, 1, 8);
+
+  -- Debug: Log workspace slug
+  raise notice 'handle_new_profile: Generated workspace_slug: %', workspace_slug;
+
+  -- Create workspace with 'free' plan (single-user plan by default)
+  begin
+    insert into public.workspaces (name, slug, plan)
+    values (workspace_name, workspace_slug, 'free')
+    returning id into new_workspace_id;
+    
+    raise notice 'handle_new_profile: Workspace created successfully with id: %', new_workspace_id;
+  exception when others then
+    raise exception 'handle_new_profile: Failed to create workspace. Error: %, Detail: %', 
+      SQLERRM, SQLSTATE;
+  end;
+
+  -- Create membership with 'owner' role
+  begin
+    insert into public.memberships (workspace_id, user_id, role)
+    values (new_workspace_id, new.id, 'owner');
+    
+    raise notice 'handle_new_profile: Membership created successfully for user_id: %, workspace_id: %', 
+      new.id, new_workspace_id;
+  exception when others then
+    raise exception 'handle_new_profile: Failed to create membership. Error: %, Detail: %', 
+      SQLERRM, SQLSTATE;
+  end;
+
+  raise notice 'handle_new_profile: Successfully completed for user_id: %', new.id;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_profile_created
+  after insert on public.profiles
+  for each row execute procedure public.handle_new_profile();
 
 
 
@@ -161,8 +260,12 @@ alter table public.integrations enable row level security;
 
 
 -- PROFILES
-create policy "Users can view own profile" on profiles for select using (auth.uid() = id);
-create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+create policy "Users can view own profile" on profiles 
+  for select using (auth.uid() = id AND deleted_at IS NULL);
+create policy "Users can update own profile" on profiles 
+  for update using (auth.uid() = id AND deleted_at IS NULL);
+create policy "Users can soft delete own profile" on profiles 
+  for update using (auth.uid() = id);
 
 
 
@@ -176,6 +279,20 @@ create policy "Access workspaces via membership" on workspaces
       and user_id = auth.uid()
     )
   );
+
+-- Allow security definer functions to create workspaces (for triggers)
+-- The trigger function runs with security definer, so it has elevated privileges
+-- This policy allows the trigger to create workspaces during user registration
+create policy "System can create workspaces" on workspaces
+  for insert with check (true);
+
+-- Allow security definer functions to update workspaces (for system operations)
+create policy "System can update workspaces" on workspaces
+  for update using (true) with check (true);
+
+-- Allow security definer functions to delete workspaces (for system operations)
+create policy "System can delete workspaces" on workspaces
+  for delete using (true);
 
 create policy "Owners can update workspace" on workspaces
   for update using (
@@ -204,6 +321,20 @@ create policy "View team members" on memberships
   for select using (
     public.user_has_workspace_access(workspace_id)
   );
+
+-- Allow security definer functions to create memberships (for triggers)
+-- The trigger function runs with security definer, so it has elevated privileges
+-- This policy allows the trigger to create memberships during user registration
+create policy "System can create memberships" on memberships
+  for insert with check (true);
+
+-- Allow security definer functions to update memberships (for system operations)
+create policy "System can update memberships" on memberships
+  for update using (true) with check (true);
+
+-- Allow security definer functions to delete memberships (for system operations)
+create policy "System can delete memberships" on memberships
+  for delete using (true);
 
 -- Update last_active (Každý môže updatovať svoj timestamp)
 create policy "Update own activity" on memberships

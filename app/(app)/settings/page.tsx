@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { SettingsClient } from './settings-client'
-import type { Profile } from '@/types/database'
+import { getCurrentUserWorkspace } from '@/lib/supabase/queries'
+import type { Profile, Workspace } from '@/types/database'
 
 /**
  * Settings Page - Server Component
@@ -37,6 +38,13 @@ export default async function SettingsPage() {
   // Use fallback values if server-side session is not available
   // AuthGuard will handle redirect if user is not authenticated
   const initialProfile: Profile | null = profile || null
+  
+  // Fetch workspace data if user exists
+  let workspace: Workspace | null = null
+  if (user && !authError) {
+    const workspaceData = await getCurrentUserWorkspace(user.id)
+    workspace = workspaceData?.workspace || null
+  }
   
   // Extract user metadata for fallback
   // Only pass serializable data to client component
@@ -86,6 +94,7 @@ export default async function SettingsPage() {
       user={serializableUser}
       initialProfile={initialProfile}
       userMetadata={userMetadata}
+      initialWorkspace={workspace}
     />
   )
 }

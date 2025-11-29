@@ -137,6 +137,48 @@ export async function getMemberships(workspaceId?: string): Promise<Membership[]
   return data || []
 }
 
+/**
+ * Get current user's workspace and membership
+ * Returns the workspace the user belongs to, or null if not found
+ */
+export async function getCurrentUserWorkspace(userId: string): Promise<{ workspace: Workspace; membership: Membership } | null> {
+  const supabase = await createClient()
+  
+  // Get user's membership with workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select(`
+      *,
+      workspace:workspaces!inner(*)
+    `)
+    .eq('user_id', userId)
+    .is('workspace.deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (membershipError) {
+    console.error('Error fetching user workspace:', membershipError)
+    return null
+  }
+
+  if (!membership || !membership.workspace) {
+    return null
+  }
+
+  return {
+    workspace: membership.workspace as Workspace,
+    membership: {
+      id: membership.id,
+      workspace_id: membership.workspace_id,
+      user_id: membership.user_id,
+      role: membership.role,
+      last_active_at: membership.last_active_at,
+      created_at: membership.created_at,
+    } as Membership,
+  }
+}
+
 export async function updateMembershipActivity(
   workspaceId: string,
   userId: string

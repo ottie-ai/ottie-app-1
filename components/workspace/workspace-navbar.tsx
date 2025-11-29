@@ -26,12 +26,15 @@ import {
 } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ChevronsUpDown, Settings, ArrowLeft } from 'lucide-react'
+import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
+import type { Workspace } from '@/types/database'
 
 interface WorkspaceNavbarProps {
   userName?: string
   userEmail?: string
   userAvatar?: string
   companyName?: string
+  workspace?: Workspace | null
   settingsPanel?: ReactNode
   onSaveSettings?: () => void
 }
@@ -40,10 +43,21 @@ export function WorkspaceNavbar({
   userName = 'John Doe',
   userEmail = 'john@example.com',
   userAvatar,
-  companyName = 'Real Estate Co.',
+  companyName,
+  workspace,
   settingsPanel,
   onSaveSettings,
 }: WorkspaceNavbarProps) {
+  // For single-user plans (free, starter, growth), show user name instead of workspace name
+  // For multi-user plans (agency, enterprise), show workspace name
+  // If plan is null/undefined, treat as 'free' (single-user)
+  const displayName = workspace && isMultiUserPlan(workspace.plan)
+    ? workspace.name
+    : (companyName || userName || 'Real Estate Co.')
+  
+  // Normalize plan for display (null/undefined becomes 'free')
+  const displayPlan = workspace ? normalizePlan(workspace.plan) : 'free'
+  
   // Get initials for avatar fallback
   return (
     <motion.nav
@@ -84,9 +98,11 @@ export function WorkspaceNavbar({
             <Button variant="ghost" size="sm" className="gap-1 md:gap-2">
               <div className="flex items-center gap-1 md:gap-2">
                 <div className="size-4 rounded-full bg-gradient-to-br from-lime-400 via-amber-300 to-orange-500" />
-                <span className="text-sm font-medium hidden sm:inline">{companyName}</span>
+                <span className="text-sm font-medium hidden sm:inline">{displayName}</span>
               </div>
-              <Badge variant="secondary" className="hidden md:inline-flex">Free</Badge>
+              <Badge variant="secondary" className="hidden md:inline-flex capitalize">
+                {displayPlan}
+              </Badge>
               <ChevronsUpDown className="size-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>

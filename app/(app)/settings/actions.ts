@@ -329,3 +329,226 @@ export async function removeAvatar(userId: string): Promise<{ success: true; pro
   return { success: true, profile: data as Profile }
 }
 
+/**
+ * Check if user is owner in any workspace with multiple users
+ * Returns list of workspaces that will be deleted
+ */
+export async function checkWorkspacesForDeletion(userId: string): Promise<{
+  workspacesToDelete: Array<{ id: string; name: string; memberCount: number }>
+  hasMultiUserWorkspace: boolean
+}> {
+  if (!userId) {
+    return { workspacesToDelete: [], hasMultiUserWorkspace: false }
+  }
+
+  const supabase = await createClient()
+
+  // Find all workspaces where user is owner
+  const { data: ownerMemberships, error: ownerError } = await supabase
+    .from('memberships')
+    .select('workspace_id')
+    .eq('user_id', userId)
+    .eq('role', 'owner')
+
+  if (ownerError || !ownerMemberships || ownerMemberships.length === 0) {
+    return { workspacesToDelete: [], hasMultiUserWorkspace: false }
+  }
+
+  const workspaceIds = ownerMemberships.map(m => m.workspace_id)
+  const workspacesToDelete: Array<{ id: string; name: string; memberCount: number }> = []
+  let hasMultiUserWorkspace = false
+
+  // Get workspace details and member counts
+  for (const workspaceId of workspaceIds) {
+    // Get workspace details
+    const { data: workspace, error: wsError } = await supabase
+      .from('workspaces')
+      .select('id, name')
+      .eq('id', workspaceId)
+      .single()
+
+    if (wsError || !workspace) continue
+
+    // Count members in this workspace
+    const { data: members, error: membersError } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+
+    const memberCount = members?.length || 0
+
+    if (memberCount > 1) {
+      hasMultiUserWorkspace = true
+    }
+
+    workspacesToDelete.push({
+      id: workspace.id,
+      name: workspace.name,
+      memberCount,
+    })
+  }
+
+  return { workspacesToDelete, hasMultiUserWorkspace }
+}
+
+/**
+ * Soft delete user account (anonymize instead of hard delete)
+ * This preserves data for compliance and analytics while removing personal information.
+ * 
+ * Process:
+ * - Anonymizes personal data in profile (email, full_name, avatar_url)
+ * - Sets deleted_at timestamp in profile
+ * - Anonymizes email in auth.users to allow re-registration with same email
+ * - For single-user workspaces: deletes workspace and all associated data
+ * - For multi-user workspaces: removes user from workspace but keeps workspace
+ * - Deletes avatars from storage
+ * 
+ * Note: User can re-register with the same email because auth.users email is anonymized.
+ * Profile remains anonymized (soft delete) for compliance/analytics purposes.
+ */
+export async function deleteUserAccount(userId: string): Promise<{ success: true } | { error: string }> {
+  if (!userId) {
+    return { error: 'Not authenticated' }
+  }
+
+  const supabase = await createClient()
+
+  try {
+    // 1. Find all workspaces where user is owner
+    const { data: ownerMemberships, error: ownerError } = await supabase
+      .from('memberships')
+      .select('workspace_id')
+      .eq('user_id', userId)
+      .eq('role', 'owner')
+
+    if (ownerError) {
+      console.error('Error finding owner workspaces:', ownerError)
+      return { error: 'Failed to find workspaces' }
+    }
+
+    const workspaceIdsToDelete = ownerMemberships?.map(m => m.workspace_id) || []
+
+    // 2. For single-user workspaces: Delete sites and integrations
+    // For multi-user workspaces: Keep them (other users need them)
+    if (workspaceIdsToDelete.length > 0) {
+      // Check which workspaces are single-user (only this user)
+      for (const workspaceId of workspaceIdsToDelete) {
+        const { data: members, error: membersError } = await supabase
+          .from('memberships')
+          .select('id')
+          .eq('workspace_id', workspaceId)
+
+        const memberCount = members?.length || 0
+
+        // Only delete sites/integrations if it's a single-user workspace
+        if (memberCount === 1) {
+          // Delete sites
+          const { error: deleteSitesError } = await supabase
+            .from('sites')
+            .delete()
+            .eq('workspace_id', workspaceId)
+
+          if (deleteSitesError) {
+            console.error('Error deleting sites:', deleteSitesError)
+          }
+
+          // Delete integrations
+          const { error: deleteIntegrationsError } = await supabase
+            .from('integrations')
+            .delete()
+            .eq('workspace_id', workspaceId)
+
+          if (deleteIntegrationsError) {
+            console.error('Error deleting integrations:', deleteIntegrationsError)
+          }
+
+          // Delete workspace (single-user only)
+          const { error: deleteWorkspaceError } = await supabase
+            .from('workspaces')
+            .delete()
+            .eq('id', workspaceId)
+
+          if (deleteWorkspaceError) {
+            console.error('Error deleting workspace:', deleteWorkspaceError)
+          }
+        }
+        // For multi-user workspaces, we keep them but remove the user's membership
+      }
+    }
+
+    // 3. Delete all memberships (user is removed from all workspaces)
+    const { error: deleteMembershipsError } = await supabase
+      .from('memberships')
+      .delete()
+      .eq('user_id', userId)
+
+    if (deleteMembershipsError) {
+      console.error('Error deleting memberships:', deleteMembershipsError)
+      return { error: 'Failed to delete memberships' }
+    }
+
+    // 4. Delete all avatars uploaded by the user from storage
+    try {
+      const { data: existingFiles, error: listError } = await supabase.storage
+        .from('avatars')
+        .list(userId)
+
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
+        const { error: deleteAvatarsError } = await supabase.storage
+          .from('avatars')
+          .remove(filesToDelete)
+
+        if (deleteAvatarsError) {
+          console.error('Error deleting avatars from storage:', deleteAvatarsError)
+          // Continue even if avatar deletion fails
+        }
+      }
+    } catch (avatarError) {
+      console.error('Error accessing storage for avatar deletion:', avatarError)
+      // Continue even if avatar deletion fails
+    }
+
+    // 5. Soft delete: Anonymize profile instead of deleting
+    // This preserves data for compliance/analytics while removing personal info
+    const anonymizedEmail = `deleted_${userId.substring(0, 8)}@deleted.local`
+    const anonymizedName = 'Deleted User'
+    
+    const { error: updateProfileError } = await supabase
+      .from('profiles')
+      .update({
+        email: anonymizedEmail,
+        full_name: anonymizedName,
+        avatar_url: null,
+        deleted_at: new Date().toISOString(),
+        preferences: {} // Clear preferences
+      })
+      .eq('id', userId)
+
+    if (updateProfileError) {
+      console.error('Error soft deleting profile:', updateProfileError)
+      return { error: `Failed to delete profile: ${updateProfileError.message || 'Unknown error'}` }
+    }
+
+    // 6. Anonymize email in auth.users to allow re-registration with same email
+    // This uses a security definer function that can update auth.users
+    // This is necessary so user can register again with the same email
+    // The profile remains anonymized (soft delete) for compliance/analytics
+    const { error: anonymizeAuthUserError } = await supabase.rpc('anonymize_auth_user', {
+      user_uuid: userId,
+      anonymized_email: anonymizedEmail
+    })
+    
+    if (anonymizeAuthUserError) {
+      console.error('Error anonymizing auth user:', anonymizeAuthUserError)
+      // Continue - profile is already anonymized, but user won't be able to re-register
+      // with same email until auth.users email is manually changed
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting account:', error)
+    return { error: 'An unexpected error occurred' }
+  }
+}
+

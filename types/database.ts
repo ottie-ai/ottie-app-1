@@ -24,6 +24,7 @@ export interface Profile {
   avatar_url: string | null
   preferences: Record<string, any> // jsonb
   created_at: string // timestamp
+  deleted_at: string | null // timestamp (soft delete)
 }
 
 export interface Workspace {
@@ -31,7 +32,7 @@ export interface Workspace {
   name: string
   slug: string
   logo_url: string | null
-  plan: SubPlan
+  plan: SubPlan | null // null/empty plan is treated as 'free'
   stripe_customer_id: string | null
   branding_config: Record<string, any> // jsonb
   usage_stats: {

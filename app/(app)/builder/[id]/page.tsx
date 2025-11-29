@@ -12,6 +12,7 @@ import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { WorkspaceNavbar } from '@/components/workspace/workspace-navbar'
 import { useUserProfile } from '@/contexts/user-profile-context'
+import { useWorkspace } from '@/hooks/use-workspace'
 import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
 import { cn } from '@/lib/utils'
 
@@ -114,6 +115,7 @@ const initialSections: Section[] = [
 
 export default function EditorPage() {
   const { userName, userEmail, userAvatar } = useUserProfile()
+  const { workspace } = useWorkspace()
   const router = useRouter()
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [theme, setTheme] = useState<ThemeConfig>(exampleTheme)
@@ -319,7 +321,7 @@ export default function EditorPage() {
         userName={userName}
         userEmail={userEmail}
         userAvatar={userAvatar}
-        companyName="Luxury Homes RE"
+        workspace={workspace}
         settingsPanel={navbarSettingsPanel}
         onSaveSettings={() => {
           setTheme(editingTheme)

@@ -64,15 +64,15 @@ function UserJotWithProfile() {
   const { user } = useAuth()
   const { userAvatar, userName } = useUserProfile()
   
-  // Get user data for UserJot (only if user is authenticated)
-  // Pass null if user is not loaded yet to prevent invalid identify calls
-  const userData = user
+  // Get user data for UserJot (only if user is authenticated and has valid email)
+  // Pass null if user is not loaded yet or email is missing to prevent invalid identify calls
+  const userData = user && user.email && user.email.trim() !== ''
     ? {
         id: user.id,
-        email: user.email || '',
-        firstName: userName?.split(' ')[0] || '',
-        lastName: userName?.split(' ').slice(1).join(' ') || '',
-        avatar: userAvatar || '',
+        email: user.email,
+        firstName: userName?.split(' ')[0] || undefined,
+        lastName: userName?.split(' ').slice(1).join(' ') || undefined,
+        avatar: userAvatar || undefined,
       }
     : null
 
