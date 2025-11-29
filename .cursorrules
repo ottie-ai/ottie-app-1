@@ -6,7 +6,7 @@ The project uses Next.js 14 (App Router), TypeScript, Supabase, and Tailwind CSS
 Before writing any code, CHECK THE FILE PATH to determine the context. The app has 3 completely separate styling logics:
 
 ### 1. 🔵 ADMIN DASHBOARD & UI CHROME
-- **Paths:** `/app/(app)/workspace/**/*`, `/app/(app)/layout.tsx`, `/components/ui/**/*`, `/components/workspace/**/*`, `/components/builder/settings/**/*`
+- **Paths:** `/app/(app)/overview/**/*`, `/app/(app)/sites/**/*`, `/app/(app)/settings/**/*`, `/app/(app)/client-portals/**/*`, `/app/(app)/layout.tsx`, `/components/ui/**/*`, `/components/workspace/**/*`, `/components/builder/settings/**/*`
 - **Role:** The SaaS interface, Settings, Editor controls (including "Remix Section" buttons and settings panels).
 - **Styling:** STRICT Shadcn UI compliance.
 - **Theme:** Uses `next-themes`. MUST use semantic classes (`bg-background`, `text-foreground`, `border-input`).
@@ -65,8 +65,12 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 3. **Inline Editing:** In the Template Editor (`/app/(app)/builder/[id]`), use `EditableText` for text elements to allow inline editing.
 4. **Route Groups & URLs:** 
    - `/app/(marketing)/` - Public pages (homepage, privacy, terms) → URLs: `/`, `/privacy`, `/terms`
-   - `/app/(auth)/` - Public auth pages (login, signup, callback) → URLs: `/login`, `/signup`, `/auth/callback`
    - `/app/(app)/` - Protected platform routes - requires authentication via `(app)/layout.tsx`
-     - `/app/(app)/workspace/` - Workspace routes → URLs: `/overview`, `/sites`, `/settings`, `/client-portals`
+     - `/app/(app)/overview/` - Overview page → URL: `/overview`
+     - `/app/(app)/sites/` - Sites page → URL: `/sites`
+     - `/app/(app)/settings/` - Settings page → URL: `/settings`
+     - `/app/(app)/client-portals/` - Client portals page → URL: `/client-portals`
+     - `/app/(app)/login/` - Login page → URL: `/login`
+     - `/app/(app)/signup/` - Signup page → URL: `/signup`
      - `/app/(app)/builder/[id]/` - Builder routes → URL: `/builder/[id]`
    - `/app/(z-sites)/[site]/` - Client subdomain routes → URLs: `client.ottie.com/*` (z- prefix ensures lower priority than (app) routes)

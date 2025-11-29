@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
       
       if (isWorkspaceRoute) {
         // Workspace/builder route on app.localhost - ensure it goes to (app) route group
-        // We pass through and Next.js should match (app)/workspace/overview
+        // We pass through and Next.js should match (app)/overview
         response = NextResponse.next()
       } else {
         // Other routes on app.localhost - also go to (app) route group
