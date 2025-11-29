@@ -22,12 +22,15 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Check if access should be restricted based on domain/IP
  * 
  * Environment variables:
- * - ACCESS_MODE: 'public' | 'restricted' (default: 'public')
+ * - NEXT_PUBLIC_ACCESS_MODE: 'public' | 'restricted' (default: 'public')
+ *   Note: Using NEXT_PUBLIC_ prefix for middleware compatibility in Next.js
  * - ALLOWED_DOMAINS: comma-separated list of allowed domains (e.g., 'example.com,app.example.com')
  * - ALLOWED_IPS: comma-separated list of allowed IPs (e.g., '1.2.3.4,5.6.7.8')
  */
 function checkAccessControl(request: NextRequest): NextResponse | null {
-  const accessMode = process.env.ACCESS_MODE || 'public'
+  // Use NEXT_PUBLIC_ prefix for middleware compatibility
+  // Fallback to ACCESS_MODE for backward compatibility
+  const accessMode = process.env.NEXT_PUBLIC_ACCESS_MODE || process.env.ACCESS_MODE || 'public'
   const hostname = request.headers.get('host') || ''
   
   // DEBUG: Log access control values
@@ -249,7 +252,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle Supabase session refresh for protected routes
   try {
-    return await handleSupabaseSession(request, response, pathname)
+  return await handleSupabaseSession(request, response, pathname)
   } catch (error) {
     // Log error but don't break the request
     console.error('Middleware error:', error)
@@ -305,7 +308,7 @@ async function handleSupabaseSession(
 
   // Refresh session if expired
   try {
-    await supabase.auth.getUser()
+  await supabase.auth.getUser()
   } catch (error) {
     // If session refresh fails, just continue - auth guard will handle it
     console.warn('Session refresh failed:', error)
