@@ -5,7 +5,7 @@ import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
-import type { ThemeConfig, Section } from '@/types/builder'
+import type { ThemeConfig, Section, PageConfig } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   const { site } = await params
@@ -88,7 +88,7 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
  * Fetch site configuration from database
  * TODO: Implement when database is ready
  */
-async function getSiteConfig(subdomain: string) {
+async function getSiteConfig(subdomain: string): Promise<PageConfig | null> {
   // TODO: Uncomment when database is ready
   /*
   const supabase = await createClient()
