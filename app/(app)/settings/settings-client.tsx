@@ -351,7 +351,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
 
     const result = await removeAvatar(user.id)
 
-    if (result.error) {
+    if ('error' in result) {
       setError(result.error)
     } else if (result.success && result.profile) {
       setProfile(result.profile)
