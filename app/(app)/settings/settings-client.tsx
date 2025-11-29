@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
@@ -144,6 +144,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [workspacesToDelete, setWorkspacesToDelete] = useState<Array<{ id: string; name: string; memberCount: number }>>([])
   const [hasMultiUserWorkspace, setHasMultiUserWorkspace] = useState(false)
+
+  // Reset workspace state
+  const [resetWorkspaceLoading, setResetWorkspaceLoading] = useState(false)
 
   // Form state - initialize from server data
   // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl (which may contain Google avatar)
@@ -592,9 +595,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="plan">Plan & Billing</TabsTrigger>
-                  <TabsTrigger value="danger" className="text-destructive data-[state=active]:text-destructive">
-                    Danger Zone
-                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -747,6 +747,42 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               </div>
                 </form>
                 )}
+
+                {/* Delete Account Section */}
+                <Separator className="my-6" />
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Danger Zone</p>
+                    <p className="text-xs text-muted-foreground">
+                      Permanently delete your account and all data
+                    </p>
+                  </div>
+                  <Button 
+                    variant="link" 
+                    size="sm"
+                    onClick={async () => {
+                      if (!user?.id) return
+                      
+                      setDeleteLoading(true)
+                      const checkResult = await checkWorkspacesForDeletion(user.id)
+                      setWorkspacesToDelete(checkResult.workspaces)
+                      setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                      setDeleteLoading(false)
+                      setShowDeleteDialog(true)
+                    }}
+                    disabled={deleteLoading || !user?.id}
+                    className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
+                  >
+                    {deleteLoading ? (
+                      <>
+                        <Loader2 className="size-4 mr-2 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      'Delete account'
+                    )}
+                  </Button>
+                </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -891,10 +927,46 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               <p>No changes to save</p>
                             </TooltipContent>
                           )}
-                        </Tooltip>
-                      </div>
+                      </Tooltip>
+                    </div>
                     </form>
                   )}
+
+                  {/* Delete Account Section */}
+                  <Separator className="my-6" />
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Danger Zone</p>
+                      <p className="text-xs text-muted-foreground">
+                        Permanently delete your account and all data
+                      </p>
+                    </div>
+                    <Button 
+                      variant="link" 
+                      size="sm"
+                      onClick={async () => {
+                        if (!user?.id) return
+                        
+                        setDeleteLoading(true)
+                        const checkResult = await checkWorkspacesForDeletion(user.id)
+                        setWorkspacesToDelete(checkResult.workspaces)
+                        setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                        setDeleteLoading(false)
+                        setShowDeleteDialog(true)
+                      }}
+                      disabled={deleteLoading || !user?.id}
+                      className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
+                    >
+                      {deleteLoading ? (
+                        <>
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        'Delete account'
+                      )}
+                    </Button>
+                  </div>
                 </TabsContent>
               )}
 
@@ -1130,6 +1202,68 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </Tooltip>
                     </div>
                   </form>
+
+                  {/* Danger Zone Section - Only visible to owners */}
+                  {initialMembership?.role === 'owner' && (
+                    <>
+                      <Separator className="my-6" />
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Danger Zone</p>
+                          <p className="text-xs text-muted-foreground">
+                            Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
+                          </p>
+                        </div>
+                        <Button 
+                          variant="link" 
+                          size="sm"
+                          onClick={async () => {
+                            if (!workspace || !user?.id) return
+                            
+                            const confirmed = window.confirm(
+                              `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                            )
+                            
+                            if (!confirmed) return
+                            
+                            setResetWorkspaceLoading(true)
+                            const result = await resetWorkspace(workspace.id, user.id)
+                            
+                            if ('error' in result) {
+                              toast.error(result.error)
+                            } else {
+                              toast.success('Workspace deleted and new workspace created successfully')
+                              // Refresh workspace data - this will load the new workspace
+                              await refreshWorkspace()
+                              // Reset local state
+                              setWorkspaceLogoUrl('')
+                              setOriginalWorkspaceLogoUrl('')
+                              setWorkspaceLogoFile(null)
+                              setWorkspaceLogoPreview(null)
+                              if (workspaceLogoInputRef.current) {
+                                workspaceLogoInputRef.current.value = ''
+                              }
+                              // Reload page to ensure all components use the new workspace
+                              window.location.reload()
+                            }
+                            
+                            setResetWorkspaceLoading(false)
+                          }}
+                          disabled={resetWorkspaceLoading || !user?.id}
+                          className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
+                        >
+                          {resetWorkspaceLoading ? (
+                            <>
+                              <Loader2 className="size-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete workspace'
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                       </CardContent>
                     </Card>
                   ) : (
@@ -1360,6 +1494,68 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           </Tooltip>
                         </div>
                       </form>
+
+                      {/* Danger Zone Section - Only visible to owners */}
+                      {initialMembership?.role === 'owner' && (
+                        <>
+                          <Separator className="my-6" />
+                          <div className="space-y-3">
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium">Danger Zone</p>
+                              <p className="text-xs text-muted-foreground">
+                                Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
+                              </p>
+                            </div>
+                            <Button 
+                              variant="link" 
+                              size="sm"
+                              onClick={async () => {
+                                if (!workspace || !user?.id) return
+                                
+                                const confirmed = window.confirm(
+                                  `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                                )
+                                
+                                if (!confirmed) return
+                                
+                                setResetWorkspaceLoading(true)
+                                const result = await resetWorkspace(workspace.id, user.id)
+                                
+                                if ('error' in result) {
+                                  toast.error(result.error)
+                                } else {
+                                  toast.success('Workspace deleted and new workspace created successfully')
+                                  // Refresh workspace data - this will load the new workspace
+                                  await refreshWorkspace()
+                                  // Reset local state
+                                  setWorkspaceLogoUrl('')
+                                  setOriginalWorkspaceLogoUrl('')
+                                  setWorkspaceLogoFile(null)
+                                  setWorkspaceLogoPreview(null)
+                                  if (workspaceLogoInputRef.current) {
+                                    workspaceLogoInputRef.current.value = ''
+                                  }
+                                  // Reload page to ensure all components use the new workspace
+                                  window.location.reload()
+                                }
+                                
+                                setResetWorkspaceLoading(false)
+                              }}
+                              disabled={resetWorkspaceLoading || !user?.id}
+                              className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
+                            >
+                              {resetWorkspaceLoading ? (
+                                <>
+                                  <Loader2 className="size-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                'Delete workspace'
+                              )}
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </TabsContent>
                   )}
                 </>
@@ -1603,7 +1799,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </Button>
                   </div>
                 ) : (
-                  <PricingDialog>
+                  <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                     <Button className="w-full">Upgrade</Button>
                   </PricingDialog>
                 )}
@@ -1646,7 +1842,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </Button>
                     </div>
                   ) : (
-                    <PricingDialog>
+                    <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                       <Button className="w-full">Upgrade</Button>
                     </PricingDialog>
                   )}
@@ -1675,18 +1871,22 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <CardContent>
                     {/* Banner for single-user workspaces */}
                     {workspace && !isMultiUserPlan(workspace.plan) && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
+                  <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                      <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                       <div className="flex-1 space-y-2">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100">
                           Upgrade to invite team members
                         </p>
-                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                        <p className="text-sm text-green-800 dark:text-green-200">
                           To invite users to your workspace, upgrade to the Agency or Enterprise plan.
                         </p>
-                        <PricingDialog>
-                          <Button size="sm" variant="outline" className="mt-2">
+                        <PricingDialog 
+                          currentPlan={workspace?.plan} 
+                          stripeCustomerId={workspace?.stripe_customer_id}
+                          defaultSelectedTier="agency"
+                        >
+                          <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
                             Upgrade Plan
                           </Button>
                         </PricingDialog>
@@ -1814,18 +2014,22 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     )}
                   </div>
                   {workspace && !isMultiUserPlan(workspace.plan) && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 p-4">
+                    <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                       <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                        <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                         <div className="flex-1 space-y-2">
-                          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                          <p className="text-sm font-medium text-green-900 dark:text-green-100">
                             Upgrade to invite team members
                           </p>
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                          <p className="text-sm text-green-800 dark:text-green-200">
                             To invite users to your workspace, upgrade to the Agency or Enterprise plan.
                           </p>
-                          <PricingDialog>
-                            <Button size="sm" variant="outline" className="mt-2">
+                          <PricingDialog 
+                            currentPlan={workspace?.plan} 
+                            stripeCustomerId={workspace?.stripe_customer_id}
+                            defaultSelectedTier="agency"
+                          >
+                            <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
                               Upgrade Plan
                             </Button>
                           </PricingDialog>
@@ -1926,100 +2130,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </tbody>
                       </table>
                     )}
-                  </div>
-                </TabsContent>
-              )}
-
-              {/* Danger Zone Tab */}
-              {isMobile ? (
-                <Card className="mb-6 border-destructive/50">
-                  <CardHeader>
-                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                    <CardDescription>
-                      Irreversible actions for your account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Settings Fields */}
-                    <div className="space-y-4">
-                      {/* Delete Account */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="space-y-0.5">
-                          <p className="font-medium">Delete account</p>
-                          <p className="text-sm text-muted-foreground">
-                            Permanently delete your account and all data
-                          </p>
-                        </div>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={async () => {
-                            if (!user?.id) return
-                            
-                            setDeleteLoading(true)
-                            const checkResult = await checkWorkspacesForDeletion(user.id)
-                            setWorkspacesToDelete(checkResult.workspaces)
-                            setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
-                            setDeleteLoading(false)
-                            setShowDeleteDialog(true)
-                          }}
-                          disabled={deleteLoading || !user?.id}
-                        >
-                          {deleteLoading ? (
-                            <>
-                              <Loader2 className="size-4 mr-2 animate-spin" />
-                              Checking...
-                            </>
-                          ) : (
-                            'Delete account'
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <TabsContent value="danger" className="mt-0 sm:mt-6 space-y-6">
-                  {/* Duplicate danger zone content for desktop */}
-                  <div>
-                    <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Irreversible actions for your account
-                    </p>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <p className="font-medium">Delete account</p>
-                        <p className="text-sm text-muted-foreground">
-                          Permanently delete your account and all data
-                        </p>
-                      </div>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={async () => {
-                          if (!user?.id) return
-                          
-                          setDeleteLoading(true)
-                          const checkResult = await checkWorkspacesForDeletion(user.id)
-                          setWorkspacesToDelete(checkResult.workspaces)
-                          setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
-                          setDeleteLoading(false)
-                          setShowDeleteDialog(true)
-                        }}
-                        disabled={deleteLoading || !user?.id}
-                      >
-                        {deleteLoading ? (
-                          <>
-                            <Loader2 className="size-4 mr-2 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          'Delete Account'
-                        )}
-                      </Button>
-                    </div>
                   </div>
                 </TabsContent>
               )}

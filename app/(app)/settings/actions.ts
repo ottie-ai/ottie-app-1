@@ -656,6 +656,191 @@ export async function removeWorkspaceLogo(
 }
 
 /**
+ * Delete workspace and create a new one
+ * - Deletes all sites, integrations, and logo for the old workspace
+ * - Soft deletes the old workspace
+ * - Deletes all memberships for the old workspace
+ * - Creates a new workspace with default name from user profile
+ * - Creates new membership with owner role
+ * Only allowed for workspace owners
+ */
+export async function resetWorkspace(
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true; newWorkspace: Workspace } | { error: string }> {
+  if (!workspaceId || !userId) {
+    return { error: 'Not authenticated' }
+  }
+
+  const supabase = await createClient()
+
+  try {
+    // 1. Verify user is owner or admin of the workspace
+    const { data: membership, error: membershipError } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .single()
+
+    if (membershipError || !membership) {
+      return { error: 'Workspace membership not found' }
+    }
+
+    if (membership.role !== 'owner') {
+      return { error: 'Only workspace owners can delete workspace' }
+    }
+
+    // 2. Get user profile for workspace name generation
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profile) {
+      return { error: 'User profile not found' }
+    }
+
+    // 3. Get workspace info (for logo deletion and plan/stripe preservation)
+    const { data: oldWorkspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .select('logo_url, plan, stripe_customer_id')
+      .eq('id', workspaceId)
+      .single()
+
+    if (workspaceError || !oldWorkspace) {
+      return { error: 'Workspace not found' }
+    }
+
+    // 4. Delete all sites for this workspace
+    const { error: sitesError } = await supabase
+      .from('sites')
+      .delete()
+      .eq('workspace_id', workspaceId)
+
+    if (sitesError) {
+      console.error('Error deleting sites:', sitesError)
+      return { error: 'Failed to delete sites' }
+    }
+
+    // 5. Delete all integrations for this workspace
+    const { error: integrationsError } = await supabase
+      .from('integrations')
+      .delete()
+      .eq('workspace_id', workspaceId)
+
+    if (integrationsError) {
+      console.error('Error deleting integrations:', integrationsError)
+      return { error: 'Failed to delete integrations' }
+    }
+
+    // 6. Delete workspace logo from storage if it exists
+    if (oldWorkspace.logo_url && oldWorkspace.logo_url.includes('/workspace-logos/')) {
+      try {
+        await deleteWorkspaceLogo(workspaceId, oldWorkspace.logo_url)
+      } catch (logoError) {
+        console.error('Error deleting workspace logo:', logoError)
+        // Continue with deletion even if logo deletion fails
+      }
+    }
+
+    // 7. Delete all memberships for the old workspace
+    const { error: membershipsError } = await supabase
+      .from('memberships')
+      .delete()
+      .eq('workspace_id', workspaceId)
+
+    if (membershipsError) {
+      console.error('Error deleting memberships:', membershipsError)
+      return { error: 'Failed to delete memberships' }
+    }
+
+    // 8. Soft delete the old workspace
+    const { error: deleteError } = await supabase
+      .from('workspaces')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', workspaceId)
+
+    if (deleteError) {
+      console.error('Error deleting workspace:', deleteError)
+      return { error: 'Failed to delete workspace' }
+    }
+
+    // 9. Generate new workspace name from user profile
+    let workspaceName: string
+    if (profile.full_name && profile.full_name.trim() !== '') {
+      workspaceName = `${profile.full_name.trim()}'s Workspace`
+    } else {
+      const emailUsername = profile.email ? profile.email.split('@')[0] : 'User'
+      workspaceName = `${emailUsername}'s Workspace`
+    }
+
+    // 10. Generate unique slug from workspace name
+    let workspaceSlug = workspaceName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+    workspaceSlug = `${workspaceSlug}-${userId.substring(0, 8)}`
+
+    // 11. Create new workspace (preserve plan and stripe_customer_id from old workspace)
+    // Ensure plan is preserved exactly as it was (null/empty is treated as 'free' by normalizePlan)
+    const preservedPlan = oldWorkspace.plan ?? 'free'
+    
+    const { data: newWorkspace, error: createError } = await supabase
+      .from('workspaces')
+      .insert({
+        name: workspaceName,
+        slug: workspaceSlug,
+        plan: preservedPlan,
+        stripe_customer_id: oldWorkspace.stripe_customer_id, // Preserve Stripe customer ID
+      })
+      .select()
+      .single()
+
+    if (createError || !newWorkspace) {
+      console.error('Error creating new workspace:', createError)
+      return { error: 'Failed to create new workspace' }
+    }
+
+    // 12. Create new membership with owner role
+    const { error: membershipCreateError } = await supabase
+      .from('memberships')
+      .insert({
+        workspace_id: newWorkspace.id,
+        user_id: userId,
+        role: 'owner',
+      })
+
+    if (membershipCreateError) {
+      console.error('Error creating membership:', membershipCreateError)
+      // Try to clean up the workspace we just created
+      await supabase
+        .from('workspaces')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', newWorkspace.id)
+      return { error: 'Failed to create membership' }
+    }
+
+    // 13. Update localStorage if this was the current workspace
+    if (typeof window !== 'undefined') {
+      const currentWorkspaceId = localStorage.getItem('current_workspace_id')
+      if (currentWorkspaceId === workspaceId) {
+        localStorage.setItem('current_workspace_id', newWorkspace.id)
+      }
+    }
+
+    // Revalidate settings page
+    revalidatePath('/settings')
+
+    return { success: true, newWorkspace: newWorkspace as Workspace }
+  } catch (error) {
+    console.error('Error resetting workspace:', error)
+    return { error: 'An unexpected error occurred. Please try again.' }
+  }
+}
+
+/**
  * Update workspace (generic function for updating workspace fields)
  * Only allowed for workspace owners/admins
  */

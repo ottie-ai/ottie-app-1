@@ -45,17 +45,17 @@ export default function AppRootLayout({
       <AuthGuard>
         <UserProfileProvider>
           <WorkspaceProvider>
-            <UserJotWithProfile />
-            {isWorkspaceRoute ? (
-              <SidebarProvider>
-                <DashboardSidebar />
-                <SidebarInset className="h-screen overflow-hidden">
-                  {children}
-                </SidebarInset>
-              </SidebarProvider>
-            ) : (
-              children
-            )}
+          <UserJotWithProfile />
+          {isWorkspaceRoute ? (
+            <SidebarProvider>
+              <DashboardSidebar />
+              <SidebarInset className="h-screen overflow-hidden">
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          ) : (
+            children
+          )}
           </WorkspaceProvider>
         </UserProfileProvider>
       </AuthGuard>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,116 +22,74 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel'
-
-interface Feature {
-  name: string
-}
-
-interface PricingTier {
-  id: string
-  name: string
-  monthlyPrice: number
-  annualPrice: number
-  listings: number
-  extraListingPrice?: number
-  teamSeats: string
-  description: string
-  includesFrom?: string // e.g., "Everything in Starter"
-  features: Feature[]
-  cta: string
-  disabled?: boolean
-  popular?: boolean
-  trial?: boolean
-}
-
-const pricingTiers: PricingTier[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    monthlyPrice: 0,
-    annualPrice: 0,
-    listings: 1,
-    teamSeats: '1 Team Seat',
-    description: 'Perfect for trying out',
-    features: [
-      { name: 'Real-time Editor' },
-      { name: 'Fast & Secure Hosting' },
-    ],
-    cta: 'Current Plan',
-    disabled: true,
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    monthlyPrice: 39,
-    annualPrice: 33,
-    listings: 3,
-    teamSeats: '1 Team Seat',
-    description: 'For individual agents',
-    features: [
-      { name: 'Real-time Editor' },
-      { name: 'Fast & Secure Hosting' },
-      { name: 'Lead management' },
-      { name: 'Visitor Analytics / Basic' },
-      { name: '3D Tours & Video Embed' },
-      { name: 'Listing Status Labels' },
-      { name: 'Social Media Kit Generator' },
-      { name: 'QR Code Generator' },
-    ],
-    cta: 'Start 14-day trial',
-    trial: true,
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    monthlyPrice: 99,
-    annualPrice: 84,
-    listings: 10,
-    teamSeats: '1 Team Seat',
-    description: 'For top-performing agents',
-    includesFrom: 'Everything in Starter',
-    features: [
-      { name: 'Visitor Analytics / Detailed' },
-      { name: 'White label' },
-      { name: 'Custom domain' },
-      { name: 'Password protected site' },
-      { name: 'Advanced templates' },
-      { name: 'Lead sync (HubSpot, Pipedrive)' },
-      { name: 'Visitor Check-in App' },
-      { name: 'Viewing Scheduler' },
-      { name: 'Content Lock for Leads' },
-    ],
-    cta: 'Start 14-day trial',
-    popular: true,
-    trial: true,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    monthlyPrice: 199,
-    annualPrice: 169,
-    listings: 25,
-    extraListingPrice: 5,
-    teamSeats: 'Unlimited Team Seats',
-    description: 'For agencies & teams',
-    includesFrom: 'Everything in Growth',
-    features: [
-      { name: 'Unlimited Team Seats' },
-      { name: 'Lead routing to agents' },
-      { name: 'Team management' },
-    ],
-    cta: 'Start 14-day trial',
-    trial: true,
-  },
-]
+import { pricingTiers, type PricingTier } from '@/lib/pricing-data'
 
 interface PricingDialogProps {
   children: React.ReactNode
+  currentPlan?: string | null // Current plan ID (e.g., 'free', 'starter', 'growth', 'agency', 'enterprise')
+  stripeCustomerId?: string | null // Stripe customer ID - if exists, user has already used trial
+  defaultSelectedTier?: string | null // Optional: override default selected tier (e.g., 'agency' for team upgrade)
 }
 
-export function PricingDialog({ children }: PricingDialogProps) {
-  const [selectedTier, setSelectedTier] = useState('growth')
+export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier }: PricingDialogProps) {
+  // Normalize current plan to match tier IDs
+  // Pricing tiers have: 'free', 'starter', 'growth', 'agency'
+  // Map 'enterprise' to 'agency' (highest available tier)
+  const normalizePlanForPricing = (plan: string | null | undefined): string => {
+    if (!plan || plan === '') return 'free'
+    if (plan === 'enterprise') return 'agency'
+    // Only return if it's a valid tier ID
+    if (['free', 'starter', 'growth', 'agency'].includes(plan)) {
+      return plan
+    }
+    return 'free' // Default fallback
+  }
+  
+  const normalizedCurrentPlan = normalizePlanForPricing(currentPlan)
+  
+  // Debug log (remove in production)
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    console.log('PricingDialog - currentPlan:', currentPlan, 'normalized:', normalizedCurrentPlan)
+  }
+  
+  // Set initial selected tier to the next available plan after current, or 'growth' as default
+  const getInitialSelectedTier = () => {
+    if (normalizedCurrentPlan === 'free') return 'starter'
+    if (normalizedCurrentPlan === 'starter') return 'growth'
+    if (normalizedCurrentPlan === 'growth') return 'agency'
+    if (normalizedCurrentPlan === 'agency') return 'agency' // Already on highest tier
+    return 'growth' // Default fallback
+  }
+  
+  const [selectedTier, setSelectedTier] = useState(() => {
+    // If defaultSelectedTier is provided, use it
+    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency'].includes(defaultSelectedTier)) {
+      return defaultSelectedTier
+    }
+    // Otherwise use default logic
+    if (normalizedCurrentPlan === 'free') return 'starter'
+    if (normalizedCurrentPlan === 'starter') return 'growth'
+    if (normalizedCurrentPlan === 'growth') return 'agency'
+    if (normalizedCurrentPlan === 'agency') return 'agency'
+    return 'growth'
+  })
   const [isAnnual, setIsAnnual] = useState(true)
+  
+  // Update selected tier when current plan or defaultSelectedTier changes
+  useEffect(() => {
+    // If defaultSelectedTier is provided, use it
+    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency'].includes(defaultSelectedTier)) {
+      setSelectedTier(defaultSelectedTier)
+      return
+    }
+    // Otherwise use default logic
+    let nextTier = 'growth'
+    if (normalizedCurrentPlan === 'free') nextTier = 'starter'
+    else if (normalizedCurrentPlan === 'starter') nextTier = 'growth'
+    else if (normalizedCurrentPlan === 'growth') nextTier = 'agency'
+    else if (normalizedCurrentPlan === 'agency') nextTier = 'agency'
+    setSelectedTier(nextTier)
+  }, [normalizedCurrentPlan, defaultSelectedTier])
 
   const getPrice = (tier: PricingTier) => {
     if (tier.monthlyPrice === 0) return '$0'
@@ -149,6 +107,27 @@ export function PricingDialog({ children }: PricingDialogProps) {
     return (tier.monthlyPrice - tier.annualPrice) * 12
   }
 
+  // Get plan order for comparison (lower number = lower tier)
+  const getPlanOrder = (planId: string): number => {
+    const order: Record<string, number> = {
+      'free': 0,
+      'starter': 1,
+      'growth': 2,
+      'agency': 3,
+      'enterprise': 3, // enterprise maps to agency
+    }
+    return order[planId] ?? 0
+  }
+
+  // Check if tier is lower than current plan
+  const isLowerTier = (tierId: string): boolean => {
+    if (!normalizedCurrentPlan || normalizedCurrentPlan === 'free') return false
+    return getPlanOrder(tierId) < getPlanOrder(normalizedCurrentPlan)
+  }
+
+  // Check if user has already used trial (has Stripe customer ID)
+  const hasUsedTrial = !!stripeCustomerId
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -158,7 +137,7 @@ export function PricingDialog({ children }: PricingDialogProps) {
         <DialogHeader className="shrink-0">
           <DialogTitle>Upgrade your plan</DialogTitle>
           <DialogDescription>
-            Choose the plan that best fits your needs. All paid plans include a 14-day free trial.
+            Choose the plan that best fits your needs.{!hasUsedTrial && ' All paid plans include a 14-day free trial.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -185,29 +164,39 @@ export function PricingDialog({ children }: PricingDialogProps) {
               {pricingTiers.map((tier) => {
                 const savings = isAnnual ? getAnnualSavings(tier) : null
                 const pricePerListing = getPricePerListing(tier)
+                const isCurrentPlan = tier.id === normalizedCurrentPlan
+                const isDowngrade = isLowerTier(tier.id)
+                // If current plan is growth, mark agency as most popular instead of growth
+                const isMostPopular = normalizedCurrentPlan === 'growth' 
+                  ? tier.id === 'agency' 
+                  : tier.popular || false
+                // Badge text: "Upgrade" if growth -> agency, otherwise "Most Popular"
+                const badgeText = normalizedCurrentPlan === 'growth' && tier.id === 'agency' 
+                  ? 'Upgrade' 
+                  : 'Most Popular'
                 
                 return (
                   <CarouselItem key={tier.id} className="pl-4 basis-[90%] pt-4 pb-1">
                     <div
-                      onClick={() => !tier.disabled && setSelectedTier(tier.id)}
+                      onClick={() => !tier.disabled && !isCurrentPlan && setSelectedTier(tier.id)}
                       className={cn(
                         'relative flex flex-col rounded-xl p-5 transition-all min-h-[520px]',
-                        !tier.disabled && 'cursor-pointer',
-                        tier.popular 
+                        !tier.disabled && !isCurrentPlan && 'cursor-pointer',
+                        isMostPopular 
                           ? 'gradient-ottie-card-border'
                           : cn(
                               'border',
-                        selectedTier === tier.id && !tier.disabled
+                        selectedTier === tier.id && !tier.disabled && !isCurrentPlan
                           ? 'border-foreground ring-1 ring-foreground'
-                                : !tier.disabled && 'hover:border-foreground/30'
+                                : !tier.disabled && !isCurrentPlan && 'hover:border-foreground/30'
                             ),
-                        tier.disabled && 'opacity-50 cursor-default'
+                        (tier.disabled || isCurrentPlan) && 'opacity-50 cursor-default'
                       )}
                     >
-                      {tier.popular && (
+                      {isMostPopular && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
-                            Most Popular
+                            {badgeText}
                           </span>
                         </div>
                       )}
@@ -268,13 +257,13 @@ export function PricingDialog({ children }: PricingDialogProps) {
                       </ul>
                       
                       <Button
-                        variant={tier.popular ? 'default' : 'outline'}
+                        variant={isMostPopular ? 'default' : 'outline'}
                         className="w-full mt-auto"
-                        disabled={tier.disabled}
+                        disabled={tier.disabled || isCurrentPlan}
                       >
-                        {tier.cta}
+                        {isCurrentPlan ? 'Current Plan' : isDowngrade ? 'Downgrade' : tier.cta}
                       </Button>
-                      {tier.trial && (
+                      {tier.trial && !hasUsedTrial && (
                         <p className="text-xs text-center text-muted-foreground mt-2">
                           14-day free trial • No credit card required
                         </p>
@@ -324,29 +313,39 @@ export function PricingDialog({ children }: PricingDialogProps) {
           {pricingTiers.map((tier) => {
               const savings = isAnnual ? getAnnualSavings(tier) : null
               const pricePerListing = getPricePerListing(tier)
+              const isCurrentPlan = tier.id === normalizedCurrentPlan
+              const isDowngrade = isLowerTier(tier.id)
+              // If current plan is growth, mark agency as most popular instead of growth
+              const isMostPopular = normalizedCurrentPlan === 'growth' 
+                ? tier.id === 'agency' 
+                : tier.popular || false
+              // Badge text: "Upgrade" if growth -> agency, otherwise "Most Popular"
+              const badgeText = normalizedCurrentPlan === 'growth' && tier.id === 'agency' 
+                ? 'Upgrade' 
+                : 'Most Popular'
             
             return (
               <div
                 key={tier.id}
-                onClick={() => !tier.disabled && setSelectedTier(tier.id)}
+                onClick={() => !tier.disabled && !isCurrentPlan && setSelectedTier(tier.id)}
                 className={cn(
                     'relative flex flex-col rounded-xl p-5 transition-all',
-                  !tier.disabled && 'cursor-pointer',
-                    tier.popular 
+                  !tier.disabled && !isCurrentPlan && 'cursor-pointer',
+                    isMostPopular 
                       ? 'gradient-ottie-card-border'
                       : cn(
                           'border',
-                  selectedTier === tier.id && !tier.disabled
+                  selectedTier === tier.id && !tier.disabled && !isCurrentPlan
                     ? 'border-foreground ring-1 ring-foreground'
-                            : !tier.disabled && 'hover:border-foreground/30'
+                            : !tier.disabled && !isCurrentPlan && 'hover:border-foreground/30'
                         ),
-                  tier.disabled && 'opacity-50 cursor-default'
+                  (tier.disabled || isCurrentPlan) && 'opacity-50 cursor-default'
                 )}
               >
-                {tier.popular && (
+                {isMostPopular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full">
-                      Most Popular
+                      {badgeText}
                     </span>
                   </div>
                 )}
@@ -402,13 +401,13 @@ export function PricingDialog({ children }: PricingDialogProps) {
                 </ul>
                 
                 <Button
-                  variant={tier.popular ? 'default' : 'outline'}
+                  variant={isMostPopular ? 'default' : 'outline'}
                   className="w-full"
-                  disabled={tier.disabled}
+                  disabled={tier.disabled || isCurrentPlan}
                 >
-                  {tier.cta}
+                  {isCurrentPlan ? 'Current Plan' : isDowngrade ? 'Downgrade' : tier.cta}
                 </Button>
-                  {tier.trial && (
+                  {tier.trial && !hasUsedTrial && (
                     <p className="text-xs text-center text-muted-foreground mt-2">
                       14-day free trial
                     </p>

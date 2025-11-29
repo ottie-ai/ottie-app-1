@@ -14,88 +14,8 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import Navbar from '@/components/marketing/navbar'
+import { pricingTiers } from '@/lib/pricing-data'
 import '../sphere.css'
-
-// Pricing data
-const pricingTiers = [
-  {
-    id: 'free',
-    name: 'Free',
-    monthlyPrice: 0,
-    annualPrice: 0,
-    listings: 1,
-    teamSeats: '1 Team Seat',
-    description: 'Perfect for trying out',
-    features: [
-      'Real-time Editor',
-      'Fast & Secure Hosting',
-    ],
-    cta: 'Get Started',
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    monthlyPrice: 39,
-    annualPrice: 33,
-    listings: 3,
-    teamSeats: '1 Team Seat',
-    description: 'For individual agents',
-    features: [
-      'Real-time Editor',
-      'Fast & Secure Hosting',
-      'Lead management',
-      'Visitor Analytics / Basic',
-      '3D Tours & Video Embed',
-      'Listing Status Labels',
-      'Social Media Kit Generator',
-      'QR Code Generator',
-    ],
-    cta: 'Start Free Trial',
-    trial: true,
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    monthlyPrice: 99,
-    annualPrice: 84,
-    listings: 10,
-    teamSeats: '1 Team Seat',
-    description: 'For top-performing agents',
-    includesFrom: 'Everything in Starter',
-    features: [
-      'Visitor Analytics / Detailed',
-      'White label',
-      'Custom domain',
-      'Password protected site',
-      'Advanced templates',
-      'Lead sync (HubSpot, Pipedrive)',
-      'Visitor Check-in App',
-      'Viewing Scheduler',
-      'Content Lock for Leads',
-    ],
-    cta: 'Start Free Trial',
-    popular: true,
-    trial: true,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    monthlyPrice: 199,
-    annualPrice: 169,
-    listings: 25,
-    extraListingPrice: 5,
-    teamSeats: 'Unlimited Team Seats',
-    description: 'For agencies & teams',
-    includesFrom: 'Everything in Growth',
-    features: [
-      'Unlimited Team Seats',
-      'Lead routing to agents',
-      'Team management',
-    ],
-    cta: 'Start Free Trial',
-    trial: true,
-  },
-]
 
 const realEstateLinks = [
   'zillow.com/123-Main-St',
@@ -648,6 +568,11 @@ function PricingSection({ isLoading }: { isLoading: boolean }) {
     if (tier.monthlyPrice === 0) return null
     return (tier.monthlyPrice - tier.annualPrice) * 12
   }
+  
+  // Helper to get feature name (handles both string and Feature object)
+  const getFeatureName = (feature: string | { name: string }): string => {
+    return typeof feature === 'string' ? feature : feature.name
+  }
 
   return (
     <section 
@@ -764,7 +689,7 @@ function PricingSection({ isLoading }: { isLoading: boolean }) {
                     {tier.features.slice(0, tier.includesFrom ? 4 : 6).map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start gap-2 text-sm text-white/60">
                         <Check className="size-4 text-emerald-400 shrink-0 mt-0.5" />
-                        {feature}
+                        {getFeatureName(feature)}
                       </li>
                     ))}
                     {tier.features.length > (tier.includesFrom ? 4 : 6) && (
@@ -812,7 +737,7 @@ function PricingSection({ isLoading }: { isLoading: boolean }) {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-white/60">
                     <Check className="size-4 text-emerald-400 shrink-0" />
-                    Everything in Pro
+                    Everything in Agency
                   </div>
                   <div className="flex items-center gap-2 text-sm text-white/60">
                     <Check className="size-4 text-emerald-400 shrink-0" />

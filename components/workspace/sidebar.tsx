@@ -94,7 +94,7 @@ export function DashboardSidebar() {
   const { theme, setTheme } = useTheme()
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
-  const { workspace } = useWorkspace()
+  const { workspace, loading: workspaceLoading } = useWorkspace()
   const { workspaces } = useWorkspaces()
   const [mounted, setMounted] = useState(false)
   
@@ -206,9 +206,11 @@ export function DashboardSidebar() {
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                     <span className="truncate font-medium">{displayName}</span>
-                    <span className="truncate text-xs capitalize">
-                      {workspace ? normalizePlan(workspace.plan) : 'free'} Plan
-                    </span>
+                    {!workspaceLoading && workspace && (
+                      <span className="truncate text-xs capitalize">
+                        {normalizePlan(workspace.plan)} Plan
+                      </span>
+                    )}
                   </div>
                   <ChevronsUpDown className="ml-auto shrink-0" />
                 </SidebarMenuButton>
@@ -220,7 +222,7 @@ export function DashboardSidebar() {
                 sideOffset={4}
               >
                 {/* Current Plan Section */}
-                {workspace && (
+                {!workspaceLoading && workspace && (
                   <>
                     <div className="px-2 py-1.5">
                       <DropdownMenuLabel className="text-xs text-muted-foreground mb-2">
@@ -231,7 +233,7 @@ export function DashboardSidebar() {
                           {normalizePlan(workspace.plan)}
                         </Badge>
                         {!isMultiUserPlan(workspace.plan) && (
-                          <PricingDialog>
+                          <PricingDialog currentPlan={workspace.plan} stripeCustomerId={workspace.stripe_customer_id}>
                             <Button 
                               size="sm" 
                               variant="default"
@@ -272,7 +274,7 @@ export function DashboardSidebar() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                {workspace && isMultiUserPlan(workspace.plan) ? (
+                {!workspaceLoading && workspace && isMultiUserPlan(workspace.plan) ? (
                   <>
                     <DropdownMenuItem asChild className="text-primary focus:text-primary">
                       <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
@@ -287,7 +289,7 @@ export function DashboardSidebar() {
                   </>
                 ) : (
                   <>
-                    <PricingDialog>
+                    <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         Upgrade
                       </DropdownMenuItem>
