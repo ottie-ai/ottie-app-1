@@ -89,7 +89,7 @@ const bottomNavItems = [
 export function DashboardSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { state } = useSidebar()
+  const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { theme, setTheme } = useTheme()
   const { user } = useAuth()
@@ -97,6 +97,13 @@ export function DashboardSidebar() {
   const { workspace } = useWorkspace()
   const { workspaces } = useWorkspaces()
   const [mounted, setMounted] = useState(false)
+  
+  // Close sidebar on mobile when clicking a link
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
   
   // Get display name - workspace name for multi-user plans, "Ottie" for single-user
   const displayName = workspace && isMultiUserPlan(workspace.plan)
@@ -246,7 +253,12 @@ export function DashboardSidebar() {
                     {workspaces.map(({ workspace: ws, membership }) => (
                       <DropdownMenuItem
                         key={ws.id}
-                        onClick={() => handleSwitchWorkspace(ws.id)}
+                        onClick={() => {
+                          handleSwitchWorkspace(ws.id)
+                          if (isMobile) {
+                            setOpenMobile(false)
+                          }
+                        }}
                         className={workspace?.id === ws.id ? 'bg-accent' : ''}
                       >
                         <div className="flex items-center justify-between w-full">
@@ -263,14 +275,14 @@ export function DashboardSidebar() {
                 {workspace && isMultiUserPlan(workspace.plan) ? (
                   <>
                     <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                      <Link href="/settings?tab=team" className="flex items-center gap-2">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
                         <UserPlus className="h-4 w-4" />
                         Invite Users
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/settings?tab=workspace">Workspace Settings</Link>
+                      <Link href="/settings?tab=workspace" onClick={handleLinkClick}>Workspace Settings</Link>
                     </DropdownMenuItem>
                   </>
                 ) : (
@@ -281,14 +293,14 @@ export function DashboardSidebar() {
                       </DropdownMenuItem>
                     </PricingDialog>
                     <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                      <Link href="/settings?tab=team" className="flex items-center gap-2">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
                         <UserPlus className="h-4 w-4" />
                         Invite Users
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/settings">Account Settings</Link>
+                      <Link href="/settings" onClick={handleLinkClick}>Account Settings</Link>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -338,7 +350,7 @@ export function DashboardSidebar() {
                     isActive={pathname === item.url}
                     tooltip={item.title}
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} onClick={handleLinkClick}>
                       <item.icon className="size-4" />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
@@ -394,7 +406,7 @@ export function DashboardSidebar() {
                         <ExternalLink className="!size-3 text-muted-foreground" />
                       </a>
                     ) : (
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleLinkClick}>
                         <item.icon className="size-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -507,12 +519,12 @@ export function DashboardSidebar() {
                 sideOffset={4}
               >
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link href="/settings" onClick={handleLinkClick}>
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link href="/settings" onClick={handleLinkClick}>
                     Account Settings
                   </Link>
                 </DropdownMenuItem>

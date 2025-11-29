@@ -715,3 +715,31 @@ canvas {
 .dark .glow-card[data-hovered="true"] .glow-card-glow {
   opacity: calc(var(--pointer-edge) * 0.8);
 }
+
+/* Sidebar button hover styles - black transparent background */
+[data-slot="sidebar-menu-button"]:hover,
+[data-sidebar="menu-button"]:hover,
+[data-sidebar="menu-action"]:hover,
+[data-sidebar="menu-sub-button"]:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark [data-slot="sidebar-menu-button"]:hover,
+.dark [data-sidebar="menu-button"]:hover,
+.dark [data-sidebar="menu-action"]:hover,
+.dark [data-sidebar="menu-sub-button"]:hover {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Sidebar button active state - black transparent background */
+[data-slot="sidebar-menu-button"][data-active="true"],
+[data-sidebar="menu-button"][data-active="true"],
+[data-sidebar="menu-sub-button"][data-active="true"] {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark [data-slot="sidebar-menu-button"][data-active="true"],
+.dark [data-sidebar="menu-button"][data-active="true"],
+.dark [data-sidebar="menu-sub-button"][data-active="true"] {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+}
