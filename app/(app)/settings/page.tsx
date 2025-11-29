@@ -40,9 +40,11 @@ export default async function SettingsPage() {
   
   // Extract user metadata for fallback
   // Only pass serializable data to client component
+  // IMPORTANT: avatarUrl should ONLY come from profile.avatar_url, never from user_metadata
+  // This prevents Google avatar from appearing after profile updates
   const userMetadata = {
     fullName: user?.user_metadata?.full_name || '',
-    avatarUrl: user?.user_metadata?.avatar_url || user?.user_metadata?.picture || '',
+    avatarUrl: profile?.avatar_url || '', // ONLY use profile avatar, never Google avatar
     email: user?.email || '',
     isGoogleSignIn: user?.app_metadata?.provider === 'google' || 
                     user?.identities?.some((identity: any) => identity.provider === 'google') || 

@@ -7,6 +7,7 @@ import { DashboardSidebar } from '@/components/workspace/sidebar'
 import { useUserJotIdentify } from '@/components/workspace/use-userjot-identify'
 import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
+import { UserProfileProvider, useUserProfile } from '@/contexts/user-profile-context'
 import { usePathname } from 'next/navigation'
 import '../sphere.css'
 
@@ -26,27 +27,11 @@ export default function AppRootLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { user } = useAuth()
 
   // Workspace routes that should have sidebar
   const workspaceRoutes = ['/overview', '/sites', '/settings', '/client-portals']
   const isWorkspaceRoute = workspaceRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
   const isBuilderRoute = pathname.startsWith('/builder/')
-
-  // Get user data for UserJot (only if user is authenticated)
-  // Pass null if user is not loaded yet to prevent invalid identify calls
-  const userData = user
-    ? {
-        id: user.id,
-        email: user.email || '',
-        firstName: user.user_metadata?.full_name?.split(' ')[0] || '',
-        lastName: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-        avatar: user.user_metadata?.avatar_url || '',
-      }
-    : null
-
-  // Identify user with UserJot (only when user is authenticated)
-  useUserJotIdentify(userData)
 
   return (
     <ThemeProvider
@@ -56,19 +41,44 @@ export default function AppRootLayout({
       disableTransitionOnChange
     >
       <AuthGuard>
-        <UserJotLoader />
-        {isWorkspaceRoute ? (
-          <SidebarProvider>
-            <DashboardSidebar />
-            <SidebarInset className="h-screen overflow-hidden">
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
-        ) : (
-          children
-        )}
+        <UserProfileProvider>
+          <UserJotWithProfile />
+          {isWorkspaceRoute ? (
+            <SidebarProvider>
+              <DashboardSidebar />
+              <SidebarInset className="h-screen overflow-hidden">
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          ) : (
+            children
+          )}
+        </UserProfileProvider>
       </AuthGuard>
     </ThemeProvider>
   )
+}
+
+// Separate component to use useUserProfile hook (must be inside UserProfileProvider)
+function UserJotWithProfile() {
+  const { user } = useAuth()
+  const { userAvatar, userName } = useUserProfile()
+  
+  // Get user data for UserJot (only if user is authenticated)
+  // Pass null if user is not loaded yet to prevent invalid identify calls
+  const userData = user
+    ? {
+        id: user.id,
+        email: user.email || '',
+        firstName: userName?.split(' ')[0] || '',
+        lastName: userName?.split(' ').slice(1).join(' ') || '',
+        avatar: userAvatar || '',
+      }
+    : null
+
+  // Identify user with UserJot (only when user is authenticated)
+  useUserJotIdentify(userData)
+  
+  return <UserJotLoader />
 }
 

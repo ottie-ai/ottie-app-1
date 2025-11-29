@@ -32,8 +32,17 @@ create table public.profiles (
 create function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, full_name)
-  values (new.id, new.email, new.raw_user_meta_data->>'full_name');
+  insert into public.profiles (id, email, full_name, avatar_url)
+  values (
+    new.id, 
+    new.email, 
+    new.raw_user_meta_data->>'full_name',
+    COALESCE(
+      new.raw_user_meta_data->>'avatar_url',
+      new.raw_user_meta_data->>'picture',
+      NULL
+    )
+  );
   return new;
 end;
 $$ language plpgsql security definer;

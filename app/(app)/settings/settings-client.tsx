@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,7 +26,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar } from './actions'
+import { useUserProfile } from '@/contexts/user-profile-context'
 import type { Profile } from '@/types/database'
 
 // Serializable user data passed from server component
@@ -60,6 +61,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
+  const { refresh: refreshUserProfile } = useUserProfile()
   
   // Use client-side user if available (more reliable), otherwise fall back to server user
   const user = clientUser || serverUser
@@ -72,19 +74,25 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
   const [loading, setLoading] = useState(!initialProfile && !!clientUser?.id)
 
   // Form state - initialize from server data
+  // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl (which may contain Google avatar)
   const [fullName, setFullName] = useState(
     initialProfile?.full_name || userMetadata.fullName
   )
   const [avatarUrl, setAvatarUrl] = useState(
-    initialProfile?.avatar_url || userMetadata.avatarUrl
+    initialProfile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
   )
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const initialProfileRef = useRef(initialProfile)
 
   // Original values to track changes
+  // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl
   const [originalFullName, setOriginalFullName] = useState(
     initialProfile?.full_name || userMetadata.fullName
   )
   const [originalAvatarUrl, setOriginalAvatarUrl] = useState(
-    initialProfile?.avatar_url || userMetadata.avatarUrl
+    initialProfile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
   )
 
   // Load profile from client-side if server-side data is not available
@@ -99,15 +107,15 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
           if (data) {
             setProfile(data)
             const name = data.full_name || clientUser.user_metadata?.full_name || ''
-            const avatar = data.avatar_url || clientUser.user_metadata?.avatar_url || ''
+            const avatar = data.avatar_url || '' // ONLY use profile avatar, never Google avatar
             setFullName(name)
             setAvatarUrl(avatar)
             setOriginalFullName(name)
             setOriginalAvatarUrl(avatar)
           } else {
-            // Use user metadata as fallback
+            // Use user metadata as fallback for name only, never for avatar
             const name = clientUser.user_metadata?.full_name || ''
-            const avatar = clientUser.user_metadata?.avatar_url || ''
+            const avatar = '' // Never use Google avatar, only profile avatar
             setFullName(name)
             setAvatarUrl(avatar)
             setOriginalFullName(name)
@@ -123,6 +131,60 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
     loadProfileFromClient()
   }, [initialProfile, clientUser?.id])
 
+  // Track the last synced values to detect when profile data changes
+  const lastSyncedValues = useRef<{ name: string; avatar: string } | null>(null)
+  
+  // Update original values when profile data changes (after save or refresh)
+  // This ensures original values always match the saved server data
+  useEffect(() => {
+    // Use profile state if available (updated after save), otherwise use initialProfile
+    const currentProfile = profile || initialProfile
+    
+    if (currentProfile) {
+      const name = currentProfile.full_name || userMetadata.fullName || ''
+      const avatar = currentProfile.avatar_url || '' // ONLY use profile avatar, never Google avatar
+      
+      // Check if values actually changed
+      const valuesChanged = 
+        lastSyncedValues.current === null ||
+        lastSyncedValues.current.name !== name ||
+        lastSyncedValues.current.avatar !== avatar
+      
+      if (valuesChanged) {
+        lastSyncedValues.current = { name, avatar }
+        
+        // Always update original values to match server data
+        setOriginalFullName(name)
+        setOriginalAvatarUrl(avatar)
+        
+        // Reset form values to match server data (only if no file is selected)
+        if (!avatarFile) {
+          setFullName(name)
+          setAvatarUrl(avatar)
+        }
+      }
+    } else if (!currentProfile && userMetadata) {
+      // Fallback to userMetadata for name only, never for avatar
+      const name = userMetadata.fullName || ''
+      const avatar = '' // Never use Google avatar, only profile avatar
+      
+      const valuesChanged = 
+        lastSyncedValues.current === null ||
+        lastSyncedValues.current.name !== name ||
+        lastSyncedValues.current.avatar !== avatar
+      
+      if (valuesChanged) {
+        lastSyncedValues.current = { name, avatar }
+        setOriginalFullName(name)
+        setOriginalAvatarUrl(avatar)
+        if (!avatarFile) {
+          setFullName(name)
+          setAvatarUrl(avatar)
+        }
+      }
+    }
+  }, [profile?.full_name, profile?.avatar_url, initialProfile?.full_name, initialProfile?.avatar_url, avatarFile, userMetadata.fullName])
+
   // Unsaved changes dialog state
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [pendingTab, setPendingTab] = useState<string | null>(null)
@@ -130,8 +192,26 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = useCallback(() => {
-    return fullName !== originalFullName || avatarUrl !== originalAvatarUrl
-  }, [fullName, avatarUrl, originalFullName, originalAvatarUrl])
+    // Normalize values for comparison (null/undefined -> empty string)
+    const normalizedFullName = (fullName || '').trim()
+    const normalizedOriginalFullName = (originalFullName || '').trim()
+    const normalizedAvatarUrl = (avatarUrl || '').trim()
+    const normalizedOriginalAvatarUrl = (originalAvatarUrl || '').trim()
+    
+    // Check if name changed
+    if (normalizedFullName !== normalizedOriginalFullName) {
+      return true
+    }
+    // Check if avatar file is selected (new upload)
+    if (avatarFile !== null) {
+      return true
+    }
+    // Check if avatar URL changed (manual URL input)
+    if (normalizedAvatarUrl !== normalizedOriginalAvatarUrl) {
+      return true
+    }
+    return false
+  }, [fullName, avatarUrl, originalFullName, originalAvatarUrl, avatarFile])
 
   // Handle navigation attempt when there are unsaved changes
   const handleNavigationAttempt = useCallback((targetPath: string) => {
@@ -165,7 +245,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
     // Trigger form submission
     const formData = new FormData()
     formData.append('fullName', fullName)
-    if (avatarUrl) {
+    if (avatarFile) {
+      formData.append('avatarFile', avatarFile)
+    } else if (avatarUrl) {
       formData.append('avatarUrl', avatarUrl)
     }
     
@@ -176,7 +258,15 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
     if (result.success && result.profile) {
       setProfile(result.profile)
       setOriginalFullName(fullName)
-      setOriginalAvatarUrl(avatarUrl)
+      setOriginalAvatarUrl(result.profile.avatar_url || '')
+      setAvatarFile(null)
+      setAvatarPreview(null)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      // Refresh user profile in all components (sidebar, navbar, etc.)
+      refreshUserProfile()
     }
     
     // Continue with navigation
@@ -195,6 +285,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
     // Reset form to original values
     setFullName(originalFullName)
     setAvatarUrl(originalAvatarUrl)
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
     
     // Continue with navigation
     if (pendingTab) {
@@ -230,7 +326,51 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
   // Get user data for display
   const userName = userMetadata.fullName || user.email?.split('@')[0] || 'User'
   const userEmail = userMetadata.email
-  const userAvatar = profile?.avatar_url || userMetadata.avatarUrl
+  // Always use profile.avatar_url from database (profile always exists)
+  const userAvatar = profile?.avatar_url || ''
+  // Use preview if available, otherwise use profile avatar directly (updates immediately after delete)
+  const displayAvatar = avatarPreview || (profile?.avatar_url !== undefined ? (profile.avatar_url || '') : userAvatar)
+
+  // Check if avatar exists (not just initials)
+  const hasAvatar = displayAvatar && displayAvatar.trim() !== ''
+
+  // Handle avatar deletion
+  const handleDeleteAvatar = async () => {
+    if (!user?.id) {
+      setError('User not authenticated. Please refresh the page.')
+      return
+    }
+
+    if (!confirm('Are you sure you want to remove your avatar?')) {
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+    setSuccess(false)
+
+    const result = await removeAvatar(user.id)
+
+    if (result.error) {
+      setError(result.error)
+    } else if (result.success && result.profile) {
+      setProfile(result.profile)
+      setAvatarUrl('')
+      setOriginalAvatarUrl('')
+      setAvatarFile(null)
+      setAvatarPreview(null)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      // Refresh user profile in all components
+      refreshUserProfile()
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+    }
+
+    setSaving(false)
+  }
 
   // Get initials for avatar fallback
   const getInitials = (name: string, email: string) => {
@@ -261,7 +401,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
 
     const formData = new FormData()
     formData.append('fullName', fullName)
-    if (avatarUrl) {
+    if (avatarFile) {
+      formData.append('avatarFile', avatarFile)
+    } else if (avatarUrl) {
       formData.append('avatarUrl', avatarUrl)
     }
 
@@ -273,12 +415,56 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
       setProfile(result.profile)
       // Update original values after successful save
       setOriginalFullName(fullName)
-      setOriginalAvatarUrl(avatarUrl)
+      setOriginalAvatarUrl(result.profile.avatar_url || '')
+      setAvatarFile(null)
+      setAvatarPreview(null)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+      // Refresh user profile in all components (sidebar, navbar, etc.)
+      refreshUserProfile()
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
+      // Show warning if avatar upload failed but profile was saved
+      if ('warning' in result && result.warning) {
+        setError(result.warning)
+        setTimeout(() => setError(null), 5000)
+      } else {
+        setTimeout(() => setSuccess(false), 3000)
+      }
     }
 
     setSaving(false)
+  }
+
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        setError('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.')
+        return
+      }
+
+      // Validate file size (max 2MB)
+      const maxSize = 2 * 1024 * 1024 // 2MB
+      if (file.size > maxSize) {
+        setError('File size too large. Maximum size is 2MB.')
+        return
+      }
+
+      setAvatarFile(file)
+      setError(null)
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = () => {
+        setAvatarPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   return (
@@ -302,7 +488,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
               {/* Top Tabs - aligned with content */}
               <div className="px-6 pt-6">
                 <TabsList>
-                  <TabsTrigger value="profile">Profile</TabsTrigger>
+                  <TabsTrigger value="profile">Account</TabsTrigger>
                   <TabsTrigger value="company">Company</TabsTrigger>
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -314,10 +500,10 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
               </div>
 
               <div className="p-6">
-              {/* Profile Tab */}
+              {/* Account Tab */}
               <TabsContent value="profile" className="mt-6 space-y-6">
                 <div>
-                  <h2 className="text-lg font-semibold">Profile</h2>
+                  <h2 className="text-lg font-semibold">Account</h2>
                   <p className="text-sm text-muted-foreground">
                     Manage your personal information and preferences
                   </p>
@@ -342,25 +528,38 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata 
                   )}
 
                 {/* Avatar */}
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="avatar" className="text-sm font-medium">Avatar</Label>
+                <div className="flex items-start justify-between">
+                  <Label htmlFor="avatar" className="text-sm font-medium pt-2">Avatar</Label>
                   <div className="flex items-center gap-4">
-                    <Avatar className="size-20">
-                        <AvatarImage src={userAvatar} alt={userName} />
-                        <AvatarFallback className="text-2xl">
-                          {getInitials(userName, userEmail)}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1">
-                        <Input
-                          id="avatarUrl"
-                          type="url"
-                          placeholder="https://example.com/avatar.jpg"
-                          value={avatarUrl}
-                          onChange={(e) => setAvatarUrl(e.target.value)}
-                          className="w-64"
-                        />
-                        <p className="text-xs text-muted-foreground">Enter avatar URL</p>
+                    <div className="relative group">
+                      <Avatar className="size-20 shrink-0">
+                          <AvatarImage src={displayAvatar || undefined} alt={userName} />
+                          <AvatarFallback className="text-2xl">
+                            {getInitials(userName, userEmail)}
+                          </AvatarFallback>
+                      </Avatar>
+                      {hasAvatar && (
+                        <div 
+                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center cursor-pointer" 
+                          onClick={handleDeleteAvatar}
+                          title="Delete avatar"
+                        >
+                          <Trash2 className="size-6 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 w-64">
+                      <Input
+                        ref={fileInputRef}
+                        id="avatarFile"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        onChange={handleFileChange}
+                        className="w-full cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Upload a JPEG, PNG, GIF, or WebP image (max 2MB)
+                      </p>
                     </div>
                   </div>
                 </div>

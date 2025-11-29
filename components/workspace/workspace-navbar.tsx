@@ -94,7 +94,7 @@ export function WorkspaceNavbar({
               <DropdownMenuLabel>
                 <div className="flex items-center gap-3">
                   <Avatar className="size-12">
-                    <AvatarImage src={userAvatar} alt={userName} />
+                    <AvatarImage src={userAvatar || undefined} alt={userName} />
                     <AvatarFallback>
                       {userName
                         ?.split(' ')

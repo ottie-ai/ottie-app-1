@@ -11,6 +11,7 @@ import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData, ColorScheme
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { WorkspaceNavbar } from '@/components/workspace/workspace-navbar'
+import { useUserProfile } from '@/contexts/user-profile-context'
 import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
 import { cn } from '@/lib/utils'
 
@@ -112,6 +113,7 @@ const initialSections: Section[] = [
 ]
 
 export default function EditorPage() {
+  const { userName, userEmail, userAvatar } = useUserProfile()
   const router = useRouter()
   const [sections, setSections] = useState<Section[]>(initialSections)
   const [theme, setTheme] = useState<ThemeConfig>(exampleTheme)
@@ -314,8 +316,9 @@ export default function EditorPage() {
       
       {/* Workspace Navbar */}
       <WorkspaceNavbar
-        userName="John Doe"
-        userEmail="john@realestate.com"
+        userName={userName}
+        userEmail={userEmail}
+        userAvatar={userAvatar}
         companyName="Luxury Homes RE"
         settingsPanel={navbarSettingsPanel}
         onSaveSettings={() => {

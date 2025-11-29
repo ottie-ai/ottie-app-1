@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/use-auth'
+import { useUserProfile } from '@/contexts/user-profile-context'
 import { signOut } from '@/lib/supabase/auth'
 import {
   Home,
@@ -87,16 +88,12 @@ export function DashboardSidebar() {
   const isCollapsed = state === 'collapsed'
   const { theme, setTheme } = useTheme()
   const { user } = useAuth()
+  const { userName, userEmail, userAvatar } = useUserProfile()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  // Get user data
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-  const userEmail = user?.email || ''
-  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || ''
   
   // Get initials for avatar fallback
   const getInitials = (name: string, email: string) => {
@@ -394,7 +391,7 @@ export function DashboardSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={userAvatar} alt={userName} />
+                    <AvatarImage src={userAvatar || undefined} alt={userName} />
                     <AvatarFallback className="rounded-lg">
                       {getInitials(userName, userEmail)}
                     </AvatarFallback>
