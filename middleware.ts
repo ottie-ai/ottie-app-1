@@ -109,6 +109,16 @@ export async function middleware(request: NextRequest) {
   const hostnameWithoutPort = hostname.split(':')[0]
   const isLocalhost = hostnameWithoutPort.includes('localhost')
   
+  // Redirect www.app.* to app.* (remove www prefix from app subdomain)
+  if (!isLocalhost && hostnameWithoutPort.startsWith('www.app.')) {
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'
+    const rootDomainWithoutPort = rootDomain.split(':')[0]
+    const redirectDomain = `app.${rootDomainWithoutPort}`
+    const redirectUrl = new URL(pathname, `${request.nextUrl.protocol}//${redirectDomain}`)
+    redirectUrl.search = request.nextUrl.search // Preserve query params
+    return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
+  }
+  
   // Redirect app subdomain root (/) to /overview
   const isAppSubdomain = isLocalhost 
     ? hostnameWithoutPort.startsWith('app.')
