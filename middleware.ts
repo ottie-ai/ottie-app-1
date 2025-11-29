@@ -37,8 +37,7 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   // Restricted mode - check domain and IP
   const hostname = request.headers.get('host') || ''
   const hostnameWithoutPort = hostname.split(':')[0]
-  const clientIp = request.ip || 
-                   request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                    request.headers.get('x-real-ip') ||
                    'unknown'
   
