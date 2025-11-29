@@ -113,8 +113,9 @@ export async function middleware(request: NextRequest) {
   
   // Redirect www.app.* to app.* (remove www prefix from app subdomain)
   if (!isLocalhost && hostnameWithoutPort.startsWith('www.app.')) {
-    const redirectDomain = `app.${rootDomainWithoutPort}`
-    const redirectUrl = new URL(pathname, `${request.nextUrl.protocol}//${redirectDomain}`)
+    // Extract everything after 'www.app.' to get the rest of the domain
+    const restOfDomain = hostnameWithoutPort.replace('www.app.', 'app.')
+    const redirectUrl = new URL(pathname, `${request.nextUrl.protocol}//${restOfDomain}`)
     redirectUrl.search = request.nextUrl.search // Preserve query params
     return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
   }
@@ -133,10 +134,15 @@ export async function middleware(request: NextRequest) {
   // Handle sites subdomain routing (needs rewrite to [site] dynamic route)
   if (!isLocalhost) {
     // Production: Check for client subdomain
-    if (hostnameWithoutPort !== rootDomainWithoutPort && 
-        hostnameWithoutPort !== `www.${rootDomainWithoutPort}` && 
-        hostnameWithoutPort !== appDomain && 
-        !hostnameWithoutPort.startsWith('app.')) {
+    // Exclude: root domain, www.root, app domain, www.app.*, and any app.* subdomain
+    const isAppOrMarketingDomain = 
+      hostnameWithoutPort === rootDomainWithoutPort || 
+      hostnameWithoutPort === `www.${rootDomainWithoutPort}` || 
+      hostnameWithoutPort === appDomain || 
+      hostnameWithoutPort.startsWith('app.') ||
+      hostnameWithoutPort.startsWith('www.app.')
+    
+    if (!isAppOrMarketingDomain) {
       // Client subdomain -> rewrite to (z-sites)/[site] route
       const subdomain = hostnameWithoutPort.split('.')[0]
       url.pathname = `/${subdomain}${pathname === '/' ? '' : pathname}`
