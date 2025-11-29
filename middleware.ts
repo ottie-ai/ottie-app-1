@@ -102,8 +102,10 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || ''
 
   // Get root domain from environment (default to localhost for development)
+  // In production, this should be set to your actual domain (e.g., 'ottie.com')
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'
-  const appDomain = `app.${rootDomain.split(':')[0]}` // Remove port for domain comparison
+  const rootDomainWithoutPort = rootDomain.split(':')[0]
+  const appDomain = `app.${rootDomainWithoutPort}` // Remove port for domain comparison
   
   // Extract subdomain (remove port for localhost)
   const hostnameWithoutPort = hostname.split(':')[0]
@@ -111,8 +113,6 @@ export async function middleware(request: NextRequest) {
   
   // Redirect www.app.* to app.* (remove www prefix from app subdomain)
   if (!isLocalhost && hostnameWithoutPort.startsWith('www.app.')) {
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'
-    const rootDomainWithoutPort = rootDomain.split(':')[0]
     const redirectDomain = `app.${rootDomainWithoutPort}`
     const redirectUrl = new URL(pathname, `${request.nextUrl.protocol}//${redirectDomain}`)
     redirectUrl.search = request.nextUrl.search // Preserve query params
@@ -133,8 +133,8 @@ export async function middleware(request: NextRequest) {
   // Handle sites subdomain routing (needs rewrite to [site] dynamic route)
   if (!isLocalhost) {
     // Production: Check for client subdomain
-    if (hostnameWithoutPort !== rootDomain && 
-        hostnameWithoutPort !== `www.${rootDomain}` && 
+    if (hostnameWithoutPort !== rootDomainWithoutPort && 
+        hostnameWithoutPort !== `www.${rootDomainWithoutPort}` && 
         hostnameWithoutPort !== appDomain && 
         !hostnameWithoutPort.startsWith('app.')) {
       // Client subdomain -> rewrite to (z-sites)/[site] route
@@ -199,7 +199,13 @@ export async function middleware(request: NextRequest) {
   }
   
   // Handle Supabase session refresh for protected routes
-  return await handleSupabaseSession(request, response, pathname)
+  try {
+    return await handleSupabaseSession(request, response, pathname)
+  } catch (error) {
+    // Log error but don't break the request
+    console.error('Middleware error:', error)
+    return response
+  }
 }
 
 /**
@@ -220,10 +226,19 @@ async function handleSupabaseSession(
   }
 
   // For protected routes, refresh session using standard cookie handling
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
+                      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If Supabase env vars are missing, just return response without session refresh
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn('Supabase environment variables are missing, skipping session refresh')
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -240,7 +255,12 @@ async function handleSupabaseSession(
   )
 
   // Refresh session if expired
-  await supabase.auth.getUser()
+  try {
+    await supabase.auth.getUser()
+  } catch (error) {
+    // If session refresh fails, just continue - auth guard will handle it
+    console.warn('Session refresh failed:', error)
+  }
 
   return response
 }
