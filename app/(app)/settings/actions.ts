@@ -320,10 +320,10 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
 
   try {
     // DEBUG: Check if we have a valid session
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { data: { user }, error: sessionError } = await supabase.auth.getUser()
     console.log('DEBUG deleteUserAccount - userId param:', userId)
     console.log('DEBUG deleteUserAccount - auth user:', user?.id)
-    console.log('DEBUG deleteUserAccount - auth error:', authError)
+    console.log('DEBUG deleteUserAccount - session error:', sessionError)
     
     if (!user || user.id !== userId) {
       console.error('Auth mismatch! userId:', userId, 'auth.uid:', user?.id)
