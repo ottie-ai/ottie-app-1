@@ -315,10 +315,8 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     return { error: 'Not authenticated' }
   }
 
-  // Use admin client because auth.uid() returns NULL in server actions
-  // This is a privileged operation where user has explicitly confirmed deletion
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  const supabase = createAdminClient()
+  // Use regular client - RLS should allow user to update own profile
+  const supabase = await createClient()
 
   try {
     // 1. Get all workspaces where user is owner
@@ -383,11 +381,11 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     }
 
     // 4. Anonymize profile (soft delete)
+    // DEBUG: Test without setting email to null
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
-        email: null,
-        full_name: null,
+        full_name: '[deleted]',
         avatar_url: null,
         deleted_at: new Date().toISOString(),
       })
