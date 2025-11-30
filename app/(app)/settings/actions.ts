@@ -4,7 +4,8 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { updateWorkspace } from '@/lib/supabase/queries'
-import type { Profile, Workspace } from '@/types/database'
+import type { Profile, Workspace, Invitation } from '@/types/database'
+import { sendInviteEmail } from '@/lib/email'
 
 /**
  * Server Actions for Settings Page
@@ -1004,4 +1005,519 @@ export async function sendPasswordResetEmail(email: string) {
   return {
     success: true,
   }
+}
+
+// ==========================================
+// INVITATIONS
+// ==========================================
+
+/**
+ * Generate a secure random token for invitations
+ */
+function generateInviteToken(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let token = ''
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return token
+}
+
+/**
+ * Get app origin URL for invite links
+ */
+function getAppOrigin(): string {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  const port = process.env.NODE_ENV === 'production' ? '' : ':3000'
+  
+  if (process.env.NODE_ENV === 'production') {
+    return `${protocol}://app.${rootDomain}`
+  }
+  return `${protocol}://app.localhost${port}`
+}
+
+/**
+ * Create a new invitation
+ * Only allowed for workspace owners/admins on multi-user plans
+ */
+export async function createInvitation(
+  workspaceId: string,
+  invitedByUserId: string,
+  email: string,
+  role: 'admin' | 'agent'
+): Promise<{ success: true; invitation: Invitation } | { error: string }> {
+  if (!workspaceId || !invitedByUserId || !email || !role) {
+    return { error: 'Missing required fields' }
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.trim())) {
+    return { error: 'Invalid email address' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', invitedByUserId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can invite users' }
+  }
+
+  // Verify workspace is on a multi-user plan
+  const { data: workspace, error: workspaceError } = await supabase
+    .from('workspaces')
+    .select('plan, name')
+    .eq('id', workspaceId)
+    .is('deleted_at', null)
+    .single()
+
+  if (workspaceError || !workspace) {
+    return { error: 'Workspace not found' }
+  }
+
+  const multiUserPlans = ['agency', 'enterprise']
+  if (!multiUserPlans.includes(workspace.plan || '')) {
+    return { error: 'Upgrade to Agency or Enterprise plan to invite team members' }
+  }
+
+  // Check if user is already a member
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email.trim().toLowerCase())
+    .is('deleted_at', null)
+    .single()
+
+  if (existingProfile) {
+    const { data: existingMembership } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', existingProfile.id)
+      .single()
+
+    if (existingMembership) {
+      return { error: 'This user is already a member of this workspace' }
+    }
+  }
+
+  // Check if there's already a pending invitation for this email
+  const { data: existingInvitation } = await supabase
+    .from('invitations')
+    .select('id, status')
+    .eq('workspace_id', workspaceId)
+    .eq('email', email.trim().toLowerCase())
+    .eq('status', 'pending')
+    .single()
+
+  if (existingInvitation) {
+    return { error: 'An invitation has already been sent to this email' }
+  }
+
+  // Get inviter's name for the email
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', invitedByUserId)
+    .single()
+
+  const inviterName = inviterProfile?.full_name || inviterProfile?.email || 'A team member'
+
+  // Generate unique token
+  const token = generateInviteToken()
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + 7) // 7 days expiry
+
+  // Create invitation
+  const { data: invitation, error: createError } = await supabase
+    .from('invitations')
+    .insert({
+      workspace_id: workspaceId,
+      email: email.trim().toLowerCase(),
+      role: role,
+      token: token,
+      status: 'pending',
+      invited_by: invitedByUserId,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select()
+    .single()
+
+  if (createError) {
+    console.error('Error creating invitation:', createError)
+    return { error: 'Failed to create invitation' }
+  }
+
+  // Send invitation email
+  const inviteUrl = `${getAppOrigin()}/invite/${token}`
+  
+  const emailResult = await sendInviteEmail({
+    to: email.trim().toLowerCase(),
+    workspaceName: workspace.name,
+    inviterName,
+    role,
+    inviteUrl,
+  })
+
+  if (!emailResult.success) {
+    // Log error but don't fail - invitation was created and can be resent
+    console.error('Failed to send invitation email:', emailResult.error)
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true, invitation: invitation as Invitation }
+}
+
+/**
+ * Cancel a pending invitation
+ * Only allowed for workspace owners/admins
+ */
+export async function cancelInvitation(
+  invitationId: string,
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true } | { error: string }> {
+  if (!invitationId || !workspaceId || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can cancel invitations' }
+  }
+
+  // Delete the invitation
+  const { error: deleteError } = await supabase
+    .from('invitations')
+    .delete()
+    .eq('id', invitationId)
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'pending')
+
+  if (deleteError) {
+    console.error('Error canceling invitation:', deleteError)
+    return { error: 'Failed to cancel invitation' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true }
+}
+
+/**
+ * Resend a pending invitation
+ * Only allowed for workspace owners/admins
+ */
+export async function resendInvitation(
+  invitationId: string,
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true } | { error: string }> {
+  if (!invitationId || !workspaceId || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner' && membership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can resend invitations' }
+  }
+
+  // Get the invitation
+  const { data: invitation, error: getError } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('id', invitationId)
+    .eq('workspace_id', workspaceId)
+    .single()
+
+  if (getError || !invitation) {
+    return { error: 'Invitation not found' }
+  }
+
+  if (invitation.status !== 'pending') {
+    return { error: 'Can only resend pending invitations' }
+  }
+
+  // Get workspace name for email
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq('id', workspaceId)
+    .single()
+
+  // Get inviter name
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('full_name, email')
+    .eq('id', userId)
+    .single()
+
+  const inviterName = inviterProfile?.full_name || inviterProfile?.email || 'A team member'
+
+  // Generate new token and extend expiry
+  const newToken = generateInviteToken()
+  const newExpiresAt = new Date()
+  newExpiresAt.setDate(newExpiresAt.getDate() + 7) // 7 days expiry
+
+  // Update invitation with new token and expiry
+  const { error: updateError } = await supabase
+    .from('invitations')
+    .update({
+      token: newToken,
+      expires_at: newExpiresAt.toISOString(),
+    })
+    .eq('id', invitationId)
+
+  if (updateError) {
+    console.error('Error resending invitation:', updateError)
+    return { error: 'Failed to resend invitation' }
+  }
+
+  // Send the email
+  const inviteUrl = `${getAppOrigin()}/invite/${newToken}`
+  
+  const emailResult = await sendInviteEmail({
+    to: invitation.email,
+    workspaceName: workspace?.name || 'Workspace',
+    inviterName,
+    role: invitation.role as 'admin' | 'agent',
+    inviteUrl,
+  })
+
+  if (!emailResult.success) {
+    console.error('Failed to resend invitation email:', emailResult.error)
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true }
+}
+
+/**
+ * Get invitation by token
+ * Public function - no auth required (for accept flow)
+ */
+export async function getInvitationByToken(
+  token: string
+): Promise<{ invitation: Invitation; workspace: { id: string; name: string } } | { error: string }> {
+  if (!token) {
+    return { error: 'Invalid invitation link' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: invitation, error } = await supabase
+    .from('invitations')
+    .select(`
+      *,
+      workspace:workspaces!inner(id, name)
+    `)
+    .eq('token', token)
+    .is('workspace.deleted_at', null)
+    .single()
+
+  if (error || !invitation) {
+    return { error: 'Invitation not found or has been cancelled' }
+  }
+
+  // Check if invitation is expired
+  if (new Date(invitation.expires_at) < new Date()) {
+    return { error: 'This invitation has expired' }
+  }
+
+  // Check if invitation is still pending
+  if (invitation.status !== 'pending') {
+    return { error: 'This invitation has already been used' }
+  }
+
+  return {
+    invitation: {
+      id: invitation.id,
+      workspace_id: invitation.workspace_id,
+      email: invitation.email,
+      role: invitation.role,
+      token: invitation.token,
+      status: invitation.status,
+      invited_by: invitation.invited_by,
+      created_at: invitation.created_at,
+      expires_at: invitation.expires_at,
+    } as Invitation,
+    workspace: {
+      id: (invitation.workspace as any).id,
+      name: (invitation.workspace as any).name,
+    },
+  }
+}
+
+/**
+ * Accept an invitation
+ * Creates membership and marks invitation as accepted
+ */
+export async function acceptInvitation(
+  token: string,
+  userId: string
+): Promise<{ success: true; workspaceId: string } | { error: string }> {
+  if (!token || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Get the invitation
+  const invitationResult = await getInvitationByToken(token)
+  if ('error' in invitationResult) {
+    return { error: invitationResult.error }
+  }
+
+  const { invitation, workspace } = invitationResult
+
+  // Verify user email matches invitation email
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', userId)
+    .single()
+
+  if (profileError || !profile) {
+    return { error: 'User profile not found' }
+  }
+
+  // Email check is optional - we allow accepting with any logged-in account
+  // This is more flexible for users who might have multiple emails
+  // If you want strict email matching, uncomment this:
+  // if (profile.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+  //   return { error: 'This invitation was sent to a different email address' }
+  // }
+
+  // Check if user is already a member
+  const { data: existingMembership } = await supabase
+    .from('memberships')
+    .select('id')
+    .eq('workspace_id', invitation.workspace_id)
+    .eq('user_id', userId)
+    .single()
+
+  if (existingMembership) {
+    // User is already a member, just mark invitation as accepted
+    await supabase
+      .from('invitations')
+      .update({ status: 'accepted' })
+      .eq('id', invitation.id)
+
+    return { success: true, workspaceId: invitation.workspace_id }
+  }
+
+  // Create membership
+  const { error: membershipError } = await supabase
+    .from('memberships')
+    .insert({
+      workspace_id: invitation.workspace_id,
+      user_id: userId,
+      role: invitation.role,
+    })
+
+  if (membershipError) {
+    console.error('Error creating membership:', membershipError)
+    return { error: 'Failed to join workspace' }
+  }
+
+  // Mark invitation as accepted
+  const { error: updateError } = await supabase
+    .from('invitations')
+    .update({ status: 'accepted' })
+    .eq('id', invitation.id)
+
+  if (updateError) {
+    console.error('Error updating invitation status:', updateError)
+    // Don't fail - membership was created successfully
+  }
+
+  // Revalidate pages
+  revalidatePath('/settings')
+  revalidatePath('/overview')
+
+  return { success: true, workspaceId: invitation.workspace_id }
+}
+
+/**
+ * Get pending invitations for a workspace
+ */
+export async function getPendingInvitations(
+  workspaceId: string,
+  userId: string
+): Promise<{ invitations: Invitation[] } | { error: string }> {
+  if (!workspaceId || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user has access to workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  // Get pending invitations
+  const { data: invitations, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching invitations:', error)
+    return { error: 'Failed to fetch invitations' }
+  }
+
+  return { invitations: invitations as Invitation[] }
 }

@@ -14,7 +14,7 @@ import { FontTransition } from '@/components/builder/FontTransition'
 import { WorkspaceNavbar } from '@/components/workspace/workspace-navbar'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { useWorkspace } from '@/hooks/use-workspace'
-import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
+import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { cn } from '@/lib/utils'
 
 // Example theme configuration
@@ -314,7 +314,7 @@ export default function EditorPage() {
         }}
       />
       
-      {/* Fixed CTA Button - always white/dark style on hero, then follows section color */}
+      {/* Fixed CTA Button - Preview in editor (only shows in published site) */}
       <FloatingCTAButton 
         type={editingTheme.ctaType} 
         value={editingTheme.ctaValue}

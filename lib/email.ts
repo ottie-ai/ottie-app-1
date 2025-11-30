@@ -1,0 +1,157 @@
+import { Resend } from 'resend'
+
+// Initialize Resend with API key
+// You need to set RESEND_API_KEY in your .env.local file
+// Get your API key from https://resend.com/api-keys
+const resend = new Resend(process.env.RESEND_API_KEY)
+
+// Default from address - update this to your verified domain
+// For development, you can use 'onboarding@resend.dev'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Ottie <onboarding@resend.dev>'
+
+interface SendInviteEmailParams {
+  to: string
+  workspaceName: string
+  inviterName: string
+  role: 'admin' | 'agent'
+  inviteUrl: string
+}
+
+/**
+ * Send workspace invitation email
+ */
+export async function sendInviteEmail({
+  to,
+  workspaceName,
+  inviterName,
+  role,
+  inviteUrl,
+}: SendInviteEmailParams): Promise<{ success: boolean; error?: string }> {
+  // Check if Resend API key is configured
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured. Skipping email send.')
+    console.log(`[DEV] Invite URL for ${to}: ${inviteUrl}`)
+    return { success: true } // Don't fail if not configured (development)
+  }
+
+  const roleDescription = role === 'admin' 
+    ? 'an Admin (can manage team and settings)' 
+    : 'an Agent (can create and manage sites)'
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `Join ${workspaceName} on Ottie`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Workspace Invitation</title>
+          </head>
+          <body style="margin: 0; padding: 0; background-color: #000000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #000000; min-height: 100vh;">
+              <tr>
+                <td align="center" style="padding: 60px 20px;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 400px;">
+                    <!-- Logo -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 50px;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #fda90f 0%, #f5a82d 25%, #e5a4b4 50%, #d9a1e1 75%, #c89eff 100%); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;">
+                          <svg width="40" height="40" viewBox="0 0 104 105" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M64.1533 0C64.4902 12.9567 69.5982 23.6894 79.6943 31.8545C86.6667 37.4932 94.7378 40.4266 103.639 40.7432V64.3857C85.1152 64.3976 64.5748 80.2318 64.1436 104.999H40.8438C40.6221 93.8065 36.6974 84.1025 28.7451 76.1826C20.8373 68.307 11.1917 64.3918 0 64.1738V40.8877C22.7104 40.5504 40.5972 22.4718 40.8721 0H64.1533ZM52.5244 36.8252C48.1079 42.9632 42.9675 48.1732 36.8076 52.5088C42.9832 56.8524 48.1253 62.0588 52.4561 68.1006C54.1821 65.9963 55.7127 63.9624 57.4229 62.0938C59.140 60.2175 61.0364 58.5055 63.0225 56.5693C64.7176 55.2107 66.413 53.8517 68.1543 52.4561C62.0948 48.1837 56.9302 42.9915 52.5244 36.8252Z" fill="#ffffff"/>
+                          </svg>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Title -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 24px;">
+                        <h1 style="margin: 0; font-size: 32px; font-weight: 400; color: #ffffff; letter-spacing: -0.5px;">
+                          Join ${workspaceName}
+                        </h1>
+                      </td>
+                    </tr>
+                    
+                    <!-- Description -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 40px;">
+                        <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #888888;">
+                          ${inviterName} has invited you to join<br>
+                          <strong style="color: #ffffff;">${workspaceName}</strong> as ${roleDescription}.
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Button -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 50px;">
+                        <a href="${inviteUrl}" style="display: inline-block; background-color: #ffffff; color: #000000; font-size: 14px; font-weight: 500; text-decoration: none; padding: 14px 28px; border-radius: 999px;">
+                          Accept Invitation
+                        </a>
+                      </td>
+                    </tr>
+                    
+                    <!-- Expiry note -->
+                    <tr>
+                      <td align="center" style="padding-bottom: 60px;">
+                        <p style="margin: 0; font-size: 13px; color: #666666;">
+                          This invitation expires in 7 days.
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td align="center">
+                        <p style="margin: 0; font-size: 12px; color: #444444; line-height: 1.6;">
+                          <a href="https://ottie.com" style="color: #666666; text-decoration: underline;">Ottie</a>
+                          <br>
+                          16192 Coastal Hwy, Lewes,<br>
+                          DE 19958, United States
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+      text: `
+Join ${workspaceName}
+
+${inviterName} has invited you to join ${workspaceName} as ${roleDescription}.
+
+Accept the invitation:
+${inviteUrl}
+
+This invitation expires in 7 days.
+
+---
+Ottie
+16192 Coastal Hwy, Lewes,
+DE 19958, United States
+      `.trim(),
+    })
+
+    if (error) {
+      console.error('Resend error:', error)
+      return { success: false, error: error.message }
+    }
+
+    console.log('Invitation email sent successfully:', data?.id)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send invitation email:', error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to send email' 
+    }
+  }
+}
+

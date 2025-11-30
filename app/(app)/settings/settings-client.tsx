@@ -31,15 +31,25 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
+import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
 import { useWorkspace } from '@/contexts/workspace-context'
 import type { Profile, Workspace, Membership } from '@/types/database'
 import { pricingTiers } from '@/lib/pricing-data'
-import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink } from 'lucide-react'
+import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { UserRole } from '@/types/database'
 
@@ -118,6 +128,15 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   
   // Load workspace members
   const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null)
+  
+  // Load pending invitations
+  const { invitations, loading: invitationsLoading, refresh: refreshInvitations } = useWorkspaceInvitations(workspace?.id || null)
+  
+  // Invite dialog state
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'agent'>('agent')
+  const [inviteLoading, setInviteLoading] = useState(false)
   
   // Sync workspaceName when workspace changes
   useEffect(() => {
@@ -1849,62 +1868,135 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </CardDescription>
                     {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
                       <CardAction>
-                        <Button size="sm" variant="outline" disabled>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Invite User
-                        </Button>
+                        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Invite
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Invite Team Member</DialogTitle>
+                              <DialogDescription>
+                                Send an invitation to join your workspace.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="invite-email-mobile">Email address</Label>
+                                <Input
+                                  id="invite-email-mobile"
+                                  type="email"
+                                  placeholder="colleague@company.com"
+                                  value={inviteEmail}
+                                  onChange={(e) => setInviteEmail(e.target.value)}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="invite-role-mobile">Role</Label>
+                                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'agent')}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="agent">Agent</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button
+                                onClick={async () => {
+                                  if (!workspace || !user?.id) return
+                                  if (!inviteEmail.trim()) {
+                                    toast.error('Please enter an email address')
+                                    return
+                                  }
+                                  
+                                  setInviteLoading(true)
+                                  const result = await createInvitation(
+                                    workspace.id,
+                                    user.id,
+                                    inviteEmail.trim(),
+                                    inviteRole
+                                  )
+                                  setInviteLoading(false)
+                                  
+                                  if ('error' in result) {
+                                    toast.error(result.error)
+                                  } else {
+                                    toast.success(`Invitation sent to ${inviteEmail}`)
+                                    setInviteDialogOpen(false)
+                                    setInviteEmail('')
+                                    setInviteRole('agent')
+                                    refreshInvitations()
+                                  }
+                                }}
+                                disabled={inviteLoading || !inviteEmail.trim()}
+                                className="w-full"
+                              >
+                                {inviteLoading ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Send Invitation
+                                  </>
+                                )}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </CardAction>
                     )}
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-6">
                     {/* Banner for single-user workspaces */}
                     {workspace && !isMultiUserPlan(workspace.plan) && (
-                  <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                          Upgrade to invite team members
-                        </p>
-                        <p className="text-sm text-green-800 dark:text-green-200">
-                          To invite users to your workspace, upgrade to the Agency or Enterprise plan.
-                        </p>
-                        <PricingDialog 
-                          currentPlan={workspace?.plan} 
-                          stripeCustomerId={workspace?.stripe_customer_id}
-                          defaultSelectedTier="agency"
-                        >
-                          <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
-                            Upgrade Plan
-                          </Button>
-                        </PricingDialog>
-                </div>
-                    </div>
-                  </div>
-                )}
+                      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                          <div className="flex-1 space-y-2">
+                            <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                              Upgrade to invite team members
+                            </p>
+                            <p className="text-sm text-green-800 dark:text-green-200">
+                              To invite users to your workspace, upgrade to the Agency or Enterprise plan.
+                            </p>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              defaultSelectedTier="agency"
+                            >
+                              <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
+                                Upgrade Plan
+                              </Button>
+                            </PricingDialog>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                {/* Members List */}
-                <div>
-                  {membersLoading ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      Loading members...
-                    </div>
-                  ) : members.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      No members found
-                    </div>
-                  ) : (
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-4 font-medium text-sm">Member</th>
-                          <th className="text-right p-4 font-medium text-sm">Role</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {members.map(({ membership, profile }) => (
-                          <tr key={membership.id} className="border-b">
-                            <td className="p-4">
+                    {/* Members List */}
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Members</h3>
+                      {membersLoading ? (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          Loading members...
+                        </div>
+                      ) : members.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          No members found
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {members.map(({ membership, profile }) => (
+                            <div key={membership.id} className="flex items-center justify-between p-3 border rounded-lg">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
                                   <AvatarImage src={profile.avatar_url || undefined} />
@@ -1928,63 +2020,90 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                   </p>
                                 </div>
                               </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center justify-end gap-2">
-                                {isOwnerOrAdmin && membership.role !== 'owner' && membership.user_id !== user?.id ? (
-                                  <Select
-                                    value={membership.role}
-                                    onValueChange={async (value: UserRole) => {
-                                      if (!workspace || !user?.id) return
-                                      
-                                      if (value === 'owner') {
-                                        toast.error('Cannot change role to owner')
-                                        return
-                                      }
+                              <Badge variant="secondary" className="capitalize">
+                                {membership.role}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
-                                      const result = await updateMembershipRole(
-                                        membership.id,
-                                        workspace.id,
-                                        user.id,
-                                        value as 'admin' | 'agent'
-                                      )
-
-                                      if ('error' in result) {
-                                        toast.error(result.error)
-                                      } else {
-                                        toast.success('Role updated successfully')
-                                        // Refresh members list
-                                        window.location.reload()
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className="w-32">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="admin">Admin</SelectItem>
-                                      <SelectItem value="agent">Agent</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  <Badge variant="secondary" className="capitalize">
-                                    {membership.role}
-                                  </Badge>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
+                    {/* Pending Invitations */}
+                    {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                      <div>
+                        <h3 className="text-sm font-medium mb-3">Pending Invitations</h3>
+                        {invitationsLoading ? (
+                          <div className="p-8 text-center text-sm text-muted-foreground">
+                            Loading...
+                          </div>
+                        ) : invitations.length === 0 ? (
+                          <div className="p-6 text-center text-sm text-muted-foreground border rounded-lg">
+                            No pending invitations
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {invitations.map((invitation) => {
+                              const expiresAt = new Date(invitation.expires_at)
+                              const now = new Date()
+                              const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                              
+                              return (
+                                <div key={invitation.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                  <div>
+                                    <p className="font-medium text-sm">{invitation.email}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {invitation.role} • Expires in {daysLeft} day{daysLeft === 1 ? '' : 's'}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={async () => {
+                                        if (!workspace || !user?.id) return
+                                        const result = await resendInvitation(invitation.id, workspace.id, user.id)
+                                        if ('error' in result) {
+                                          toast.error(result.error)
+                                        } else {
+                                          toast.success('Invitation resent')
+                                          refreshInvitations()
+                                        }
+                                      }}
+                                    >
+                                      <RotateCw className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={async () => {
+                                        if (!workspace || !user?.id) return
+                                        const result = await cancelInvitation(invitation.id, workspace.id, user.id)
+                                        if ('error' in result) {
+                                          toast.error(result.error)
+                                        } else {
+                                          toast.success('Invitation cancelled')
+                                          refreshInvitations()
+                                        }
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
                 <TabsContent value="team" className="mt-0 sm:mt-6 space-y-6">
-                  {/* Team content is already duplicated above in the mobile section */}
-                  {/* For desktop, we'll use the same content but wrapped in TabsContent */}
+                  {/* Header with Invite Button */}
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
                       <h2 className="text-lg font-semibold">
@@ -1995,12 +2114,103 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </p>
                     </div>
                     {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
-                      <Button size="sm" variant="outline" disabled>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Invite User
-                    </Button>
+                      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Invite User
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Invite Team Member</DialogTitle>
+                            <DialogDescription>
+                              Send an invitation to join your workspace. They will receive an email with a link to accept.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="invite-email">Email address</Label>
+                              <Input
+                                id="invite-email"
+                                type="email"
+                                placeholder="colleague@company.com"
+                                value={inviteEmail}
+                                onChange={(e) => setInviteEmail(e.target.value)}
+                              />
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="invite-role">Role</Label>
+                              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'agent')}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin - Can manage team and settings</SelectItem>
+                                  <SelectItem value="agent">Agent - Can create and manage sites</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setInviteDialogOpen(false)
+                                setInviteEmail('')
+                                setInviteRole('agent')
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={async () => {
+                                if (!workspace || !user?.id) return
+                                if (!inviteEmail.trim()) {
+                                  toast.error('Please enter an email address')
+                                  return
+                                }
+                                
+                                setInviteLoading(true)
+                                const result = await createInvitation(
+                                  workspace.id,
+                                  user.id,
+                                  inviteEmail.trim(),
+                                  inviteRole
+                                )
+                                setInviteLoading(false)
+                                
+                                if ('error' in result) {
+                                  toast.error(result.error)
+                                } else {
+                                  toast.success(`Invitation sent to ${inviteEmail}`)
+                                  setInviteDialogOpen(false)
+                                  setInviteEmail('')
+                                  setInviteRole('agent')
+                                  refreshInvitations()
+                                }
+                              }}
+                              disabled={inviteLoading || !inviteEmail.trim()}
+                            >
+                              {inviteLoading ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Invitation
+                                </>
+                              )}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     )}
                   </div>
+
+                  {/* Upgrade Banner for single-user plans */}
                   {workspace && !isMultiUserPlan(workspace.plan) && (
                     <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                       <div className="flex items-start gap-3">
@@ -2025,7 +2235,10 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </div>
                     </div>
                   )}
+
+                  {/* Members Table */}
                   <div>
+                    <h3 className="text-sm font-medium mb-3">Members</h3>
                     {membersLoading ? (
                       <div className="p-8 text-center text-sm text-muted-foreground">
                         Loading members...
@@ -2118,7 +2331,127 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </tbody>
                       </table>
                     )}
-                </div>
+                  </div>
+
+                  {/* Pending Invitations */}
+                  {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Pending Invitations</h3>
+                      {invitationsLoading ? (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          Loading invitations...
+                        </div>
+                      ) : invitations.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg">
+                          No pending invitations
+                        </div>
+                      ) : (
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left p-4 font-medium text-sm">Email</th>
+                              <th className="text-left p-4 font-medium text-sm">Role</th>
+                              <th className="text-left p-4 font-medium text-sm">Expires</th>
+                              <th className="text-right p-4 font-medium text-sm">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {invitations.map((invitation) => {
+                              const expiresAt = new Date(invitation.expires_at)
+                              const now = new Date()
+                              const daysLeft = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                              const isExpiringSoon = daysLeft <= 2
+                              
+                              return (
+                                <tr key={invitation.id} className="border-b">
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-sm">{invitation.email}</p>
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          Invited {new Date(invitation.created_at).toLocaleDateString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4">
+                                    <Badge variant="outline" className="capitalize">
+                                      {invitation.role}
+                                    </Badge>
+                                  </td>
+                                  <td className="p-4">
+                                    <span className={`text-sm ${isExpiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                                      {daysLeft > 0 ? `in ${daysLeft} day${daysLeft === 1 ? '' : 's'}` : 'Expired'}
+                                    </span>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8"
+                                            onClick={async () => {
+                                              if (!workspace || !user?.id) return
+                                              const result = await resendInvitation(
+                                                invitation.id,
+                                                workspace.id,
+                                                user.id
+                                              )
+                                              if ('error' in result) {
+                                                toast.error(result.error)
+                                              } else {
+                                                toast.success('Invitation resent')
+                                                refreshInvitations()
+                                              }
+                                            }}
+                                          >
+                                            <RotateCw className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Resend invitation</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            onClick={async () => {
+                                              if (!workspace || !user?.id) return
+                                              const result = await cancelInvitation(
+                                                invitation.id,
+                                                workspace.id,
+                                                user.id
+                                              )
+                                              if ('error' in result) {
+                                                toast.error(result.error)
+                                              } else {
+                                                toast.success('Invitation cancelled')
+                                                refreshInvitations()
+                                              }
+                                            }}
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Cancel invitation</TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
               </TabsContent>
               )}
 

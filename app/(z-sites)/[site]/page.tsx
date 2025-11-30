@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
-import { FloatingCTAButton } from '@/components/workspace/whatsapp-button'
+import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { ThemeConfig, Section, PageConfig } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
