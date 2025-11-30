@@ -67,6 +67,12 @@ export default function InvitePage({ params }: InvitePageProps) {
       
       if (userEmail !== inviteEmail) {
         // Email doesn't match - sign out and redirect to signup (not sign in)
+        if (!token) {
+          setError('Invalid invitation token')
+          setLoading(false)
+          return
+        }
+        
         setLoading(true)
         try {
           await signOut()
