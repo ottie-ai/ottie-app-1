@@ -98,6 +98,16 @@ function LoginForm() {
             toast.error(acceptResult.error)
           } else {
             toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+            // Set the workspace as current workspace in localStorage
+            if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
+              localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
+            }
+            // If redirectTo is invite page, redirect to overview instead
+            if (redirectTo.includes('/invite/')) {
+              router.replace('/overview')
+              router.refresh()
+              return
+            }
           }
           
           // Clear sessionStorage
@@ -111,9 +121,13 @@ function LoginForm() {
       }
       
       // Redirect after handling invitation
-      if (redirectTo) {
+      if (redirectTo && !redirectTo.includes('/invite/')) {
         console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
         router.replace(redirectTo)
+      } else if (!redirectTo || redirectTo.includes('/invite/')) {
+        // Default to overview if no redirect or if redirect is invite page
+        router.replace('/overview')
+        router.refresh()
       }
     }
     

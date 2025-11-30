@@ -126,6 +126,10 @@ function RegisterForm() {
             } else {
               // Show success toast
               toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+              // Set the workspace as current workspace in localStorage
+              if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
+                localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
+              }
             }
           }
         }

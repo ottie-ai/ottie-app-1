@@ -111,10 +111,15 @@ export default function InvitePage({ params }: InvitePageProps) {
         sessionStorage.removeItem('pending_invite_token')
         sessionStorage.removeItem('pending_invite_email')
         sessionStorage.removeItem('invite_expected_email')
-        // Redirect to overview after a short delay
+        // Set the workspace as current workspace in localStorage
+        if (typeof window !== 'undefined' && 'workspaceId' in result) {
+          localStorage.setItem('current_workspace_id', result.workspaceId)
+        }
+        // Redirect to overview after a short delay - workspace will be loaded automatically
         setTimeout(() => {
           router.push('/overview')
-        }, 2000)
+          router.refresh()
+        }, 1500)
       }
     }
 

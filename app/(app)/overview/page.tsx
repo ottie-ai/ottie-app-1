@@ -89,6 +89,12 @@ export default function DashboardPage() {
               const acceptResult = await acceptInvitation(token, user.id)
               if (!('error' in acceptResult)) {
                 toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+                // Set the workspace as current workspace in localStorage
+                if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
+                  localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
+                }
+                // Refresh to load the new workspace
+                router.refresh()
               } else {
                 toast.error(acceptResult.error)
               }
@@ -133,6 +139,12 @@ export default function DashboardPage() {
             toast.error(acceptResult.error)
           } else {
             toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+            // Set the workspace as current workspace in localStorage
+            if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
+              localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
+            }
+            // Refresh to load the new workspace
+            router.refresh()
           }
           
           // Fix #9: Clear all sessionStorage
