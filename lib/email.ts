@@ -80,10 +80,6 @@ export async function sendInviteEmail({
     console.warn('[EMAIL] Using default Resend email. Configure RESEND_FROM_EMAIL with your verified domain.')
   }
 
-  const roleDescription = role === 'admin' 
-    ? 'an Admin' 
-    : 'an Agent'
-
   console.log('[EMAIL] Attempting to send invitation email:', {
     to,
     from: FROM_EMAIL,
@@ -135,7 +131,7 @@ export async function sendInviteEmail({
                       <td align="center" style="padding-bottom: 40px;">
                         <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #888888;">
                           ${inviterName} has invited you to join<br>
-                          <strong style="color: #ffffff;">${workspaceName}</strong> as ${roleDescription}.
+                          <strong style="color: #ffffff;">${workspaceName}</strong>.
                         </p>
                       </td>
                     </tr>
@@ -179,7 +175,7 @@ export async function sendInviteEmail({
       text: `
 Join ${workspaceName}
 
-${inviterName} has invited you to join ${workspaceName} as ${roleDescription}.
+${inviterName} has invited you to join ${workspaceName}.
 
 Accept the invitation:
 ${inviteUrl}

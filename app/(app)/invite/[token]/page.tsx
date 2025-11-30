@@ -252,7 +252,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </div>
             <CardTitle>Welcome to {workspaceName}!</CardTitle>
             <CardDescription>
-              You've successfully joined the workspace as {invitation?.role}.
+              You've successfully joined the workspace.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center space-y-4">
@@ -290,8 +290,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </div>
             <CardTitle>You're Invited!</CardTitle>
             <CardDescription>
-              You've been invited to join <span className="font-medium text-foreground">{workspaceName}</span> as {invitation.role === 'admin' ? 'an' : 'a'}{' '}
-              <Badge variant="secondary" className="capitalize">{invitation.role}</Badge>
+              You've been invited to join <span className="font-medium text-foreground">{workspaceName}</span>.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
