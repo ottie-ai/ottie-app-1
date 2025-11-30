@@ -122,8 +122,8 @@ function LoginForm() {
       
       // Redirect after handling invitation
       if (redirectTo && !redirectTo.includes('/invite/')) {
-        console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
-        router.replace(redirectTo)
+      console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
+      router.replace(redirectTo)
       } else if (!redirectTo || redirectTo.includes('/invite/')) {
         // Default to overview if no redirect or if redirect is invite page
         router.replace('/overview')

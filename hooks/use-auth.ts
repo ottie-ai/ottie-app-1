@@ -43,23 +43,23 @@ export function useAuth() {
           console.warn('[useAuth] User validation failed, clearing session')
           await supabase.auth.signOut().catch(() => {})
           if (isMounted) {
-            setUser(null)
-            setLoading(false)
+          setUser(null)
+          setLoading(false)
           }
           return
         }
         
         if (isMounted) {
           setUser(user)
-          setLoading(false)
+        setLoading(false)
         }
       } catch (error) {
         console.error('[useAuth] Init error:', error)
         if (isMounted) {
-          setUser(null)
-          setLoading(false)
-        }
+        setUser(null)
+        setLoading(false)
       }
+    }
     }
 
     initAuth()
