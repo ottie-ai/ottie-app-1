@@ -315,7 +315,10 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     return { error: 'Not authenticated' }
   }
 
-  const supabase = await createClient()
+  // Use admin client because auth.uid() returns NULL in server actions
+  // This is a privileged operation where user has explicitly confirmed deletion
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  const supabase = createAdminClient()
 
   try {
     // 1. Get all workspaces where user is owner
