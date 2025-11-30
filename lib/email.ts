@@ -29,14 +29,26 @@ export async function sendInviteEmail({
 }: SendInviteEmailParams): Promise<{ success: boolean; error?: string }> {
   // Check if Resend API key is configured
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured. Skipping email send.')
+    console.warn('[EMAIL] RESEND_API_KEY not configured. Skipping email send.')
     console.log(`[DEV] Invite URL for ${to}: ${inviteUrl}`)
-    return { success: true } // Don't fail if not configured (development)
+    return { success: false, error: 'Email service not configured. Please set RESEND_API_KEY.' }
+  }
+
+  // Validate FROM_EMAIL
+  if (!FROM_EMAIL || FROM_EMAIL.includes('onboarding@resend.dev')) {
+    console.warn('[EMAIL] RESEND_FROM_EMAIL not configured or using default. Using:', FROM_EMAIL)
   }
 
   const roleDescription = role === 'admin' 
     ? 'an Admin (can manage team and settings)' 
     : 'an Agent (can create and manage sites)'
+
+  console.log('[EMAIL] Attempting to send invitation email:', {
+    to,
+    from: FROM_EMAIL,
+    workspaceName,
+    hasApiKey: !!process.env.RESEND_API_KEY,
+  })
 
   try {
     const { data, error } = await resend.emails.send({
@@ -140,14 +152,30 @@ DE 19958, United States
     })
 
     if (error) {
-      console.error('Resend error:', error)
-      return { success: false, error: error.message }
+      console.error('[EMAIL] Resend API error:', {
+        message: error.message,
+        name: error.name,
+        error,
+      })
+      return { success: false, error: `Failed to send email: ${error.message}` }
     }
 
-    console.log('Invitation email sent successfully:', data?.id)
+    if (!data?.id) {
+      console.error('[EMAIL] No email ID returned from Resend')
+      return { success: false, error: 'Email service returned no confirmation' }
+    }
+
+    console.log('[EMAIL] Invitation email sent successfully:', {
+      emailId: data.id,
+      to,
+      from: FROM_EMAIL,
+    })
     return { success: true }
   } catch (error) {
-    console.error('Failed to send invitation email:', error)
+    console.error('[EMAIL] Exception while sending email:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to send email' 

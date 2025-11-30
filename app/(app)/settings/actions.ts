@@ -1173,7 +1173,9 @@ export async function createInvitation(
 
   if (!emailResult.success) {
     // Log error but don't fail - invitation was created and can be resent
-    console.error('Failed to send invitation email:', emailResult.error)
+    console.error('[INVITE] Failed to send invitation email:', emailResult.error)
+    // Return error so user knows email failed
+    return { error: `Invitation created but email failed to send: ${emailResult.error}. You can resend it later.` }
   }
 
   // Revalidate settings page
