@@ -17,7 +17,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Public routes that don't need authentication
-  const publicRoutes = ['/login', '/signup', '/auth']
+  const publicRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
 
   console.log('[AuthGuard] State:', { pathname, loading, user: user?.email, isPublicRoute })

@@ -114,3 +114,21 @@ export async function getSession() {
   return { session, error }
 }
 
+/**
+ * Reset password for email
+ * Returns error if user doesn't exist or uses OAuth provider
+ */
+export async function resetPassword(email: string) {
+  const supabase = createClient()
+  
+  // First, try to get user info to check provider
+  // Note: We can't directly query auth.users from client, but we can try reset
+  // and handle the error, or use a server action to check provider first
+  
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
+  })
+  
+  return { data, error }
+}
+

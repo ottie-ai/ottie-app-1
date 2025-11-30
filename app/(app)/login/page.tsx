@@ -146,7 +146,7 @@ function LoginForm() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="px-2 text-muted-foreground">
                 Or continue with email
               </span>
             </div>
@@ -171,7 +171,7 @@ function LoginForm() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
                 <Link
-                  href="/forgot-password"
+                  href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ''}`}
                   className="text-xs text-muted-foreground hover:text-primary"
                 >
                   Forgot password?

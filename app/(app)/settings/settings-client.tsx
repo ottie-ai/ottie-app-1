@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail } from './actions'
 import { useUserProfile } from '@/contexts/user-profile-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
@@ -79,6 +79,10 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   
   // Use client-side user if available (more reliable), otherwise fall back to server user
   const user = clientUser || serverUser
+  
+  // Check if user has password provider (can reset password)
+  // User has password if they have 'email' identity provider
+  const hasPassword = user?.identities?.some((identity: { provider: string }) => identity.provider === 'email') || false
   
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') || 'profile'
@@ -595,7 +599,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <TabsTrigger value="team">Team</TabsTrigger>
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                  <TabsTrigger value="plan">Plan & Billing</TabsTrigger>
+                  <TabsTrigger value="plan">Billing</TabsTrigger>
+                  <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -716,8 +721,31 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </div>
               </div>
 
+                <Separator />
+
+                {/* Password */}
+                {/* TODO: Remove debug - change back to {hasPassword && ( */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!userEmail) return
+                        await sendPasswordResetEmail(userEmail)
+                        toast.success('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
+                      }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {hasPassword ? 'Reset password' : 'Set password'}
+                    </button>
+                  </div>
+                </div>
+
               {/* Save Button */}
-              <div className="flex justify-start">
+              <div className="flex justify-start mt-10">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-block">
@@ -749,41 +777,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </form>
                 )}
 
-                {/* Delete Account Section */}
-                <Separator className="my-6" />
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Danger Zone</p>
-                    <p className="text-xs text-muted-foreground">
-                      Permanently delete your account and all data
-                    </p>
-                  </div>
-                  <Button 
-                    variant="link" 
-                    size="sm"
-                    onClick={async () => {
-                      if (!user?.id) return
-                      
-                      setDeleteLoading(true)
-                      const checkResult = await checkWorkspacesForDeletion(user.id)
-                      setWorkspacesToDelete(checkResult.workspaces)
-                      setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
-                      setDeleteLoading(false)
-                      setShowDeleteDialog(true)
-                    }}
-                    disabled={deleteLoading || !user?.id}
-                    className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
-                  >
-                    {deleteLoading ? (
-                      <>
-                        <Loader2 className="size-4 mr-2 animate-spin" />
-                        Checking...
-                      </>
-                    ) : (
-                      'Delete account'
-                    )}
-                  </Button>
-                </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -900,8 +893,31 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </div>
                       </div>
 
+                      <Separator />
+
+                      {/* Password */}
+                      {/* TODO: Remove debug - change back to {hasPassword && ( */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="password-desktop" className="text-sm font-medium">Password</Label>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!userEmail) return
+                              await sendPasswordResetEmail(userEmail)
+                              toast.success('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
+                            }}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            {hasPassword ? 'Reset password' : 'Set password'}
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Save Button */}
-                      <div className="flex justify-start">
+                      <div className="flex justify-start mt-10">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-block">
@@ -933,41 +949,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </form>
                   )}
 
-                  {/* Delete Account Section */}
-                  <Separator className="my-6" />
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Danger Zone</p>
-                      <p className="text-xs text-muted-foreground">
-                        Permanently delete your account and all data
-                      </p>
-                    </div>
-                    <Button 
-                      variant="link" 
-                      size="sm"
-                      onClick={async () => {
-                        if (!user?.id) return
-                        
-                        setDeleteLoading(true)
-                        const checkResult = await checkWorkspacesForDeletion(user.id)
-                        setWorkspacesToDelete(checkResult.workspaces)
-                        setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
-                        setDeleteLoading(false)
-                        setShowDeleteDialog(true)
-                      }}
-                      disabled={deleteLoading || !user?.id}
-                      className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
-                    >
-                      {deleteLoading ? (
-                        <>
-                          <Loader2 className="size-4 mr-2 animate-spin" />
-                          Checking...
-                        </>
-                      ) : (
-                        'Delete account'
-                      )}
-                    </Button>
-                  </div>
                 </TabsContent>
               )}
 
@@ -1173,7 +1154,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </div>
 
                 {/* Save Button */}
-                <div className="flex justify-start">
+                <div className="flex justify-start mt-10">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-block">
@@ -1204,67 +1185,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </div>
                   </form>
 
-                  {/* Danger Zone Section - Only visible to owners */}
-                  {initialMembership?.role === 'owner' && (
-                    <>
-                      <Separator className="my-6" />
-                      <div className="space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">Danger Zone</p>
-                          <p className="text-xs text-muted-foreground">
-                            Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
-                          </p>
-                        </div>
-                        <Button 
-                          variant="link" 
-                          size="sm"
-                          onClick={async () => {
-                            if (!workspace || !user?.id) return
-                            
-                            const confirmed = window.confirm(
-                              `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                            )
-                            
-                            if (!confirmed) return
-                            
-                            setResetWorkspaceLoading(true)
-                            const result = await resetWorkspace(workspace.id, user.id)
-                            
-                            if ('error' in result) {
-                              toast.error(result.error)
-                            } else {
-                              toast.success('Workspace deleted and new workspace created successfully')
-                              // Refresh workspace data - this will load the new workspace
-                              await refreshWorkspace()
-                              // Reset local state
-                              setWorkspaceLogoUrl('')
-                              setOriginalWorkspaceLogoUrl('')
-                              setWorkspaceLogoFile(null)
-                              setWorkspaceLogoPreview(null)
-                              if (workspaceLogoInputRef.current) {
-                                workspaceLogoInputRef.current.value = ''
-                              }
-                              // Reload page to ensure all components use the new workspace
-                              window.location.reload()
-                            }
-                            
-                            setResetWorkspaceLoading(false)
-                          }}
-                          disabled={resetWorkspaceLoading || !user?.id}
-                          className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
-                        >
-                          {resetWorkspaceLoading ? (
-                            <>
-                              <Loader2 className="size-4 mr-2 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            'Delete workspace'
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  )}
                       </CardContent>
                     </Card>
                   ) : (
@@ -1465,7 +1385,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </div>
 
                         {/* Save Button */}
-                        <div className="flex justify-start">
+                        <div className="flex justify-start mt-10">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="inline-block">
@@ -1496,67 +1416,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </div>
                       </form>
 
-                      {/* Danger Zone Section - Only visible to owners */}
-                      {initialMembership?.role === 'owner' && (
-                        <>
-                          <Separator className="my-6" />
-                          <div className="space-y-3">
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium">Danger Zone</p>
-                              <p className="text-xs text-muted-foreground">
-                                Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
-                              </p>
-                            </div>
-                            <Button 
-                              variant="link" 
-                              size="sm"
-                              onClick={async () => {
-                                if (!workspace || !user?.id) return
-                                
-                                const confirmed = window.confirm(
-                                  `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                                )
-                                
-                                if (!confirmed) return
-                                
-                                setResetWorkspaceLoading(true)
-                                const result = await resetWorkspace(workspace.id, user.id)
-                                
-                                if ('error' in result) {
-                                  toast.error(result.error)
-                                } else {
-                                  toast.success('Workspace deleted and new workspace created successfully')
-                                  // Refresh workspace data - this will load the new workspace
-                                  await refreshWorkspace()
-                                  // Reset local state
-                                  setWorkspaceLogoUrl('')
-                                  setOriginalWorkspaceLogoUrl('')
-                                  setWorkspaceLogoFile(null)
-                                  setWorkspaceLogoPreview(null)
-                                  if (workspaceLogoInputRef.current) {
-                                    workspaceLogoInputRef.current.value = ''
-                                  }
-                                  // Reload page to ensure all components use the new workspace
-                                  window.location.reload()
-                                }
-                                
-                                setResetWorkspaceLoading(false)
-                              }}
-                              disabled={resetWorkspaceLoading || !user?.id}
-                              className="w-fit h-auto p-0 text-destructive hover:text-destructive/80"
-                            >
-                              {resetWorkspaceLoading ? (
-                                <>
-                                  <Loader2 className="size-4 mr-2 animate-spin" />
-                                  Deleting...
-                                </>
-                              ) : (
-                                'Delete workspace'
-                              )}
-                            </Button>
-                          </div>
-                        </>
-                      )}
                     </TabsContent>
                   )}
                 </>
@@ -1760,7 +1619,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               </TabsContent>
               )}
 
-              {/* Plan & Billing Tab */}
+              {/* Billing Tab */}
               {(() => {
                 const currentPlanId = workspace ? normalizePlan(workspace.plan) : 'free'
                 const currentTier = pricingTiers.find(t => t.id === currentPlanId) || pricingTiers[0]
@@ -2244,6 +2103,222 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     )}
                 </div>
               </TabsContent>
+              )}
+
+              {/* Data Tab */}
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Data</CardTitle>
+                    <CardDescription>
+                      Manage your account and workspace data
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Delete Account Section */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Delete Account</p>
+                        <p className="text-xs text-muted-foreground">
+                          Permanently delete your account and all data
+                        </p>
+                      </div>
+                      <Button 
+                        variant="link" 
+                        size="sm"
+                        onClick={async () => {
+                          if (!user?.id) return
+                          
+                          setDeleteLoading(true)
+                          const checkResult = await checkWorkspacesForDeletion(user.id)
+                          setWorkspacesToDelete(checkResult.workspaces)
+                          setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                          setDeleteLoading(false)
+                          setShowDeleteDialog(true)
+                        }}
+                        disabled={deleteLoading || !user?.id}
+                        className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                      >
+                        {deleteLoading ? (
+                          <>
+                            <Loader2 className="size-4 mr-2 animate-spin" />
+                            Checking...
+                          </>
+                        ) : (
+                          'Delete account'
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Delete Workspace Section - Only visible to owners */}
+                    {showWorkspaceSettings && initialMembership?.role === 'owner' && (
+                      <>
+                        <Separator className="my-6" />
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">Delete Workspace</p>
+                            <p className="text-xs text-muted-foreground">
+                              Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
+                            </p>
+                          </div>
+                          <Button 
+                            variant="link" 
+                            size="sm"
+                            onClick={async () => {
+                              if (!workspace || !user?.id) return
+                              
+                              const confirmed = window.confirm(
+                                `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                              )
+                              
+                              if (!confirmed) return
+                              
+                              setResetWorkspaceLoading(true)
+                              const result = await resetWorkspace(workspace.id, user.id)
+                              
+                              if ('error' in result) {
+                                toast.error(result.error)
+                              } else {
+                                toast.success('Workspace deleted and new workspace created successfully')
+                                // Refresh workspace data - this will load the new workspace
+                                await refreshWorkspace()
+                                // Reset local state
+                                setWorkspaceLogoUrl('')
+                                setOriginalWorkspaceLogoUrl('')
+                                setWorkspaceLogoFile(null)
+                                setWorkspaceLogoPreview(null)
+                                if (workspaceLogoInputRef.current) {
+                                  workspaceLogoInputRef.current.value = ''
+                                }
+                                // Reload page to ensure all components use the new workspace
+                                window.location.reload()
+                              }
+                              
+                              setResetWorkspaceLoading(false)
+                            }}
+                            disabled={resetWorkspaceLoading || !user?.id}
+                            className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                          >
+                            {resetWorkspaceLoading ? (
+                              <>
+                                <Loader2 className="size-4 mr-2 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              'Delete workspace'
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="data" className="mt-0 sm:mt-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Data</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your account and workspace data
+                    </p>
+                  </div>
+                  
+                  {/* Delete Account Section */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">Delete Account</p>
+                      <p className="text-xs text-muted-foreground">
+                        Permanently delete your account and all data
+                      </p>
+                    </div>
+                    <Button 
+                      variant="link" 
+                      size="sm"
+                      onClick={async () => {
+                        if (!user?.id) return
+                        
+                        setDeleteLoading(true)
+                        const checkResult = await checkWorkspacesForDeletion(user.id)
+                        setWorkspacesToDelete(checkResult.workspaces)
+                        setHasMultiUserWorkspace(checkResult.hasMultiUserWorkspace)
+                        setDeleteLoading(false)
+                        setShowDeleteDialog(true)
+                      }}
+                      disabled={deleteLoading || !user?.id}
+                      className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                    >
+                      {deleteLoading ? (
+                        <>
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          Checking...
+                        </>
+                      ) : (
+                        'Delete account'
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Delete Workspace Section - Only visible to owners */}
+                  {showWorkspaceSettings && initialMembership?.role === 'owner' && (
+                    <>
+                      <Separator className="my-6" />
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Delete Workspace</p>
+                          <p className="text-xs text-muted-foreground">
+                            Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
+                          </p>
+                        </div>
+                        <Button 
+                          variant="link" 
+                          size="sm"
+                          onClick={async () => {
+                            if (!workspace || !user?.id) return
+                            
+                            const confirmed = window.confirm(
+                              `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                            )
+                            
+                            if (!confirmed) return
+                            
+                            setResetWorkspaceLoading(true)
+                            const result = await resetWorkspace(workspace.id, user.id)
+                            
+                            if ('error' in result) {
+                              toast.error(result.error)
+                            } else {
+                              toast.success('Workspace deleted and new workspace created successfully')
+                              // Refresh workspace data - this will load the new workspace
+                              await refreshWorkspace()
+                              // Reset local state
+                              setWorkspaceLogoUrl('')
+                              setOriginalWorkspaceLogoUrl('')
+                              setWorkspaceLogoFile(null)
+                              setWorkspaceLogoPreview(null)
+                              if (workspaceLogoInputRef.current) {
+                                workspaceLogoInputRef.current.value = ''
+                              }
+                              // Reload page to ensure all components use the new workspace
+                              window.location.reload()
+                            }
+                            
+                            setResetWorkspaceLoading(false)
+                          }}
+                          disabled={resetWorkspaceLoading || !user?.id}
+                          className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                        >
+                          {resetWorkspaceLoading ? (
+                            <>
+                              <Loader2 className="size-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete workspace'
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
               )}
               </div>
             </div>
