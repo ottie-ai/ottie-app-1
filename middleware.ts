@@ -306,12 +306,27 @@ async function handleSupabaseSession(
     }
   )
 
-  // Refresh session if expired
+  // Validate user with Supabase server
+  // This detects deleted users and clears invalid sessions
   try {
-  await supabase.auth.getUser()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error || !user) {
+      // User doesn't exist or session is invalid
+      // Clear the session cookies by signing out
+      await supabase.auth.signOut()
+      
+      // If on a protected route, redirect to login
+      const inviteRoute = pathname.startsWith('/invite/')
+      if (!inviteRoute) {
+        const loginUrl = new URL('/login', request.url)
+        loginUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(loginUrl)
+      }
+    }
   } catch (error) {
-    // If session refresh fails, just continue - auth guard will handle it
-    console.warn('Session refresh failed:', error)
+    // If session validation fails, continue - auth guard will handle it
+    console.warn('Session validation failed:', error)
   }
 
   return response
