@@ -7,7 +7,37 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Default from address - update this to your verified domain
 // For development, you can use 'onboarding@resend.dev'
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Ottie <onboarding@resend.dev>'
+// Format must be: "email@example.com" or "Name <email@example.com>"
+function getFromEmail(): string {
+  let fromEmail = process.env.RESEND_FROM_EMAIL || 'Ottie <onboarding@resend.dev>'
+  
+  // Remove surrounding quotes if present (common in env variables)
+  fromEmail = fromEmail.trim()
+  if ((fromEmail.startsWith('"') && fromEmail.endsWith('"')) || 
+      (fromEmail.startsWith("'") && fromEmail.endsWith("'"))) {
+    fromEmail = fromEmail.slice(1, -1).trim()
+  }
+  
+  // Validate format - must be either "email@domain.com" or "Name <email@domain.com>"
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const nameEmailRegex = /^.+ <[^\s@]+@[^\s@]+\.[^\s@]+>$/
+  
+  // If it's just an email without name, add default name
+  if (emailRegex.test(fromEmail) && !fromEmail.includes('<')) {
+    return `Ottie <${fromEmail}>`
+  }
+  
+  // If it's already in correct format, return as is
+  if (nameEmailRegex.test(fromEmail) || emailRegex.test(fromEmail)) {
+    return fromEmail
+  }
+  
+  // Fallback to default
+  console.warn('[EMAIL] Invalid RESEND_FROM_EMAIL format, using default. Expected: "email@domain.com" or "Name <email@domain.com>". Got:', fromEmail)
+  return 'Ottie <onboarding@resend.dev>'
+}
+
+const FROM_EMAIL = getFromEmail()
 
 interface SendInviteEmailParams {
   to: string
@@ -34,9 +64,20 @@ export async function sendInviteEmail({
     return { success: false, error: 'Email service not configured. Please set RESEND_API_KEY.' }
   }
 
-  // Validate FROM_EMAIL
-  if (!FROM_EMAIL || FROM_EMAIL.includes('onboarding@resend.dev')) {
-    console.warn('[EMAIL] RESEND_FROM_EMAIL not configured or using default. Using:', FROM_EMAIL)
+  // Validate FROM_EMAIL format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const nameEmailRegex = /^.+ <[^\s@]+@[^\s@]+\.[^\s@]+>$/
+  
+  if (!nameEmailRegex.test(FROM_EMAIL) && !emailRegex.test(FROM_EMAIL)) {
+    console.error('[EMAIL] Invalid FROM_EMAIL format:', FROM_EMAIL)
+    return { 
+      success: false, 
+      error: `Invalid email format. FROM_EMAIL must be "email@domain.com" or "Name <email@domain.com>". Current: ${FROM_EMAIL}` 
+    }
+  }
+  
+  if (FROM_EMAIL.includes('onboarding@resend.dev')) {
+    console.warn('[EMAIL] Using default Resend email. Configure RESEND_FROM_EMAIL with your verified domain.')
   }
 
   const roleDescription = role === 'admin' 
@@ -46,6 +87,7 @@ export async function sendInviteEmail({
   console.log('[EMAIL] Attempting to send invitation email:', {
     to,
     from: FROM_EMAIL,
+    fromRaw: process.env.RESEND_FROM_EMAIL,
     workspaceName,
     hasApiKey: !!process.env.RESEND_API_KEY,
   })
