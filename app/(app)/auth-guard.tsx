@@ -17,7 +17,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Public routes that don't need authentication
-  const publicRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
+  // /invite routes are public because non-authenticated users need to see the invitation
+  const publicRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password', '/invite']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
 
   console.log('[AuthGuard] State:', { pathname, loading, user: user?.email, isPublicRoute })
@@ -26,9 +27,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Only redirect if not on a public route
     if (!loading && !user && !isPublicRoute) {
       console.log('[AuthGuard] No user, redirecting to login')
-      router.push('/login?redirect=/overview')
+      // Preserve the current pathname in redirect so user returns after login
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [user, loading, router, isPublicRoute])
+  }, [user, loading, router, isPublicRoute, pathname])
 
   // For public routes, always render children
   if (isPublicRoute) {
