@@ -86,76 +86,76 @@ export async function updateUserProfile(userId: string, formData: FormData) {
 
   // Handle avatar upload if file is provided
   if (avatarFile && avatarFile instanceof File && avatarFile.size > 0) {
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if (!validTypes.includes(avatarFile.type)) {
-      return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
-    }
+    return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
+  }
 
-    // Validate file size (max 2MB)
-    const maxSize = 2 * 1024 * 1024 // 2MB
+  // Validate file size (max 2MB)
+  const maxSize = 2 * 1024 * 1024 // 2MB
     if (avatarFile.size > maxSize) {
-      return { error: 'File size too large. Maximum size is 2MB.' }
+    return { error: 'File size too large. Maximum size is 2MB.' }
+  }
+
+  try {
+    // First, delete all existing avatars for this user from storage
+    // This ensures user always has only one avatar
+    try {
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(userId)
+      
+      if (existingFiles && existingFiles.length > 0) {
+        const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
+        await supabase.storage
+          .from('avatars')
+          .remove(filesToDelete)
+      }
+    } catch (deleteError) {
+      // Don't fail upload if deletion fails - continue with upload
+      console.error('Error deleting old avatars:', deleteError)
     }
 
-    try {
-      // First, delete all existing avatars for this user from storage
-      // This ensures user always has only one avatar
-      try {
-        const { data: existingFiles } = await supabase.storage
-          .from('avatars')
-          .list(userId)
-        
-        if (existingFiles && existingFiles.length > 0) {
-          const filesToDelete = existingFiles.map(file => `${userId}/${file.name}`)
-          await supabase.storage
-            .from('avatars')
-            .remove(filesToDelete)
-        }
-      } catch (deleteError) {
-        // Don't fail upload if deletion fails - continue with upload
-        console.error('Error deleting old avatars:', deleteError)
-      }
-
-      // Generate unique filename: userId-timestamp.extension
+    // Generate unique filename: userId-timestamp.extension
       const fileExt = avatarFile.name.split('.').pop()
-      const fileName = `${userId}-${Date.now()}.${fileExt}`
-      const filePath = `${userId}/${fileName}`
+    const fileName = `${userId}-${Date.now()}.${fileExt}`
+    const filePath = `${userId}/${fileName}`
 
-      // Upload file to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
+    // Upload file to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
         .upload(filePath, avatarFile, {
-          cacheControl: '3600',
-          upsert: false, // Don't overwrite existing files
-        })
+        cacheControl: '3600',
+        upsert: false, // Don't overwrite existing files
+      })
 
-      if (uploadError) {
-        console.error('Error uploading avatar:', uploadError)
-        // Provide more specific error messages
-        if (uploadError.message?.includes('Bucket not found')) {
-          return { error: 'Storage bucket not found. Please create the "avatars" bucket in Supabase Storage.' }
-        }
-        if (uploadError.message?.includes('new row violates row-level security policy')) {
-          return { error: 'Permission denied. Please check Storage policies for the "avatars" bucket.' }
-        }
-        return { error: `Failed to upload avatar: ${uploadError.message || 'Unknown error'}` }
+    if (uploadError) {
+      console.error('Error uploading avatar:', uploadError)
+      // Provide more specific error messages
+      if (uploadError.message?.includes('Bucket not found')) {
+        return { error: 'Storage bucket not found. Please create the "avatars" bucket in Supabase Storage.' }
       }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-
-      if (!urlData?.publicUrl) {
-        return { error: 'Failed to get avatar URL' }
+      if (uploadError.message?.includes('new row violates row-level security policy')) {
+        return { error: 'Permission denied. Please check Storage policies for the "avatars" bucket.' }
       }
+      return { error: `Failed to upload avatar: ${uploadError.message || 'Unknown error'}` }
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    if (!urlData?.publicUrl) {
+      return { error: 'Failed to get avatar URL' }
+    }
 
       updates.avatar_url = urlData.publicUrl
-    } catch (error) {
-      console.error('Error uploading avatar:', error)
-      return { error: 'An unexpected error occurred. Please try again.' }
-    }
+  } catch (error) {
+    console.error('Error uploading avatar:', error)
+    return { error: 'An unexpected error occurred. Please try again.' }
+  }
   } else if (avatarUrl !== null) {
     // If avatarUrl is provided (even if empty), use it
     updates.avatar_url = avatarUrl || null
@@ -651,7 +651,7 @@ export async function removeWorkspaceLogo(
 
   // Revalidate settings page
   revalidatePath('/settings')
-
+  
   return { success: true, workspace: data as Workspace }
 }
 

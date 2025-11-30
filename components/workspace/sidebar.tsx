@@ -192,7 +192,7 @@ export function DashboardSidebar() {
         </div>
       )}
 
-      <SidebarHeader className="relative z-10">
+      <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -201,7 +201,7 @@ export function DashboardSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <div className="gradient-ottie flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <div className="gradient-ottie flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
                     <svg 
                       className="size-4 text-white" 
                       viewBox="0 0 104 105" 
@@ -268,16 +268,16 @@ export function DashboardSidebar() {
                 ) : (
                   <>
                     <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         Upgrade
-                      </DropdownMenuItem>
-                    </PricingDialog>
+                  </DropdownMenuItem>
+                </PricingDialog>
                     <DropdownMenuItem asChild className="text-primary focus:text-primary">
                       <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
                         <UserPlus className="h-4 w-4" />
                         Invite Users
                       </Link>
-                    </DropdownMenuItem>
+                </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
@@ -305,10 +305,17 @@ export function DashboardSidebar() {
         {/* New Site Button */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
-            <Button className="w-full justify-start gap-2" size="sm">
-              <Plus className="size-4" />
-              {!isCollapsed && <span>New Site</span>}
-            </Button>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="New Site"
+                  className="bg-primary text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground active:!bg-primary/80"
+                >
+                  <Plus className="size-4" />
+                  <span>New Site</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
@@ -465,16 +472,17 @@ export function DashboardSidebar() {
 
       </SidebarContent>
 
-      <SidebarFooter className="relative z-10">
+      <SidebarFooter className="relative z-10 group-data-[collapsible=icon]:p-0">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
+                  tooltip={userName}
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className="h-8 w-8 rounded-lg">
+                  <Avatar className="size-8 rounded-lg shrink-0">
                     <AvatarImage src={userAvatar || undefined} alt={userName} />
                     <AvatarFallback className="rounded-lg">
                       {getInitials(userName, userEmail)}

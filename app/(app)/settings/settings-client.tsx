@@ -606,7 +606,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <CardHeader>
                     <CardTitle>Account</CardTitle>
                     <CardDescription>
-                      Manage your personal information and preferences
+                    Manage your personal information and preferences
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -657,17 +657,17 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
                 <Separator />
 
-                {/* Full Name */}
+                  {/* Full Name */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
+                    <Label htmlFor="fullName" className="text-sm font-medium">Full name</Label>
                   <div className="flex items-center gap-3">
-                    <Input 
-                      id="fullName" 
-                      value={fullName} 
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="John Doe" 
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="John Doe"
                       className="w-full sm:w-64"
-                    />
+                      />
                   </div>
                 </div>
 
@@ -676,7 +676,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   {/* Email (Read-only) */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                   </div>
                     <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
@@ -725,18 +725,18 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         type="submit" 
                         disabled={saving || (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl)}
                       >
-                        {saving ? (
-                          <>
-                            <Loader2 className="size-4 mr-2 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="size-4 mr-2" />
-                            Save changes
-                          </>
-                        )}
-                      </Button>
+                      {saving ? (
+                        <>
+                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                  <Check className="size-4 mr-2" />
+                  Save changes
+                        </>
+                      )}
+                </Button>
                     </span>
                   </TooltipTrigger>
                   {!saving && (fullName.trim() === originalFullName.trim() && !avatarFile && avatarUrl === originalAvatarUrl) && (
@@ -789,12 +789,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               ) : (
                 <TabsContent value="profile" className="mt-0 sm:mt-6 space-y-6">
                   {/* Duplicate content for desktop - same as mobile */}
-                  <div>
+                <div>
                     <h2 className="text-lg font-semibold">Account</h2>
-                    <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                       Manage your personal information and preferences
-                    </p>
-                  </div>
+                  </p>
+                </div>
 
                   {loading ? (
                     <div className="flex items-center justify-center py-12">
@@ -984,7 +984,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </CardHeader>
                       <CardContent>
 
-                  {/* Settings Fields */}
+                {/* Settings Fields */}
                     <form 
                     id="workspace-form"
                     onSubmit={async (e) => {
@@ -1140,7 +1140,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     {/* Workspace Name */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <Label htmlFor="workspaceName" className="text-sm font-medium">Workspace name</Label>
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                         <Input 
                           id="workspaceName" 
                           value={workspaceName} 
@@ -1149,31 +1149,31 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           className="w-full sm:w-64"
                           disabled={savingWorkspace}
                         />
-                      </div>
                     </div>
+                  </div>
 
-                    <Separator />
+                  <Separator />
 
-                    {/* Website */}
+                  {/* Website */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <Label htmlFor="website" className="text-sm font-medium">Website</Label>
-                      <div className="flex items-center gap-3">
+                    <Label htmlFor="website" className="text-sm font-medium">Website</Label>
+                    <div className="flex items-center gap-3">
                         <Input id="website" type="url" placeholder="https://example.com" className="w-full sm:w-64" />
-                      </div>
                     </div>
+                  </div>
 
-                    <Separator />
+                  <Separator />
 
-                    {/* License */}
+                  {/* License */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <Label htmlFor="license" className="text-sm font-medium">License number</Label>
-                      <div className="flex items-center gap-3">
+                    <Label htmlFor="license" className="text-sm font-medium">License number</Label>
+                    <div className="flex items-center gap-3">
                         <Input id="license" placeholder="DRE #01234567" className="w-full sm:w-64" />
-                      </div>
-                    </div>
+                  </div>
+                </div>
 
-                    {/* Save Button */}
-                    <div className="flex justify-start">
+                {/* Save Button */}
+                <div className="flex justify-start">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="inline-block">
@@ -1188,11 +1188,11 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                 </>
                               ) : (
                                 <>
-                                  <Check className="size-4 mr-2" />
-                                  Save changes
+                    <Check className="size-4 mr-2" />
+                    Save changes
                                 </>
                               )}
-                            </Button>
+                  </Button>
                           </span>
                         </TooltipTrigger>
                         {!savingWorkspace && ((!workspaceName.trim() || workspaceName.trim() === originalWorkspaceName.trim()) && !workspaceLogoFile) && (
@@ -1201,7 +1201,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           </TooltipContent>
                         )}
                       </Tooltip>
-                    </div>
+                </div>
                   </form>
 
                   {/* Danger Zone Section - Only visible to owners */}
@@ -1269,12 +1269,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </Card>
                   ) : (
                     <TabsContent value="workspace" className="mt-0 sm:mt-6 space-y-6">
-                      <div>
+                <div>
                         <h2 className="text-lg font-semibold">Workspace</h2>
-                        <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                           Manage your workspace settings and team
-                        </p>
-                      </div>
+                  </p>
+                </div>
 
                       {/* Settings Fields */}
                       <form 
@@ -1572,55 +1572,55 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {/* Settings Fields */}
-                    <div className="space-y-4">
-                      {/* Theme */}
+                {/* Settings Fields */}
+                <div className="space-y-4">
+                  {/* Theme */}
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <Label htmlFor="theme" className="text-sm font-medium">Theme</Label>
-                        <div className="flex items-center gap-3">
+                    <Label htmlFor="theme" className="text-sm font-medium">Theme</Label>
+                    <div className="flex items-center gap-3">
                           <div className="flex gap-2 flex-wrap">
-                            <Button
-                              variant={theme === 'light' ? 'default' : 'outline'}
-                              size="sm"
-                              onClick={() => setTheme('light')}
-                              className="gap-2"
-                            >
-                              <Sun className="size-4" />
-                              Light
-                            </Button>
-                            <Button
-                              variant={theme === 'dark' ? 'default' : 'outline'}
-                              size="sm"
-                              onClick={() => setTheme('dark')}
-                              className="gap-2"
-                            >
-                              <Moon className="size-4" />
-                              Dark
-                            </Button>
-                            <Button
-                              variant={theme === 'system' ? 'default' : 'outline'}
-                              size="sm"
-                              onClick={() => setTheme('system')}
-                              className="gap-2"
-                            >
-                              <Monitor className="size-4" />
-                              System
-                            </Button>
-                          </div>
-                        </div>
+                        <Button
+                          variant={theme === 'light' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setTheme('light')}
+                          className="gap-2"
+                        >
+                          <Sun className="size-4" />
+                          Light
+                        </Button>
+                        <Button
+                          variant={theme === 'dark' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setTheme('dark')}
+                          className="gap-2"
+                        >
+                          <Moon className="size-4" />
+                          Dark
+                        </Button>
+                        <Button
+                          variant={theme === 'system' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setTheme('system')}
+                          className="gap-2"
+                        >
+                          <Monitor className="size-4" />
+                          System
+                        </Button>
                       </div>
                     </div>
+                  </div>
+                </div>
                   </CardContent>
                 </Card>
               ) : (
                 <TabsContent value="appearance" className="mt-0 sm:mt-6 space-y-6">
                   {/* Duplicate appearance content for desktop */}
-                  <div>
+                <div>
                     <h2 className="text-lg font-semibold">Appearance</h2>
-                    <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                       Customize how Ottie looks on your device
-                    </p>
-                  </div>
+                  </p>
+                </div>
                   <div className="space-y-6">
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center justify-between">
@@ -1747,17 +1747,17 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       <Switch defaultChecked />
                     </div>
                     <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Marketing emails</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Receive tips and product updates
-                        </p>
-                      </div>
-                      <Switch />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Marketing emails</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Receive tips and product updates
+                      </p>
                     </div>
+                    <Switch />
                   </div>
-                </TabsContent>
+                </div>
+              </TabsContent>
               )}
 
               {/* Plan & Billing Tab */}
@@ -1774,7 +1774,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <Card className="mb-6">
                     <CardHeader>
                       <div className="flex items-start justify-between">
-                        <div>
+                <div>
                           <CardTitle>Billing</CardTitle>
                           <CardDescription>
                             For questions about billing,{' '}
@@ -1840,13 +1840,13 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </div>
                       ) : isHighestPlan ? (
                         <div className="rounded-lg border p-4 text-center space-y-2">
-                          <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                             Need custom plan?
-                          </p>
+                  </p>
                           <Button variant="outline" className="w-full" asChild>
                             <a href="mailto:sales@getottie.com">Contact Sales</a>
                           </Button>
-                        </div>
+                </div>
                       ) : null}
 
                       {/* Manage Subscription */}
@@ -1862,7 +1862,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         >
                           Manage subscription <ExternalLink className="h-3 w-3" />
                         </a>
-                      </div>
+                  </div>
                     </CardContent>
                   </Card>
                 ) : (
@@ -1883,7 +1883,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           All plans <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
                       </PricingDialog>
-                    </div>
+                </div>
 
                     {/* Current Plan */}
                     <div className="rounded-lg border p-4">
@@ -1917,7 +1917,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               <Button variant="ghost" size="sm" className="text-muted-foreground">
                                 View all plans
                               </Button>
-                            </PricingDialog>
+                </PricingDialog>
                             <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                               <Button size="sm">Upgrade now</Button>
                             </PricingDialog>
@@ -1957,7 +1957,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         Manage subscription <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
-                  </TabsContent>
+              </TabsContent>
                 )
               })()}
 
@@ -1966,7 +1966,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 <Card className="mb-6">
                   <CardHeader>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                      <div>
+                <div>
                         <CardTitle>Team</CardTitle>
                         <CardDescription>
                           Manage your workspace members and invitations
@@ -2002,7 +2002,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                             Upgrade Plan
                           </Button>
                         </PricingDialog>
-                      </div>
+                </div>
                     </div>
                   </div>
                 )}
@@ -2122,7 +2122,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       <Button size="sm" variant="outline" disabled>
                         <Plus className="h-4 w-4 mr-2" />
                         Invite User
-                      </Button>
+                    </Button>
                     )}
                   </div>
                   {workspace && !isMultiUserPlan(workspace.plan) && (
@@ -2242,8 +2242,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </tbody>
                       </table>
                     )}
-                  </div>
-                </TabsContent>
+                </div>
+              </TabsContent>
               )}
               </div>
             </div>
