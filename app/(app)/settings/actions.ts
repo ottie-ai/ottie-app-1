@@ -315,11 +315,21 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     return { error: 'Not authenticated' }
   }
 
-  const supabase = await createClient()
+  // Use admin client to bypass RLS for account deletion
+  // This is a system operation that needs elevated privileges
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  
+  let adminClient
+  try {
+    adminClient = createAdminClient()
+  } catch (error) {
+    console.error('Failed to create admin client:', error)
+    return { error: 'Service configuration error. Please contact support.' }
+  }
 
   try {
     // 1. Get all workspaces where user is owner
-    const { data: ownedWorkspaces } = await supabase
+    const { data: ownedWorkspaces } = await adminClient
       .from('memberships')
       .select('workspace_id')
       .eq('user_id', userId)
@@ -328,7 +338,7 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     if (ownedWorkspaces) {
       for (const membership of ownedWorkspaces) {
         // Check if workspace has multiple members
-        const { count } = await supabase
+        const { count } = await adminClient
           .from('memberships')
           .select('*', { count: 'exact', head: true })
           .eq('workspace_id', membership.workspace_id)
@@ -336,19 +346,19 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
         // If single-user workspace, delete sites and integrations
         if (count === 1) {
           // Delete sites
-          await supabase
+          await adminClient
             .from('sites')
             .delete()
             .eq('workspace_id', membership.workspace_id)
 
           // Delete integrations
-          await supabase
+          await adminClient
             .from('integrations')
             .delete()
             .eq('workspace_id', membership.workspace_id)
 
           // Delete workspace
-          await supabase
+          await adminClient
             .from('workspaces')
             .delete()
             .eq('id', membership.workspace_id)
@@ -357,20 +367,20 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     }
 
     // 2. Delete all memberships for this user
-    await supabase
+    await adminClient
       .from('memberships')
       .delete()
       .eq('user_id', userId)
 
     // 3. Delete all avatars from storage
     try {
-      const { data: avatarFiles } = await supabase.storage
+      const { data: avatarFiles } = await adminClient.storage
         .from('avatars')
         .list(userId)
 
       if (avatarFiles && avatarFiles.length > 0) {
         const filesToDelete = avatarFiles.map(file => `${userId}/${file.name}`)
-        await supabase.storage
+        await adminClient.storage
           .from('avatars')
           .remove(filesToDelete)
       }
@@ -380,7 +390,7 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     }
 
     // 4. Anonymize profile (soft delete)
-    const { error: profileError } = await supabase
+    const { error: profileError } = await adminClient
       .from('profiles')
       .update({
         email: null,
@@ -396,11 +406,10 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     }
 
     // 5. Anonymize email in auth.users (requires service role)
-    // This is done via RPC function that runs with security definer
     // Generate anonymized email to allow re-registration with original email
     const anonymizedEmail = `deleted_${userId.substring(0, 8)}_${Date.now()}@deleted.local`
     
-    const { error: authError } = await supabase.rpc('anonymize_auth_user', {
+    const { error: authError } = await adminClient.rpc('anonymize_auth_user', {
       user_uuid: userId,
       anonymized_email: anonymizedEmail,
     })
