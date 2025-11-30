@@ -17,7 +17,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog,
@@ -144,6 +144,25 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       window.removeEventListener('resize', checkMobile)
     }
   }, [])
+
+  // Open UserJot feedback widget
+  const openUserJot = () => {
+    if (typeof window === 'undefined') return
+
+    const win = window as any
+    
+    // Use the official UserJot API to show widget
+    if (win.uj && win.uj.showWidget) {
+      win.uj.showWidget({ section: 'feedback' })
+    } else if (win.$ujq) {
+      // Queue the command if SDK is still loading
+      win.$ujq.push(['showWidget', { section: 'feedback' }])
+    } else {
+      // Initialize queue and push command
+      win.$ujq = []
+      win.$ujq.push(['showWidget', { section: 'feedback' }])
+    }
+  }
 
   // Delete account dialog state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -1634,22 +1653,20 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 return isMobile ? (
                   <Card className="mb-6">
                     <CardHeader>
-                      <div className="flex items-start justify-between">
-                <div>
-                          <CardTitle>Billing</CardTitle>
-                          <CardDescription>
-                            For questions about billing,{' '}
-                            <a href="mailto:support@getottie.com" className="underline hover:no-underline">
-                              contact us
-                            </a>
-                          </CardDescription>
-                        </div>
+                      <CardTitle>Billing</CardTitle>
+                      <CardDescription>
+                        For questions about billing,{' '}
+                        <a href="mailto:support@getottie.com" className="underline hover:no-underline">
+                          contact us
+                        </a>
+                      </CardDescription>
+                      <CardAction>
                         <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                           <Button variant="ghost" size="sm" className="text-muted-foreground">
                             All plans <ArrowRight className="h-4 w-4 ml-1" />
                           </Button>
                         </PricingDialog>
-                      </div>
+                      </CardAction>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {/* Current Plan */}
@@ -1826,20 +1843,18 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               {isMobile ? (
                 <Card className="mb-6">
                   <CardHeader>
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                        <CardTitle>Team</CardTitle>
-                        <CardDescription>
-                          Manage your workspace members and invitations
-                        </CardDescription>
-                      </div>
-                      {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                    <CardTitle>Team</CardTitle>
+                    <CardDescription>
+                      Manage your workspace members and invitations
+                    </CardDescription>
+                    {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
+                      <CardAction>
                         <Button size="sm" variant="outline" disabled>
                           <Plus className="h-4 w-4 mr-2" />
                           Invite User
                         </Button>
-                      )}
-                    </div>
+                      </CardAction>
+                    )}
                   </CardHeader>
                   <CardContent>
                     {/* Banner for single-user workspaces */}
@@ -2331,6 +2346,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <CardDescription>
                       Connect your Ottie account with other apps and services
                     </CardDescription>
+                    <CardAction>
+                      <Button variant="outline" size="sm" onClick={openUserJot} className="gap-2">
+                        <Plus className="size-4" />
+                        Request integration
+                      </Button>
+                    </CardAction>
                   </CardHeader>
                   <CardContent className="space-y-8 pb-8">
                     {/* CRM Sync Section */}
@@ -2568,11 +2589,17 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                 </Card>
               ) : (
                 <TabsContent value="integrations" className="mt-0 sm:mt-6 space-y-8 pb-8">
-                  <div>
-                    <h2 className="text-lg font-semibold">Integrations</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Connect your Ottie account with other apps and services
-                    </p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h2 className="text-lg font-semibold">Integrations</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Connect your Ottie account with other apps and services
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={openUserJot} className="shrink-0 gap-2">
+                      <Plus className="h-4 w-4" />
+                      Request integration
+                    </Button>
                   </div>
 
                   {/* CRM Sync Section */}
