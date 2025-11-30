@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
@@ -600,6 +601,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   <TabsTrigger value="plan">Billing</TabsTrigger>
+                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
               </div>
@@ -651,7 +653,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                         onChange={handleFileChange}
-                        className="w-full cursor-pointer"
+                        className="w-full"
                       />
                       <p className="text-xs text-muted-foreground">
                         Upload a JPEG, PNG, GIF, or WebP image (max 2MB)
@@ -739,7 +741,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       }}
                       className="text-sm text-primary hover:underline"
                     >
-                      {hasPassword ? 'Reset password' : 'Set password'}
+                      {hasPassword ? 'Reset password' : 'Request reset password email'}
                     </button>
                   </div>
                 </div>
@@ -823,7 +825,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               type="file"
                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                               onChange={handleFileChange}
-                              className="w-full cursor-pointer"
+                              className="w-full"
                             />
                             <p className="text-xs text-muted-foreground">
                               Upload a JPEG, PNG, GIF, or WebP image (max 2MB)
@@ -911,7 +913,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                             }}
                             className="text-sm text-primary hover:underline"
                           >
-                            {hasPassword ? 'Reset password' : 'Set password'}
+                            {hasPassword ? 'Reset password' : 'Request reset password email'}
                           </button>
                         </div>
                       </div>
@@ -1106,7 +1108,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                 reader.readAsDataURL(file)
                               }
                             }}
-                            className="w-full cursor-pointer"
+                            className="w-full"
                             disabled={savingWorkspace}
                           />
                           <p className="text-xs text-muted-foreground">
@@ -1337,7 +1339,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                     reader.readAsDataURL(file)
                                   }
                                 }}
-                                className="w-full cursor-pointer"
+                                className="w-full"
                                 disabled={savingWorkspace}
                               />
                               <p className="text-xs text-muted-foreground">
@@ -2318,6 +2320,492 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       </div>
                     </>
                   )}
+                </TabsContent>
+              )}
+
+              {/* Integrations Tab */}
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Integrations</CardTitle>
+                    <CardDescription>
+                      Connect your Ottie account with other apps and services
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-8 pb-8">
+                    {/* CRM Sync Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">CRM Sync</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Sync your leads and contacts with your CRM platform
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {/* HubSpot */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 22 26" fill="none">
+                                <path fillRule="evenodd" clipRule="evenodd" d="M16.79 6.7V9.37c2.45.37 4.4 2.21 4.9 4.6.5 2.4-.56 4.85-2.65 6.15-2.1 1.3-4.79 1.18-6.76-.3l-2.2 2.17c.06.18.09.36.09.55 0 1.05-.86 1.9-1.93 1.9s-1.93-.85-1.93-1.9c0-1.06.86-1.91 1.93-1.91.19 0 .37.03.55.09l2.22-2.2c-1.4-1.97-1.44-4.59-.09-6.6L3.62 6.31c-.98.56-2.22.35-2.96-.49-.75-.84-.79-2.08-.1-2.97.69-.88 1.92-1.16 2.93-.67 1.01.49 1.53 1.63 1.24 2.7l7.43 5.72c.81-.64 1.78-1.07 2.81-1.22V6.7c-.73-.34-1.2-1.06-1.2-1.86v-.06c0-1.14.93-2.06 2.08-2.06h.06c1.15 0 2.08.92 2.08 2.06v.06c0 .8-.47 1.52-1.2 1.86zm-3.95 8.46c0 1.66 1.36 3.01 3.04 3.01 1.68 0 3.04-1.35 3.04-3.01 0-1.66-1.36-3.01-3.04-3.01-1.68 0-3.04 1.35-3.04 3.01z" fill="#FF4800"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">HubSpot</p>
+                              <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+
+                        {/* Zoho */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 182 62">
+                                <path fill="#089949" d="M81.1 62c-1.4 0-2.8-.3-4.1-.9L48.2 48.3c-5.2-2.3-7.5-8.3-5.2-13.5L55.8 6.1c2.3-5.1 8.3-7.5 13.5-5.2l28.8 12.8c5.1 2.3 7.5 8.3 5.2 13.5L90.4 56c-1.7 3.8-5.4 6-9.3 6zm-1.8-6.3c2.2 1 4.7 0 5.7-2.2l12.8-28.8c1-2.2 0-4.7-2.2-5.7L66.9 6.3c-2.2-1-4.7 0-5.7 2.2L48.4 37.2c-1 2.2 0 4.7 2.2 5.7l28.7 12.8z"/>
+                                <path fill="#F9B21D" d="M171.3 62h-31.5c-5.6 0-10.2-4.6-10.2-10.2V20.3c0-5.6 4.6-10.2 10.2-10.2h31.5c5.6 0 10.2 4.6 10.2 10.2v31.5c0 5.6-4.6 10.2-10.2 10.2zm-31.5-46c-2.4 0-4.3 1.9-4.3 4.3v31.5c0 2.4 1.9 4.3 4.3 4.3h31.5c2.4 0 4.3-1.9 4.3-4.3V20.3c0-2.4-1.9-4.3-4.3-4.3h-31.5z"/>
+                                <path fill="#E42527" d="M53.3 26.1l-4.2 9.5-.2.3 1.7 10.2c.4 2.4-1.2 4.6-3.6 4.9l-31.1 5c-1.1.2-2.3-.1-3.2-.8-.9-.7-1.5-1.7-1.7-2.8l-5-31.1c-.2-1.1.1-2.3.8-3.2.7-.9 1.7-1.5 2.8-1.7l31.1-5c.2 0 .5-.1.7-.1 2.1 0 3.9 1.5 4.3 3.6l1.7 10.3 4.4-9.8-.2-1.4c-.9-5.6-6.1-9.4-11.7-8.5l-31.1 5c-2.7.4-5.1 1.9-6.6 4.1-1.6 2.2-2.2 4.9-1.8 7.6l5 31.1c.4 2.7 1.9 5.1 4.1 6.7 1.7 1.3 3.8 1.9 6 1.9.5 0 1.1 0 1.7-.1l31.1-5c5.6-.9 9.4-6.1 8.5-11.7l-4.5-17.6z"/>
+                                <path fill="#226DB4" d="M90.6 40.9l4.6-10.2-1.3-9.5c-.2-1.1.1-2.3.8-3.2.7-.9 1.7-1.5 2.9-1.7l31.2-4.2c.2 0 .4 0 .6 0 .9 0 1.8.3 2.6.9.1.1.3.2.4.3 1.4-1.5 3.2-2.5 5.2-2.9-.6-.8-1.3-1.5-2.1-2.1-2.2-1.7-4.9-2.4-7.6-2l-31.3 4.2c-2.7.4-5.1 1.8-6.7 3.9-1.7 2.2-2.4 4.9-2 7.6l2.7 18.9zM143.8 46.2L139.7 16c-2.3.1-4.2 2-4.2 4.3v8.9l2.4 17.8c.2 1.1-.1 2.3-.8 3.2s-1.7 1.5-2.9 1.7L103 56.1c-1.1.2-2.3-.1-3.2-.8-.9-.7-1.5-1.7-1.7-2.9l-1.4-10.6L92.2 52l.2 1.2c.4 2.7 1.8 5.1 3.9 6.7 1.8 1.4 3.9 2.1 6.2 2.1.5 0 .9 0 1.4-.1l31.2-4.2c2.7-.4 5.1-1.8 6.7-3.9 1.6-2.2 2.3-4.9 2-7.6z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Zoho</p>
+                              <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+
+                        {/* Pipedrive */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg
+                                className="text-[#26292C] dark:text-white w-6 h-6"
+                                viewBox="0 0 170 215"
+                                fill="currentColor"
+                                preserveAspectRatio="xMidYMid meet"
+                              >
+                                <path d="M59.68 81.18c0 20.36 10.33 42.32 33.05 42.32 16.86 0 33.9-13.16 33.9-42.62 0-25.83-13.4-43.17-33.33-43.17-16.25 0-33.62 11.41-33.62 43.47zm41.62-81.18c40.75 0 68.15 32.27 68.15 80.31 0 47.29-28.86 80.3-70.12 80.3-19.67 0-32.27-8.43-38.86-14.53.05 1.45.08 3.07.08 4.8v64.12H18.33V44.16c0-2.48-.8-3.27-3.26-3.27H.55V3.47h35.42c16.31 0 20.48 8.3 21.28 14.7 6.62-7.42 20.34-18.17 44.05-18.17z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Pipedrive</p>
+                              <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+
+                        {/* Salesforce */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 274 191" fill="none">
+                                <path d="M113.26 21.28c8.78-9.15 21-14.82 34.51-14.82 17.97 0 33.64 10.02 41.99 24.89a58 58 0 0123.73-5.05c32.4 0 58.67 26.5 58.67 59.19s-26.27 59.19-58.67 59.19c-3.96 0-7.82-.4-11.56-1.15-7.35 13.11-21.36 21.97-37.44 21.97a42.67 42.67 0 01-18.76-4.32c-7.45 17.53-24.81 29.82-45.05 29.82-21.07 0-39.03-13.33-45.92-32.03a45.12 45.12 0 01-9.34.97C20.34 159.94 0 139.39 0 114.04c0-16.99 9.14-31.82 22.72-39.76a52.55 52.55 0 01-4.35-20.99C18.37 24.14 42.03.5 71.23.5c17.14 0 32.37 8.15 42.03 20.78" fill="#00A1E0"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Salesforce</p>
+                              <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Automation Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Automation</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Automate workflows and connect with thousands of apps
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Zapier */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border relative overflow-hidden">
+                              <svg className="size-5" viewBox="0 0 24 24">
+                                <path fill="#FF4A00" d="M12 0l6.7 6.7h-4.8v4.8h4.8l-6.7 6.7-6.7-6.7h4.8V6.7H5.3L12 0z"/>
+                                <path fill="#FF4A00" d="M12 24l-6.7-6.7h4.8v-4.8H5.3l6.7-6.7 6.7 6.7h-4.8v4.8h4.8L12 24z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Zapier</p>
+                              <p className="text-xs text-muted-foreground">Automate workflows and integrations</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Communication Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Communication</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Connect with communication tools to send messages and notifications
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Slack */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                                <path d="M5.042 15.165a2.528 2.528 0 01-2.52 2.523A2.528 2.528 0 010 15.165a2.527 2.527 0 012.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 012.521-2.52 2.527 2.527 0 012.521 2.52v6.313A2.528 2.528 0 018.834 24a2.528 2.528 0 01-2.521-2.522v-6.313z" fill="#E01E5A"/>
+                                <path d="M8.834 5.042a2.528 2.528 0 01-2.521-2.52A2.528 2.528 0 018.834 0a2.528 2.528 0 012.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 012.521 2.521 2.528 2.528 0 01-2.521 2.521H2.522A2.528 2.528 0 010 8.834a2.528 2.528 0 012.522-2.521h6.312z" fill="#36C5F0"/>
+                                <path d="M18.956 8.834a2.528 2.528 0 012.522-2.521A2.528 2.528 0 0124 8.834a2.528 2.528 0 01-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 01-2.522 2.521 2.528 2.528 0 01-2.52-2.521V2.522A2.528 2.528 0 0115.165 0a2.528 2.528 0 012.521 2.522v6.312z" fill="#2EB67D"/>
+                                <path d="M15.165 18.956a2.528 2.528 0 012.521 2.522A2.528 2.528 0 0115.165 24a2.528 2.528 0 01-2.52-2.522v-2.522h2.52zm0-1.27a2.528 2.528 0 01-2.52-2.522 2.528 2.528 0 012.52-2.52h6.313A2.528 2.528 0 0124 15.165a2.528 2.528 0 01-2.522 2.521h-6.313z" fill="#ECB22E"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Slack</p>
+                              <p className="text-xs text-muted-foreground">Get notifications and updates</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+
+                        {/* WhatsApp */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 24 24" fill="#25d366">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">WhatsApp</p>
+                              <p className="text-xs text-muted-foreground">Send messages and notifications</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Calendar Section */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-base font-semibold">Calendar</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Sync and schedule appointments with calendar tools
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        {/* Google Calendar */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Google Calendar</p>
+                              <p className="text-xs text-muted-foreground">Sync appointments and events</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+
+                        {/* Calendly */}
+                        <div className="rounded-lg border p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                              <svg className="size-6" viewBox="0 0 526 536" fill="none">
+                                <path d="M360.4 347.4c-17 15.09-38.21 33.87-76.78 33.87h-23c-27.88 0-53.23-10.12-71.37-28.49-17.72-17.94-27.48-42.5-27.48-69.16v-31.51c0-26.66 9.76-51.22 27.48-69.16 18.14-18.37 43.49-28.49 71.37-28.49h23c38.57 0 59.76 18.78 76.78 33.87 17.65 15.65 32.9 29.16 73.52 29.16 5.96 0 12.26-.49 18.5-1.48-.04-.12-.08-.23-.13-.35a139.23 139.23 0 00-8.55-17.55l-27.16-47.05A139.53 139.53 0 00295.76 81.3h-54.33a139.53 139.53 0 00-120.82 69.76l-27.16 47.05a139.52 139.52 0 000 139.51l27.16 47.05a139.52 139.52 0 00120.82 69.75h54.33a139.52 139.52 0 00120.82-69.75l27.16-47.05a139.23 139.23 0 008.55-17.55c.04-.12.09-.23.13-.35-6.24-.99-12.54-1.48-18.5-1.48-40.62 0-55.87 13.51-73.52 29.16z" fill="#006BFF"/>
+                                <path d="M283.62 183h-23c-42.42 0-70.3 30.3-70.3 69.09v31.51c0 38.79 27.88 69.09 70.3 69.09h23c61.82 0 57-63 150.3-63 8.9 0 17.69.81 26.37 2.41a139.36 139.36 0 000-48.46 143.32 143.32 0 01-26.37 2.42c-93.33 0-88.48-63.06-150.3-63.06z" fill="#006BFF"/>
+                                <path d="M452.42 216a116.05 116.05 0 01-18.5 1.48c-40.62 0-55.87-13.51-73.52-29.16-17-15.09-38.21-33.87-76.78-33.87h-23c-27.88 0-53.23 10.12-71.37 28.49-17.72 17.94-27.48 42.5-27.48 69.16v31.51c0 26.66 9.76 51.22 27.48 69.16 18.14 18.37 43.49 28.49 71.37 28.49h23c38.57 0 59.76-18.78 76.78-33.87 17.65-15.65 32.9-29.16 73.52-29.16 6.24 0 12.54.49 18.5 1.48a138.46 138.46 0 007.79-27.16c.02-.15.06-.31.08-.47a144.19 144.19 0 00-26.37-2.41c-93.33 0-88.48 63-150.3 63h-23c-42.42 0-70.3-30.3-70.3-69.09v-31.51c0-38.79 27.88-69.09 70.3-69.09h23c61.82 0 57 63 150.3 63 8.9 0 17.69-.81 26.37-2.42-.02-.14-.04-.29-.07-.44a139.36 139.36 0 00-7.8-27.18z" fill="#0AE8EF"/>
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Calendly</p>
+                              <p className="text-xs text-muted-foreground">Schedule meetings and appointments</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Connect
+                            <ExternalLink className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="integrations" className="mt-0 sm:mt-6 space-y-8 pb-8">
+                  <div>
+                    <h2 className="text-lg font-semibold">Integrations</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Connect your Ottie account with other apps and services
+                    </p>
+                  </div>
+
+                  {/* CRM Sync Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold">CRM Sync</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Sync your leads and contacts with your CRM platform
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {/* HubSpot */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 22 26" fill="none">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M16.79 6.7V9.37c2.45.37 4.4 2.21 4.9 4.6.5 2.4-.56 4.85-2.65 6.15-2.1 1.3-4.79 1.18-6.76-.3l-2.2 2.17c.06.18.09.36.09.55 0 1.05-.86 1.9-1.93 1.9s-1.93-.85-1.93-1.9c0-1.06.86-1.91 1.93-1.91.19 0 .37.03.55.09l2.22-2.2c-1.4-1.97-1.44-4.59-.09-6.6L3.62 6.31c-.98.56-2.22.35-2.96-.49-.75-.84-.79-2.08-.1-2.97.69-.88 1.92-1.16 2.93-.67 1.01.49 1.53 1.63 1.24 2.7l7.43 5.72c.81-.64 1.78-1.07 2.81-1.22V6.7c-.73-.34-1.2-1.06-1.2-1.86v-.06c0-1.14.93-2.06 2.08-2.06h.06c1.15 0 2.08.92 2.08 2.06v.06c0 .8-.47 1.52-1.2 1.86zm-3.95 8.46c0 1.66 1.36 3.01 3.04 3.01 1.68 0 3.04-1.35 3.04-3.01 0-1.66-1.36-3.01-3.04-3.01-1.68 0-3.04 1.35-3.04 3.01z" fill="#FF4800"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">HubSpot</p>
+                            <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* Zoho */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 182 62">
+                              <path fill="#089949" d="M81.1 62c-1.4 0-2.8-.3-4.1-.9L48.2 48.3c-5.2-2.3-7.5-8.3-5.2-13.5L55.8 6.1c2.3-5.1 8.3-7.5 13.5-5.2l28.8 12.8c5.1 2.3 7.5 8.3 5.2 13.5L90.4 56c-1.7 3.8-5.4 6-9.3 6zm-1.8-6.3c2.2 1 4.7 0 5.7-2.2l12.8-28.8c1-2.2 0-4.7-2.2-5.7L66.9 6.3c-2.2-1-4.7 0-5.7 2.2L48.4 37.2c-1 2.2 0 4.7 2.2 5.7l28.7 12.8z"/>
+                              <path fill="#F9B21D" d="M171.3 62h-31.5c-5.6 0-10.2-4.6-10.2-10.2V20.3c0-5.6 4.6-10.2 10.2-10.2h31.5c5.6 0 10.2 4.6 10.2 10.2v31.5c0 5.6-4.6 10.2-10.2 10.2zm-31.5-46c-2.4 0-4.3 1.9-4.3 4.3v31.5c0 2.4 1.9 4.3 4.3 4.3h31.5c2.4 0 4.3-1.9 4.3-4.3V20.3c0-2.4-1.9-4.3-4.3-4.3h-31.5z"/>
+                              <path fill="#E42527" d="M53.3 26.1l-4.2 9.5-.2.3 1.7 10.2c.4 2.4-1.2 4.6-3.6 4.9l-31.1 5c-1.1.2-2.3-.1-3.2-.8-.9-.7-1.5-1.7-1.7-2.8l-5-31.1c-.2-1.1.1-2.3.8-3.2.7-.9 1.7-1.5 2.8-1.7l31.1-5c.2 0 .5-.1.7-.1 2.1 0 3.9 1.5 4.3 3.6l1.7 10.3 4.4-9.8-.2-1.4c-.9-5.6-6.1-9.4-11.7-8.5l-31.1 5c-2.7.4-5.1 1.9-6.6 4.1-1.6 2.2-2.2 4.9-1.8 7.6l5 31.1c.4 2.7 1.9 5.1 4.1 6.7 1.7 1.3 3.8 1.9 6 1.9.5 0 1.1 0 1.7-.1l31.1-5c5.6-.9 9.4-6.1 8.5-11.7l-4.5-17.6z"/>
+                              <path fill="#226DB4" d="M90.6 40.9l4.6-10.2-1.3-9.5c-.2-1.1.1-2.3.8-3.2.7-.9 1.7-1.5 2.9-1.7l31.2-4.2c.2 0 .4 0 .6 0 .9 0 1.8.3 2.6.9.1.1.3.2.4.3 1.4-1.5 3.2-2.5 5.2-2.9-.6-.8-1.3-1.5-2.1-2.1-2.2-1.7-4.9-2.4-7.6-2l-31.3 4.2c-2.7.4-5.1 1.8-6.7 3.9-1.7 2.2-2.4 4.9-2 7.6l2.7 18.9zM143.8 46.2L139.7 16c-2.3.1-4.2 2-4.2 4.3v8.9l2.4 17.8c.2 1.1-.1 2.3-.8 3.2s-1.7 1.5-2.9 1.7L103 56.1c-1.1.2-2.3-.1-3.2-.8-.9-.7-1.5-1.7-1.7-2.9l-1.4-10.6L92.2 52l.2 1.2c.4 2.7 1.8 5.1 3.9 6.7 1.8 1.4 3.9 2.1 6.2 2.1.5 0 .9 0 1.4-.1l31.2-4.2c2.7-.4 5.1-1.8 6.7-3.9 1.6-2.2 2.3-4.9 2-7.6z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Zoho</p>
+                            <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* Pipedrive */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg
+                              className="text-[#26292C] dark:text-white w-6 h-6"
+                              viewBox="0 0 170 215"
+                              fill="currentColor"
+                              preserveAspectRatio="xMidYMid meet"
+                            >
+                              <path d="M59.68 81.18c0 20.36 10.33 42.32 33.05 42.32 16.86 0 33.9-13.16 33.9-42.62 0-25.83-13.4-43.17-33.33-43.17-16.25 0-33.62 11.41-33.62 43.47zm41.62-81.18c40.75 0 68.15 32.27 68.15 80.31 0 47.29-28.86 80.3-70.12 80.3-19.67 0-32.27-8.43-38.86-14.53.05 1.45.08 3.07.08 4.8v64.12H18.33V44.16c0-2.48-.8-3.27-3.26-3.27H.55V3.47h35.42c16.31 0 20.48 8.3 21.28 14.7 6.62-7.42 20.34-18.17 44.05-18.17z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Pipedrive</p>
+                            <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* Salesforce */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 274 191" fill="none">
+                              <path d="M113.26 21.28c8.78-9.15 21-14.82 34.51-14.82 17.97 0 33.64 10.02 41.99 24.89a58 58 0 0123.73-5.05c32.4 0 58.67 26.5 58.67 59.19s-26.27 59.19-58.67 59.19c-3.96 0-7.82-.4-11.56-1.15-7.35 13.11-21.36 21.97-37.44 21.97a42.67 42.67 0 01-18.76-4.32c-7.45 17.53-24.81 29.82-45.05 29.82-21.07 0-39.03-13.33-45.92-32.03a45.12 45.12 0 01-9.34.97C20.34 159.94 0 139.39 0 114.04c0-16.99 9.14-31.82 22.72-39.76a52.55 52.55 0 01-4.35-20.99C18.37 24.14 42.03.5 71.23.5c17.14 0 32.37 8.15 42.03 20.78" fill="#00A1E0"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Salesforce</p>
+                            <p className="text-xs text-muted-foreground">Sync leads and contacts</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Automation Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold">Automation</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Automate workflows and connect with thousands of apps
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {/* Zapier */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border relative overflow-hidden">
+                            <svg className="size-5" viewBox="0 0 24 24">
+                              <path fill="#FF4A00" d="M12 0l6.7 6.7h-4.8v4.8h4.8l-6.7 6.7-6.7-6.7h4.8V6.7H5.3L12 0z"/>
+                              <path fill="#FF4A00" d="M12 24l-6.7-6.7h4.8v-4.8H5.3l6.7-6.7 6.7 6.7h-4.8v4.8h4.8L12 24z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Zapier</p>
+                            <p className="text-xs text-muted-foreground">Automate workflows and integrations</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Communication Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold">Communication</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Connect with communication tools to send messages and notifications
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {/* Slack */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 24 24" fill="none">
+                              <path d="M5.042 15.165a2.528 2.528 0 01-2.52 2.523A2.528 2.528 0 010 15.165a2.527 2.527 0 012.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 012.521-2.52 2.527 2.527 0 012.521 2.52v6.313A2.528 2.528 0 018.834 24a2.528 2.528 0 01-2.521-2.522v-6.313z" fill="#E01E5A"/>
+                              <path d="M8.834 5.042a2.528 2.528 0 01-2.521-2.52A2.528 2.528 0 018.834 0a2.528 2.528 0 012.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 012.521 2.521 2.528 2.528 0 01-2.521 2.521H2.522A2.528 2.528 0 010 8.834a2.528 2.528 0 012.522-2.521h6.312z" fill="#36C5F0"/>
+                              <path d="M18.956 8.834a2.528 2.528 0 012.522-2.521A2.528 2.528 0 0124 8.834a2.528 2.528 0 01-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 01-2.522 2.521 2.528 2.528 0 01-2.52-2.521V2.522A2.528 2.528 0 0115.165 0a2.528 2.528 0 012.521 2.522v6.312z" fill="#2EB67D"/>
+                              <path d="M15.165 18.956a2.528 2.528 0 012.521 2.522A2.528 2.528 0 0115.165 24a2.528 2.528 0 01-2.52-2.522v-2.522h2.52zm0-1.27a2.528 2.528 0 01-2.52-2.522 2.528 2.528 0 012.52-2.52h6.313A2.528 2.528 0 0124 15.165a2.528 2.528 0 01-2.522 2.521h-6.313z" fill="#ECB22E"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Slack</p>
+                            <p className="text-xs text-muted-foreground">Get notifications and updates</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* WhatsApp */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 24 24" fill="#25d366">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">WhatsApp</p>
+                            <p className="text-xs text-muted-foreground">Send messages and notifications</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calendar Section */}
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-semibold">Calendar</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Sync and schedule appointments with calendar tools
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {/* Google Calendar */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 24 24">
+                              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Google Calendar</p>
+                            <p className="text-xs text-muted-foreground">Sync appointments and events</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+
+                      {/* Calendly */}
+                      <div className="rounded-lg border p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-white dark:bg-white/10 flex items-center justify-center border">
+                            <svg className="size-6" viewBox="0 0 526 536" fill="none">
+                              <path d="M360.4 347.4c-17 15.09-38.21 33.87-76.78 33.87h-23c-27.88 0-53.23-10.12-71.37-28.49-17.72-17.94-27.48-42.5-27.48-69.16v-31.51c0-26.66 9.76-51.22 27.48-69.16 18.14-18.37 43.49-28.49 71.37-28.49h23c38.57 0 59.76 18.78 76.78 33.87 17.65 15.65 32.9 29.16 73.52 29.16 5.96 0 12.26-.49 18.5-1.48-.04-.12-.08-.23-.13-.35a139.23 139.23 0 00-8.55-17.55l-27.16-47.05A139.53 139.53 0 00295.76 81.3h-54.33a139.53 139.53 0 00-120.82 69.76l-27.16 47.05a139.52 139.52 0 000 139.51l27.16 47.05a139.52 139.52 0 00120.82 69.75h54.33a139.52 139.52 0 00120.82-69.75l27.16-47.05a139.23 139.23 0 008.55-17.55c.04-.12.09-.23.13-.35-6.24-.99-12.54-1.48-18.5-1.48-40.62 0-55.87 13.51-73.52 29.16z" fill="#006BFF"/>
+                              <path d="M283.62 183h-23c-42.42 0-70.3 30.3-70.3 69.09v31.51c0 38.79 27.88 69.09 70.3 69.09h23c61.82 0 57-63 150.3-63 8.9 0 17.69.81 26.37 2.41a139.36 139.36 0 000-48.46 143.32 143.32 0 01-26.37 2.42c-93.33 0-88.48-63.06-150.3-63.06z" fill="#006BFF"/>
+                              <path d="M452.42 216a116.05 116.05 0 01-18.5 1.48c-40.62 0-55.87-13.51-73.52-29.16-17-15.09-38.21-33.87-76.78-33.87h-23c-27.88 0-53.23 10.12-71.37 28.49-17.72 17.94-27.48 42.5-27.48 69.16v31.51c0 26.66 9.76 51.22 27.48 69.16 18.14 18.37 43.49 28.49 71.37 28.49h23c38.57 0 59.76-18.78 76.78-33.87 17.65-15.65 32.9-29.16 73.52-29.16 6.24 0 12.54.49 18.5 1.48a138.46 138.46 0 007.79-27.16c.02-.15.06-.31.08-.47a144.19 144.19 0 00-26.37-2.41c-93.33 0-88.48 63-150.3 63h-23c-42.42 0-70.3-30.3-70.3-69.09v-31.51c0-38.79 27.88-69.09 70.3-69.09h23c61.82 0 57 63 150.3 63 8.9 0 17.69-.81 26.37-2.42-.02-.14-.04-.29-.07-.44a139.36 139.36 0 00-7.8-27.18z" fill="#0AE8EF"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Calendly</p>
+                            <p className="text-xs text-muted-foreground">Schedule meetings and appointments</p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Connect
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </TabsContent>
               )}
               </div>

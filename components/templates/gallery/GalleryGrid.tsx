@@ -41,7 +41,7 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
           {images.map((image, index) => (
             <StaggerItem key={index} animation="scale">
               <div 
-                className="relative aspect-square rounded-xl overflow-hidden group cursor-pointer"
+                className="relative aspect-square rounded-xl overflow-hidden group"
               >
                 <Image
                   src={image.src}

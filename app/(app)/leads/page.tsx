@@ -316,7 +316,7 @@ export default function LeadsPage() {
                     <PopoverTrigger asChild>
                       <button
                         className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-offset-1",
+                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1",
                           lead.status === 'new' && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:ring-blue-300",
                           lead.status === 'contacted' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 hover:ring-yellow-300",
                           lead.status === 'qualified' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:ring-green-300",
@@ -428,7 +428,7 @@ export default function LeadsPage() {
                     <PopoverTrigger asChild>
                       <button
                         className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium cursor-pointer transition-all hover:ring-2 hover:ring-offset-1",
+                          "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1",
                           selectedLead.status === 'new' && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:ring-blue-300",
                           selectedLead.status === 'contacted' && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 hover:ring-yellow-300",
                           selectedLead.status === 'qualified' && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:ring-green-300",

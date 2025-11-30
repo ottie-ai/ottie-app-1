@@ -250,7 +250,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card className="hover:bg-muted/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Generate with AI</CardTitle>
                 <CardDescription>
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card className="hover:bg-muted/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Import from URL</CardTitle>
                 <CardDescription>
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+            <Card className="hover:bg-muted/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Browse Templates</CardTitle>
                 <CardDescription>
