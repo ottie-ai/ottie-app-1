@@ -59,11 +59,24 @@ export default function InvitePage({ params }: InvitePageProps) {
   // Check email match and handle auto-accept or sign out
   useEffect(() => {
     async function checkAndAccept() {
-      if (!user || !invitation || accepted || accepting || authLoading) return
+      console.log('DEBUG checkAndAccept:', { 
+        user: user?.email, 
+        invitation: invitation?.email, 
+        accepted, 
+        accepting, 
+        authLoading 
+      })
+      
+      if (!user || !invitation || accepted || accepting || authLoading) {
+        console.log('DEBUG: Skipping - conditions not met')
+        return
+      }
       
       // Check if user email matches invitation email
       const userEmail = user.email?.toLowerCase().trim()
       const inviteEmail = invitation.email.toLowerCase().trim()
+      
+      console.log('DEBUG: Comparing emails:', { userEmail, inviteEmail })
       
       if (userEmail !== inviteEmail) {
         // Email doesn't match - sign out and redirect to signup (not sign in)
@@ -90,18 +103,22 @@ export default function InvitePage({ params }: InvitePageProps) {
       }
       
       // Email matches - proceed with auto-accept
+      console.log('DEBUG: Emails match, proceeding with auto-accept')
       setAccepting(true)
       
       // Get workspace name for toast
       const inviteResult = await getInvitationByToken(invitation.token)
       const workspaceName = 'error' in inviteResult ? 'the workspace' : inviteResult.workspace.name
       
+      console.log('DEBUG: Calling acceptInvitation with:', { token: invitation.token, userId: user.id })
       const result = await acceptInvitation(invitation.token, user.id)
+      console.log('DEBUG: acceptInvitation result:', result)
       
       if ('error' in result) {
         setError(result.error)
         setAccepting(false)
         toast.error(result.error)
+        console.log('DEBUG: Accept failed:', result.error)
       } else {
         setAccepted(true)
         toast.success(`You've successfully joined ${workspaceName}!`)
