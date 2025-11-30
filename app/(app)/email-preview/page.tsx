@@ -18,9 +18,8 @@ export default function EmailPreviewPage() {
   const inviterName = 'Sonia Adamec'
   const workspaceName = 'Adamec Reality'
   const role: 'admin' | 'agent' = 'agent'
-  const roleDescription = role === 'admin' 
-    ? 'an Admin' 
-    : 'an Agent'
+  const getRoleDescription = (r: 'admin' | 'agent') => r === 'admin' ? 'an Admin' : 'an Agent'
+  const roleDescription = getRoleDescription(role)
   const inviteUrl = 'http://app.localhost:3000/invite/abc123xyz'
 
   // This is the same HTML from lib/email.ts
