@@ -7,7 +7,8 @@ import type { User } from '@supabase/supabase-js'
 
 /**
  * Hook for managing authentication state
- * Uses getUser() to validate with Supabase server (not just local token)
+ * Uses getUser() on initial load to validate with Supabase server (detects deleted users)
+ * Uses session from onAuthStateChange for subsequent updates (faster)
  */
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -18,15 +19,15 @@ export function useAuth() {
     const supabase = createClient()
     let isMounted = true
 
-    // Validate user with Supabase server (not just local token)
-    // This ensures deleted users are detected
-    const validateUser = async () => {
+    // Initial validation with Supabase server
+    // This detects deleted users whose JWT token is still valid
+    const initAuth = async () => {
       try {
-        // First check if there's a session at all
+        // First check if there's a session
         const { data: { session } } = await supabase.auth.getSession()
         
-        // No session means not logged in - this is fine, no need to validate
         if (!session) {
+          // No session = not logged in
           if (isMounted) {
             setUser(null)
             setLoading(false)
@@ -34,18 +35,13 @@ export function useAuth() {
           return
         }
         
-        // getUser() validates with Supabase server, unlike getSession() which only checks local token
+        // Validate user exists on server (catches deleted users)
         const { data: { user }, error } = await supabase.auth.getUser()
         
         if (error || !user) {
-          console.error('[useAuth] Error validating user:', error?.message || 'No user found')
-          // Session exists but user validation failed - sign out silently
-          try {
-            await supabase.auth.signOut()
-          } catch (signOutError) {
-            // Ignore sign out errors - session might already be invalid
-            console.warn('[useAuth] Sign out failed:', signOutError)
-          }
+          // User doesn't exist on server - clear session
+          console.warn('[useAuth] User validation failed, clearing session')
+          await supabase.auth.signOut().catch(() => {})
           if (isMounted) {
             setUser(null)
             setLoading(false)
@@ -58,7 +54,7 @@ export function useAuth() {
           setLoading(false)
         }
       } catch (error) {
-        console.error('[useAuth] Error in validateUser:', error)
+        console.error('[useAuth] Init error:', error)
         if (isMounted) {
           setUser(null)
           setLoading(false)
@@ -66,40 +62,17 @@ export function useAuth() {
       }
     }
 
-    validateUser()
+    initAuth()
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Listen for auth changes (sign in, sign out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return
       
-      if (event === 'SIGNED_OUT' || !session) {
-        setUser(null)
-        setLoading(false)
-        return
-      }
+      console.log('[useAuth] Auth state change:', event)
       
-      if (event === 'SIGNED_IN' && session?.user) {
-        // Re-validate with server to ensure user exists
-        try {
-          const { data: { user }, error } = await supabase.auth.getUser()
-          if (isMounted) {
-            if (error || !user) {
-              await supabase.auth.signOut()
-              setUser(null)
-            } else {
-              setUser(user)
-            }
-          }
-        } catch {
-          if (isMounted) setUser(null)
-        }
-      } else if (session?.user) {
-        setUser(session.user)
-      }
-      
-      if (isMounted) setLoading(false)
+      // Update user state based on session
+      setUser(session?.user ?? null)
+      setLoading(false)
     })
 
     return () => {
