@@ -40,7 +40,7 @@ import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
 import { useWorkspace } from '@/contexts/workspace-context'
 import type { Profile, Workspace, Membership } from '@/types/database'
 import { pricingTiers } from '@/lib/pricing-data'
-import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw } from 'lucide-react'
+import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, Crown } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -1888,7 +1888,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                 <Input
                                   id="invite-email-mobile"
                                   type="email"
-                                  placeholder="colleague@company.com"
                                   value={inviteEmail}
                                   onChange={(e) => setInviteEmail(e.target.value)}
                                 />
@@ -1896,12 +1895,30 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               <div className="grid gap-2">
                                 <Label htmlFor="invite-role-mobile">Role</Label>
                                 <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'agent')}>
-                                  <SelectTrigger>
-                                    <SelectValue />
+                                  <SelectTrigger id="invite-role-mobile" className="w-full">
+                                    <SelectValue>
+                                      <div className="flex items-center gap-2">
+                                        {inviteRole === 'admin' && <Crown className="size-4 text-amber-500" />}
+                                        <span className="capitalize">{inviteRole}</span>
+                                      </div>
+                                    </SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="agent">Agent</SelectItem>
+                                    <SelectItem value="admin" className="items-start py-2">
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <Crown className="size-4 text-amber-500" />
+                                          <span className="font-medium">Admin</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground leading-tight">Can manage team and settings</span>
+                                      </div>
+                                    </SelectItem>
+                                    <SelectItem value="agent" className="items-start py-2">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="font-medium">Agent</span>
+                                        <span className="text-xs text-muted-foreground leading-tight">Can create and manage sites</span>
+                                      </div>
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1943,10 +1960,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                     Sending...
                                   </>
                                 ) : (
-                                  <>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Send Invitation
-                                  </>
+                                  'Send Invitation'
                                 )}
                               </Button>
                             </DialogFooter>
@@ -2134,7 +2148,6 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               <Input
                                 id="invite-email"
                                 type="email"
-                                placeholder="colleague@company.com"
                                 value={inviteEmail}
                                 onChange={(e) => setInviteEmail(e.target.value)}
                               />
@@ -2142,12 +2155,30 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                             <div className="grid gap-2">
                               <Label htmlFor="invite-role">Role</Label>
                               <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'agent')}>
-                                <SelectTrigger>
-                                  <SelectValue />
+                                <SelectTrigger id="invite-role" className="w-full">
+                                  <SelectValue>
+                                    <div className="flex items-center gap-2">
+                                      {inviteRole === 'admin' && <Crown className="size-4 text-amber-500" />}
+                                      <span className="capitalize">{inviteRole}</span>
+                                    </div>
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="admin">Admin - Can manage team and settings</SelectItem>
-                                  <SelectItem value="agent">Agent - Can create and manage sites</SelectItem>
+                                  <SelectItem value="admin" className="items-start py-2">
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <Crown className="size-4 text-amber-500" />
+                                        <span className="font-medium">Admin</span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground leading-tight">Can manage team and settings</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="agent" className="items-start py-2">
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-medium">Agent</span>
+                                      <span className="text-xs text-muted-foreground leading-tight">Can create and manage sites</span>
+                                    </div>
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -2198,10 +2229,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                   Sending...
                                 </>
                               ) : (
-                                <>
-                                  <Mail className="h-4 w-4 mr-2" />
-                                  Send Invitation
-                                </>
+                                'Send Invitation'
                               )}
                             </Button>
                           </DialogFooter>

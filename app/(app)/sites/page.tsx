@@ -1,25 +1,15 @@
 'use client'
 
-import Link from 'next/link'
-import { useState } from 'react'
 import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
-  MoreHorizontal, 
-  Pencil, 
-  Trash2, 
-  Copy,
   Search,
   SlidersHorizontal,
   ChevronDown,
-  Info,
-  FileText,
-  ImageOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import { GlowCard } from '@/components/ui/glow-card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Input } from '@/components/ui/input'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -27,20 +17,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-// Helper to generate slug from title
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-}
+import { SiteCard, type SiteCardData } from '@/components/workspace/site-card'
 
 // Mock data for sites
-const mockSites = [
+const mockSites: SiteCardData[] = [
   {
     id: '1',
     title: '21 Maine Street',
@@ -96,96 +78,6 @@ const mockSites = [
     thumbnail: null,
   },
 ]
-
-interface Site {
-  id: string
-  title: string
-  slug: string
-  status: string
-  views: number
-  lastEdited: string
-  thumbnail: string | null
-}
-
-function SiteCard({ site }: { site: Site }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  return (
-    <div className="group">
-      {/* Card with Thumbnail */}
-      <Link href={`/builder/${site.id}`}>
-        <div className="relative aspect-[4/3] bg-muted rounded-2xl overflow-hidden">
-          {site.thumbnail ? (
-            <img 
-              src={site.thumbnail} 
-              alt={site.title}
-              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageOff className="size-10 text-muted-foreground/50" />
-            </div>
-          )}
-          
-          {/* Menu Button - appears on hover */}
-          <div 
-            className={`absolute top-3 right-3 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-            onClick={(e) => e.preventDefault()}
-          >
-            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="size-9 rounded-xl bg-muted/90 backdrop-blur-sm hover:bg-muted"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem>
-                  <Info className="size-4 mr-2" />
-                  View details
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Pencil className="size-4 mr-2" />
-                  Edit template
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileText className="size-4 mr-2" />
-                  Rename template
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Copy className="size-4 mr-2" />
-                  Duplicate template
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <Trash2 className="size-4 mr-2" />
-                  Remove template
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </Link>
-
-      {/* Info below card */}
-      <div className="pt-4 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-foreground truncate">{site.title}</h3>
-          <p className="text-sm text-muted-foreground font-mono truncate">{site.slug}</p>
-        </div>
-        <Badge 
-          variant="secondary" 
-          className="shrink-0 capitalize"
-        >
-          {site.status === 'published' ? 'Published' : 'Draft'}
-        </Badge>
-      </div>
-    </div>
-  )
-}
 
 export default function SitesPage() {
   return (
@@ -272,7 +164,7 @@ export default function SitesPage() {
 
           {/* Site Cards */}
           {mockSites.map((site) => (
-            <SiteCard key={site.id} site={site} />
+            <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
           ))}
         </div>
       </main>
