@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { signUp, signInWithOAuth } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
+import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 function RegisterForm() {
@@ -85,6 +86,17 @@ function RegisterForm() {
     } else {
       // Check if email confirmation is required
       if (data.user && !data.session) {
+        // Fix #4: Store invitation info for after email confirmation
+        if (isInviteFlow) {
+          const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
+          if (inviteTokenMatch) {
+            // Use localStorage (not sessionStorage) so it persists after browser close
+            localStorage.setItem('pending_invite_after_confirm', JSON.stringify({
+              token: inviteTokenMatch[1],
+              email: email.toLowerCase().trim(),
+            }))
+          }
+        }
         setSuccess(true)
         setIsLoading(false)
       } else {
@@ -96,12 +108,24 @@ function RegisterForm() {
           const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
           if (inviteTokenMatch) {
             const inviteToken = inviteTokenMatch[1]
+            
+            // Get invitation details for workspace name
+            const inviteResult = await getInvitationByToken(inviteToken)
+            if ('error' in inviteResult) {
+              setError(inviteResult.error)
+              setIsLoading(false)
+              return
+            }
+            
             const acceptResult = await acceptInvitation(inviteToken, data.user.id)
             
             if ('error' in acceptResult) {
               setError(acceptResult.error)
               setIsLoading(false)
               return
+            } else {
+              // Show success toast
+              toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
             }
           }
         }
@@ -119,12 +143,20 @@ function RegisterForm() {
     // Check if this is an invite flow and validate email
     const isInviteFlow = redirectTo.includes('/invite/')
     if (isInviteFlow && prefillEmail) {
-      // Store the expected email in sessionStorage for validation after OAuth
+      // Store the expected email and token in sessionStorage for validation after OAuth
       sessionStorage.setItem('invite_expected_email', prefillEmail)
       sessionStorage.setItem('invite_redirect', redirectTo)
+      
+      // Extract token from redirect URL
+      const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
+      if (inviteTokenMatch) {
+        sessionStorage.setItem('pending_invite_token', inviteTokenMatch[1])
+        sessionStorage.setItem('pending_invite_email', prefillEmail)
+      }
     }
 
-    const { error } = await signInWithOAuth('google', redirectTo)
+    // Fix #6: Pass email hint to pre-select correct Google account
+    const { error } = await signInWithOAuth('google', redirectTo, prefillEmail || undefined)
 
     if (error) {
       setError(error.message)

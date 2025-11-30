@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle2, XCircle, Users, ArrowRight } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Users, ArrowRight, Clock, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/use-auth'
 import { getInvitationByToken, acceptInvitation } from '@/app/(app)/settings/actions'
 import { signOut } from '@/lib/supabase/auth'
+import { toast } from 'sonner'
 import type { Invitation } from '@/types/database'
 
 interface InvitePageProps {
@@ -21,10 +22,11 @@ export default function InvitePage({ params }: InvitePageProps) {
   const { user, loading: authLoading } = useAuth()
   
   const [token, setToken] = useState<string | null>(null)
-  const [invitation, setInvitation] = useState<Invitation | null>(null)
+  const [invitation, setInvitation] = useState<(Invitation & { emailHint?: string }) | null>(null)
   const [workspaceName, setWorkspaceName] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<'expired' | 'used' | 'invalid' | null>(null)
   const [accepting, setAccepting] = useState(false)
   const [accepted, setAccepted] = useState(false)
 
@@ -43,6 +45,7 @@ export default function InvitePage({ params }: InvitePageProps) {
       
       if ('error' in result) {
         setError(result.error)
+        setErrorType(result.errorType || null)
       } else {
         setInvitation(result.invitation)
         setWorkspaceName(result.workspace.name)
@@ -63,10 +66,13 @@ export default function InvitePage({ params }: InvitePageProps) {
       const inviteEmail = invitation.email.toLowerCase().trim()
       
       if (userEmail !== inviteEmail) {
-        // Email doesn't match - sign out and redirect to signup
+        // Email doesn't match - sign out and redirect to signup (not sign in)
         setLoading(true)
         try {
           await signOut()
+          // Store invitation token in sessionStorage for later use
+          sessionStorage.setItem('pending_invite_token', token)
+          sessionStorage.setItem('pending_invite_email', invitation.email)
           // Redirect to signup with email pre-filled and invite token
           router.push(`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)
         } catch (signOutError) {
@@ -79,13 +85,24 @@ export default function InvitePage({ params }: InvitePageProps) {
       
       // Email matches - proceed with auto-accept
       setAccepting(true)
+      
+      // Get workspace name for toast
+      const inviteResult = await getInvitationByToken(invitation.token)
+      const workspaceName = 'error' in inviteResult ? 'the workspace' : inviteResult.workspace.name
+      
       const result = await acceptInvitation(invitation.token, user.id)
       
       if ('error' in result) {
         setError(result.error)
         setAccepting(false)
+        toast.error(result.error)
       } else {
         setAccepted(true)
+        toast.success(`You've successfully joined ${workspaceName}!`)
+        // Fix #9: Clear sessionStorage after successful acceptance
+        sessionStorage.removeItem('pending_invite_token')
+        sessionStorage.removeItem('pending_invite_email')
+        sessionStorage.removeItem('invite_expected_email')
         // Redirect to overview after a short delay
         setTimeout(() => {
           router.push('/overview')
@@ -95,6 +112,14 @@ export default function InvitePage({ params }: InvitePageProps) {
 
     checkAndAccept()
   }, [user, invitation, accepted, accepting, authLoading, router, token])
+  
+  // Store invitation info in sessionStorage when page loads (for login/signup flow)
+  useEffect(() => {
+    if (invitation && token) {
+      sessionStorage.setItem('pending_invite_token', token)
+      sessionStorage.setItem('pending_invite_email', invitation.email)
+    }
+  }, [invitation, token])
   
   // Handle OAuth return - check if email matches invitation
   useEffect(() => {
@@ -137,8 +162,57 @@ export default function InvitePage({ params }: InvitePageProps) {
     )
   }
 
-  // Show error state
+  // Fix #5: Show error state with better UX for different error types
   if (error) {
+    // Expired invitation - show option to request new one
+    if (errorType === 'expired') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <CardTitle>Invitation Expired</CardTitle>
+              <CardDescription>
+                This invitation link has expired. Please contact the workspace administrator to send you a new invitation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/overview">Go to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    
+    // Already used invitation
+    if (errorType === 'used') {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <CardTitle>Invitation Already Used</CardTitle>
+              <CardDescription>
+                This invitation has already been accepted. If you're the invited user, you should already have access to the workspace.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <Button asChild>
+                <Link href="/overview">Go to Dashboard</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+    
+    // Generic error
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
@@ -214,23 +288,24 @@ export default function InvitePage({ params }: InvitePageProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center text-sm text-muted-foreground">
-              <p>Sign in or create an account to accept this invitation.</p>
+              <p>Create an account or sign in to accept this invitation.</p>
             </div>
             <div className="flex flex-col gap-2">
               <Button asChild>
+                <Link href={`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`}>
+                  Create Account
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link href={`/login?redirect=/invite/${token}`}>
                   Sign In
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Link>
               </Button>
-              <Button variant="outline" asChild>
-                <Link href={`/signup?redirect=/invite/${token}`}>
-                  Create Account
-                </Link>
-              </Button>
             </div>
+            {/* Fix #3: Show masked email for privacy */}
             <p className="text-xs text-center text-muted-foreground">
-              Invitation sent to {invitation.email}
+              Invitation sent to {invitation.emailHint || invitation.email}
             </p>
           </CardContent>
         </Card>

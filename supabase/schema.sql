@@ -373,7 +373,24 @@ create policy "Admins manage invitations" on invitations
     )
   );
 
-create policy "Public read invite" on invitations for select using (true);
+-- SECURITY FIX: Replaced "Public read invite" which exposed all invitation data
+-- Old policy (INSECURE - DO NOT USE): create policy "Public read invite" on invitations for select using (true);
+-- New secure policy - only allow reading invitation if:
+-- 1. User's email matches the invited email, OR
+-- 2. User is workspace owner/admin
+create policy "Read invitation by token" on invitations 
+  for select using (
+    auth.jwt() ->> 'email' = email 
+    OR EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.workspace_id = invitations.workspace_id
+      AND m.user_id = auth.uid()
+      AND m.role IN ('owner', 'admin')
+    )
+  );
+
+-- Migration: If you already have the old policy, run:
+-- DROP POLICY IF EXISTS "Public read invite" ON invitations;
 
 
 

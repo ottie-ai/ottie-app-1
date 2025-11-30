@@ -397,8 +397,12 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
 
     // 5. Anonymize email in auth.users (requires service role)
     // This is done via RPC function that runs with security definer
+    // Generate anonymized email to allow re-registration with original email
+    const anonymizedEmail = `deleted_${userId.substring(0, 8)}_${Date.now()}@deleted.local`
+    
     const { error: authError } = await supabase.rpc('anonymize_auth_user', {
       user_uuid: userId,
+      anonymized_email: anonymizedEmail,
     })
 
     if (authError) {
@@ -1126,6 +1130,18 @@ export async function createInvitation(
     return { error: 'An invitation has already been sent to this email' }
   }
 
+  // Fix #7: Rate limiting - max 5 invitations per email per hour (across all workspaces)
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count: recentInviteCount } = await supabase
+    .from('invitations')
+    .select('*', { count: 'exact', head: true })
+    .eq('email', email.trim().toLowerCase())
+    .gte('created_at', oneHourAgo)
+
+  if (recentInviteCount && recentInviteCount >= 5) {
+    return { error: 'Too many invitations sent to this email recently. Please wait before sending another.' }
+  }
+
   // Get inviter's name for the email
   const { data: inviterProfile } = await supabase
     .from('profiles')
@@ -1338,14 +1354,34 @@ export async function resendInvitation(
 }
 
 /**
+ * Mask email address for privacy (e.g., "john@example.com" -> "jo***@example.com")
+ */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!domain) return '***'
+  if (local.length <= 2) return `${local[0]}***@${domain}`
+  return `${local[0]}${local[1]}***@${domain}`
+}
+
+/**
+ * Validate invitation token format
+ */
+function isValidToken(token: string): boolean {
+  // Token should be at least 32 chars and only contain safe characters
+  return token.length >= 32 && /^[a-zA-Z0-9_-]+$/.test(token)
+}
+
+/**
  * Get invitation by token
  * Public function - no auth required (for accept flow)
+ * Returns masked email for privacy
  */
 export async function getInvitationByToken(
   token: string
-): Promise<{ invitation: Invitation; workspace: { id: string; name: string } } | { error: string }> {
-  if (!token) {
-    return { error: 'Invalid invitation link' }
+): Promise<{ invitation: Invitation & { emailHint: string }; workspace: { name: string } } | { error: string; errorType?: 'expired' | 'used' | 'invalid' }> {
+  // Fix #8: Token validation
+  if (!token || !isValidToken(token)) {
+    return { error: 'Invalid invitation link', errorType: 'invalid' }
   }
 
   const supabase = await createClient()
@@ -1361,33 +1397,35 @@ export async function getInvitationByToken(
     .single()
 
   if (error || !invitation) {
-    return { error: 'Invitation not found or has been cancelled' }
+    return { error: 'Invitation not found or has been cancelled', errorType: 'invalid' }
   }
 
   // Check if invitation is expired
   if (new Date(invitation.expires_at) < new Date()) {
-    return { error: 'This invitation has expired' }
+    return { error: 'This invitation has expired', errorType: 'expired' }
   }
 
   // Check if invitation is still pending
   if (invitation.status !== 'pending') {
-    return { error: 'This invitation has already been used' }
+    return { error: 'This invitation has already been used', errorType: 'used' }
   }
 
+  // Fix #2: Mask email and limit exposed data for privacy
   return {
     invitation: {
       id: invitation.id,
       workspace_id: invitation.workspace_id,
-      email: invitation.email,
+      email: invitation.email, // Full email needed for validation
+      emailHint: maskEmail(invitation.email), // Masked email for display
       role: invitation.role,
       token: invitation.token,
       status: invitation.status,
       invited_by: invitation.invited_by,
       created_at: invitation.created_at,
       expires_at: invitation.expires_at,
-    } as Invitation,
+    } as Invitation & { emailHint: string },
     workspace: {
-      id: (invitation.workspace as any).id,
+      // Don't expose workspace ID to public
       name: (invitation.workspace as any).name,
     },
   }

@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { signIn, signInWithOAuth } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
+import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
+import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
 function LoginForm() {
@@ -23,19 +25,118 @@ function LoginForm() {
 
   const redirectTo = searchParams.get('redirect') || '/overview'
 
-  // Redirect if already authenticated (we're already on app subdomain)
+  // Check for pending invitation and auto-accept after login
   useEffect(() => {
-    console.log('[Login Page] Auth state:', { authLoading, user: user?.email, redirectTo })
-    if (!authLoading && user) {
-      console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
-      router.replace(redirectTo)
+    async function checkPendingInvitation() {
+      if (!user || authLoading) return
+      
+      // Fix #4: Check localStorage for pending invite after email confirmation
+      const pendingInviteAfterConfirm = localStorage.getItem('pending_invite_after_confirm')
+      if (pendingInviteAfterConfirm) {
+        try {
+          const { token, email } = JSON.parse(pendingInviteAfterConfirm)
+          const userEmail = user.email?.toLowerCase().trim()
+          
+          if (userEmail === email.toLowerCase().trim()) {
+            // Email matches - accept invitation
+            const inviteResult = await getInvitationByToken(token)
+            if (!('error' in inviteResult)) {
+              const acceptResult = await acceptInvitation(token, user.id)
+              if (!('error' in acceptResult)) {
+                toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+              } else {
+                toast.error(acceptResult.error)
+              }
+            }
+          }
+          // Clear localStorage regardless of result
+          localStorage.removeItem('pending_invite_after_confirm')
+        } catch (e) {
+          console.error('Error processing pending invite after confirm:', e)
+          localStorage.removeItem('pending_invite_after_confirm')
+        }
+      }
+      
+      const pendingToken = sessionStorage.getItem('pending_invite_token')
+      const expectedEmail = sessionStorage.getItem('pending_invite_email')
+      const inviteExpectedEmail = sessionStorage.getItem('invite_expected_email')
+      
+      // Use invite_expected_email if available (from OAuth), otherwise use pending_invite_email
+      const emailToCheck = inviteExpectedEmail || expectedEmail
+      
+      if (pendingToken && emailToCheck) {
+        // Validate email matches
+        const userEmail = user.email?.toLowerCase().trim()
+        if (userEmail !== emailToCheck.toLowerCase().trim()) {
+          // Email doesn't match - sign out, clear sessionStorage and show error
+          const { signOut } = await import('@/lib/supabase/auth')
+          await signOut()
+          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_email')
+          sessionStorage.removeItem('invite_expected_email')
+          toast.error(`This invitation was sent to ${emailToCheck}. Please sign in with that email address.`)
+          // Redirect back to invite page
+          if (redirectTo.includes('/invite/')) {
+            router.push(redirectTo)
+          }
+          return
+        }
+        
+        // Email matches - accept invitation
+        try {
+          const inviteResult = await getInvitationByToken(pendingToken)
+          if ('error' in inviteResult) {
+            toast.error(inviteResult.error)
+            sessionStorage.removeItem('pending_invite_token')
+            sessionStorage.removeItem('pending_invite_email')
+            sessionStorage.removeItem('invite_expected_email')
+            return
+          }
+          
+          const acceptResult = await acceptInvitation(pendingToken, user.id)
+          if ('error' in acceptResult) {
+            toast.error(acceptResult.error)
+          } else {
+            toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+          }
+          
+          // Clear sessionStorage
+          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_email')
+          sessionStorage.removeItem('invite_expected_email')
+        } catch (error) {
+          console.error('Error accepting invitation:', error)
+          toast.error('Failed to accept invitation. Please try again.')
+        }
+      }
+      
+      // Redirect after handling invitation
+      if (redirectTo) {
+        console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
+        router.replace(redirectTo)
+      }
     }
+    
+    checkPendingInvitation()
   }, [user, authLoading, router, redirectTo])
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    // Check if this is an invite flow and validate email
+    const pendingToken = sessionStorage.getItem('pending_invite_token')
+    const expectedEmail = sessionStorage.getItem('pending_invite_email')
+    
+    if (pendingToken && expectedEmail) {
+      // Validate email matches invitation before signing in
+      if (email.toLowerCase().trim() !== expectedEmail.toLowerCase().trim()) {
+        setError(`This invitation was sent to ${expectedEmail}. Please sign in with that email address.`)
+        setIsLoading(false)
+        return
+      }
+    }
 
     console.log('[Login] Attempting sign in with:', email)
     const { data, error } = await signIn({ email, password })
@@ -65,7 +166,17 @@ function LoginForm() {
     setIsLoading(true)
     setError(null)
 
-    const { error } = await signInWithOAuth('google', redirectTo)
+    // Check if this is an invite flow - email will be validated after OAuth return
+    const pendingToken = sessionStorage.getItem('pending_invite_token')
+    const expectedEmail = sessionStorage.getItem('pending_invite_email')
+    
+    if (pendingToken && expectedEmail) {
+      // Store expected email for validation after OAuth
+      sessionStorage.setItem('invite_expected_email', expectedEmail)
+    }
+
+    // Fix #6: Pass email hint to pre-select correct Google account
+    const { error } = await signInWithOAuth('google', redirectTo, expectedEmail || undefined)
 
     if (error) {
       setError(error.message)

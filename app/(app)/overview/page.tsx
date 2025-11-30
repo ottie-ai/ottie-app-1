@@ -2,6 +2,9 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/use-auth'
+import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
+import { toast } from 'sonner'
 import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
@@ -65,6 +68,86 @@ const stats = [
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
+
+  // Check for pending invitation after login (e.g., from OAuth redirect)
+  useEffect(() => {
+    async function checkPendingInvitation() {
+      if (!user || authLoading) return
+      
+      // Fix #4: Check localStorage for pending invite after email confirmation
+      const pendingInviteAfterConfirm = localStorage.getItem('pending_invite_after_confirm')
+      if (pendingInviteAfterConfirm) {
+        try {
+          const { token, email } = JSON.parse(pendingInviteAfterConfirm)
+          const userEmail = user.email?.toLowerCase().trim()
+          
+          if (userEmail === email.toLowerCase().trim()) {
+            // Email matches - accept invitation
+            const inviteResult = await getInvitationByToken(token)
+            if (!('error' in inviteResult)) {
+              const acceptResult = await acceptInvitation(token, user.id)
+              if (!('error' in acceptResult)) {
+                toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+              } else {
+                toast.error(acceptResult.error)
+              }
+            }
+          }
+          // Clear localStorage regardless of result
+          localStorage.removeItem('pending_invite_after_confirm')
+        } catch (e) {
+          console.error('Error processing pending invite after confirm:', e)
+          localStorage.removeItem('pending_invite_after_confirm')
+        }
+      }
+      
+      const pendingToken = sessionStorage.getItem('pending_invite_token')
+      const expectedEmail = sessionStorage.getItem('pending_invite_email')
+      
+      if (pendingToken && expectedEmail) {
+        // Validate email matches
+        const userEmail = user.email?.toLowerCase().trim()
+        if (userEmail !== expectedEmail.toLowerCase().trim()) {
+          // Email doesn't match - clear sessionStorage and show error
+          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_email')
+          sessionStorage.removeItem('invite_expected_email')
+          toast.error(`This invitation was sent to ${expectedEmail}. Please sign in with that email address.`)
+          return
+        }
+        
+        // Email matches - accept invitation
+        try {
+          const inviteResult = await getInvitationByToken(pendingToken)
+          if ('error' in inviteResult) {
+            toast.error(inviteResult.error)
+            sessionStorage.removeItem('pending_invite_token')
+            sessionStorage.removeItem('pending_invite_email')
+            sessionStorage.removeItem('invite_expected_email')
+            return
+          }
+          
+          const acceptResult = await acceptInvitation(pendingToken, user.id)
+          if ('error' in acceptResult) {
+            toast.error(acceptResult.error)
+          } else {
+            toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+          }
+          
+          // Fix #9: Clear all sessionStorage
+          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_email')
+          sessionStorage.removeItem('invite_expected_email')
+        } catch (error) {
+          console.error('Error accepting invitation:', error)
+          toast.error('Failed to accept invitation. Please try again.')
+        }
+      }
+    }
+    
+    checkPendingInvitation()
+  }, [user, authLoading])
 
   // Handle browser back/forward navigation
   useEffect(() => {

@@ -81,8 +81,8 @@ export async function sendInviteEmail({
   }
 
   const roleDescription = role === 'admin' 
-    ? 'an Admin (can manage team and settings)' 
-    : 'an Agent (can create and manage sites)'
+    ? 'an Admin' 
+    : 'an Agent'
 
   console.log('[EMAIL] Attempting to send invitation email:', {
     to,

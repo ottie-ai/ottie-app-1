@@ -49,8 +49,11 @@ export async function signIn(credentials: SignInCredentials) {
 
 /**
  * Sign in with OAuth provider (Google, etc.)
+ * @param provider - OAuth provider ('google')
+ * @param redirectTo - URL to redirect to after successful auth
+ * @param emailHint - Optional email hint to pre-select Google account (Fix #6)
  */
-export async function signInWithOAuth(provider: 'google', redirectTo?: string) {
+export async function signInWithOAuth(provider: 'google', redirectTo?: string, emailHint?: string) {
   const supabase = createClient()
   
   // Get the app subdomain URL for redirect
@@ -77,10 +80,19 @@ export async function signInWithOAuth(provider: 'google', redirectTo?: string) {
   const nextPath = redirectTo || '/overview'
   const callbackUrl = `${appOrigin}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
+  // Build query params for OAuth
+  // Fix #6: Add email hint to pre-select correct Google account
+  const queryParams: Record<string, string> = {}
+  if (emailHint) {
+    queryParams.login_hint = emailHint // Pre-select Google account
+    queryParams.prompt = 'select_account' // But still allow switching
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo: callbackUrl,
+      queryParams: Object.keys(queryParams).length > 0 ? queryParams : undefined,
     },
   })
 
