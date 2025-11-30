@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { signUp, signInWithOAuth } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
+import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { Loader2 } from 'lucide-react'
 
 function RegisterForm() {
@@ -24,6 +25,14 @@ function RegisterForm() {
   const [success, setSuccess] = useState(false)
 
   const redirectTo = searchParams.get('redirect') || '/overview'
+  const prefillEmail = searchParams.get('email')
+  
+  // Pre-fill email if provided in query params (from invite flow)
+  useEffect(() => {
+    if (prefillEmail && !email) {
+      setEmail(prefillEmail)
+    }
+  }, [prefillEmail, email])
 
   // Redirect if already authenticated (we're already on app subdomain)
   useEffect(() => {
@@ -36,6 +45,29 @@ function RegisterForm() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    // Check if this is an invite flow and validate email
+    const isInviteFlow = redirectTo.includes('/invite/')
+    if (isInviteFlow) {
+      const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
+      if (inviteTokenMatch) {
+        const inviteToken = inviteTokenMatch[1]
+        const inviteResult = await getInvitationByToken(inviteToken)
+        
+        if ('error' in inviteResult) {
+          setError(inviteResult.error)
+          setIsLoading(false)
+          return
+        }
+        
+        // Validate that the email being registered matches the invitation
+        if (email.toLowerCase().trim() !== inviteResult.invitation.email.toLowerCase().trim()) {
+          setError(`This invitation was sent to ${inviteResult.invitation.email}. Please register with that email address.`)
+          setIsLoading(false)
+          return
+        }
+      }
+    }
 
     const { data, error } = await signUp({
       email,
@@ -56,8 +88,24 @@ function RegisterForm() {
         setSuccess(true)
         setIsLoading(false)
       } else {
-        // Auto sign in after registration (we're already on app subdomain)
+        // Auto sign in after registration
         await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // If this is an invite flow, accept the invitation
+        if (isInviteFlow && data.user) {
+          const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
+          if (inviteTokenMatch) {
+            const inviteToken = inviteTokenMatch[1]
+            const acceptResult = await acceptInvitation(inviteToken, data.user.id)
+            
+            if ('error' in acceptResult) {
+              setError(acceptResult.error)
+              setIsLoading(false)
+              return
+            }
+          }
+        }
+        
         router.push('/overview')
         router.refresh()
       }
@@ -67,6 +115,14 @@ function RegisterForm() {
   const handleGoogleSignUp = async () => {
     setIsLoading(true)
     setError(null)
+
+    // Check if this is an invite flow and validate email
+    const isInviteFlow = redirectTo.includes('/invite/')
+    if (isInviteFlow && prefillEmail) {
+      // Store the expected email in sessionStorage for validation after OAuth
+      sessionStorage.setItem('invite_expected_email', prefillEmail)
+      sessionStorage.setItem('invite_redirect', redirectTo)
+    }
 
     const { error } = await signInWithOAuth('google', redirectTo)
 

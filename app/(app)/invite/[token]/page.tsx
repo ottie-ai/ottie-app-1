@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/hooks/use-auth'
 import { getInvitationByToken, acceptInvitation } from '@/app/(app)/settings/actions'
+import { signOut } from '@/lib/supabase/auth'
 import type { Invitation } from '@/types/database'
 
 interface InvitePageProps {
@@ -52,11 +53,31 @@ export default function InvitePage({ params }: InvitePageProps) {
     loadInvitation()
   }, [token])
 
-  // Auto-accept if user is logged in
+  // Check email match and handle auto-accept or sign out
   useEffect(() => {
-    async function autoAccept() {
+    async function checkAndAccept() {
       if (!user || !invitation || accepted || accepting || authLoading) return
       
+      // Check if user email matches invitation email
+      const userEmail = user.email?.toLowerCase().trim()
+      const inviteEmail = invitation.email.toLowerCase().trim()
+      
+      if (userEmail !== inviteEmail) {
+        // Email doesn't match - sign out and redirect to signup
+        setLoading(true)
+        try {
+          await signOut()
+          // Redirect to signup with email pre-filled and invite token
+          router.push(`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)
+        } catch (signOutError) {
+          console.error('Error signing out:', signOutError)
+          setError('Please sign out and create an account with the invited email address.')
+          setLoading(false)
+        }
+        return
+      }
+      
+      // Email matches - proceed with auto-accept
       setAccepting(true)
       const result = await acceptInvitation(invitation.token, user.id)
       
@@ -72,8 +93,37 @@ export default function InvitePage({ params }: InvitePageProps) {
       }
     }
 
-    autoAccept()
-  }, [user, invitation, accepted, accepting, authLoading, router])
+    checkAndAccept()
+  }, [user, invitation, accepted, accepting, authLoading, router, token])
+  
+  // Handle OAuth return - check if email matches invitation
+  useEffect(() => {
+    async function handleOAuthReturn() {
+      if (!user || !invitation || authLoading) return
+      
+      // Check if this is a return from OAuth (user just signed up)
+      const expectedEmail = sessionStorage.getItem('invite_expected_email')
+      if (expectedEmail) {
+        sessionStorage.removeItem('invite_expected_email')
+        sessionStorage.removeItem('invite_redirect')
+        
+        // Validate email matches
+        const userEmail = user.email?.toLowerCase().trim()
+        if (userEmail !== expectedEmail.toLowerCase().trim()) {
+          setError(`This invitation was sent to ${expectedEmail}. Please sign in with that email address.`)
+          try {
+            await signOut()
+            router.push(`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)
+          } catch (signOutError) {
+            console.error('Error signing out:', signOutError)
+          }
+          return
+        }
+      }
+    }
+    
+    handleOAuthReturn()
+  }, [user, invitation, authLoading, router, token])
 
   // Show loading state
   if (loading || authLoading) {

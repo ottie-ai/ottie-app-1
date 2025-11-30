@@ -1426,12 +1426,10 @@ export async function acceptInvitation(
     return { error: 'User profile not found' }
   }
 
-  // Email check is optional - we allow accepting with any logged-in account
-  // This is more flexible for users who might have multiple emails
-  // If you want strict email matching, uncomment this:
-  // if (profile.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-  //   return { error: 'This invitation was sent to a different email address' }
-  // }
+  // Strict email matching - invitation must be accepted with the exact email it was sent to
+  if (profile.email?.toLowerCase().trim() !== invitation.email.toLowerCase().trim()) {
+    return { error: 'This invitation was sent to a different email address. Please sign in with the email address that received the invitation.' }
+  }
 
   // Check if user is already a member
   const { data: existingMembership } = await supabase

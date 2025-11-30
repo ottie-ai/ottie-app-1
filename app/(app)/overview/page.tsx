@@ -141,13 +141,13 @@ export default function DashboardPage() {
             <div className="group">
               <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer" initialGlow>
                 <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
-                  <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
-                    <Plus className="size-6" />
-                  </div>
-                  <span className="font-medium">Create New Site</span>
-                  <span className="text-xs mt-1">Start from scratch or use AI</span>
-                </CardContent>
-              </GlowCard>
+                <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
+                  <Plus className="size-6" />
+                </div>
+                <span className="font-medium">Create New Site</span>
+                <span className="text-xs mt-1">Start from scratch or use AI</span>
+              </CardContent>
+            </GlowCard>
               {/* Empty space below to match other cards */}
               <div className="pt-4 pb-1">
                 <div className="h-5" />

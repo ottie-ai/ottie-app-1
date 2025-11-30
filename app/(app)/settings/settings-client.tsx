@@ -1871,9 +1871,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                           <DialogTrigger asChild>
                             <Button size="sm" variant="outline">
-                              <Plus className="h-4 w-4 mr-2" />
+                          <Plus className="h-4 w-4 mr-2" />
                               Invite
-                            </Button>
+                        </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
@@ -1972,44 +1972,44 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <CardContent className="space-y-6">
                     {/* Banner for single-user workspaces */}
                     {workspace && !isMultiUserPlan(workspace.plan) && (
-                      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                          <div className="flex-1 space-y-2">
-                            <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                              Upgrade to invite team members
-                            </p>
-                            <p className="text-sm text-green-800 dark:text-green-200">
-                              To invite users to your workspace, upgrade to the Agency or Enterprise plan.
-                            </p>
-                            <PricingDialog 
-                              currentPlan={workspace?.plan} 
-                              stripeCustomerId={workspace?.stripe_customer_id}
-                              defaultSelectedTier="agency"
-                            >
-                              <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
-                                Upgrade Plan
-                              </Button>
-                            </PricingDialog>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                          Upgrade to invite team members
+                        </p>
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          To invite users to your workspace, upgrade to the Agency or Enterprise plan.
+                        </p>
+                        <PricingDialog 
+                          currentPlan={workspace?.plan} 
+                          stripeCustomerId={workspace?.stripe_customer_id}
+                          defaultSelectedTier="agency"
+                        >
+                          <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
+                            Upgrade Plan
+                          </Button>
+                        </PricingDialog>
+                </div>
+                    </div>
+                  </div>
+                )}
 
-                    {/* Members List */}
-                    <div>
+                {/* Members List */}
+                <div>
                       <h3 className="text-sm font-medium mb-3">Members</h3>
-                      {membersLoading ? (
-                        <div className="p-8 text-center text-sm text-muted-foreground">
-                          Loading members...
-                        </div>
-                      ) : members.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-muted-foreground">
-                          No members found
-                        </div>
-                      ) : (
+                  {membersLoading ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      Loading members...
+                    </div>
+                  ) : members.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      No members found
+                    </div>
+                  ) : (
                         <div className="space-y-3">
-                          {members.map(({ membership, profile }) => (
+                        {members.map(({ membership, profile }) => (
                             <div key={membership.id} className="flex items-center justify-between p-3 border rounded-lg">
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
@@ -2078,14 +2078,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                       onClick={async () => {
                                         if (!workspace || !user?.id) return
                                         const result = await resendInvitation(invitation.id, workspace.id, user.id)
-                                        if ('error' in result) {
-                                          toast.error(result.error)
-                                        } else {
+                                      if ('error' in result) {
+                                        toast.error(result.error)
+                                      } else {
                                           toast.success('Invitation resent')
                                           refreshInvitations()
-                                        }
-                                      }}
-                                    >
+                                      }
+                                    }}
+                                  >
                                       <RotateCw className="h-4 w-4" />
                                     </Button>
                                     <Button
@@ -2105,13 +2105,13 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                     >
                                       <X className="h-4 w-4" />
                                     </Button>
-                                  </div>
+                              </div>
                                 </div>
                               )
                             })}
                           </div>
-                        )}
-                      </div>
+                  )}
+                </div>
                     )}
                   </CardContent>
                 </Card>
@@ -2131,9 +2131,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Invite User
-                          </Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Invite User
+                    </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
@@ -2359,7 +2359,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                         </tbody>
                       </table>
                     )}
-                  </div>
+                </div>
 
                   {/* Pending Invitations */}
                   {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
