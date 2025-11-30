@@ -319,7 +319,23 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
   const supabase = await createClient()
 
   try {
-    // 1. Get all workspaces where user is owner
+    // 1. FIRST - Anonymize profile (soft delete) while session is still valid
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        email: null,
+        full_name: null,
+        avatar_url: null,
+        deleted_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+
+    if (profileError) {
+      console.error('Error anonymizing profile:', profileError)
+      return { error: 'Failed to delete account' }
+    }
+
+    // 2. Get all workspaces where user is owner
     const { data: ownedWorkspaces } = await supabase
       .from('memberships')
       .select('workspace_id')
@@ -357,13 +373,13 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
       }
     }
 
-    // 2. Delete all memberships for this user
+    // 3. Delete all memberships for this user
     await supabase
       .from('memberships')
       .delete()
       .eq('user_id', userId)
 
-    // 3. Delete all avatars from storage
+    // 4. Delete all avatars from storage
     try {
       const { data: avatarFiles } = await supabase.storage
         .from('avatars')
@@ -378,22 +394,6 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
     } catch (avatarError) {
       console.error('Error deleting avatars:', avatarError)
       // Continue with deletion even if avatar deletion fails
-    }
-
-    // 4. Anonymize profile (soft delete)
-    // DEBUG: Test without setting email to null
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        full_name: '[deleted]',
-        avatar_url: null,
-        deleted_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-
-    if (profileError) {
-      console.error('Error anonymizing profile:', profileError)
-      return { error: 'Failed to delete account' }
     }
 
     // 5. Anonymize email in auth.users (requires RPC with security definer)
