@@ -17,7 +17,7 @@ export default function EmailPreviewPage() {
 
   const inviterName = 'Sonia Adamec'
   const workspaceName = 'Adamec Reality'
-  const role = 'agent'
+  const role: 'admin' | 'agent' = 'agent'
   const roleDescription = role === 'admin' 
     ? 'an Admin' 
     : 'an Agent'
