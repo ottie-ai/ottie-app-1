@@ -192,7 +192,7 @@ export function DashboardSidebar() {
         </div>
       )}
 
-      <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0">
+      <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0 px-0 py-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -288,8 +288,8 @@ export function DashboardSidebar() {
 
       <SidebarContent className="relative z-10">
         {/* Search */}
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent className="relative">
+        <SidebarGroup className="py-0 px-0">
+          <SidebarGroupContent className="relative px-2">
             {!isCollapsed && (
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -311,7 +311,7 @@ export function DashboardSidebar() {
                   tooltip="New Site"
                   className="bg-primary text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground active:!bg-primary/80"
                 >
-                  <Plus className="size-4" />
+              <Plus className="size-4" />
                   <span>New Site</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
