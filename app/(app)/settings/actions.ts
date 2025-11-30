@@ -1374,6 +1374,7 @@ function isValidToken(token: string): boolean {
 /**
  * Get invitation by token
  * Public function - no auth required (for accept flow)
+ * Uses admin client to bypass RLS (since non-authenticated users can't read invitations)
  * Returns masked email for privacy
  */
 export async function getInvitationByToken(
@@ -1384,7 +1385,19 @@ export async function getInvitationByToken(
     return { error: 'Invalid invitation link', errorType: 'invalid' }
   }
 
-  const supabase = await createClient()
+  // Use admin client to bypass RLS - necessary because:
+  // 1. Non-authenticated users can't read invitations with the new secure RLS policy
+  // 2. We validate the token server-side and only return necessary data
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+  
+  let supabase
+  try {
+    supabase = createAdminClient()
+  } catch (error) {
+    console.error('[getInvitationByToken] Failed to create admin client:', error)
+    // Fallback to regular client if service role key is not configured
+    supabase = await createClient()
+  }
 
   const { data: invitation, error } = await supabase
     .from('invitations')
