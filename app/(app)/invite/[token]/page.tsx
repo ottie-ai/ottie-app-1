@@ -59,24 +59,13 @@ export default function InvitePage({ params }: InvitePageProps) {
   // Check email match and handle auto-accept or sign out
   useEffect(() => {
     async function checkAndAccept() {
-      console.log('DEBUG checkAndAccept:', { 
-        user: user?.email, 
-        invitation: invitation?.email, 
-        accepted, 
-        accepting, 
-        authLoading 
-      })
-      
       if (!user || !invitation || accepted || accepting || authLoading) {
-        console.log('DEBUG: Skipping - conditions not met')
         return
       }
       
       // Check if user email matches invitation email
       const userEmail = user.email?.toLowerCase().trim()
       const inviteEmail = invitation.email.toLowerCase().trim()
-      
-      console.log('DEBUG: Comparing emails:', { userEmail, inviteEmail })
       
       if (userEmail !== inviteEmail) {
         // Email doesn't match - sign out and redirect to signup (not sign in)
@@ -103,22 +92,18 @@ export default function InvitePage({ params }: InvitePageProps) {
       }
       
       // Email matches - proceed with auto-accept
-      console.log('DEBUG: Emails match, proceeding with auto-accept')
       setAccepting(true)
       
       // Get workspace name for toast
       const inviteResult = await getInvitationByToken(invitation.token)
       const workspaceName = 'error' in inviteResult ? 'the workspace' : inviteResult.workspace.name
       
-      console.log('DEBUG: Calling acceptInvitation with:', { token: invitation.token, userId: user.id })
       const result = await acceptInvitation(invitation.token, user.id)
-      console.log('DEBUG: acceptInvitation result:', result)
       
       if ('error' in result) {
         setError(result.error)
         setAccepting(false)
         toast.error(result.error)
-        console.log('DEBUG: Accept failed:', result.error)
       } else {
         setAccepted(true)
         toast.success(`You've successfully joined ${workspaceName}!`)
@@ -193,8 +178,8 @@ export default function InvitePage({ params }: InvitePageProps) {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <Clock className="h-6 w-6 text-muted-foreground" />
               </div>
               <CardTitle>Invitation Expired</CardTitle>
               <CardDescription>
@@ -217,8 +202,8 @@ export default function InvitePage({ params }: InvitePageProps) {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
           <Card className="max-w-md w-full">
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
               </div>
               <CardTitle>Invitation Already Used</CardTitle>
               <CardDescription>
@@ -262,8 +247,8 @@ export default function InvitePage({ params }: InvitePageProps) {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
             </div>
             <CardTitle>Welcome to {workspaceName}!</CardTitle>
             <CardDescription>
@@ -300,8 +285,8 @@ export default function InvitePage({ params }: InvitePageProps) {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <Users className="h-6 w-6 text-muted-foreground" />
             </div>
             <CardTitle>You're Invited!</CardTitle>
             <CardDescription>
