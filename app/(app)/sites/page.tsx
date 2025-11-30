@@ -1,22 +1,23 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
   MoreHorizontal, 
-  Eye, 
   Pencil, 
   Trash2, 
   Copy,
-  Globe,
-  Clock,
   Search,
   SlidersHorizontal,
   ChevronDown,
+  Info,
+  FileText,
+  ImageOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
 import { GlowCard } from '@/components/ui/glow-card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -30,11 +31,20 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+// Helper to generate slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+}
+
 // Mock data for sites
 const mockSites = [
   {
     id: '1',
     title: '21 Maine Street',
+    slug: '21-maine-street',
     status: 'published',
     views: 1234,
     lastEdited: '2 hours ago',
@@ -43,14 +53,16 @@ const mockSites = [
   {
     id: '2',
     title: 'Luxury Villa Palm Beach',
+    slug: 'luxury-villa-palm-beach',
     status: 'draft',
     views: 0,
     lastEdited: '1 day ago',
-    thumbnail: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
+    thumbnail: null,
   },
   {
     id: '3',
     title: 'Modern Apartment NYC',
+    slug: 'modern-apartment-nyc',
     status: 'published',
     views: 567,
     lastEdited: '3 days ago',
@@ -58,15 +70,17 @@ const mockSites = [
   },
   {
     id: '4',
-    title: 'Beachfront Condo Miami',
+    title: 'Untitled Template',
+    slug: 'untitled-template',
     status: 'draft',
     views: 0,
     lastEdited: '1 week ago',
-    thumbnail: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400&q=80',
+    thumbnail: null,
   },
   {
     id: '5',
     title: 'Downtown Loft Chicago',
+    slug: 'downtown-loft-chicago',
     status: 'published',
     views: 892,
     lastEdited: '2 weeks ago',
@@ -75,12 +89,103 @@ const mockSites = [
   {
     id: '6',
     title: 'Mountain Retreat Aspen',
+    slug: 'mountain-retreat-aspen',
     status: 'draft',
     views: 0,
     lastEdited: '3 weeks ago',
-    thumbnail: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400&q=80',
+    thumbnail: null,
   },
 ]
+
+interface Site {
+  id: string
+  title: string
+  slug: string
+  status: string
+  views: number
+  lastEdited: string
+  thumbnail: string | null
+}
+
+function SiteCard({ site }: { site: Site }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  return (
+    <div className="group">
+      {/* Card with Thumbnail */}
+      <Link href={`/builder/${site.id}`}>
+        <div className="relative aspect-[4/3] bg-muted rounded-2xl overflow-hidden">
+          {site.thumbnail ? (
+            <img 
+              src={site.thumbnail} 
+              alt={site.title}
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <ImageOff className="size-10 text-muted-foreground/50" />
+            </div>
+          )}
+          
+          {/* Menu Button - appears on hover */}
+          <div 
+            className={`absolute top-3 right-3 transition-opacity ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            onClick={(e) => e.preventDefault()}
+          >
+            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="secondary" 
+                  size="icon" 
+                  className="size-9 rounded-xl bg-muted/90 backdrop-blur-sm hover:bg-muted"
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem>
+                  <Info className="size-4 mr-2" />
+                  View details
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Pencil className="size-4 mr-2" />
+                  Edit template
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <FileText className="size-4 mr-2" />
+                  Rename template
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Copy className="size-4 mr-2" />
+                  Duplicate template
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                  <Trash2 className="size-4 mr-2" />
+                  Remove template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </Link>
+
+      {/* Info below card */}
+      <div className="pt-4 flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-foreground truncate">{site.title}</h3>
+          <p className="text-sm text-muted-foreground font-mono truncate">{site.slug}</p>
+        </div>
+        <Badge 
+          variant="secondary" 
+          className="shrink-0 capitalize"
+        >
+          {site.status === 'published' ? 'Published' : 'Draft'}
+        </Badge>
+      </div>
+    </div>
+  )
+}
 
 export default function SitesPage() {
   return (
@@ -146,101 +251,28 @@ export default function SitesPage() {
         </div>
 
         {/* Sites Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 p-2 -m-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {/* New Site Card */}
-          <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer group" initialGlow>
-            <CardContent className="flex flex-col items-center justify-center h-[280px] text-muted-foreground group-hover:text-primary transition-colors">
-              <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
-                <Plus className="size-6" />
-              </div>
-              <span className="font-medium">Create New Site</span>
-              <span className="text-xs mt-1">Start from scratch or use AI</span>
-            </CardContent>
-          </GlowCard>
+          <div className="group">
+            <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer" initialGlow>
+              <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
+                <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
+                  <Plus className="size-6" />
+                </div>
+                <span className="font-medium">Create New Site</span>
+                <span className="text-xs mt-1">Start from scratch or use AI</span>
+              </CardContent>
+            </GlowCard>
+            {/* Empty space below to match other cards */}
+            <div className="pt-4 pb-1">
+              <div className="h-5" />
+              <div className="h-4" />
+            </div>
+          </div>
 
           {/* Site Cards */}
           {mockSites.map((site) => (
-            <Link key={site.id} href={`/builder/${site.id}`}>
-              <GlowCard className="group cursor-pointer">
-              {/* Thumbnail */}
-              <div className="relative aspect-[16/10] bg-muted overflow-hidden rounded-t-lg">
-                <img 
-                  src={site.thumbnail} 
-                  alt={site.title}
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                />
-                {/* Status Badge */}
-                <Badge 
-                  variant={site.status === 'published' ? 'default' : 'secondary'}
-                  className="absolute top-2 left-2"
-                >
-                  {site.status === 'published' ? (
-                    <>
-                      <Globe className="size-3 mr-1" />
-                      Published
-                    </>
-                  ) : (
-                    'Draft'
-                  )}
-                </Badge>
-                {/* Hover Actions */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button size="sm" variant="secondary">
-                    <Eye className="size-4 mr-1" />
-                    Preview
-                  </Button>
-                  <Button size="sm">
-                    <Pencil className="size-4 mr-1" />
-                    Edit
-                  </Button>
-                </div>
-              </div>
-              {/* Content */}
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">{site.title}</h3>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Eye className="size-3" />
-                        {site.views} views
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="size-3" />
-                        {site.lastEdited}
-                      </span>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="size-4 mr-2" />
-                        Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Pencil className="size-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Copy className="size-4 mr-2" />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">
-                        <Trash2 className="size-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardContent>
-            </GlowCard>
-            </Link>
+            <SiteCard key={site.id} site={site} />
           ))}
         </div>
       </main>
