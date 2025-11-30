@@ -319,6 +319,17 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
   const supabase = await createClient()
 
   try {
+    // DEBUG: Check if we have a valid session
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    console.log('DEBUG deleteUserAccount - userId param:', userId)
+    console.log('DEBUG deleteUserAccount - auth user:', user?.id)
+    console.log('DEBUG deleteUserAccount - auth error:', authError)
+    
+    if (!user || user.id !== userId) {
+      console.error('Auth mismatch! userId:', userId, 'auth.uid:', user?.id)
+      return { error: 'Session expired. Please refresh and try again.' }
+    }
+
     // 1. FIRST - Anonymize profile (soft delete) while session is still valid
     const { error: profileError } = await supabase
       .from('profiles')
