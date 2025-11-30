@@ -1503,17 +1503,7 @@ export async function acceptInvitation(
 
   if (existingMembership) {
     // User is already a member, just mark invitation as accepted
-    // Use admin client to bypass RLS - ensures update works even if user isn't admin
-    const { createAdminClient } = await import('@/lib/supabase/admin')
-    let adminClient
-    try {
-      adminClient = createAdminClient()
-    } catch (error) {
-      console.error('Failed to create admin client for invitation update:', error)
-      adminClient = supabase
-    }
-    
-    await adminClient
+    await supabase
       .from('invitations')
       .update({ status: 'accepted' })
       .eq('id', invitation.id)
@@ -1536,18 +1526,7 @@ export async function acceptInvitation(
   }
 
   // Mark invitation as accepted
-  // Use admin client to bypass RLS - user doesn't have membership yet
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  let adminClient
-  try {
-    adminClient = createAdminClient()
-  } catch (error) {
-    console.error('Failed to create admin client for invitation update:', error)
-    // Fallback to regular client - may fail due to RLS
-    adminClient = supabase
-  }
-  
-  const { error: updateError } = await adminClient
+  const { error: updateError } = await supabase
     .from('invitations')
     .update({ status: 'accepted' })
     .eq('id', invitation.id)
