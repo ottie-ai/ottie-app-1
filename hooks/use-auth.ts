@@ -16,31 +16,53 @@ export function useAuth() {
 
   useEffect(() => {
     const supabase = createClient()
+    let isMounted = true
 
     // Validate user with Supabase server (not just local token)
     // This ensures deleted users are detected
     const validateUser = async () => {
       try {
-        // getUser() validates with Supabase server, unlike getSession() which only checks local token
-        const { data: { user }, error } = await supabase.auth.getUser()
+        // First check if there's a session at all
+        const { data: { session } } = await supabase.auth.getSession()
         
-        if (error) {
-          console.error('[useAuth] Error validating user:', error)
-          // If user validation fails (e.g., user deleted), sign out and clear session
-          if (error.message?.includes('User not found') || error.status === 401 || error.status === 403) {
-            await supabase.auth.signOut()
+        // No session means not logged in - this is fine, no need to validate
+        if (!session) {
+          if (isMounted) {
+            setUser(null)
+            setLoading(false)
           }
-          setUser(null)
-          setLoading(false)
           return
         }
         
-        setUser(user ?? null)
-        setLoading(false)
+        // getUser() validates with Supabase server, unlike getSession() which only checks local token
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error || !user) {
+          console.error('[useAuth] Error validating user:', error?.message || 'No user found')
+          // Session exists but user validation failed - sign out silently
+          try {
+            await supabase.auth.signOut()
+          } catch (signOutError) {
+            // Ignore sign out errors - session might already be invalid
+            console.warn('[useAuth] Sign out failed:', signOutError)
+          }
+          if (isMounted) {
+            setUser(null)
+            setLoading(false)
+          }
+          return
+        }
+        
+        if (isMounted) {
+          setUser(user)
+          setLoading(false)
+        }
       } catch (error) {
         console.error('[useAuth] Error in validateUser:', error)
-        setUser(null)
-        setLoading(false)
+        if (isMounted) {
+          setUser(null)
+          setLoading(false)
+        }
       }
     }
 
@@ -50,27 +72,40 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // For sign in/sign up events, validate the user
+      if (!isMounted) return
+      
+      if (event === 'SIGNED_OUT' || !session) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
+      
       if (event === 'SIGNED_IN' && session?.user) {
         // Re-validate with server to ensure user exists
-        const { data: { user }, error } = await supabase.auth.getUser()
-        if (error || !user) {
-          await supabase.auth.signOut()
-          setUser(null)
-        } else {
-          setUser(user)
+        try {
+          const { data: { user }, error } = await supabase.auth.getUser()
+          if (isMounted) {
+            if (error || !user) {
+              await supabase.auth.signOut()
+              setUser(null)
+            } else {
+              setUser(user)
+            }
+          }
+        } catch {
+          if (isMounted) setUser(null)
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
       } else if (session?.user) {
         setUser(session.user)
-      } else {
-        setUser(null)
       }
-      setLoading(false)
+      
+      if (isMounted) setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [router])
 
   return { user, loading }
