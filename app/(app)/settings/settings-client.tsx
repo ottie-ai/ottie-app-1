@@ -37,7 +37,8 @@ import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspace } from '@/contexts/workspace-context'
 import type { Profile, Workspace, Membership } from '@/types/database'
-import { Mail, Plus, AlertCircle } from 'lucide-react'
+import { pricingTiers } from '@/lib/pricing-data'
+import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { UserRole } from '@/types/database'
 
@@ -1760,94 +1761,205 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               )}
 
               {/* Plan & Billing Tab */}
-              {isMobile ? (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      Current Plan
-                      <Badge variant="secondary" className="capitalize">
-                        {workspace ? normalizePlan(workspace.plan) : 'free'}
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription>
-                      Manage your subscription and billing
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+              {(() => {
+                const currentPlanId = workspace ? normalizePlan(workspace.plan) : 'free'
+                const currentTier = pricingTiers.find(t => t.id === currentPlanId) || pricingTiers[0]
+                const nextTierIndex = pricingTiers.findIndex(t => t.id === currentPlanId) + 1
+                const nextTier = nextTierIndex < pricingTiers.length ? pricingTiers[nextTierIndex] : null
+                const userCount = members.length || 1
+                const planDescription = currentTier.description || (currentPlanId === 'free' ? 'Free for all users.' : '')
+                const isHighestPlan = currentPlanId === 'agency' || currentPlanId === 'enterprise'
 
-                <div className="rounded-lg border p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium capitalize">
-                      {workspace ? normalizePlan(workspace.plan) : 'Free'} Plan
-                    </span>
-                    <span className="text-muted-foreground">$0/month</span>
-                  </div>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Up to 3 sites</li>
-                    <li>• Basic analytics</li>
-                    <li>• Ottie branding</li>
-                  </ul>
-                </div>
+                return isMobile ? (
+                  <Card className="mb-6">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle>Billing</CardTitle>
+                          <CardDescription>
+                            For questions about billing,{' '}
+                            <a href="mailto:support@getottie.com" className="underline hover:no-underline">
+                              contact us
+                            </a>
+                          </CardDescription>
+                        </div>
+                        <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                          <Button variant="ghost" size="sm" className="text-muted-foreground">
+                            All plans <ArrowRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </PricingDialog>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Current Plan */}
+                      <div className="rounded-lg border p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold capitalize">{currentTier.name} plan</span>
+                              <Badge variant="secondary" className="text-xs">Current</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{planDescription}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Users</p>
+                            <p className="text-lg font-semibold">{userCount}</p>
+                          </div>
+                        </div>
+                      </div>
 
-                {workspace && (normalizePlan(workspace.plan) === 'agency' || normalizePlan(workspace.plan) === 'enterprise') ? (
-                  <div className="rounded-lg border p-4 text-center space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Need custom plan?
-                    </p>
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href="mailto:sales@getottie.com">Contact Sales</a>
-                    </Button>
-                  </div>
+                      {/* Upgrade Section */}
+                      {!isHighestPlan && nextTier ? (
+                        <div className="rounded-lg border p-4 space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold">Upgrade to {nextTier.name} plan</h3>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                ${nextTier.monthlyPrice} per user/mo
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                                <Button variant="ghost" size="sm" className="text-muted-foreground">
+                                  View all plans
+                                </Button>
+                              </PricingDialog>
+                              <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                                <Button size="sm">Upgrade now</Button>
+                              </PricingDialog>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                            {nextTier.features.slice(0, 6).map((feature, index) => (
+                              <div key={index} className="flex items-center gap-2 text-sm">
+                                <CheckIcon className="h-4 w-4 text-primary shrink-0" />
+                                <span>{feature.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : isHighestPlan ? (
+                        <div className="rounded-lg border p-4 text-center space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Need custom plan?
+                          </p>
+                          <Button variant="outline" className="w-full" asChild>
+                            <a href="mailto:sales@getottie.com">Contact Sales</a>
+                          </Button>
+                        </div>
+                      ) : null}
+
+                      {/* Manage Subscription */}
+                      <div className="pt-4 border-t">
+                        <h3 className="text-base font-semibold mb-2">Subscription</h3>
+                        <a
+                          href={workspace?.stripe_customer_id 
+                            ? `https://billing.stripe.com/p/login/${workspace.stripe_customer_id}`
+                            : 'https://dashboard.stripe.com'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          Manage subscription <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
-                    <Button className="w-full">Upgrade</Button>
-                  </PricingDialog>
-                )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <TabsContent value="plan" className="mt-0 sm:mt-6 space-y-6">
-                  {/* Duplicate plan content for desktop */}
-                  <div>
-                    <h2 className="text-lg font-semibold flex items-center gap-2">
-                      Current Plan
-                      <Badge variant="secondary" className="capitalize">
-                        {workspace ? normalizePlan(workspace.plan) : 'free'}
-                      </Badge>
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Manage your subscription and billing
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium capitalize">
-                        {workspace ? normalizePlan(workspace.plan) : 'Free'} Plan
-                      </span>
-                      <span className="text-muted-foreground">$0/month</span>
+                  <TabsContent value="plan" className="mt-0 sm:mt-6 space-y-6">
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold">Billing</h2>
+                        <p className="text-sm text-muted-foreground">
+                          For questions about billing,{' '}
+                          <a href="mailto:support@getottie.com" className="underline hover:no-underline">
+                            contact us
+                          </a>
+                        </p>
+                      </div>
+                      <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                        <Button variant="ghost" size="sm" className="text-muted-foreground">
+                          All plans <ArrowRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </PricingDialog>
                     </div>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Up to 3 sites</li>
-                      <li>• Basic analytics</li>
-                      <li>• Ottie branding</li>
-                    </ul>
-                  </div>
-                  {workspace && (normalizePlan(workspace.plan) === 'agency' || normalizePlan(workspace.plan) === 'enterprise') ? (
-                    <div className="rounded-lg border p-4 text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Need custom plan?
-                      </p>
-                      <Button variant="outline" className="w-full" asChild>
-                        <a href="mailto:sales@getottie.com">Contact Sales</a>
-                      </Button>
+
+                    {/* Current Plan */}
+                    <div className="rounded-lg border p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold capitalize">{currentTier.name} plan</span>
+                            <Badge variant="secondary" className="text-xs">Current</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{planDescription}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Users</p>
+                          <p className="text-lg font-semibold">{userCount}</p>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
-                      <Button className="w-full">Upgrade</Button>
-                    </PricingDialog>
-                  )}
-                </TabsContent>
-              )}
+
+                    {/* Upgrade Section */}
+                    {!isHighestPlan && nextTier ? (
+                      <div className="rounded-lg border p-4 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">Upgrade to {nextTier.name} plan</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              ${nextTier.monthlyPrice} per user/mo
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                                View all plans
+                              </Button>
+                            </PricingDialog>
+                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <Button size="sm">Upgrade now</Button>
+                            </PricingDialog>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                          {nextTier.features.slice(0, 6).map((feature, index) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <CheckIcon className="h-4 w-4 text-primary shrink-0" />
+                              <span>{feature.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : isHighestPlan ? (
+                      <div className="rounded-lg border p-4 text-center space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Need custom plan?
+                        </p>
+                        <Button variant="outline" className="w-full" asChild>
+                          <a href="mailto:sales@getottie.com">Contact Sales</a>
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    {/* Manage Subscription */}
+                    <div className="pt-4 border-t">
+                      <h3 className="text-base font-semibold mb-2">Subscription</h3>
+                      <a
+                        href={workspace?.stripe_customer_id 
+                          ? `https://billing.stripe.com/p/login/${workspace.stripe_customer_id}`
+                          : 'https://dashboard.stripe.com'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        Manage subscription <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </TabsContent>
+                )
+              })()}
 
               {/* Team Tab */}
               {isMobile ? (

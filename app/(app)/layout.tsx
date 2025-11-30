@@ -31,7 +31,7 @@ export default function AppRootLayout({
   const pathname = usePathname()
 
   // Workspace routes that should have sidebar
-  const workspaceRoutes = ['/overview', '/sites', '/settings', '/client-portals']
+  const workspaceRoutes = ['/overview', '/sites', '/leads', '/settings', '/client-portals']
   const isWorkspaceRoute = workspaceRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
   const isBuilderRoute = pathname.startsWith('/builder/')
 

@@ -11,15 +11,15 @@ import { useWorkspaces } from '@/hooks/use-workspaces'
 import { normalizePlan, isMultiUserPlan } from '@/lib/utils'
 import { signOut } from '@/lib/supabase/auth'
 import {
-  Home,
-  FileText,
+  LayoutDashboard,
+  Globe,
   Settings,
   HelpCircle,
   LogOut,
   Plus,
   UserPlus,
   Search,
-  Users,
+  SquareUser,
   ChevronsUpDown,
   ExternalLink,
   Sun,
@@ -30,6 +30,7 @@ import {
   Bug,
   ChevronRight,
   BookOpen,
+  Users,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -61,19 +62,24 @@ import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 const mainNavItems = [
   {
-    title: 'Home',
+    title: 'Overview',
     url: '/overview',
-    icon: Home,
+    icon: LayoutDashboard,
   },
   {
-    title: 'My Sites',
+    title: 'Sites',
     url: '/sites',
-    icon: FileText,
+    icon: Globe,
+  },
+  {
+    title: 'Leads',
+    url: '/leads',
+    icon: Users,
   },
   {
     title: 'Client Portals',
     url: '/client-portals',
-    icon: Users,
+    icon: SquareUser,
     badge: 'Coming Soon',
   },
 ]
@@ -221,34 +227,6 @@ export function DashboardSidebar() {
                 side="bottom"
                 sideOffset={4}
               >
-                {/* Current Plan Section */}
-                {!workspaceLoading && workspace && (
-                  <>
-                    <div className="px-2 py-1.5">
-                      <DropdownMenuLabel className="text-xs text-muted-foreground mb-2">
-                        Your current plan
-                      </DropdownMenuLabel>
-                      <div className={`flex items-center gap-2 rounded-md border bg-muted/50 p-2 ${!isMultiUserPlan(workspace.plan) ? 'justify-between' : 'justify-start'}`}>
-                        <Badge variant="secondary" className="capitalize text-xs">
-                          {normalizePlan(workspace.plan)}
-                        </Badge>
-                        {!isMultiUserPlan(workspace.plan) && (
-                          <PricingDialog currentPlan={workspace.plan} stripeCustomerId={workspace.stripe_customer_id}>
-                            <Button 
-                              size="sm" 
-                              variant="default"
-                              className="h-7 text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Upgrade
-                            </Button>
-                          </PricingDialog>
-                        )}
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
                 {workspaces.length > 1 && (
                   <>
                     <DropdownMenuLabel>Switch Workspace</DropdownMenuLabel>
@@ -299,10 +277,6 @@ export function DashboardSidebar() {
                         <UserPlus className="h-4 w-4" />
                         Invite Users
                       </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings" onClick={handleLinkClick}>Account Settings</Link>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -372,7 +346,6 @@ export function DashboardSidebar() {
 
         {/* Support & Settings */}
         <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Theme Toggle */}
@@ -522,17 +495,11 @@ export function DashboardSidebar() {
               >
                 <DropdownMenuItem asChild>
                   <Link href="/settings" onClick={handleLinkClick}>
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" onClick={handleLinkClick}>
                     Account Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
-                  <LogOut className="mr-2 size-4" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
