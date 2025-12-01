@@ -2,6 +2,58 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
+ * Rate limiting storage
+ * In production, consider using Redis or a database for distributed rate limiting
+ * 
+ * Note: Expired records are automatically cleaned up in checkRateLimit()
+ * when a new request comes in for that IP, so no manual cleanup is needed.
+ */
+const rateLimit = new Map<string, { count: number; resetTime: number }>()
+
+/**
+ * Check rate limit for an IP address
+ * @param ip - Client IP address
+ * @param limit - Maximum number of requests allowed
+ * @param windowMs - Time window in milliseconds
+ * @returns true if request is allowed, false if rate limit exceeded
+ */
+function checkRateLimit(ip: string, limit: number, windowMs: number): boolean {
+  const now = Date.now()
+  const record = rateLimit.get(ip)
+
+  if (!record || now > record.resetTime) {
+    // No record or window expired - create new record
+    rateLimit.set(ip, { count: 1, resetTime: now + windowMs })
+    return true
+  }
+
+  // Check if limit exceeded
+  if (record.count >= limit) {
+    return false
+  }
+
+  // Increment count
+  record.count++
+  return true
+}
+
+/**
+ * Get client IP address from request
+ */
+function getClientIp(request: NextRequest): string {
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+  const cfConnectingIp = request.headers.get('cf-connecting-ip')
+
+  // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
+  // The first IP is usually the original client IP
+  return forwardedFor?.split(',')[0]?.trim() ||
+         realIp?.trim() ||
+         cfConnectingIp?.trim() ||
+         'unknown'
+}
+
+/**
  * Middleware for Subdomain Routing & Supabase Session Refresh
  * 
  * This middleware handles:
@@ -142,10 +194,60 @@ export async function middleware(request: NextRequest) {
   if (accessCheck) {
     return accessCheck
   }
-  
+
   const url = request.nextUrl.clone()
   const pathname = url.pathname
   const hostname = request.headers.get('host') || ''
+
+  // Rate limiting for authentication endpoints
+  const authEndpoints = ['/login', '/signup', '/forgot-password', '/reset-password']
+  const isAuthEndpoint = authEndpoints.some(endpoint => pathname === endpoint || pathname.startsWith(endpoint + '/'))
+
+  if (isAuthEndpoint) {
+    const clientIp = getClientIp(request)
+    
+    // Different rate limits for different endpoints
+    let limit: number
+    let windowMs: number
+
+    if (pathname === '/login' || pathname.startsWith('/login')) {
+      // Login: 5 attempts per 15 minutes
+      limit = 5
+      windowMs = 15 * 60 * 1000
+    } else if (pathname === '/signup' || pathname.startsWith('/signup')) {
+      // Signup: 3 attempts per 15 minutes
+      limit = 3
+      windowMs = 15 * 60 * 1000
+    } else if (pathname === '/forgot-password' || pathname.startsWith('/forgot-password')) {
+      // Password reset: 3 attempts per hour
+      limit = 3
+      windowMs = 60 * 60 * 1000
+    } else if (pathname === '/reset-password' || pathname.startsWith('/reset-password')) {
+      // Reset password (form submission): 5 attempts per hour
+      limit = 5
+      windowMs = 60 * 60 * 1000
+    } else {
+      // Default: 10 requests per 15 minutes
+      limit = 10
+      windowMs = 15 * 60 * 1000
+    }
+
+    if (!checkRateLimit(clientIp, limit, windowMs)) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(windowMs / 1000)),
+          },
+        }
+      )
+    }
+  }
 
   // Get root domain from environment (default to localhost for development)
   // In production, this should be set to your actual domain (e.g., 'ottie.com')
