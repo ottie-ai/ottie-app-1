@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
+import { useWorkspaces } from '@/hooks/use-workspaces'
 import { normalizePlan, isMultiUserPlan } from '@/lib/utils'
 import { signOut } from '@/lib/supabase/auth'
 import {
@@ -95,21 +96,8 @@ export function DashboardSidebar() {
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { workspace, loading: workspaceLoading } = useWorkspace()
-  const { allWorkspaces, currentMembership } = useAppData()
-  
-  // Transform allWorkspaces to match the format expected by the component
-  // allWorkspaces is already loaded with appData, so it's immediately available
-  const workspaces = allWorkspaces.map(({ workspace: ws, role }) => ({
-    workspace: ws,
-    membership: {
-      id: '', // Not needed for display
-      workspace_id: ws.id,
-      user_id: '', // Not needed for display
-      role: role as 'owner' | 'admin' | 'agent',
-      last_active_at: null,
-      created_at: ws.created_at,
-    },
-  }))
+  const { currentMembership } = useAppData()
+  const { workspaces } = useWorkspaces()
   const [mounted, setMounted] = useState(false)
   
   // Check if user is agent
