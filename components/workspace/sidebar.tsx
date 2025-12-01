@@ -96,8 +96,24 @@ export function DashboardSidebar() {
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { workspace, loading: workspaceLoading } = useWorkspace()
-  const { currentMembership } = useAppData()
-  const { workspaces } = useWorkspaces()
+  const { allWorkspaces, currentMembership } = useAppData()
+  const { workspaces: workspacesFromHook } = useWorkspaces()
+  
+  // Use allWorkspaces from app-context (loaded with appData) if available, otherwise fallback to hook
+  // allWorkspaces are already loaded with appData when app loads, so they're immediately available
+  const workspaces = allWorkspaces.length > 0
+    ? allWorkspaces.map(({ workspace: ws, role }) => ({
+        workspace: ws,
+        membership: {
+          id: '', // Not needed for display
+          workspace_id: ws.id,
+          user_id: '', // Not needed for display
+          role: role as 'owner' | 'admin' | 'agent',
+          last_active_at: null,
+          created_at: ws.created_at,
+        },
+      }))
+    : workspacesFromHook
   const [mounted, setMounted] = useState(false)
   
   // Check if user is agent
