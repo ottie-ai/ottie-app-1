@@ -28,6 +28,7 @@ import {
   Bug,
   BookOpen,
   Users,
+  Repeat,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -251,6 +252,7 @@ export function DashboardSidebar() {
                   <>
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>
+                        <Repeat className="h-4 w-4" />
                         Switch Workspace
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
