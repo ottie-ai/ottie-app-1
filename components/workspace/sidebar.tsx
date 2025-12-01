@@ -283,8 +283,14 @@ export function DashboardSidebar() {
                                 }
                               }}
                             >
-                              <div className="flex items-center justify-between w-full gap-2">
-                                <span className="truncate">{ws.name}</span>
+                              <div className="flex items-center gap-2 w-full">
+                                <Avatar className="h-6 w-6 shrink-0 rounded">
+                                  <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
+                                  <AvatarFallback className="text-xs rounded bg-muted">
+                                    {ws.name.substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate flex-1">{ws.name}</span>
                                 {isCurrent && (
                                   <Check className="h-4 w-4 shrink-0 text-primary" />
                                 )}
