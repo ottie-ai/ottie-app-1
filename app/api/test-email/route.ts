@@ -3,16 +3,16 @@ import { sendInviteEmail } from '@/lib/email'
 
 /**
  * Test endpoint to verify Resend email configuration
- * Only works in development mode
+ * Only available when ENABLE_TEST_ENDPOINTS=true
  * 
  * Usage: POST /api/test-email
  * Body: { "to": "your-email@example.com" }
  */
 export async function POST(request: Request) {
-  // Only allow in development
-  if (process.env.NODE_ENV === 'production') {
+  // Only allow when explicitly enabled via environment variable
+  if (process.env.ENABLE_TEST_ENDPOINTS !== 'true') {
     return NextResponse.json(
-      { error: 'This endpoint is only available in development' },
+      { error: 'Not available' },
       { status: 403 }
     )
   }
