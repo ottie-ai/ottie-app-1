@@ -164,14 +164,15 @@ export async function updateUserProfile(userId: string, formData: FormData) {
 
     if (uploadError) {
       console.error('Error uploading avatar:', uploadError)
-      // Provide more specific error messages
+      // Log detailed error server-side for debugging
       if (uploadError.message?.includes('Bucket not found')) {
-        return { error: 'Storage bucket not found. Please create the "avatars" bucket in Supabase Storage.' }
+        console.error('Storage bucket configuration error - avatars bucket not found')
       }
       if (uploadError.message?.includes('new row violates row-level security policy')) {
-        return { error: 'Permission denied. Please check Storage policies for the "avatars" bucket.' }
+        console.error('Storage RLS policy error - avatars bucket')
       }
-      return { error: `Failed to upload avatar: ${uploadError.message || 'Unknown error'}` }
+      // Return generic error message to client (don't reveal implementation details)
+      return { error: 'Failed to upload avatar. Please try again later.' }
     }
 
     // Get public URL
@@ -350,11 +351,8 @@ export async function deleteUserAccount(userId: string): Promise<{ success: true
   const supabase = await createClient()
 
   try {
-    // DEBUG: Check if we have a valid session
+    // Check if we have a valid session
     const { data: { user }, error: sessionError } = await supabase.auth.getUser()
-    console.log('DEBUG deleteUserAccount - userId param:', userId)
-    console.log('DEBUG deleteUserAccount - auth user:', user?.id)
-    console.log('DEBUG deleteUserAccount - session error:', sessionError)
     
     if (!user || user.id !== userId) {
       console.error('Auth mismatch! userId:', userId, 'auth.uid:', user?.id)
@@ -593,14 +591,15 @@ export async function uploadWorkspaceLogo(
 
     if (uploadError) {
       console.error('Error uploading workspace logo:', uploadError)
-      // Provide more specific error messages
+      // Log detailed error server-side for debugging
       if (uploadError.message?.includes('Bucket not found')) {
-        return { error: 'Storage bucket not found. Please create the "workspace-logos" bucket in Supabase Storage.' }
+        console.error('Storage bucket configuration error - workspace-logos bucket not found')
       }
       if (uploadError.message?.includes('new row violates row-level security policy')) {
-        return { error: 'Permission denied. Please check Storage policies for the "workspace-logos" bucket.' }
+        console.error('Storage RLS policy error - workspace-logos bucket')
       }
-      return { error: `Failed to upload logo: ${uploadError.message || 'Unknown error'}` }
+      // Return generic error message to client (don't reveal implementation details)
+      return { error: 'Failed to upload logo. Please try again later.' }
     }
 
     // Get public URL
