@@ -10,8 +10,36 @@
 -- - getMembers(workspaceId) / getWorkspaceMembers(workspaceId)
 -- - getAllUserWorkspaces(userId)
 -- 
+-- Parameters:
+--   p_user_id (uuid, required) - The user ID to fetch data for
+--   p_preferred_workspace_id (uuid, optional) - Preferred workspace ID (from localStorage)
+-- 
+-- Returns (JSONB):
+--   {
+--     "profile": { ... } | null,
+--     "workspace": { ... } | null,
+--     "membership": { ... } | null,
+--     "members": [{ membership: {...}, profile: {...} }, ...],
+--     "allWorkspaces": [{ workspace: {...}, role: "owner|admin|agent" }, ...]
+--   }
+-- 
 -- Usage:
--- SELECT * FROM get_user_dashboard_data(p_user_id := 'user-uuid');
+--   SELECT * FROM get_user_dashboard_data(
+--     p_user_id := 'user-uuid',
+--     p_preferred_workspace_id := 'workspace-uuid'  -- optional
+--   );
+-- 
+-- Client Usage (TypeScript):
+--   const { data, error } = await supabase.rpc('get_user_dashboard_data', {
+--     p_user_id: userId,
+--     p_preferred_workspace_id: preferredWorkspaceId || null,
+--   })
+-- 
+-- Notes:
+--   - If p_preferred_workspace_id is provided, it tries to load that workspace first
+--   - If preferred workspace not found or not provided, returns most recent workspace
+--   - allWorkspaces includes all workspaces where user is a member (ordered by created_at desc)
+--   - All workspaces are filtered to exclude deleted workspaces (deleted_at IS NULL)
 -- ==========================================
 
 create or replace function public.get_user_dashboard_data(
