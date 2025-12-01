@@ -17,6 +17,36 @@ import { sendInviteEmail } from '@/lib/email'
  */
 
 /**
+ * Verify user has access to workspace
+ * Returns membership role if user has access, null otherwise
+ * This prevents users from accessing workspaces they don't belong to
+ * by manipulating localStorage workspace_id
+ */
+async function verifyWorkspaceAccess(
+  workspaceId: string,
+  userId: string
+): Promise<{ role: string } | null> {
+  if (!workspaceId || !userId) {
+    return null
+  }
+
+  const supabase = await createClient()
+  
+  const { data: membership, error } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (error || !membership) {
+    return null
+  }
+
+  return { role: membership.role }
+}
+
+/**
  * Get user profile (cached)
  * Uses React cache() for automatic request deduplication
  * This function is now primarily used by server components, but kept here
