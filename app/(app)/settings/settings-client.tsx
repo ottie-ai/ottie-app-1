@@ -38,6 +38,7 @@ import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
 import type { Profile, Workspace, Membership } from '@/types/database'
+import { useQueryClient } from '@tanstack/react-query'
 import { pricingTiers } from '@/lib/pricing-data'
 import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, Crown } from 'lucide-react'
 import {
@@ -87,6 +88,19 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
+  const queryClient = useQueryClient()
+  
+  // Pre-populate React Query cache with server-side data to avoid duplicate fetches
+  // This prevents the UserDataProvider from fetching data that was already loaded server-side
+  useEffect(() => {
+    if (clientUser?.id && (initialProfile !== undefined || initialWorkspace !== undefined)) {
+      queryClient.setQueryData(['userData', clientUser.id], {
+        profile: initialProfile ?? null,
+        workspace: initialWorkspace ?? null,
+      })
+    }
+  }, [clientUser?.id, initialProfile, initialWorkspace, queryClient])
+  
   const { refresh: refreshUserProfile } = useUserProfile()
   
   // Use client-side user if available (more reliable), otherwise fall back to server user
@@ -128,6 +142,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
   
   // Load workspace members (use initial data if available to avoid duplicate fetch)
+  // N+1 Prevention: useWorkspaceMembers uses JOIN query to fetch all members with profiles in a single query
+  // When mapping over members below, all profile data is already loaded - no additional queries per member
   const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null, initialMembers)
   
   // Load pending invitations (use initial data if available to avoid duplicate fetch)

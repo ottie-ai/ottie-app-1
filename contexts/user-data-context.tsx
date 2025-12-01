@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { loadUserData, fetchUserProfile, loadUserWorkspace } from '@/lib/workspace-queries'
 import type { Profile, Workspace } from '@/types/database'
@@ -17,91 +18,74 @@ interface UserDataContextType {
 const UserDataContext = createContext<UserDataContextType | undefined>(undefined)
 
 /**
- * UserDataProvider - Loads profile and workspace in parallel
- * Replaces the need for separate UserProfileProvider and WorkspaceProvider
- * Optimizes loading by fetching both simultaneously
+ * UserDataProvider - Loads profile and workspace using React Query
+ * Provides automatic caching, background refetching, and stale-while-revalidate
+ * 
+ * @param initialData - Optional initial data from server-side rendering to avoid duplicate fetches
  */
-export function UserDataProvider({ children }: { children: React.ReactNode }) {
+export function UserDataProvider({ 
+  children,
+  initialData,
+}: { 
+  children: React.ReactNode
+  initialData?: {
+    profile: Profile | null
+    workspace: Workspace | null
+  }
+}) {
   const { user } = useAuth()
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const loadData = useCallback(async () => {
-    if (!user?.id) {
-      setProfile(null)
-      setWorkspace(null)
-      setLoading(false)
-      return
-    }
+  // Use React Query for profile and workspace data
+  const {
+    data: userData,
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ['userData', user?.id],
+    queryFn: async () => {
+      if (!user?.id) {
+        return { profile: null, workspace: null }
+      }
+      return loadUserData(user.id)
+    },
+    enabled: !!user?.id && !initialData, // Skip fetch if initial data provided
+    initialData: initialData, // Use initial data if provided
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
-    try {
-      // Parallel loading - both queries execute simultaneously
-      const { profile: profileData, workspace: workspaceData } = await loadUserData(user.id)
-      setProfile(profileData)
-      setWorkspace(workspaceData)
-    } catch (error) {
-      console.error('Error loading user data:', error)
-      setProfile(null)
-      setWorkspace(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [user?.id])
+  // Use query data (which may be pre-populated via setQueryData) or fall back to initialData
+  // Priority: userData (from query) > initialData (prop) > null
+  const profile = userData?.profile ?? initialData?.profile ?? null
+  const workspace = userData?.workspace ?? initialData?.workspace ?? null
+  
+  // If we have initial data (either from prop or pre-populated cache), we're not loading
+  const isLoading = (initialData || userData) ? false : loading
 
-  useEffect(() => {
-    loadData()
-  }, [loadData])
+  const refresh = async () => {
+    if (!user?.id) return
+    await queryClient.invalidateQueries({ queryKey: ['userData', user.id] })
+  }
 
-  const refresh = useCallback(async () => {
-    if (!user?.id) {
-      setProfile(null)
-      setWorkspace(null)
-      return
-    }
+  const refreshProfile = async () => {
+    if (!user?.id) return
+    // Invalidate and refetch profile
+    await queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
+    await queryClient.invalidateQueries({ queryKey: ['userData', user.id] })
+  }
 
-    try {
-      // Parallel refresh
-      const { profile: profileData, workspace: workspaceData } = await loadUserData(user.id)
-      setProfile(profileData)
-      setWorkspace(workspaceData)
-    } catch (error) {
-      console.error('Error refreshing user data:', error)
-    }
-  }, [user?.id])
-
-  const refreshProfile = useCallback(async () => {
-    if (!user?.id) {
-      return
-    }
-
-    try {
-      const profileData = await fetchUserProfile(user.id)
-      setProfile(profileData)
-    } catch (error) {
-      console.error('Error refreshing profile:', error)
-    }
-  }, [user?.id])
-
-  const refreshWorkspace = useCallback(async () => {
-    if (!user?.id) {
-      return
-    }
-
-    try {
-      const workspaceData = await loadUserWorkspace(user.id)
-      setWorkspace(workspaceData)
-    } catch (error) {
-      console.error('Error refreshing workspace:', error)
-    }
-  }, [user?.id])
+  const refreshWorkspace = async () => {
+    if (!user?.id) return
+    // Invalidate and refetch workspace
+    await queryClient.invalidateQueries({ queryKey: ['workspace', user.id] })
+    await queryClient.invalidateQueries({ queryKey: ['userData', user.id] })
+  }
 
   return (
     <UserDataContext.Provider
       value={{
         profile,
         workspace,
-        loading,
+        loading: isLoading,
         refresh,
         refreshProfile,
         refreshWorkspace,
