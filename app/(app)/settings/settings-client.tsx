@@ -1118,14 +1118,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                             ref={workspaceLogoInputRef}
                             id="workspaceLogoFile"
                             type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                             onChange={(e) => {
                               const file = e.target.files?.[0]
                               if (file) {
-                                // Validate file type
-                                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+                                // Validate file type (SVG excluded due to XSS risk from embedded JavaScript)
+                                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
                                 if (!validTypes.includes(file.type)) {
-                                  toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.')
+                                  toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.')
                                   return
                                 }
 
@@ -1349,14 +1349,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                 ref={workspaceLogoInputRef}
                                 id="workspaceLogoFile-desktop"
                                 type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0]
                                   if (file) {
-                                    // Validate file type
-                                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+                                    // Validate file type (SVG excluded due to XSS risk from embedded JavaScript)
+                                    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
                                     if (!validTypes.includes(file.type)) {
-                                      toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.')
+                                      toast.error('Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.')
                                       return
                                     }
 

@@ -545,10 +545,10 @@ export async function uploadWorkspaceLogo(
     return { error: 'Only workspace owners and admins can upload workspace logo' }
   }
 
-  // Validate file type
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+  // Validate file type (SVG excluded due to XSS risk from embedded JavaScript)
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
   if (!validTypes.includes(file.type)) {
-    return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, WebP, or SVG image.' }
+    return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
   }
 
   // Validate file size (max 2MB)
