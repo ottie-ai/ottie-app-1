@@ -19,12 +19,13 @@ import {
   Search,
   SquareUser,
   ChevronsUpDown,
+  ChevronRight,
+  Check,
   ExternalLink,
   Sparkles,
   MessageSquare,
   Lightbulb,
   Bug,
-  ChevronRight,
   BookOpen,
   Users,
 } from 'lucide-react'
@@ -53,6 +54,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
@@ -245,26 +249,51 @@ export function DashboardSidebar() {
               >
                 {workspaces.length > 1 && (
                   <>
-                    <DropdownMenuLabel>Switch Workspace</DropdownMenuLabel>
-                    {workspaces.map(({ workspace: ws, membership }) => (
-                      <DropdownMenuItem
-                        key={ws.id}
-                        onClick={() => {
-                          handleSwitchWorkspace(ws.id)
-                          if (isMobile) {
-                            setOpenMobile(false)
-                          }
-                        }}
-                        className={workspace?.id === ws.id ? 'bg-accent' : ''}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="truncate">{ws.name}</span>
-                          {workspace?.id === ws.id && (
-                            <span className="text-xs text-muted-foreground ml-2">Current</span>
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                    ))}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        Switch Workspace
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {workspaces.map(({ workspace: ws, membership }) => {
+                          const isCurrent = workspace?.id === ws.id
+                          return (
+                            <DropdownMenuItem
+                              key={ws.id}
+                              onClick={() => {
+                                if (!isCurrent) {
+                                  handleSwitchWorkspace(ws.id)
+                                  if (isMobile) {
+                                    setOpenMobile(false)
+                                  }
+                                }
+                              }}
+                              className={isCurrent 
+                                ? 'cursor-default opacity-60 pointer-events-none' 
+                                : ''
+                              }
+                              onPointerDown={(e) => {
+                                if (isCurrent) {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isCurrent) {
+                                  e.currentTarget.style.backgroundColor = ''
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <span className="truncate">{ws.name}</span>
+                                {isCurrent && (
+                                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          )
+                        })}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                     <DropdownMenuSeparator />
                   </>
                 )}
