@@ -327,3 +327,137 @@ export async function getIntegrations(workspaceId: string): Promise<Integration[
   return data || []
 }
 
+/**
+ * Get workspace members with profiles
+ */
+export async function getWorkspaceMembers(workspaceId: string): Promise<Array<{ membership: Membership; profile: Profile }>> {
+  const supabase = await createClient()
+
+  const { data: memberships, error } = await supabase
+    .from('memberships')
+    .select(`
+      *,
+      profile:profiles!inner(*)
+    `)
+    .eq('workspace_id', workspaceId)
+    .is('profile.deleted_at', null)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching workspace members:', error)
+    return []
+  }
+
+  if (!memberships) {
+    return []
+  }
+
+  return memberships
+    .filter(m => m.profile)
+    .map(m => ({
+      membership: {
+        id: m.id,
+        workspace_id: m.workspace_id,
+        user_id: m.user_id,
+        role: m.role,
+        last_active_at: m.last_active_at,
+        created_at: m.created_at,
+      } as Membership,
+      profile: m.profile as Profile,
+    }))
+}
+
+/**
+ * Get pending invitations for a workspace
+ */
+export async function getPendingInvitations(workspaceId: string): Promise<Invitation[]> {
+  const supabase = await createClient()
+
+  const { data: invitations, error } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching invitations:', error)
+    return []
+  }
+
+  return (invitations as Invitation[]) || []
+}
+
+/**
+ * Load all settings page data in parallel
+ * Optimizes loading by fetching all required data simultaneously
+ * Reduces 7+ sequential DB calls to 4 parallel calls
+ */
+export async function loadSettingsData(userId: string): Promise<{
+  profile: Profile | null
+  workspace: Workspace | null
+  membership: Membership | null
+  members: Array<{ membership: Membership; profile: Profile }>
+  invitations: Invitation[]
+}> {
+  const supabase = await createClient()
+
+  // Parallel queries - all execute simultaneously
+  const [profileResult, workspaceResult] = await Promise.all([
+    // Profile query
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .is('deleted_at', null)
+      .single(),
+    
+    // Workspace query
+    (async () => {
+      const { data: membership, error } = await supabase
+        .from('memberships')
+        .select(`
+          *,
+          workspace:workspaces!inner(*)
+        `)
+        .eq('user_id', userId)
+        .is('workspace.deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error || !membership || !membership.workspace) {
+        return { workspace: null, membership: null }
+      }
+
+      return {
+        workspace: membership.workspace as Workspace,
+        membership: {
+          id: membership.id,
+          workspace_id: membership.workspace_id,
+          user_id: membership.user_id,
+          role: membership.role,
+          last_active_at: membership.last_active_at,
+          created_at: membership.created_at,
+        } as Membership,
+      }
+    })(),
+  ])
+
+  const workspaceId = workspaceResult.workspace?.id
+
+  // Load members and invitations in parallel (only if workspace exists)
+  const [membersResult, invitationsResult] = await Promise.all([
+    workspaceId ? getWorkspaceMembers(workspaceId) : Promise.resolve([]),
+    workspaceId ? getPendingInvitations(workspaceId) : Promise.resolve([]),
+  ])
+
+  return {
+    profile: profileResult.error ? null : (profileResult.data as Profile | null),
+    workspace: workspaceResult.workspace,
+    membership: workspaceResult.membership,
+    members: membersResult,
+    invitations: invitationsResult,
+  }
+}
+

@@ -11,12 +11,21 @@ interface WorkspaceMember {
 
 /**
  * Hook to fetch all members of a workspace with their profile information
+ * Accepts initial data to avoid duplicate fetches when data is already available
  */
-export function useWorkspaceMembers(workspaceId: string | null) {
-  const [members, setMembers] = useState<WorkspaceMember[]>([])
-  const [loading, setLoading] = useState(true)
+export function useWorkspaceMembers(
+  workspaceId: string | null,
+  initialMembers?: WorkspaceMember[]
+) {
+  const [members, setMembers] = useState<WorkspaceMember[]>(initialMembers || [])
+  const [loading, setLoading] = useState(!initialMembers)
 
   useEffect(() => {
+    // If initial data was provided, skip fetch
+    if (initialMembers) {
+      return
+    }
+
     async function loadMembers() {
       if (!workspaceId) {
         setMembers([])
@@ -68,7 +77,7 @@ export function useWorkspaceMembers(workspaceId: string | null) {
     }
 
     loadMembers()
-  }, [workspaceId])
+  }, [workspaceId, initialMembers])
 
   return {
     members,

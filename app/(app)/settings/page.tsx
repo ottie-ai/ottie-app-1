@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsClient } from './settings-client'
-import { getCurrentUserWorkspace } from '@/lib/supabase/queries'
-import type { Profile, Workspace, Membership } from '@/types/database'
+import { loadSettingsData } from '@/lib/supabase/queries'
+import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -13,9 +13,10 @@ export const metadata: Metadata = {
  * Settings Page - Server Component
  * 
  * This page uses server-side data fetching for optimal performance:
- * - Data is fetched on the server before rendering (faster initial load)
+ * - All data is fetched in parallel (profile, workspace, members, invitations)
  * - Next.js automatically caches server requests (reduces DB calls)
  * - No client-side waterfall (data is ready immediately)
+ * - Eliminates duplicate DB calls (from 7+ to 4 parallel calls)
  * - Better SEO and performance
  */
 export default async function SettingsPage() {
@@ -27,32 +28,26 @@ export default async function SettingsPage() {
   // and client-side auth will handle the redirect via AuthGuard
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  // Fetch profile data if user exists (automatically cached by Next.js React Cache)
-  // This reduces DB calls significantly as Next.js deduplicates requests
-  let profile: Profile | null = null
+  // Load all settings data in parallel (profile, workspace, members, invitations)
+  // This replaces multiple sequential client-side fetches
+  let settingsData = {
+    profile: null as Profile | null,
+    workspace: null as Workspace | null,
+    membership: null as Membership | null,
+    members: [] as Array<{ membership: Membership; profile: Profile }>,
+    invitations: [] as Invitation[],
+  }
+
   if (user && !authError) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-    
-    profile = profileData || null
+    settingsData = await loadSettingsData(user.id)
   }
 
   // Prepare initial data for client component
   // Use fallback values if server-side session is not available
   // AuthGuard will handle redirect if user is not authenticated
-  const initialProfile: Profile | null = profile || null
-  
-  // Fetch workspace data and membership if user exists
-  let workspace: Workspace | null = null
-  let membership: Membership | null = null
-  if (user && !authError) {
-    const workspaceData = await getCurrentUserWorkspace(user.id)
-    workspace = workspaceData?.workspace || null
-    membership = workspaceData?.membership || null
-  }
+  const initialProfile = settingsData.profile
+  const workspace = settingsData.workspace
+  const membership = settingsData.membership
   
   // Extract user metadata for fallback
   // Only pass serializable data to client component
@@ -60,7 +55,7 @@ export default async function SettingsPage() {
   // This prevents Google avatar from appearing after profile updates
   const userMetadata = {
     fullName: user?.user_metadata?.full_name || '',
-    avatarUrl: profile?.avatar_url || '', // ONLY use profile avatar, never Google avatar
+    avatarUrl: settingsData.profile?.avatar_url || '', // ONLY use profile avatar, never Google avatar
     email: user?.email || '',
     isGoogleSignIn: user?.app_metadata?.provider === 'google' || 
                     user?.identities?.some((identity: any) => identity.provider === 'google') || 
@@ -104,6 +99,8 @@ export default async function SettingsPage() {
       userMetadata={userMetadata}
       initialWorkspace={workspace}
       initialMembership={membership}
+      initialMembers={settingsData.members}
+      initialInvitations={settingsData.invitations}
     />
   )
 }

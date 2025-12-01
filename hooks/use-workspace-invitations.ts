@@ -6,10 +6,14 @@ import type { Invitation } from '@/types/database'
 
 /**
  * Hook to fetch pending invitations for a workspace
+ * Accepts initial data to avoid duplicate fetches when data is already available
  */
-export function useWorkspaceInvitations(workspaceId: string | null) {
-  const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [loading, setLoading] = useState(true)
+export function useWorkspaceInvitations(
+  workspaceId: string | null,
+  initialInvitations?: Invitation[]
+) {
+  const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations || [])
+  const [loading, setLoading] = useState(!initialInvitations)
 
   const loadInvitations = useCallback(async () => {
     if (!workspaceId) {
@@ -44,8 +48,12 @@ export function useWorkspaceInvitations(workspaceId: string | null) {
   }, [workspaceId])
 
   useEffect(() => {
+    // If initial data was provided, skip fetch
+    if (initialInvitations !== undefined) {
+      return
+    }
     loadInvitations()
-  }, [loadInvitations])
+  }, [loadInvitations, initialInvitations])
 
   // Function to refresh invitations
   const refresh = useCallback(() => {

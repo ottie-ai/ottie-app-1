@@ -79,9 +79,11 @@ interface SettingsClientProps {
   }
   initialWorkspace: Workspace | null
   initialMembership: Membership | null
+  initialMembers?: Array<{ membership: Membership; profile: Profile }>
+  initialInvitations?: Invitation[]
 }
 
-export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace, initialMembership }: SettingsClientProps) {
+export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace, initialMembership, initialMembers = [], initialInvitations = [] }: SettingsClientProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
@@ -125,11 +127,11 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
   
-  // Load workspace members
-  const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null)
+  // Load workspace members (use initial data if available to avoid duplicate fetch)
+  const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null, initialMembers)
   
-  // Load pending invitations
-  const { invitations, loading: invitationsLoading, refresh: refreshInvitations } = useWorkspaceInvitations(workspace?.id || null)
+  // Load pending invitations (use initial data if available to avoid duplicate fetch)
+  const { invitations, loading: invitationsLoading, refresh: refreshInvitations } = useWorkspaceInvitations(workspace?.id || null, initialInvitations)
   
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
