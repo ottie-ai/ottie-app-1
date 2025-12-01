@@ -96,9 +96,9 @@ export async function getAllUserWorkspaces(
   }
 
   return memberships
-    .filter(m => m.workspace)
+    .filter(m => m.workspace && !Array.isArray(m.workspace))
     .map(m => ({
-      workspace: m.workspace as Workspace,
+      workspace: m.workspace as unknown as Workspace,
       role: m.role,
     }))
 }
