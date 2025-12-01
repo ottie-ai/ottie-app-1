@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/use-auth'
-import { useUserProfile, useWorkspace } from '@/contexts/app-context'
+import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaces } from '@/hooks/use-workspaces'
 import { normalizePlan, isMultiUserPlan } from '@/lib/utils'
 import { signOut } from '@/lib/supabase/auth'
@@ -21,8 +20,6 @@ import {
   SquareUser,
   ChevronsUpDown,
   ExternalLink,
-  Sun,
-  Moon,
   Sparkles,
   MessageSquare,
   Lightbulb,
@@ -96,12 +93,16 @@ export function DashboardSidebar() {
   const router = useRouter()
   const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
-  const { theme, setTheme } = useTheme()
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { workspace, loading: workspaceLoading } = useWorkspace()
   const { workspaces } = useWorkspaces()
+  const { currentMembership } = useAppData()
   const [mounted, setMounted] = useState(false)
+  
+  // Check if user is agent
+  const isAgent = currentMembership?.role === 'agent'
+  const isOwnerOrAdmin = currentMembership?.role === 'owner' || currentMembership?.role === 'admin'
   
   // Close sidebar on mobile when clicking a link
   const handleLinkClick = () => {
@@ -172,9 +173,6 @@ export function DashboardSidebar() {
 
 
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
-  }
 
   return (
     <Sidebar collapsible="icon" className="relative overflow-hidden" suppressHydrationWarning>
@@ -253,30 +251,38 @@ export function DashboardSidebar() {
                 )}
                 {!workspaceLoading && workspace && isMultiUserPlan(workspace.plan) ? (
                   <>
-                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
-                        <UserPlus className="h-4 w-4" />
-                        Invite Users
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings?tab=workspace" onClick={handleLinkClick}>Workspace Settings</Link>
-                    </DropdownMenuItem>
+                    {isOwnerOrAdmin && (
+                      <>
+                        <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                          <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
+                            <UserPlus className="h-4 w-4" />
+                            Invite Users
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href="/settings?tab=workspace" onClick={handleLinkClick}>Workspace Settings</Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
-                    <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
-                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        Upgrade
-                  </DropdownMenuItem>
-                </PricingDialog>
-                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
-                        <UserPlus className="h-4 w-4" />
-                        Invite Users
-                      </Link>
-                </DropdownMenuItem>
+                    {!isAgent && (
+                      <>
+                        <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            Upgrade
+                          </DropdownMenuItem>
+                        </PricingDialog>
+                        <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                          <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
+                            <UserPlus className="h-4 w-4" />
+                            Invite Users
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -354,25 +360,6 @@ export function DashboardSidebar() {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Theme Toggle */}
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  onClick={toggleTheme}
-                  tooltip={mounted ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : 'Toggle Theme'}
-                >
-                  {mounted ? (
-                    theme === 'dark' ? (
-                      <Sun className="size-4" />
-                    ) : (
-                      <Moon className="size-4" />
-                    )
-                  ) : (
-                    <Sun className="size-4" />
-                  )}
-                  <span>{mounted ? (theme === 'dark' ? 'Light Mode' : 'Dark Mode') : 'Toggle Theme'}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
               {bottomNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
