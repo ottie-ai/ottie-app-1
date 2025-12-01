@@ -116,11 +116,13 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const initialTab = searchParams.get('tab') || 'profile'
   const [activeTab, setActiveTab] = useState(initialTab)
   
-  // Update active tab when URL changes
+  // Update active tab when URL changes (only if different to prevent race conditions)
   useEffect(() => {
     const tab = searchParams.get('tab') || 'profile'
-    setActiveTab(tab)
-  }, [searchParams])
+    if (tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams, activeTab])
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
   const [workspace, setWorkspace] = useState<Workspace | null>(initialWorkspace)
   const [workspaceName, setWorkspaceName] = useState(initialWorkspace?.name || '')
@@ -369,15 +371,21 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
 
   // Handle tab change with unsaved changes check
   const handleTabChange = useCallback((newTab: string) => {
+    // Prevent unnecessary updates if already on this tab
+    if (newTab === activeTab) {
+      return
+    }
+    
     if (hasUnsavedChanges()) {
       setPendingTab(newTab)
       setShowUnsavedDialog(true)
     } else {
       setActiveTab(newTab)
-      // Update URL with tab parameter
-      router.push(`/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`)
+      // Update URL with tab parameter using replace to avoid history pollution
+      const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
+      router.replace(newUrl, { scroll: false })
     }
-  }, [hasUnsavedChanges, router])
+  }, [activeTab, hasUnsavedChanges, router])
 
   // Handle dialog actions
   const handleSaveAndContinue = async () => {
