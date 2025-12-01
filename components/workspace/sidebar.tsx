@@ -95,9 +95,12 @@ export function DashboardSidebar() {
   const isCollapsed = state === 'collapsed'
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
-  const { workspace, loading: workspaceLoading } = useWorkspace()
-  const { allWorkspaces, currentMembership } = useAppData()
+  const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading } = useAppData()
   const { workspaces: workspacesFromHook } = useWorkspaces()
+  
+  // Use currentWorkspace and allWorkspaces from app-context (loaded with appData) - they're immediately available
+  const workspace = currentWorkspace
+  const workspaceLoading = appDataLoading
   
   // Use allWorkspaces from app-context (loaded with appData) if available, otherwise fallback to hook
   // allWorkspaces are already loaded with appData when app loads, so they're immediately available

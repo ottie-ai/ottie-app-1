@@ -80,29 +80,17 @@ export async function loadAppData(userId: string): Promise<{
     setPreferredWorkspaceId(currentWorkspace.id)
   }
 
-  // Fetch all workspaces separately
-  const { data: memberships, error: workspacesError } = await supabase
-    .from('memberships')
-    .select('role, workspace:workspaces!inner(*)')
-    .eq('user_id', userId)
-    .is('workspace.deleted_at', null)
-    .order('created_at', { ascending: false })
-
-  if (workspacesError || !memberships) {
-    return {
-      profile,
-      currentWorkspace,
-      currentMembership,
-      allWorkspaces: [],
-    }
+  // Parse allWorkspaces from RPC result (now included in the RPC call)
+  let allWorkspaces: Array<{ workspace: Workspace; role: string }> = []
+  
+  if (dashboardData?.allWorkspaces && Array.isArray(dashboardData.allWorkspaces)) {
+    allWorkspaces = dashboardData.allWorkspaces
+      .filter((item: any) => item.workspace && !Array.isArray(item.workspace))
+      .map((item: any) => ({
+        workspace: item.workspace as Workspace,
+        role: item.role,
+      }))
   }
-
-  const allWorkspaces = memberships
-    .filter(m => m.workspace && !Array.isArray(m.workspace))
-    .map(m => ({
-      workspace: m.workspace as unknown as Workspace,
-      role: m.role,
-    }))
 
   return {
     profile,

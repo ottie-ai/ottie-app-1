@@ -2,12 +2,13 @@
 -- RPC Function: get_user_dashboard_data
 -- ==========================================
 -- Batches multiple queries into a single database call
--- Returns: profile, workspace, membership, and workspace members
+-- Returns: profile, workspace, membership, workspace members, and all workspaces
 -- 
 -- This replaces separate calls to:
 -- - getProfile(userId)
 -- - getWorkspace(workspaceId) / getCurrentUserWorkspace(userId)
 -- - getMembers(workspaceId) / getWorkspaceMembers(workspaceId)
+-- - getAllUserWorkspaces(userId)
 -- 
 -- Usage:
 -- SELECT * FROM get_user_dashboard_data(p_user_id := 'user-uuid');
@@ -26,6 +27,7 @@ declare
   v_workspace jsonb;
   v_membership jsonb;
   v_members jsonb;
+  v_all_workspaces jsonb;
   v_workspace_id uuid;
   v_result jsonb;
 begin
@@ -101,12 +103,26 @@ begin
     v_members := '[]'::jsonb;
   end if;
 
+  -- Get all user workspaces (eliminates separate query in client)
+  select jsonb_agg(
+    jsonb_build_object(
+      'workspace', to_jsonb(w.*),
+      'role', m.role
+    )
+    order by m.created_at desc
+  ) into v_all_workspaces
+  from public.memberships m
+  inner join public.workspaces w on w.id = m.workspace_id
+  where m.user_id = p_user_id
+    and w.deleted_at is null;
+
   -- Build result object
   v_result := jsonb_build_object(
     'profile', coalesce(v_profile, 'null'::jsonb),
     'workspace', coalesce(v_workspace, 'null'::jsonb),
     'membership', coalesce(v_membership, 'null'::jsonb),
-    'members', coalesce(v_members, '[]'::jsonb)
+    'members', coalesce(v_members, '[]'::jsonb),
+    'allWorkspaces', coalesce(v_all_workspaces, '[]'::jsonb)
   );
 
   return v_result;
