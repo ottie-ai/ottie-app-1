@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   },
   description: "Create beautiful, professional real estate client portals in minutes. Generate stunning property websites with AI-powered tools.",
   keywords: ["real estate", "property websites", "client portals", "real estate marketing", "property listings"],
+  icons: {
+    icon: '/images/favicon.png',
+    apple: '/images/favicon.png',
+  },
 }
 
 /**
