@@ -90,10 +90,14 @@ export async function loadAppData(userId: string): Promise<{
 
   const allWorkspaces = workspacesError || !memberships
     ? []
-    : memberships
-        .filter(m => m.workspace)
+    : (memberships as Array<{ role: string; workspace: Workspace | null }>)
+        .filter((m): m is { role: string; workspace: Workspace } => 
+          m.workspace !== null && 
+          typeof m.workspace === 'object' && 
+          !Array.isArray(m.workspace)
+        )
         .map(m => ({
-          workspace: m.workspace as Workspace,
+          workspace: m.workspace,
           role: m.role,
         }))
 
