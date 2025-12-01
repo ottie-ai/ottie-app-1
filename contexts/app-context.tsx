@@ -59,9 +59,10 @@ export function AppProvider({
     },
     enabled: !!user?.id && !initialData, // Skip fetch if initial data provided
     initialData: initialData, // Use initial data if provided
-    staleTime: 30 * 1000, // 30 seconds - shorter stale time for faster updates
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnMount: 'always', // Always refetch when component mounts (if stale)
+    staleTime: 60 * 1000, // 1 minute - data is fresh for 1 minute
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    refetchOnMount: initialData ? false : true, // Don't refetch if we have initial data (from server-side)
+    refetchOnWindowFocus: false, // Don't refetch on window focus (reduces unnecessary requests)
   })
 
   // Use query data (which may be pre-populated via setQueryData) or fall back to initialData

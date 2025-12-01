@@ -51,8 +51,10 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageOff className="size-10 text-muted-foreground/50" />
+            <div className="w-full h-full flex items-center justify-center bg-muted/30">
+              <div className="flex items-center justify-center size-16 rounded-2xl bg-muted/80">
+                <ImageOff className="size-6 text-muted-foreground" />
+              </div>
             </div>
           )}
           
