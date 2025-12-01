@@ -13,13 +13,25 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/overview'
+  const error = requestUrl.searchParams.get('error')
+
+  // Handle OAuth errors
+  if (error) {
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, requestUrl.origin))
+  }
 
   if (code) {
     const supabase = await createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (error) {
+      return NextResponse.redirect(new URL('/login?error=auth_failed', requestUrl.origin))
+    }
   }
 
-  // Redirect to the requested page or overview (stays on app subdomain)
-  return NextResponse.redirect(new URL(next, requestUrl.origin))
+  // Validate redirect URL - only allow internal paths
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/overview'
+
+  return NextResponse.redirect(new URL(safeNext, requestUrl.origin))
 }
 
