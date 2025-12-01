@@ -12,7 +12,8 @@ import { signIn, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 function LoginForm() {
   const router = useRouter()
@@ -24,6 +25,8 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
 
   const redirectTo = searchParams.get('redirect') || '/overview'
+  const rateLimitExceeded = searchParams.get('rateLimit') === 'true'
+  const retryAfterMinutes = searchParams.get('retryAfter')
 
   // Check for pending invitation and auto-accept after login
   useEffect(() => {
@@ -246,6 +249,15 @@ function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {rateLimitExceeded && retryAfterMinutes && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Too many login attempts</AlertTitle>
+              <AlertDescription>
+                You've exceeded the rate limit. Please try again in {retryAfterMinutes} {retryAfterMinutes === '1' ? 'minute' : 'minutes'}.
+              </AlertDescription>
+            </Alert>
+          )}
           {error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {error}
