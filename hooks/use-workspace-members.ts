@@ -42,6 +42,7 @@ export function useWorkspaceMembers(workspaceId: string | null) {
           console.error('Error fetching workspace members:', membershipError)
           setMembers([])
         } else if (memberships) {
+          console.log('[useWorkspaceMembers] Fetched memberships:', memberships.length, memberships)
           const membersData = memberships
             .filter(m => m.profile)
             .map(m => ({
