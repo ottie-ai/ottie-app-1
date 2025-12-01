@@ -276,7 +276,7 @@ export function DashboardSidebar() {
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="truncate text-xs capitalize text-muted-foreground">
                             {plan} Plan
-                          </span>
+                      </span>
                           {currentMembership?.role === 'owner' && (
                             <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                               <Button

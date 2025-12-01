@@ -120,7 +120,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   useEffect(() => {
     const tab = searchParams.get('tab') || 'profile'
     if (tab !== activeTab) {
-      setActiveTab(tab)
+    setActiveTab(tab)
     }
   }, [searchParams, activeTab])
   const [profile, setProfile] = useState<Profile | null>(initialProfile)
