@@ -1,6 +1,7 @@
 'use server'
 
 import { cache } from 'react'
+import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { updateWorkspace } from '@/lib/supabase/queries'
@@ -1030,12 +1031,7 @@ export async function sendPasswordResetEmail(email: string) {
  * Generate a secure random token for invitations
  */
 function generateInviteToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let token = ''
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return token
+  return randomBytes(32).toString('base64url')
 }
 
 /**
