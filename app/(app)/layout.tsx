@@ -7,8 +7,7 @@ import { DashboardSidebar } from '@/components/workspace/sidebar'
 import { useUserJotIdentify } from '@/components/workspace/use-userjot-identify'
 import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
-import { UserProfileProvider, useUserProfile } from '@/contexts/user-profile-context'
-import { WorkspaceProvider } from '@/contexts/workspace-context'
+import { UserDataProvider, useUserProfile } from '@/contexts/user-data-context'
 import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
 import '../sphere.css'
@@ -43,8 +42,7 @@ export default function AppRootLayout({
       disableTransitionOnChange
     >
       <AuthGuard>
-        <UserProfileProvider>
-          <WorkspaceProvider>
+        <UserDataProvider>
           <UserJotWithProfile />
           {isWorkspaceRoute ? (
             <SidebarProvider>
@@ -56,15 +54,14 @@ export default function AppRootLayout({
           ) : (
             children
           )}
-          </WorkspaceProvider>
-        </UserProfileProvider>
+        </UserDataProvider>
       </AuthGuard>
       <Toaster position="top-right" richColors />
     </ThemeProvider>
   )
 }
 
-// Separate component to use useUserProfile hook (must be inside UserProfileProvider)
+// Separate component to use useUserProfile hook (must be inside UserDataProvider)
 function UserJotWithProfile() {
   const { user } = useAuth()
   const { userAvatar, userName } = useUserProfile()
