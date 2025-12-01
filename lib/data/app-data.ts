@@ -62,8 +62,20 @@ export async function loadAppData(
     currentMembership = workspaceResult?.membership || null
   }
 
-  // Always fetch all workspaces separately (not included in RPC)
-  const allWorkspaces = await getAllUserWorkspaces(userId)
+  // Parse allWorkspaces from RPC result (now included in the RPC call)
+  let allWorkspaces: Array<{ workspace: Workspace; role: string }> = []
+  
+  if (!rpcError && dashboardData?.allWorkspaces && Array.isArray(dashboardData.allWorkspaces)) {
+    allWorkspaces = dashboardData.allWorkspaces
+      .filter((item: any) => item.workspace && !Array.isArray(item.workspace))
+      .map((item: any) => ({
+        workspace: item.workspace as Workspace,
+        role: item.role,
+      }))
+  } else {
+    // Fallback to separate query if RPC doesn't include allWorkspaces
+    allWorkspaces = await getAllUserWorkspaces(userId)
+  }
 
   return {
     profile,
