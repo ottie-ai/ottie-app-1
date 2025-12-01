@@ -12,7 +12,7 @@ import { Section, ThemeConfig, HeroSectionData, FeaturesSectionData, ColorScheme
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { WorkspaceNavbar } from '@/components/workspace/workspace-navbar'
-import { useUserProfile, useWorkspace } from '@/contexts/user-data-context'
+import { useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { cn } from '@/lib/utils'
 

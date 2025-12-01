@@ -32,7 +32,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
-import { useUserProfile, useWorkspace } from '@/contexts/user-data-context'
+import { useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
@@ -91,12 +91,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   const queryClient = useQueryClient()
   
   // Pre-populate React Query cache with server-side data to avoid duplicate fetches
-  // This prevents the UserDataProvider from fetching data that was already loaded server-side
+  // This prevents the AppProvider from fetching data that was already loaded server-side
   useEffect(() => {
     if (clientUser?.id && (initialProfile !== undefined || initialWorkspace !== undefined)) {
-      queryClient.setQueryData(['userData', clientUser.id], {
+      queryClient.setQueryData(['appData', clientUser.id], {
         profile: initialProfile ?? null,
-        workspace: initialWorkspace ?? null,
+        currentWorkspace: initialWorkspace ?? null,
+        currentMembership: initialMembership ?? null,
+        allWorkspaces: [],
       })
     }
   }, [clientUser?.id, initialProfile, initialWorkspace, queryClient])

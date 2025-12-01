@@ -1,28 +1,30 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { Invitation } from '@/types/database'
 
 /**
  * Hook to fetch pending invitations for a workspace
+ * Uses React Query for automatic caching and background refetching
  * Accepts initial data to avoid duplicate fetches when data is already available
  */
 export function useWorkspaceInvitations(
   workspaceId: string | null,
   initialInvitations?: Invitation[]
 ) {
-  const [invitations, setInvitations] = useState<Invitation[]>(initialInvitations || [])
-  const [loading, setLoading] = useState(!initialInvitations)
+  const queryClient = useQueryClient()
 
-  const loadInvitations = useCallback(async () => {
-    if (!workspaceId) {
-      setInvitations([])
-      setLoading(false)
-      return
-    }
+  const {
+    data: invitations = initialInvitations || [],
+    isLoading: loading,
+  } = useQuery({
+    queryKey: ['workspaceInvitations', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) {
+        return []
+      }
 
-    try {
       const supabase = createClient()
       
       // Get pending invitations
@@ -35,35 +37,25 @@ export function useWorkspaceInvitations(
 
       if (error) {
         console.error('Error fetching invitations:', error)
-        setInvitations([])
-      } else {
-        setInvitations(data as Invitation[] || [])
+        return []
       }
-    } catch (error) {
-      console.error('Error loading invitations:', error)
-      setInvitations([])
-    } finally {
-      setLoading(false)
-    }
-  }, [workspaceId])
 
-  useEffect(() => {
-    // If initial data was provided, skip fetch
-    if (initialInvitations !== undefined) {
-      return
-    }
-    loadInvitations()
-  }, [loadInvitations, initialInvitations])
+      return (data as Invitation[]) || []
+    },
+    enabled: !!workspaceId && initialInvitations === undefined, // Skip fetch if initial data provided
+    initialData: initialInvitations, // Use initial data if provided
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
   // Function to refresh invitations
-  const refresh = useCallback(() => {
-    setLoading(true)
-    loadInvitations()
-  }, [loadInvitations])
+  const refresh = async () => {
+    if (!workspaceId) return
+    await queryClient.invalidateQueries({ queryKey: ['workspaceInvitations', workspaceId] })
+  }
 
   return {
     invitations,
-    loading,
+    loading: initialInvitations !== undefined ? false : loading, // Don't show loading if initial data provided
     refresh,
   }
 }

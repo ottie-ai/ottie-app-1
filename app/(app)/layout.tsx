@@ -1,13 +1,14 @@
 'use client'
 
 import { ThemeProvider } from '@/components/theme-provider'
+import { QueryProvider } from '@/providers/query-provider'
 import { AuthGuard } from '@/app/(app)/auth-guard'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { DashboardSidebar } from '@/components/workspace/sidebar'
 import { useUserJotIdentify } from '@/components/workspace/use-userjot-identify'
 import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
-import { UserDataProvider, useUserProfile } from '@/contexts/user-data-context'
+import { AppProvider, useUserProfile } from '@/contexts/app-context'
 import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
 import '../sphere.css'
@@ -35,33 +36,35 @@ export default function AppRootLayout({
   const isBuilderRoute = pathname.startsWith('/builder/')
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      <AuthGuard>
-        <UserDataProvider>
-          <UserJotWithProfile />
-          {isWorkspaceRoute ? (
-            <SidebarProvider>
-              <DashboardSidebar />
-              <SidebarInset className="h-screen overflow-hidden">
-                {children}
-              </SidebarInset>
-            </SidebarProvider>
-          ) : (
-            children
-          )}
-        </UserDataProvider>
-      </AuthGuard>
-      <Toaster position="top-right" richColors />
-    </ThemeProvider>
+    <QueryProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <AuthGuard>
+          <AppProvider>
+            <UserJotWithProfile />
+            {isWorkspaceRoute ? (
+              <SidebarProvider>
+                <DashboardSidebar />
+                <SidebarInset className="h-screen overflow-hidden">
+                  {children}
+                </SidebarInset>
+              </SidebarProvider>
+            ) : (
+              children
+            )}
+          </AppProvider>
+        </AuthGuard>
+        <Toaster position="top-right" richColors />
+      </ThemeProvider>
+    </QueryProvider>
   )
 }
 
-// Separate component to use useUserProfile hook (must be inside UserDataProvider)
+// Separate component to use useUserProfile hook (must be inside AppProvider)
 function UserJotWithProfile() {
   const { user } = useAuth()
   const { userAvatar, userName } = useUserProfile()

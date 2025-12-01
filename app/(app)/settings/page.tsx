@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsClient } from './settings-client'
-import { loadSettingsData } from '@/lib/supabase/queries'
+import { loadAppData } from '@/lib/data/app-data'
+import { loadTeamData } from '@/lib/data/team-data'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 
 export const metadata: Metadata = {
@@ -28,26 +29,36 @@ export default async function SettingsPage() {
   // and client-side auth will handle the redirect via AuthGuard
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
-  // Load all settings data in parallel (profile, workspace, members, invitations)
-  // This replaces multiple sequential client-side fetches
-  let settingsData = {
+  // Load app data using the recommended architecture
+  // One combined query for profile, workspace, and membership
+  let appData = {
     profile: null as Profile | null,
-    workspace: null as Workspace | null,
-    membership: null as Membership | null,
+    currentWorkspace: null as Workspace | null,
+    currentMembership: null as Membership | null,
+    allWorkspaces: [] as Array<{ workspace: Workspace; role: string }>,
+  }
+
+  let teamData = {
     members: [] as Array<{ membership: Membership; profile: Profile }>,
     invitations: [] as Invitation[],
   }
 
   if (user && !authError) {
-    settingsData = await loadSettingsData(user.id)
+    // Load app data (profile, workspace, membership, all workspaces)
+    appData = await loadAppData(user.id)
+    
+    // Load team data (members, invitations) if workspace exists
+    if (appData.currentWorkspace) {
+      teamData = await loadTeamData(appData.currentWorkspace.id)
+    }
   }
 
   // Prepare initial data for client component
   // Use fallback values if server-side session is not available
   // AuthGuard will handle redirect if user is not authenticated
-  const initialProfile = settingsData.profile
-  const workspace = settingsData.workspace
-  const membership = settingsData.membership
+  const initialProfile = appData.profile
+  const workspace = appData.currentWorkspace
+  const membership = appData.currentMembership
   
   // Extract user metadata for fallback
   // Only pass serializable data to client component
@@ -55,7 +66,7 @@ export default async function SettingsPage() {
   // This prevents Google avatar from appearing after profile updates
   const userMetadata = {
     fullName: user?.user_metadata?.full_name || '',
-    avatarUrl: settingsData.profile?.avatar_url || '', // ONLY use profile avatar, never Google avatar
+    avatarUrl: appData.profile?.avatar_url || '', // ONLY use profile avatar, never Google avatar
     email: user?.email || '',
     isGoogleSignIn: user?.app_metadata?.provider === 'google' || 
                     user?.identities?.some((identity: any) => identity.provider === 'google') || 
@@ -99,8 +110,8 @@ export default async function SettingsPage() {
       userMetadata={userMetadata}
       initialWorkspace={workspace}
       initialMembership={membership}
-      initialMembers={settingsData.members}
-      initialInvitations={settingsData.invitations}
+      initialMembers={teamData.members}
+      initialInvitations={teamData.invitations}
     />
   )
 }
