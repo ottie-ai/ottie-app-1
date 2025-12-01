@@ -19,10 +19,10 @@ export function useWorkspaces() {
     queryKey: ['workspaces', user?.id],
     queryFn: () => fetchUserWorkspaces(user!.id),
     enabled: !!user?.id,
-    staleTime: 60 * 1000, // 1 minute - data is fresh for 1 minute
+    staleTime: 0, // Always consider stale - refetch immediately when needed
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnMount: false, // Don't refetch on mount if data is fresh
-    refetchOnWindowFocus: false, // Don't refetch on window focus (reduces unnecessary requests)
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   })
 
   return {

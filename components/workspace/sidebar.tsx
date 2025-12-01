@@ -101,17 +101,14 @@ export function DashboardSidebar() {
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading } = useAppData()
-  // Only use useWorkspaces hook if appData is still loading and we don't have workspaces yet
-  // This prevents unnecessary refetching when appData is already loaded
   const { workspaces: workspacesFromHook } = useWorkspaces()
   
   // Use currentWorkspace and allWorkspaces from app-context (loaded with appData) - they're immediately available
   const workspace = currentWorkspace
   const workspaceLoading = appDataLoading
   
-  // Use allWorkspaces from app-context (loaded with appData) if available
-  // Only fallback to hook if appData has finished loading and we still don't have workspaces
-  // This ensures we wait for appData to load first before using fallback
+  // Use allWorkspaces from app-context (loaded with appData) if available, otherwise fallback to hook
+  // allWorkspaces are already loaded with appData when app loads, so they're immediately available
   const workspaces = allWorkspaces.length > 0
     ? allWorkspaces.map(({ workspace: ws, role }) => ({
         workspace: ws,
@@ -124,7 +121,7 @@ export function DashboardSidebar() {
           created_at: ws.created_at,
         },
       }))
-    : (!appDataLoading ? workspacesFromHook : []) // Only use fallback if appData finished loading
+    : workspacesFromHook
   const [mounted, setMounted] = useState(false)
   
   // Check if user is agent
@@ -262,16 +259,16 @@ export function DashboardSidebar() {
                         {workspaces.map(({ workspace: ws, membership }) => {
                           const isCurrent = workspace?.id === ws.id
                           return (
-                            <DropdownMenuItem
-                              key={ws.id}
-                              onClick={() => {
+                      <DropdownMenuItem
+                        key={ws.id}
+                        onClick={() => {
                                 if (!isCurrent) {
-                                  handleSwitchWorkspace(ws.id)
-                                  if (isMobile) {
-                                    setOpenMobile(false)
-                                  }
+                          handleSwitchWorkspace(ws.id)
+                          if (isMobile) {
+                            setOpenMobile(false)
+                          }
                                 }
-                              }}
+                        }}
                               className={isCurrent 
                                 ? 'cursor-default opacity-60 pointer-events-none' 
                                 : ''
@@ -287,7 +284,7 @@ export function DashboardSidebar() {
                                   e.currentTarget.style.backgroundColor = ''
                                 }
                               }}
-                            >
+                      >
                               <div className="flex items-center gap-2 w-full">
                                 <Avatar className="h-6 w-6 shrink-0 rounded">
                                   <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
@@ -298,9 +295,9 @@ export function DashboardSidebar() {
                                 <span className="truncate flex-1">{ws.name}</span>
                                 {isCurrent && (
                                   <Check className="h-4 w-4 shrink-0 text-primary" />
-                                )}
-                              </div>
-                            </DropdownMenuItem>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
                           )
                         })}
                       </DropdownMenuSubContent>
@@ -311,35 +308,35 @@ export function DashboardSidebar() {
                 {!workspaceLoading && workspace && isMultiUserPlan(workspace.plan) ? (
                   <>
                     {isOwnerOrAdmin && (
-                      <>
-                        <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                          <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
-                            <UserPlus className="h-4 w-4" />
-                            Invite Users
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href="/settings?tab=workspace" onClick={handleLinkClick}>Workspace Settings</Link>
-                        </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
+                        <UserPlus className="h-4 w-4" />
+                        Invite Users
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings?tab=workspace" onClick={handleLinkClick}>Workspace Settings</Link>
+                    </DropdownMenuItem>
                       </>
                     )}
                   </>
                 ) : (
                   <>
                     {!isAgent && (
-                      <>
-                        <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            Upgrade
-                          </DropdownMenuItem>
-                        </PricingDialog>
-                        <DropdownMenuItem asChild className="text-primary focus:text-primary">
-                          <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
-                            <UserPlus className="h-4 w-4" />
-                            Invite Users
-                          </Link>
-                        </DropdownMenuItem>
+                  <>
+                    <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        Upgrade
+                  </DropdownMenuItem>
+                </PricingDialog>
+                    <DropdownMenuItem asChild className="text-primary focus:text-primary">
+                      <Link href="/settings?tab=team" className="flex items-center gap-2" onClick={handleLinkClick}>
+                        <UserPlus className="h-4 w-4" />
+                        Invite Users
+                      </Link>
+                </DropdownMenuItem>
                       </>
                     )}
                   </>

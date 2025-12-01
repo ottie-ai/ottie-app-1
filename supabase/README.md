@@ -25,6 +25,7 @@ This directory contains SQL migration files for the Supabase database.
 
 ### Migrations
 - **`add-soft-delete-migration.sql`** - Adds soft delete functionality
+- **`add-performance-indexes.sql`** - Performance indexes for faster queries (IMPORTANT: Run this after schema.sql)
 
 ## Setup Instructions
 
@@ -33,9 +34,10 @@ Run these files in order in Supabase SQL Editor:
 
 1. `schema.sql` - Creates all tables, triggers, and core functions
 2. `get-user-dashboard-data-rpc.sql` - Creates RPC function for batched queries
-3. `workspace-members-profile-policy.sql` - Sets up RLS policies
-4. `invitation-accept-policy.sql` - Sets up invitation policies
-5. `create-workspace-logos-bucket.sql` - Creates storage bucket
+3. `add-performance-indexes.sql` - **IMPORTANT**: Creates indexes for faster queries (run this!)
+4. `workspace-members-profile-policy.sql` - Sets up RLS policies
+5. `invitation-accept-policy.sql` - Sets up invitation policies
+6. `create-workspace-logos-bucket.sql` - Creates storage bucket
 
 ### 2. Updating Functions
 When updating functions (like `handle_new_profile` or `get_user_dashboard_data`):

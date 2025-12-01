@@ -658,12 +658,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     <TabsTrigger value="workspace">Workspace</TabsTrigger>
                   )}
                   {showTeamTab && (
-                    <TabsTrigger value="team">Team</TabsTrigger>
+                  <TabsTrigger value="team">Team</TabsTrigger>
                   )}
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   {showBillingTab && (
-                    <TabsTrigger value="plan">Billing</TabsTrigger>
+                  <TabsTrigger value="plan">Billing</TabsTrigger>
                   )}
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
