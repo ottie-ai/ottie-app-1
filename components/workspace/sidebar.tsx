@@ -101,14 +101,17 @@ export function DashboardSidebar() {
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading } = useAppData()
+  // Only use useWorkspaces hook if appData is still loading and we don't have workspaces yet
+  // This prevents unnecessary refetching when appData is already loaded
   const { workspaces: workspacesFromHook } = useWorkspaces()
   
   // Use currentWorkspace and allWorkspaces from app-context (loaded with appData) - they're immediately available
   const workspace = currentWorkspace
   const workspaceLoading = appDataLoading
   
-  // Use allWorkspaces from app-context (loaded with appData) if available, otherwise fallback to hook
-  // allWorkspaces are already loaded with appData when app loads, so they're immediately available
+  // Use allWorkspaces from app-context (loaded with appData) if available
+  // Only fallback to hook if appData has finished loading and we still don't have workspaces
+  // This ensures we wait for appData to load first before using fallback
   const workspaces = allWorkspaces.length > 0
     ? allWorkspaces.map(({ workspace: ws, role }) => ({
         workspace: ws,
@@ -121,7 +124,7 @@ export function DashboardSidebar() {
           created_at: ws.created_at,
         },
       }))
-    : workspacesFromHook
+    : (!appDataLoading ? workspacesFromHook : []) // Only use fallback if appData finished loading
   const [mounted, setMounted] = useState(false)
   
   // Check if user is agent
