@@ -147,14 +147,15 @@ function RegisterForm() {
     // Check if this is an invite flow and validate email
     const isInviteFlow = redirectTo.includes('/invite/')
     if (isInviteFlow && prefillEmail) {
-      // Store the expected email and token in sessionStorage for validation after OAuth
+      // Store the expected email and token hash in sessionStorage for validation after OAuth
       sessionStorage.setItem('invite_expected_email', prefillEmail)
       sessionStorage.setItem('invite_redirect', redirectTo)
       
-      // Extract token from redirect URL
+      // Extract token from redirect URL and store only hash (security fix)
       const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
       if (inviteTokenMatch) {
-        sessionStorage.setItem('pending_invite_token', inviteTokenMatch[1])
+        const token = inviteTokenMatch[1]
+        sessionStorage.setItem('pending_invite_token_hash', btoa(token.slice(0, 8)))
         sessionStorage.setItem('pending_invite_email', prefillEmail)
       }
     }

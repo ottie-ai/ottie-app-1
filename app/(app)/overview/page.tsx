@@ -108,53 +108,15 @@ export default function DashboardPage() {
         }
       }
       
-      const pendingToken = sessionStorage.getItem('pending_invite_token')
+      const tokenHash = sessionStorage.getItem('pending_invite_token_hash')
       const expectedEmail = sessionStorage.getItem('pending_invite_email')
       
-      if (pendingToken && expectedEmail) {
-        // Validate email matches
-        const userEmail = user.email?.toLowerCase().trim()
-        if (userEmail !== expectedEmail.toLowerCase().trim()) {
-          // Email doesn't match - clear sessionStorage and show error
-          sessionStorage.removeItem('pending_invite_token')
-          sessionStorage.removeItem('pending_invite_email')
-          sessionStorage.removeItem('invite_expected_email')
-          toast.error(`This invitation was sent to ${expectedEmail}. Please sign in with that email address.`)
-          return
-        }
-        
-        // Email matches - accept invitation
-        try {
-          const inviteResult = await getInvitationByToken(pendingToken)
-          if ('error' in inviteResult) {
-            toast.error(inviteResult.error)
-            sessionStorage.removeItem('pending_invite_token')
-            sessionStorage.removeItem('pending_invite_email')
-            sessionStorage.removeItem('invite_expected_email')
-            return
-          }
-          
-          const acceptResult = await acceptInvitation(pendingToken, user.id)
-          if ('error' in acceptResult) {
-            toast.error(acceptResult.error)
-          } else {
-            toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
-            // Set the workspace as current workspace in localStorage
-            if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
-              localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
-            }
-            // Refresh to load the new workspace
-            router.refresh()
-          }
-          
-          // Fix #9: Clear all sessionStorage
-          sessionStorage.removeItem('pending_invite_token')
-          sessionStorage.removeItem('pending_invite_email')
-          sessionStorage.removeItem('invite_expected_email')
-        } catch (error) {
-          console.error('Error accepting invitation:', error)
-          toast.error('Failed to accept invitation. Please try again.')
-        }
+      // On overview page, we can't extract the full token from URL, so clear the hash
+      // User should visit the invite link directly if they need to accept an invitation
+      if (tokenHash) {
+        sessionStorage.removeItem('pending_invite_token_hash')
+        sessionStorage.removeItem('pending_invite_email')
+        sessionStorage.removeItem('invite_expected_email')
       }
     }
     

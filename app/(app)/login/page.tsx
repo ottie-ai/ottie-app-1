@@ -57,12 +57,29 @@ function LoginForm() {
         }
       }
       
-      const pendingToken = sessionStorage.getItem('pending_invite_token')
+      const tokenHash = sessionStorage.getItem('pending_invite_token_hash')
       const expectedEmail = sessionStorage.getItem('pending_invite_email')
       const inviteExpectedEmail = sessionStorage.getItem('invite_expected_email')
       
       // Use invite_expected_email if available (from OAuth), otherwise use pending_invite_email
       const emailToCheck = inviteExpectedEmail || expectedEmail
+      
+      // Extract full token from redirect URL if it's an invite flow
+      let pendingToken: string | null = null
+      if (redirectTo.includes('/invite/')) {
+        const inviteTokenMatch = redirectTo.match(/\/invite\/([^/?]+)/)
+        if (inviteTokenMatch) {
+          pendingToken = inviteTokenMatch[1]
+          // Verify token hash matches (security check)
+          if (tokenHash && btoa(pendingToken.slice(0, 8)) !== tokenHash) {
+            // Hash mismatch - clear and skip
+            sessionStorage.removeItem('pending_invite_token_hash')
+            sessionStorage.removeItem('pending_invite_email')
+            sessionStorage.removeItem('invite_expected_email')
+            return
+          }
+        }
+      }
       
       if (pendingToken && emailToCheck) {
         // Validate email matches
@@ -71,7 +88,7 @@ function LoginForm() {
           // Email doesn't match - sign out, clear sessionStorage and show error
           const { signOut } = await import('@/lib/supabase/auth')
           await signOut()
-          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_token_hash')
           sessionStorage.removeItem('pending_invite_email')
           sessionStorage.removeItem('invite_expected_email')
           toast.error(`This invitation was sent to ${emailToCheck}. Please sign in with that email address.`)
@@ -87,7 +104,7 @@ function LoginForm() {
           const inviteResult = await getInvitationByToken(pendingToken)
           if ('error' in inviteResult) {
             toast.error(inviteResult.error)
-            sessionStorage.removeItem('pending_invite_token')
+            sessionStorage.removeItem('pending_invite_token_hash')
             sessionStorage.removeItem('pending_invite_email')
             sessionStorage.removeItem('invite_expected_email')
             return
@@ -111,7 +128,7 @@ function LoginForm() {
           }
           
           // Clear sessionStorage
-          sessionStorage.removeItem('pending_invite_token')
+          sessionStorage.removeItem('pending_invite_token_hash')
           sessionStorage.removeItem('pending_invite_email')
           sessionStorage.removeItem('invite_expected_email')
         } catch (error) {
@@ -140,10 +157,10 @@ function LoginForm() {
     setError(null)
 
     // Check if this is an invite flow and validate email
-    const pendingToken = sessionStorage.getItem('pending_invite_token')
+    const tokenHash = sessionStorage.getItem('pending_invite_token_hash')
     const expectedEmail = sessionStorage.getItem('pending_invite_email')
     
-    if (pendingToken && expectedEmail) {
+    if (tokenHash && expectedEmail) {
       // Validate email matches invitation before signing in
       if (email.toLowerCase().trim() !== expectedEmail.toLowerCase().trim()) {
         setError(`This invitation was sent to ${expectedEmail}. Please sign in with that email address.`)
@@ -181,10 +198,10 @@ function LoginForm() {
     setError(null)
 
     // Check if this is an invite flow - email will be validated after OAuth return
-    const pendingToken = sessionStorage.getItem('pending_invite_token')
+    const tokenHash = sessionStorage.getItem('pending_invite_token_hash')
     const expectedEmail = sessionStorage.getItem('pending_invite_email')
     
-    if (pendingToken && expectedEmail) {
+    if (tokenHash && expectedEmail) {
       // Store expected email for validation after OAuth
       sessionStorage.setItem('invite_expected_email', expectedEmail)
     }

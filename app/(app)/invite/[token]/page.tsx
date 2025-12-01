@@ -78,10 +78,10 @@ export default function InvitePage({ params }: InvitePageProps) {
         setLoading(true)
         try {
           await signOut()
-          // Store invitation token in sessionStorage for later use
-          sessionStorage.setItem('pending_invite_token', token)
+          // Store invitation token hash in sessionStorage for later verification (not the full token)
+          sessionStorage.setItem('pending_invite_token_hash', btoa(token.slice(0, 8)))
           sessionStorage.setItem('pending_invite_email', invitation.email)
-          // Redirect to signup with email pre-filled and invite token
+          // Redirect to signup with email pre-filled and invite token in URL
           router.push(`/signup?email=${encodeURIComponent(invitation.email)}&redirect=/invite/${token}`)
         } catch (signOutError) {
           console.error('Error signing out:', signOutError)
@@ -108,7 +108,7 @@ export default function InvitePage({ params }: InvitePageProps) {
         setAccepted(true)
         toast.success(`You've successfully joined ${workspaceName}!`)
         // Fix #9: Clear sessionStorage after successful acceptance
-        sessionStorage.removeItem('pending_invite_token')
+        sessionStorage.removeItem('pending_invite_token_hash')
         sessionStorage.removeItem('pending_invite_email')
         sessionStorage.removeItem('invite_expected_email')
         // Set the workspace as current workspace in localStorage
@@ -129,7 +129,8 @@ export default function InvitePage({ params }: InvitePageProps) {
   // Store invitation info in sessionStorage when page loads (for login/signup flow)
   useEffect(() => {
     if (invitation && token) {
-      sessionStorage.setItem('pending_invite_token', token)
+      // Store only token hash, not the full token (security fix)
+      sessionStorage.setItem('pending_invite_token_hash', btoa(token.slice(0, 8)))
       sessionStorage.setItem('pending_invite_email', invitation.email)
     }
   }, [invitation, token])
