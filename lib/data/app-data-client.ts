@@ -88,18 +88,21 @@ export async function loadAppData(userId: string): Promise<{
     .is('workspace.deleted_at', null)
     .order('created_at', { ascending: false })
 
-  const allWorkspaces = workspacesError || !memberships
-    ? []
-    : (memberships as Array<{ role: string; workspace: Workspace | null }>)
-        .filter((m): m is { role: string; workspace: Workspace } => 
-          m.workspace !== null && 
-          typeof m.workspace === 'object' && 
-          !Array.isArray(m.workspace)
-        )
-        .map(m => ({
-          workspace: m.workspace,
-          role: m.role,
-        }))
+  if (workspacesError || !memberships) {
+    return {
+      profile,
+      currentWorkspace,
+      currentMembership,
+      allWorkspaces: [],
+    }
+  }
+
+  const allWorkspaces = memberships
+    .filter(m => m.workspace && !Array.isArray(m.workspace))
+    .map(m => ({
+      workspace: m.workspace as unknown as Workspace,
+      role: m.role,
+    }))
 
   return {
     profile,
