@@ -141,7 +141,10 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   
   // Check if workspace settings should be shown (only for multi-user plans and owner/admin role)
   const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
+  const isAgent = initialMembership?.role === 'agent'
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
+  const showTeamTab = !isAgent
+  const showBillingTab = !isAgent
   
   // Load workspace members (use initial data if available to avoid duplicate fetch)
   // N+1 Prevention: useWorkspaceMembers uses JOIN query to fetch all members with profiles in a single query
@@ -654,10 +657,14 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   {showWorkspaceSettings && (
                     <TabsTrigger value="workspace">Workspace</TabsTrigger>
                   )}
-                  <TabsTrigger value="team">Team</TabsTrigger>
+                  {showTeamTab && (
+                    <TabsTrigger value="team">Team</TabsTrigger>
+                  )}
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                  <TabsTrigger value="plan">Billing</TabsTrigger>
+                  {showBillingTab && (
+                    <TabsTrigger value="plan">Billing</TabsTrigger>
+                  )}
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
@@ -1679,7 +1686,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
               )}
 
               {/* Billing Tab */}
-              {(() => {
+              {showBillingTab && (
+              (() => {
                 const currentPlanId = workspace ? normalizePlan(workspace.plan) : 'free'
                 const currentTier = pricingTiers.find(t => t.id === currentPlanId) || pricingTiers[0]
                 const nextTierIndex = pricingTiers.findIndex(t => t.id === currentPlanId) + 1
@@ -1875,9 +1883,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </div>
               </TabsContent>
                 )
-              })()}
+              })()
+              )}
 
               {/* Team Tab */}
+              {showTeamTab && (
+              <>
               {isMobile ? (
                 <Card className="mb-6">
                   <CardHeader>
@@ -2500,6 +2511,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </div>
                   )}
               </TabsContent>
+              )}
+              </>
               )}
 
               {/* Data Tab */}
