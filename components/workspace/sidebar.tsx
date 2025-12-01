@@ -29,6 +29,8 @@ import {
   BookOpen,
   Users,
   Repeat,
+  Crown,
+  Zap,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -135,10 +137,8 @@ export function DashboardSidebar() {
     }
   }
   
-  // Get display name - workspace name for multi-user plans, "Ottie" for single-user
-  const displayName = workspace && isMultiUserPlan(workspace.plan)
-    ? workspace.name
-    : 'Ottie'
+  // Get display name - always use workspace name if available
+  const displayName = workspace?.name || 'Ottie'
   
   // Handle workspace switching
   const handleSwitchWorkspace = async (workspaceId: string) => {
@@ -233,11 +233,65 @@ export function DashboardSidebar() {
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                     <span className="truncate font-medium">{displayName}</span>
-                    {!workspaceLoading && workspace && (
-                      <span className="truncate text-xs capitalize">
-                        {normalizePlan(workspace.plan)} Plan
-                      </span>
-                    )}
+                    {!workspaceLoading && workspace && (() => {
+                      const plan = normalizePlan(workspace.plan)
+                      const isPaid = plan !== 'free'
+                      const isEnterprise = plan === 'enterprise'
+                      const isGrowth = plan === 'growth'
+                      const isStarter = plan === 'starter'
+                      return isPaid ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md border ${
+                            isEnterprise
+                              ? 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border-blue-500/30 dark:border-blue-400/20'
+                              : isGrowth
+                              ? 'bg-gradient-to-r from-purple-500/20 to-violet-500/20 border-purple-500/30 dark:border-purple-400/20'
+                              : isStarter
+                              ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 dark:border-green-400/20'
+                              : 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-500/30 dark:border-amber-400/20'
+                          }`}>
+                            <Crown className={`size-2.5 ${
+                              isEnterprise
+                                ? 'text-blue-600 dark:text-blue-400'
+                                : isGrowth
+                                ? 'text-purple-600 dark:text-purple-400'
+                                : isStarter
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            }`} />
+                            <span className={`truncate text-[10px] font-semibold capitalize ${
+                              isEnterprise
+                                ? 'text-blue-700 dark:text-blue-300'
+                                : isGrowth
+                                ? 'text-purple-700 dark:text-purple-300'
+                                : isStarter
+                                ? 'text-green-700 dark:text-green-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                            }`}>
+                              {plan}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="truncate text-xs capitalize text-muted-foreground">
+                            {plan} Plan
+                          </span>
+                          {currentMembership?.role === 'owner' && (
+                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-5 px-2 text-[10px] font-medium"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Upgrade
+                              </Button>
+                            </PricingDialog>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                   <ChevronsUpDown className="ml-auto shrink-0" />
                 </SidebarMenuButton>
@@ -324,7 +378,7 @@ export function DashboardSidebar() {
                   </>
                 ) : (
                   <>
-                    {!isAgent && (
+                    {currentMembership?.role === 'owner' && (
                   <>
                     <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

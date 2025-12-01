@@ -141,10 +141,11 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   
   // Check if workspace settings should be shown (only for multi-user plans and owner/admin role)
   const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
+  const isOwner = initialMembership?.role === 'owner'
   const isAgent = initialMembership?.role === 'agent'
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
   const showTeamTab = !isAgent
-  const showBillingTab = !isAgent
+  const showBillingTab = isOwner // Only owner can see billing/upgrade
   
   // Load workspace members (use initial data if available to avoid duplicate fetch)
   // N+1 Prevention: useWorkspaceMembers uses JOIN query to fetch all members with profiles in a single query
