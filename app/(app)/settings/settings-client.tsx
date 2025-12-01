@@ -32,11 +32,11 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
-import { useUserProfile, useWorkspace } from '@/contexts/app-context'
-import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
-import { signOut as signOutAuth } from '@/lib/supabase/auth'
+import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
+import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
+import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { pricingTiers } from '@/lib/pricing-data'
@@ -71,39 +71,28 @@ interface SerializableUser {
 
 interface SettingsClientProps {
   user: SerializableUser
-  initialProfile: Profile | null
   userMetadata: {
     fullName: string
     avatarUrl: string
     email: string
     isGoogleSignIn: boolean
   }
-  initialWorkspace: Workspace | null
-  initialMembership: Membership | null
-  initialMembers?: Array<{ membership: Membership; profile: Profile }>
-  initialInvitations?: Invitation[]
 }
 
-export function SettingsClient({ user: serverUser, initialProfile, userMetadata, initialWorkspace, initialMembership, initialMembers = [], initialInvitations = [] }: SettingsClientProps) {
+export function SettingsClient({ user: serverUser, userMetadata }: SettingsClientProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
-  const queryClient = useQueryClient()
   
-  // Pre-populate React Query cache with server-side data to avoid duplicate fetches
-  // This prevents the AppProvider from fetching data that was already loaded server-side
-  useEffect(() => {
-    if (clientUser?.id && (initialProfile !== undefined || initialWorkspace !== undefined)) {
-      queryClient.setQueryData(['appData', clientUser.id], {
-        profile: initialProfile ?? null,
-        currentWorkspace: initialWorkspace ?? null,
-        currentMembership: initialMembership ?? null,
-        allWorkspaces: [],
-      })
-    }
-  }, [clientUser?.id, initialProfile, initialWorkspace, queryClient])
+  // Get data from context (already loaded in layout via AppProvider)
+  const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
+  const { workspace: workspaceFromContext, refresh: refreshWorkspace } = useWorkspace()
+  const { currentMembership, loading: appDataLoading } = useAppData()
   
-  const { refresh: refreshUserProfile } = useUserProfile()
+  // Use data from context (preferred) or fallback to null
+  const profile = profileFromContext
+  const workspace = workspaceFromContext
+  const membership = currentMembership
   
   // Use client-side user if available (more reliable), otherwise fall back to server user
   const user = clientUser || serverUser
@@ -120,42 +109,47 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   useEffect(() => {
     const tab = searchParams.get('tab') || 'profile'
     if (tab !== activeTab) {
-    setActiveTab(tab)
+      setActiveTab(tab)
     }
   }, [searchParams, activeTab])
-  const [profile, setProfile] = useState<Profile | null>(initialProfile)
-  const [workspace, setWorkspace] = useState<Workspace | null>(initialWorkspace)
-  const [workspaceName, setWorkspaceName] = useState(initialWorkspace?.name || '')
-  const [originalWorkspaceName, setOriginalWorkspaceName] = useState(initialWorkspace?.name || '')
+  
+  // Local state for form inputs (synced with context data)
+  const [workspaceName, setWorkspaceName] = useState(workspace?.name || '')
+  const [originalWorkspaceName, setOriginalWorkspaceName] = useState(workspace?.name || '')
   const [workspaceLogoFile, setWorkspaceLogoFile] = useState<File | null>(null)
   const [workspaceLogoPreview, setWorkspaceLogoPreview] = useState<string | null>(null)
-  const [workspaceLogoUrl, setWorkspaceLogoUrl] = useState(initialWorkspace?.logo_url || '')
-  const [originalWorkspaceLogoUrl, setOriginalWorkspaceLogoUrl] = useState(initialWorkspace?.logo_url || '')
+  const [workspaceLogoUrl, setWorkspaceLogoUrl] = useState(workspace?.logo_url || '')
+  const [originalWorkspaceLogoUrl, setOriginalWorkspaceLogoUrl] = useState(workspace?.logo_url || '')
   const workspaceLogoInputRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
   const [savingWorkspace, setSavingWorkspace] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(!initialProfile && !!clientUser?.id)
   
-  // Get workspace refresh function from hook
-  const { refresh: refreshWorkspace } = useWorkspace()
+  // Sync workspace form state with context data when it changes
+  useEffect(() => {
+    if (workspace) {
+      setWorkspaceName(workspace.name || '')
+      setOriginalWorkspaceName(workspace.name || '')
+      setWorkspaceLogoUrl(workspace.logo_url || '')
+      setOriginalWorkspaceLogoUrl(workspace.logo_url || '')
+    }
+  }, [workspace])
   
   // Check if workspace settings should be shown (only for multi-user plans and owner/admin role)
-  const isOwnerOrAdmin = initialMembership?.role === 'owner' || initialMembership?.role === 'admin'
-  const isOwner = initialMembership?.role === 'owner'
-  const isAgent = initialMembership?.role === 'agent'
+  const isOwnerOrAdmin = membership?.role === 'owner' || membership?.role === 'admin'
+  const isOwner = membership?.role === 'owner'
+  const isAgent = membership?.role === 'agent'
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
   const showTeamTab = !isAgent
   const showBillingTab = isOwner // Only owner can see billing/upgrade
   
-  // Load workspace members (use initial data if available to avoid duplicate fetch)
+  // Load workspace members (client-side with React Query)
   // N+1 Prevention: useWorkspaceMembers uses JOIN query to fetch all members with profiles in a single query
-  // When mapping over members below, all profile data is already loaded - no additional queries per member
-  const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null, initialMembers)
+  const { members, loading: membersLoading } = useWorkspaceMembers(workspace?.id || null)
   
-  // Load pending invitations (use initial data if available to avoid duplicate fetch)
-  const { invitations, loading: invitationsLoading, refresh: refreshInvitations } = useWorkspaceInvitations(workspace?.id || null, initialInvitations)
+  // Load pending invitations (client-side with React Query)
+  const { invitations, loading: invitationsLoading, refresh: refreshInvitations } = useWorkspaceInvitations(workspace?.id || null)
   
   // Invite dialog state
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
@@ -217,76 +211,35 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
   // Reset workspace state
   const [resetWorkspaceLoading, setResetWorkspaceLoading] = useState(false)
 
-  // Form state - initialize from server data
+  // Form state - initialize from context data
   // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl (which may contain Google avatar)
   const [fullName, setFullName] = useState(
-    initialProfile?.full_name || userMetadata.fullName
+    profile?.full_name || userMetadata.fullName || ''
   )
   const [avatarUrl, setAvatarUrl] = useState(
-    initialProfile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
+    profile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
   )
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const initialProfileRef = useRef(initialProfile)
 
   // Original values to track changes
   // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl
   const [originalFullName, setOriginalFullName] = useState(
-    initialProfile?.full_name || userMetadata.fullName
+    profile?.full_name || userMetadata.fullName || ''
   )
   const [originalAvatarUrl, setOriginalAvatarUrl] = useState(
-    initialProfile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
+    profile?.avatar_url || '' // Only use profile avatar, never Google avatar fallback
   )
-
-  // Load profile from client-side if server-side data is not available
-  // This happens when server-side session is not synced with client-side session
-  useEffect(() => {
-    async function loadProfileFromClient() {
-      // Only load if we don't have initial profile but have a user
-      if (!initialProfile && clientUser?.id) {
-        setLoading(true)
-        try {
-          const data = await getCurrentUserProfile(clientUser.id)
-          if (data) {
-            setProfile(data)
-            const name = data.full_name || clientUser.user_metadata?.full_name || ''
-            const avatar = data.avatar_url || '' // ONLY use profile avatar, never Google avatar
-            setFullName(name)
-            setAvatarUrl(avatar)
-            setOriginalFullName(name)
-            setOriginalAvatarUrl(avatar)
-          } else {
-            // Use user metadata as fallback for name only, never for avatar
-            const name = clientUser.user_metadata?.full_name || ''
-            const avatar = '' // Never use Google avatar, only profile avatar
-            setFullName(name)
-            setAvatarUrl(avatar)
-            setOriginalFullName(name)
-            setOriginalAvatarUrl(avatar)
-          }
-        } catch (e) {
-          console.error('Error loading profile:', e)
-        }
-        setLoading(false)
-      }
-    }
-
-    loadProfileFromClient()
-  }, [initialProfile, clientUser?.id])
 
   // Track the last synced values to detect when profile data changes
   const lastSyncedValues = useRef<{ name: string; avatar: string } | null>(null)
   
-  // Update original values when profile data changes (after save or refresh)
-  // This ensures original values always match the saved server data
+  // Update form values when profile data changes (from context)
   useEffect(() => {
-    // Use profile state if available (updated after save), otherwise use initialProfile
-    const currentProfile = profile || initialProfile
-    
-    if (currentProfile) {
-      const name = currentProfile.full_name || userMetadata.fullName || ''
-      const avatar = currentProfile.avatar_url || '' // ONLY use profile avatar, never Google avatar
+    if (profile) {
+      const name = profile.full_name || userMetadata.fullName || ''
+      const avatar = profile.avatar_url || '' // ONLY use profile avatar, never Google avatar
       
       // Check if values actually changed
       const valuesChanged = 
@@ -307,7 +260,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
           setAvatarUrl(avatar)
         }
       }
-    } else if (!currentProfile && userMetadata) {
+    } else if (!profile && userMetadata) {
       // Fallback to userMetadata for name only, never for avatar
       const name = userMetadata.fullName || ''
       const avatar = '' // Never use Google avatar, only profile avatar
@@ -327,7 +280,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
         }
       }
     }
-  }, [profile?.full_name, profile?.avatar_url, initialProfile?.full_name, initialProfile?.avatar_url, avatarFile, userMetadata.fullName])
+  }, [profile?.full_name, profile?.avatar_url, avatarFile, userMetadata.fullName])
 
   // Unsaved changes dialog state
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
@@ -408,7 +361,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
     setSaving(false)
     
     if (result.success && result.profile) {
-      setProfile(result.profile)
+      // Profile updated - refresh from context
+      refreshUserProfile()
       setOriginalFullName(fullName)
       setOriginalAvatarUrl(result.profile.avatar_url || '')
       setAvatarFile(null)
@@ -475,13 +429,12 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  // Get user data for display
-  const userName = userMetadata.fullName || user.email?.split('@')[0] || 'User'
+  // Get user data for display (use from context hooks)
+  const displayUserName = userName || userMetadata.fullName || user.email?.split('@')[0] || 'User'
   const userEmail = userMetadata.email
   // Always use profile.avatar_url from database (profile always exists)
-  const userAvatar = profile?.avatar_url || ''
   // Use preview if available, otherwise use profile avatar directly (updates immediately after delete)
-  const displayAvatar = avatarPreview || (profile?.avatar_url !== undefined ? (profile.avatar_url || '') : userAvatar)
+  const displayAvatar = avatarPreview || profile?.avatar_url || userAvatar || ''
 
   // Check if avatar exists (not just initials)
   const hasAvatar = displayAvatar && displayAvatar.trim() !== ''
@@ -512,7 +465,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       // Refresh profile from server
       const refreshedProfile = await getCurrentUserProfile(user.id)
       if (refreshedProfile) {
-        setProfile(refreshedProfile)
+        // Profile updated - refresh from context
+        refreshUserProfile()
         setAvatarUrl(refreshedProfile.avatar_url || '')
         setOriginalAvatarUrl(refreshedProfile.avatar_url || '')
       }
@@ -546,6 +500,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
     }
     return 'U'
   }
+  
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -575,7 +530,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
       setError(result.error)
       toast.error(result.error)
     } else if (result.success && result.profile) {
-      setProfile(result.profile)
+      // Profile updated - refresh from context
+      refreshUserProfile()
       // Update original values after successful save
       setOriginalFullName(fullName)
       setOriginalAvatarUrl(result.profile.avatar_url || '')
@@ -691,7 +647,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </CardHeader>
                   <CardContent>
 
-                {loading ? (
+                {appDataLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
@@ -704,9 +660,9 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   <div className="flex items-center gap-4">
                     <div className="relative group">
                       <Avatar className="size-20 shrink-0">
-                          <AvatarImage src={displayAvatar || undefined} alt={userName} />
+                          <AvatarImage src={displayAvatar || undefined} alt={displayUserName} />
                           <AvatarFallback className="text-2xl">
-                            {getInitials(userName, userEmail)}
+                            {getInitials(displayUserName, userEmail)}
                           </AvatarFallback>
                       </Avatar>
                       {hasAvatar && (
@@ -864,7 +820,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </p>
                 </div>
 
-                  {loading ? (
+                  {appDataLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
@@ -1077,7 +1033,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           setSavingWorkspace(false)
                           return
                         } else {
-                          setWorkspace(result.workspace)
+                          // Workspace updated - refresh from context
+                          refreshWorkspace()
                           setOriginalWorkspaceName(result.workspace.name)
                           setWorkspaceName(result.workspace.name)
                         }
@@ -1091,7 +1048,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                           setSavingWorkspace(false)
                           return
                         } else {
-                          setWorkspace(result.workspace)
+                          // Workspace updated - refresh from context
+                          refreshWorkspace()
                           setWorkspaceLogoUrl(logoUrl)
                           setOriginalWorkspaceLogoUrl(logoUrl)
                           setWorkspaceLogoFile(null)
@@ -1130,7 +1088,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {
-                                  setWorkspace(result.workspace)
+                                  // Workspace updated - refresh from context
+                          refreshWorkspace()
                                   setWorkspaceLogoUrl('')
                                   setOriginalWorkspaceLogoUrl('')
                                   setWorkspaceLogoFile(null)
@@ -1308,7 +1267,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               setSavingWorkspace(false)
                               return
                             } else {
-                              setWorkspace(result.workspace)
+                              // Workspace updated - refresh from context
+                          refreshWorkspace()
                               setOriginalWorkspaceName(result.workspace.name)
                               setWorkspaceName(result.workspace.name)
                             }
@@ -1322,7 +1282,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                               setSavingWorkspace(false)
                               return
                             } else {
-                              setWorkspace(result.workspace)
+                              // Workspace updated - refresh from context
+                          refreshWorkspace()
                               setWorkspaceLogoUrl(logoUrl)
                               setOriginalWorkspaceLogoUrl(logoUrl)
                               setWorkspaceLogoFile(null)
@@ -1361,7 +1322,8 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                                     if ('error' in result) {
                                       toast.error(result.error)
                                     } else {
-                                      setWorkspace(result.workspace)
+                                      // Workspace updated - refresh from context
+                          refreshWorkspace()
                                       setWorkspaceLogoUrl('')
                                       setOriginalWorkspaceLogoUrl('')
                                       setWorkspaceLogoFile(null)
@@ -2570,7 +2532,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                     </div>
 
                     {/* Delete Workspace Section - Only visible to owners */}
-                    {showWorkspaceSettings && initialMembership?.role === 'owner' && (
+                    {showWorkspaceSettings && membership?.role === 'owner' && (
                       <>
                         <Separator className="my-6" />
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -2677,7 +2639,7 @@ export function SettingsClient({ user: serverUser, initialProfile, userMetadata,
                   </div>
 
                   {/* Delete Workspace Section - Only visible to owners */}
-                  {showWorkspaceSettings && initialMembership?.role === 'owner' && (
+                  {showWorkspaceSettings && membership?.role === 'owner' && (
                     <>
                       <Separator className="my-6" />
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
