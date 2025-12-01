@@ -389,9 +389,9 @@ export async function getPendingInvitations(workspaceId: string): Promise<Invita
 }
 
 /**
- * Load all settings page data in parallel
- * Optimizes loading by fetching all required data simultaneously
- * Reduces 7+ sequential DB calls to 4 parallel calls
+ * Load all settings page data using batched RPC call
+ * Optimizes loading by fetching profile, workspace, membership, and members in a single database call
+ * Reduces multiple sequential DB calls to 1 RPC call + 1 invitation query
  */
 export async function loadSettingsData(userId: string): Promise<{
   profile: Profile | null
@@ -402,62 +402,48 @@ export async function loadSettingsData(userId: string): Promise<{
 }> {
   const supabase = await createClient()
 
-  // Parallel queries - all execute simultaneously
-  const [profileResult, workspaceResult] = await Promise.all([
-    // Profile query
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .is('deleted_at', null)
-      .single(),
-    
-    // Workspace query
-    (async () => {
-      const { data: membership, error } = await supabase
-        .from('memberships')
-        .select(`
-          *,
-          workspace:workspaces!inner(*)
-        `)
-        .eq('user_id', userId)
-        .is('workspace.deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+  // Single batched RPC call for profile, workspace, membership, and members
+  const { data: dashboardData, error: rpcError } = await supabase.rpc('get_user_dashboard_data', {
+    p_user_id: userId,
+  })
 
-      if (error || !membership || !membership.workspace) {
-        return { workspace: null, membership: null }
-      }
+  if (rpcError) {
+    console.error('Error fetching dashboard data:', rpcError)
+    // Fallback to empty data
+    return {
+      profile: null,
+      workspace: null,
+      membership: null,
+      members: [],
+      invitations: [],
+    }
+  }
 
-      return {
-        workspace: membership.workspace as Workspace,
-        membership: {
-          id: membership.id,
-          workspace_id: membership.workspace_id,
-          user_id: membership.user_id,
-          role: membership.role,
-          last_active_at: membership.last_active_at,
-          created_at: membership.created_at,
-        } as Membership,
-      }
-    })(),
-  ])
+  // Parse the RPC result
+  const profile = dashboardData?.profile && dashboardData.profile !== 'null' 
+    ? (dashboardData.profile as Profile) 
+    : null
+  const workspace = dashboardData?.workspace && dashboardData.workspace !== 'null'
+    ? (dashboardData.workspace as Workspace)
+    : null
+  const membership = dashboardData?.membership && dashboardData.membership !== 'null'
+    ? (dashboardData.membership as Membership)
+    : null
+  const members = dashboardData?.members && Array.isArray(dashboardData.members)
+    ? (dashboardData.members as Array<{ membership: Membership; profile: Profile }>)
+    : []
 
-  const workspaceId = workspaceResult.workspace?.id
-
-  // Load members and invitations in parallel (only if workspace exists)
-  const [membersResult, invitationsResult] = await Promise.all([
-    workspaceId ? getWorkspaceMembers(workspaceId) : Promise.resolve([]),
-    workspaceId ? getPendingInvitations(workspaceId) : Promise.resolve([]),
-  ])
+  // Load invitations separately (only if workspace exists)
+  const invitations = workspace?.id 
+    ? await getPendingInvitations(workspace.id)
+    : []
 
   return {
-    profile: profileResult.error ? null : (profileResult.data as Profile | null),
-    workspace: workspaceResult.workspace,
-    membership: workspaceResult.membership,
-    members: membersResult,
-    invitations: invitationsResult,
+    profile,
+    workspace,
+    membership,
+    members,
+    invitations,
   }
 }
 

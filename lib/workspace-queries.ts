@@ -150,8 +150,8 @@ export async function loadUserWorkspace(userId: string): Promise<Workspace | nul
 }
 
 /**
- * Load user profile and workspace in parallel
- * Optimizes loading by fetching both simultaneously
+ * Load user profile and workspace using batched RPC call
+ * Optimizes loading by fetching profile and workspace in a single database call
  * 
  * @param userId - User ID
  * @returns Object with profile and workspace (both can be null)
@@ -163,66 +163,37 @@ export async function loadUserData(userId: string): Promise<{
   const preferredId = getPreferredWorkspaceId()
   const supabase = createClient()
 
-  // Parallel queries - both execute simultaneously
-  const [profileResult, workspaceResult] = await Promise.all([
-    // Profile query
-    supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .is('deleted_at', null)
-      .single(),
-    
-    // Workspace query (with preferred ID handling)
-    (async () => {
-      let query = supabase
-        .from('memberships')
-        .select('*, workspace:workspaces!inner(*)')
-        .eq('user_id', userId)
-        .is('workspace.deleted_at', null)
+  // Single batched RPC call for profile and workspace
+  const { data: dashboardData, error: rpcError } = await supabase.rpc('get_user_dashboard_data', {
+    p_user_id: userId,
+    p_preferred_workspace_id: preferredId || null,
+  })
 
-      if (preferredId) {
-        query = query.eq('workspace_id', preferredId)
-      }
+  if (rpcError) {
+    console.error('Error fetching dashboard data:', rpcError)
+    // Fallback to empty data
+    return {
+      profile: null,
+      workspace: null,
+    }
+  }
 
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+  // Parse the RPC result
+  const profile = dashboardData?.profile && dashboardData.profile !== 'null' 
+    ? (dashboardData.profile as Profile) 
+    : null
+  const workspace = dashboardData?.workspace && dashboardData.workspace !== 'null'
+    ? (dashboardData.workspace as Workspace)
+    : null
 
-      // If preferred workspace not found, fall back to most recent
-      if (error || !data?.workspace) {
-        if (preferredId) {
-          // Try again without preferred ID
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('memberships')
-            .select('*, workspace:workspaces!inner(*)')
-            .eq('user_id', userId)
-            .is('workspace.deleted_at', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-          if (fallbackError || !fallbackData?.workspace) {
-            return null
-          }
-
-          // Update localStorage with the actual workspace
-          setPreferredWorkspaceId(fallbackData.workspace.id)
-          return fallbackData.workspace as Workspace
-        }
-        return null
-      }
-
-      // Update localStorage with the actual workspace
-      setPreferredWorkspaceId(data.workspace.id)
-      return data.workspace as Workspace
-    })(),
-  ])
+  // Update localStorage with the actual workspace (if we got one)
+  if (workspace?.id) {
+    setPreferredWorkspaceId(workspace.id)
+  }
 
   return {
-    profile: profileResult.error ? null : (profileResult.data as Profile | null),
-    workspace: workspaceResult,
+    profile,
+    workspace,
   }
 }
 
