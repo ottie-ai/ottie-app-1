@@ -88,17 +88,8 @@ begin
   raise notice 'handle_new_profile: Trigger called for user_id: %, email: %, full_name: %', 
     new.id, new.email, new.full_name;
 
-  -- Generate workspace name from user's full_name or email
-  -- Format: "{full_name}'s Workspace" or "{email}'s Workspace"
-  if new.full_name is not null and trim(new.full_name) != '' then
-    workspace_name := new.full_name || '''s Workspace';
-  else
-    -- Use email username (part before @) or full email
-    workspace_name := COALESCE(
-      split_part(new.email, '@', 1),
-      'User'
-    ) || '''s Workspace';
-  end if;
+  -- Set workspace name to "Personal Workspace" for all new workspaces
+  workspace_name := 'Personal Workspace';
 
   -- Debug: Log workspace name
   raise notice 'handle_new_profile: Generated workspace_name: %', workspace_name;

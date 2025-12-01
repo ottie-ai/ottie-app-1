@@ -813,14 +813,8 @@ export async function resetWorkspace(
       return { error: 'Failed to delete workspace' }
     }
 
-    // 9. Generate new workspace name from user profile
-    let workspaceName: string
-    if (profile.full_name && profile.full_name.trim() !== '') {
-      workspaceName = `${profile.full_name.trim()}'s Workspace`
-    } else {
-      const emailUsername = profile.email ? profile.email.split('@')[0] : 'User'
-      workspaceName = `${emailUsername}'s Workspace`
-    }
+    // 9. Set workspace name to "Personal Workspace" for all new workspaces
+    const workspaceName = 'Personal Workspace'
 
     // 10. Generate unique slug from workspace name
     let workspaceSlug = workspaceName
