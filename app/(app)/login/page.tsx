@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { signIn, signInWithOAuth } from '@/lib/supabase/auth'
+import { signIn, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { toast } from 'sonner'
@@ -175,7 +175,8 @@ function LoginForm() {
 
     if (error) {
       console.error('[Login] Error:', error.message)
-      setError(error.message)
+      // Fix #7: Use generic error message to prevent email enumeration
+      setError(normalizeAuthError(error) || 'An error occurred during sign in')
       setIsLoading(false)
     } else if (data?.session) {
       console.log('[Login] Session created:', data.session.user.email)
@@ -210,7 +211,8 @@ function LoginForm() {
     const { error } = await signInWithOAuth('google', redirectTo, expectedEmail || undefined)
 
     if (error) {
-      setError(error.message)
+      // Fix #7: Use generic error message to prevent email enumeration
+      setError(normalizeAuthError(error) || 'An error occurred during sign in')
       setIsLoading(false)
     }
     // OAuth redirect will happen automatically

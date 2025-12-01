@@ -100,6 +100,40 @@ export async function signInWithOAuth(provider: 'google', redirectTo?: string, e
 }
 
 /**
+ * Normalize authentication errors to prevent email enumeration
+ * Returns a generic error message for login failures
+ */
+export function normalizeAuthError(error: AuthError | null): string | null {
+  if (!error) return null
+  
+  // List of error messages that indicate authentication failure
+  // These should all return the same generic message
+  const authFailureMessages = [
+    'invalid login credentials',
+    'invalid credentials',
+    'email not confirmed',
+    'user not found',
+    'wrong password',
+    'incorrect password',
+    'invalid password',
+    'invalid email or password',
+    'user already registered',
+    'email already registered',
+    'email already exists',
+  ]
+  
+  const errorMessage = error.message.toLowerCase()
+  
+  // Check if this is an authentication failure
+  if (authFailureMessages.some(msg => errorMessage.includes(msg))) {
+    return 'Invalid email or password'
+  }
+  
+  // For other errors (like network errors, rate limiting, etc.), return the original message
+  return error.message
+}
+
+/**
  * Sign out
  */
 export async function signOut() {

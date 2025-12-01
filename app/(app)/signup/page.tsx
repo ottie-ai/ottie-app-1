@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { signUp, signInWithOAuth } from '@/lib/supabase/auth'
+import { signUp, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { toast } from 'sonner'
@@ -81,7 +81,8 @@ function RegisterForm() {
     })
 
     if (error) {
-      setError(error.message)
+      // Fix #7: Use generic error message to prevent email enumeration
+      setError(normalizeAuthError(error) || 'An error occurred during sign up')
       setIsLoading(false)
     } else {
       // Check if email confirmation is required
@@ -164,7 +165,8 @@ function RegisterForm() {
     const { error } = await signInWithOAuth('google', redirectTo, prefillEmail || undefined)
 
     if (error) {
-      setError(error.message)
+      // Fix #7: Use generic error message to prevent email enumeration
+      setError(normalizeAuthError(error) || 'An error occurred during sign up')
       setIsLoading(false)
     }
     // OAuth redirect will happen automatically
