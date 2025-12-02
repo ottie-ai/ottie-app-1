@@ -104,8 +104,8 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(1 0 0 / 0.1);
   --input: oklch(1 0 0 / 0.15);
   --ring: oklch(0.439 0 0);
@@ -640,7 +640,7 @@ canvas {
   transition: border-color 0.3s ease;
 }
 
-.glow-card[data-hovered="true"] {
+.glow-card[data-hovered="true"]:not(.keep-border) {
   border-color: transparent;
 }
 
@@ -723,6 +723,7 @@ canvas {
 [data-sidebar="menu-sub-button"]:hover {
   background-color: rgba(0, 0, 0, 0.05) !important;
 }
+
 
 .dark [data-slot="sidebar-menu-button"]:hover,
 .dark [data-sidebar="menu-button"]:hover,

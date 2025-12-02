@@ -4,15 +4,19 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { 
   MoreHorizontal, 
-  Pencil, 
-  Trash2, 
-  Copy,
-  Info,
-  FileText,
+  Eye,
 } from 'lucide-react'
 import { LottiePhotoIcon } from '@/components/ui/lottie-photo-icon'
+import { LottieAnalyticsIcon } from '@/components/ui/lottie-analytics-icon'
+import { LottieEditIcon } from '@/components/ui/lottie-edit-icon'
+import { LottieBookIcon } from '@/components/ui/lottie-book-icon'
+import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
+import { LottieCopyIcon } from '@/components/ui/lottie-copy-icon'
+import { LottieTrashIcon } from '@/components/ui/lottie-trash-icon'
+import { LottieInboxIcon } from '@/components/ui/lottie-inbox-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,10 +29,12 @@ export interface SiteCardData {
   id: string
   title: string
   slug: string
-  status: 'published' | 'draft'
+  status: 'published' | 'draft' | 'archived'
   views?: number
   lastEdited?: string
   thumbnail: string | null
+  avatar?: string | null
+  avatarFallback?: string
 }
 
 interface SiteCardProps {
@@ -57,6 +63,24 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
               </div>
             </div>
           )}
+          {/* Avatar in top left corner */}
+          <div className="absolute top-3 left-3 z-10">
+            <div className="size-12 rounded-full p-[2px] bg-background">
+              <Avatar className="size-full">
+                <AvatarImage src={site.avatar || undefined} alt={site.title} />
+                <AvatarFallback className="text-sm bg-muted text-muted-foreground">
+                  {site.avatarFallback || site.title.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+          {/* Views in bottom right corner */}
+          {site.views !== undefined && (
+            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50">
+              <Eye className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground">{site.views.toLocaleString()}</span>
+            </div>
+          )}
           
           {/* Menu Button - appears on hover */}
           <div 
@@ -75,25 +99,34 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem>
-                  <Info className="size-4 mr-2" />
-                  View details
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Pencil className="size-4 mr-2" />
-                  Edit template
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileText className="size-4 mr-2" />
-                  Rename template
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Copy className="size-4 mr-2" />
-                  Duplicate template
+                  <LottieAnalyticsIcon className="size-4 mr-2" />
+                  Analytics
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
-                  <Trash2 className="size-4 mr-2" />
-                  Remove template
+                <DropdownMenuItem>
+                  <LottieEditIcon className="size-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <LottieBookIcon className="size-4 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <LottieAccountIcon className="size-4 mr-2" />
+                  Reassign
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <LottieCopyIcon className="size-4 mr-2" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <LottieInboxIcon className="size-4 mr-2" />
+                  Archive
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive">
+                  <LottieTrashIcon className="size-4 mr-2" destructive={true} />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -109,9 +142,15 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
         </div>
         <Badge 
           variant="secondary" 
-          className="shrink-0 capitalize"
+          className={`shrink-0 capitalize ${
+            site.status === 'published' 
+              ? 'gradient-ottie hover:opacity-90 text-white border-0' 
+              : site.status === 'archived'
+              ? 'bg-muted/50 text-muted-foreground/60 border-muted-foreground/20'
+              : ''
+          }`}
         >
-          {site.status === 'published' ? 'Published' : 'Draft'}
+          {site.status === 'published' ? 'Published' : site.status === 'archived' ? 'Archived' : 'Draft'}
         </Badge>
       </div>
     </div>

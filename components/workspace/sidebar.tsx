@@ -23,8 +23,6 @@ import {
   ChevronRight,
   Check,
   ExternalLink,
-  Sparkles,
-  MessageSquare,
   Lightbulb,
   Bug,
   BookOpen,
@@ -38,6 +36,10 @@ import { LottieGlobeIcon } from '@/components/ui/lottie-globe-icon'
 import { LottieViewIcon } from '@/components/ui/lottie-view-icon'
 import { LottieGroupsIcon } from '@/components/ui/lottie-groups-icon'
 import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
+import { LottieBulbIcon } from '@/components/ui/lottie-bulb-icon'
+import { LottieBugIcon } from '@/components/ui/lottie-bug-icon'
+import { LottieFileIcon } from '@/components/ui/lottie-file-icon'
+import { LottieMailOpenIcon } from '@/components/ui/lottie-mail-open-icon'
 import { LottieSupportIcon } from '@/components/ui/lottie-support-icon'
 import { LottieForumIcon } from '@/components/ui/lottie-forum-icon'
 import { LottieContactsIcon } from '@/components/ui/lottie-contacts-icon'
@@ -525,24 +527,20 @@ export function DashboardSidebar() {
                     sideOffset={4}
                   >
                     <DropdownMenuItem>
-                      <Sparkles className="mr-2 size-4" />
-                      AI Copilot
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <MessageSquare className="mr-2 size-4" />
+                      <LottieMailOpenIcon className="mr-2 size-4" />
                       Contact Support
                     </DropdownMenuItem>
                     <DropdownMenuItem>
-                      <BookOpen className="mr-2 size-4" />
+                      <LottieFileIcon className="mr-2 size-4" />
                       Documentation
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={openUserJot}>
-                      <Lightbulb className="mr-2 size-4" />
+                      <LottieBulbIcon className="mr-2 size-4" />
                       Suggest Feature
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={openUserJot}>
-                      <Bug className="mr-2 size-4" />
+                      <LottieBugIcon className="mr-2 size-4" />
                       Flag Bug
                     </DropdownMenuItem>
                   </DropdownMenuContent>

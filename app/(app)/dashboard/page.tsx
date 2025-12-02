@@ -53,7 +53,7 @@ const mockSites: SiteCardData[] = [
     id: '4',
     title: 'Beachfront Condo Miami',
     slug: 'beachfront-condo-miami',
-    status: 'draft',
+    status: 'archived',
     views: 0,
     lastEdited: '1 week ago',
     thumbnail: null,
@@ -216,7 +216,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">My Sites</h2>
+              <h2 className="text-xl font-semibold">Sites</h2>
               <p className="text-sm text-muted-foreground">
                 Manage your property landing sites
               </p>
@@ -230,13 +230,20 @@ export default function DashboardPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {/* New Site Card */}
             <div className="group">
-              <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer bg-transparent !bg-transparent dark:border-muted-foreground/30" initialGlow>
-                <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
+              <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
+                <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
                 <div className="mb-4">
                   <LottieAddCardIcon size={28} invertTheme={false} />
                 </div>
-                <span className="font-medium">Create New Site</span>
-                <span className="text-xs mt-1">Start from scratch or use AI</span>
+                <span className="font-medium mb-1">Create New Site</span>
+              <div className="flex gap-2 mt-4">
+                <Button size="sm">
+                  Generate from URL
+                </Button>
+                <Button variant="secondary" size="sm">
+                  Create manually
+                </Button>
+              </div>
               </CardContent>
             </GlowCard>
               {/* Empty space below to match other cards */}

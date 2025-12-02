@@ -10,6 +10,7 @@ interface LottieIconProps {
   size?: number
   useGradient?: boolean // If true, use gradient colors instead of theme colors
   invertTheme?: boolean // If true, invert the theme color (light icon on dark bg, dark icon on light bg)
+  destructive?: boolean // If true, use destructive red color
 }
 
 /**
@@ -20,19 +21,49 @@ interface LottieIconProps {
  * - Animates on hover
  * - Can be used as a replacement for icon components
  */
-export function LottieIcon({ animationData, className = '', size = 18, useGradient = false, invertTheme = false }: LottieIconProps) {
+export function LottieIcon({ animationData, className = '', size = 18, useGradient = false, invertTheme = false, destructive = false }: LottieIconProps) {
   const { theme, resolvedTheme } = useTheme()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [direction, setDirection] = useState<1 | -1>(1)
+  const [destructiveColor, setDestructiveColor] = useState<[number, number, number]>([239/255, 68/255, 68/255])
 
   // Determine if dark mode is active - use resolvedTheme and update when it changes
   const isDark = useMemo(() => {
     if (typeof window === 'undefined') return false
     return resolvedTheme === 'dark' || (resolvedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches)
   }, [resolvedTheme])
+
+  // Get destructive color from CSS variable to match exactly
+  useEffect(() => {
+    if (!destructive || typeof window === 'undefined') return
+    
+    const root = document.documentElement
+    const computedColor = getComputedStyle(root).getPropertyValue('--destructive').trim()
+    
+    if (computedColor) {
+      // Create a temporary element to convert oklch/rgb to rgb values
+      const tempEl = document.createElement('div')
+      tempEl.style.color = computedColor
+      tempEl.style.position = 'absolute'
+      tempEl.style.visibility = 'hidden'
+      document.body.appendChild(tempEl)
+      
+      const rgb = getComputedStyle(tempEl).color
+      document.body.removeChild(tempEl)
+      
+      // Parse rgb(r, g, b) or rgba(r, g, b, a)
+      const match = rgb.match(/\d+/g)
+      if (match && match.length >= 3) {
+        const r = parseInt(match[0]) / 255
+        const g = parseInt(match[1]) / 255
+        const b = parseInt(match[2]) / 255
+        setDestructiveColor([r, g, b])
+      }
+    }
+  }, [destructive, isMounted])
 
   useEffect(() => {
     setIsMounted(true)
@@ -60,8 +91,13 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     }
   }, [isMounted])
 
-  // Get the target color based on theme/gradient/invertTheme
+  // Get the target color based on theme/gradient/invertTheme/destructive
   const targetColor = useMemo(() => {
+    if (destructive) {
+      // Use the color from CSS variable to match exactly
+      return destructiveColor
+    }
+    
     if (useGradient) {
       // Use gradient colors (middle color from gradient: #e5a4b4)
       // RGB: 229, 164, 180 -> normalized: [0.898, 0.643, 0.706]
@@ -76,7 +112,7 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     return effectiveIsDark 
       ? [0.95, 0.95, 0.98] // Light color for dark backgrounds
       : [0.1, 0.1, 0.2]  // Dark color for light backgrounds
-  }, [isDark, useGradient, invertTheme])
+  }, [isDark, useGradient, invertTheme, destructive])
 
   // Determine if we should apply opacity (for light icons in dark mode)
   const shouldApplyOpacity = useMemo(() => {
@@ -202,12 +238,11 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
       lottieInstance.goToAndPlay(0, true)
     } else {
       if (isMorphAnimation) {
-        // For morph animations, play backwards from current position to frame 0
+        // For morph animations, play backwards from last frame to frame 0
         setDirection(-1)
         lottieInstance.setDirection(-1)
-        // Get current frame and play backwards from there
-        const currentFrame = lottieInstance.currentFrame ?? totalFrames - 1
-        lottieInstance.goToAndPlay(currentFrame, true)
+        // Start from last frame and play backwards
+        lottieInstance.goToAndPlay(totalFrames - 1, true)
       } else {
         // For regular hover animations, stop and reset to frame 0
         setDirection(1)

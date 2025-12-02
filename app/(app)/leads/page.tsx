@@ -234,7 +234,6 @@ export default function LeadsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
-                  <SlidersHorizontal className="size-4" />
                   Status
                   <ChevronDown className="size-3" />
                 </Button>

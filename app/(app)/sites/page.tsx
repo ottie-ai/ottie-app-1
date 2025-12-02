@@ -55,7 +55,7 @@ const mockSites: SiteCardData[] = [
     id: '4',
     title: 'Untitled Template',
     slug: 'untitled-template',
-    status: 'draft',
+    status: 'archived',
     views: 0,
     lastEdited: '1 week ago',
     thumbnail: null,
@@ -92,7 +92,7 @@ export default function SitesPage() {
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">My Sites</h1>
+          <h1 className="text-lg font-semibold">Sites</h1>
         </div>
         <Button size="sm" className="gap-2">
           <LottieAddCardIcon className="size-[18px]" />
@@ -115,7 +115,6 @@ export default function SitesPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
-                  <SlidersHorizontal className="size-4" />
                   Status
                   <ChevronDown className="size-3" />
                 </Button>
@@ -147,13 +146,20 @@ export default function SitesPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {/* New Site Card */}
           <div className="group">
-            <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer bg-transparent !bg-transparent dark:border-muted-foreground/30" initialGlow>
-              <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
+            <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
+              <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
               <div className="mb-4">
                 <LottieAddCardIcon size={28} invertTheme={false} />
               </div>
-              <span className="font-medium">Create New Site</span>
-              <span className="text-xs mt-1">Start from scratch or use AI</span>
+              <span className="font-medium mb-1">Create New Site</span>
+              <div className="flex gap-2 mt-4">
+                <Button size="sm">
+                  Generate from URL
+                </Button>
+                <Button variant="secondary" size="sm">
+                  Create manually
+                </Button>
+              </div>
             </CardContent>
           </GlowCard>
             {/* Empty space below to match other cards */}
