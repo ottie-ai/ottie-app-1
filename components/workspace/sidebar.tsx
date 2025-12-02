@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaces } from '@/hooks/use-workspaces'
@@ -31,7 +32,22 @@ import {
   Repeat,
   Crown,
   Zap,
+  Sun,
 } from 'lucide-react'
+import { LottieGlobeIcon } from '@/components/ui/lottie-globe-icon'
+import { LottieViewIcon } from '@/components/ui/lottie-view-icon'
+import { LottieGroupsIcon } from '@/components/ui/lottie-groups-icon'
+import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
+import { LottieSupportIcon } from '@/components/ui/lottie-support-icon'
+import { LottieForumIcon } from '@/components/ui/lottie-forum-icon'
+import { LottieContactsIcon } from '@/components/ui/lottie-contacts-icon'
+import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
+import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
+import { LottieLogoutIcon } from '@/components/ui/lottie-logout-icon'
+import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
+import { LottieSwapIcon } from '@/components/ui/lottie-swap-icon'
+import { LottieLinkIcon } from '@/components/ui/lottie-link-icon'
+import { LottieSunIcon } from '@/components/ui/lottie-sun-icon'
 import {
   Sidebar,
   SidebarContent,
@@ -57,9 +73,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
@@ -67,22 +80,22 @@ const mainNavItems = [
   {
     title: 'Overview',
     url: '/overview',
-    icon: LayoutDashboard,
+    icon: LottieViewIcon,
   },
   {
     title: 'Sites',
     url: '/sites',
-    icon: Globe,
+    icon: LottieGlobeIcon,
   },
   {
     title: 'Leads',
     url: '/leads',
-    icon: Users,
+    icon: LottieGroupsIcon,
   },
   {
     title: 'Client Portals',
     url: '/client-portals',
-    icon: SquareUser,
+    icon: LottieContactsIcon,
     badge: 'Coming Soon',
   },
 ]
@@ -91,13 +104,14 @@ const bottomNavItems = [
   {
     title: 'Settings',
     url: '/settings',
-    icon: Settings,
+    icon: LottieSettingsIcon,
   },
 ]
 
 export function DashboardSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { user } = useAuth()
@@ -293,7 +307,9 @@ export function DashboardSidebar() {
                       )
                     })()}
                   </div>
-                  <ChevronsUpDown className="ml-auto shrink-0" />
+                  {workspaces.length > 1 && (
+                    <LottieSwapIcon className="ml-auto shrink-0" size={18} />
+                  )}
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -302,60 +318,55 @@ export function DashboardSidebar() {
                 side="bottom"
                 sideOffset={4}
               >
-                {workspaces.length > 1 && (
+                {workspaces.length > 0 && (
                   <>
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Repeat className="h-4 w-4" />
-                        Switch Workspace
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {workspaces.map(({ workspace: ws, membership }) => {
-                          const isCurrent = workspace?.id === ws.id
-                          return (
-                      <DropdownMenuItem
-                        key={ws.id}
-                        onClick={() => {
-                                if (!isCurrent) {
-                          handleSwitchWorkspace(ws.id)
-                          if (isMobile) {
-                            setOpenMobile(false)
-                          }
-                                }
-                        }}
-                              className={isCurrent 
-                                ? 'cursor-default opacity-60 pointer-events-none' 
-                                : ''
+                    <DropdownMenuLabel className="text-sidebar-foreground/70 text-xs font-medium px-2 h-8">
+                      Workspaces
+                    </DropdownMenuLabel>
+                    {workspaces.map(({ workspace: ws, membership }) => {
+                      const isCurrent = workspace?.id === ws.id
+                      return (
+                        <DropdownMenuItem
+                          key={ws.id}
+                          onClick={() => {
+                            if (!isCurrent) {
+                              handleSwitchWorkspace(ws.id)
+                              if (isMobile) {
+                                setOpenMobile(false)
                               }
-                              onPointerDown={(e) => {
-                                if (isCurrent) {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                }
-                              }}
-                              onMouseEnter={(e) => {
-                                if (isCurrent) {
-                                  e.currentTarget.style.backgroundColor = ''
-                                }
-                              }}
-                      >
-                              <div className="flex items-center gap-2 w-full">
-                                <Avatar className="h-6 w-6 shrink-0 rounded">
-                                  <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
-                                  <AvatarFallback className="text-xs rounded bg-muted">
-                                    {ws.name.substring(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="truncate flex-1">{ws.name}</span>
-                                {isCurrent && (
-                                  <Check className="h-4 w-4 shrink-0 text-primary" />
-                          )}
-                        </div>
-                      </DropdownMenuItem>
-                          )
-                        })}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                            }
+                          }}
+                          className={isCurrent 
+                            ? 'cursor-default opacity-60 pointer-events-none' 
+                            : ''
+                          }
+                          onPointerDown={(e) => {
+                            if (isCurrent) {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }
+                          }}
+                          onMouseEnter={(e) => {
+                            if (isCurrent) {
+                              e.currentTarget.style.backgroundColor = ''
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <Avatar className="h-6 w-6 shrink-0 rounded">
+                              <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
+                              <AvatarFallback className="text-xs rounded bg-muted">
+                                {ws.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate flex-1">{ws.name}</span>
+                            {isCurrent && (
+                              <Check className="h-4 w-4 shrink-0 text-primary" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      )
+                    })}
                     <DropdownMenuSeparator />
                   </>
                 )}
@@ -404,13 +415,13 @@ export function DashboardSidebar() {
       <SidebarContent className="relative z-10">
         {/* Search */}
         <SidebarGroup className="py-0 px-0">
-          <SidebarGroupContent className="relative px-2">
+          <SidebarGroupContent className="px-2">
             {!isCollapsed && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <div className="relative w-full">
+                <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                 <Input 
                   placeholder="Search sites..." 
-                  className="pl-9 h-9"
+                  className="pl-9 w-full h-8 bg-transparent dark:bg-transparent"
                 />
               </div>
             )}
@@ -426,7 +437,7 @@ export function DashboardSidebar() {
                   tooltip="New Site"
                   className="bg-primary text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground active:!bg-primary/80"
                 >
-              <Plus className="size-4" />
+              <LottieAddCardIcon className="size-[18px]" />
                   <span>New Site</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -449,7 +460,7 @@ export function DashboardSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
-                      <item.icon className="size-4" />
+                      <item.icon className="size-[18px]" />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
                         <Badge className="text-[10px] px-1.5 py-0 h-5 gradient-ottie hover:opacity-90 text-white border-0">
@@ -479,13 +490,13 @@ export function DashboardSidebar() {
                   >
                     {'external' in item && item.external ? (
                       <a href={item.url} target="_blank" rel="noopener noreferrer">
-                        <item.icon className="size-4" />
+                        <item.icon className="size-[18px]" />
                         <span>{item.title}</span>
                         <ExternalLink className="!size-3 text-muted-foreground" />
                       </a>
                     ) : (
                       <Link href={item.url} onClick={handleLinkClick}>
-                        <item.icon className="size-4" />
+                        <item.icon className="size-[18px]" />
                         <span>{item.title}</span>
                       </Link>
                     )}
@@ -502,7 +513,7 @@ export function DashboardSidebar() {
                       isActive={false}
                       tooltip="Help & Support"
                     >
-                      <HelpCircle className="size-4" />
+                      <LottieSupportIcon className="size-[18px]" />
                       <span>Help & Support</span>
                       <ChevronRight className="ml-auto size-4" />
                     </SidebarMenuButton>
@@ -545,20 +556,7 @@ export function DashboardSidebar() {
                   tooltip="Got Feedback?"
                   suppressHydrationWarning
                 >
-                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="url(#ottie-gradient-feedback)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <defs>
-                      <linearGradient id="ottie-gradient-feedback" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#fda90f" />
-                        <stop offset="50%" stopColor="#e5a4b4" />
-                        <stop offset="100%" stopColor="#c89eff" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-                    <path d="M20 3v4"/>
-                    <path d="M22 5h-4"/>
-                    <path d="M4 17v2"/>
-                    <path d="M5 18H3"/>
-                  </svg>
+                  <LottieForumIcon className="size-[18px]" />
                   <span className="gradient-ottie-text">Got Feedback?</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -598,12 +596,31 @@ export function DashboardSidebar() {
                 sideOffset={4}
               >
                 <DropdownMenuItem asChild>
-                  <Link href="/settings" onClick={handleLinkClick}>
+                  <Link href="/" onClick={handleLinkClick} className="flex items-center gap-2">
+                    <LottieLinkIcon className="size-[18px]" />
+                    Homepage
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    const currentTheme = theme || 'system'
+                    setTheme(currentTheme === 'dark' ? 'light' : 'dark')
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <LottieSunIcon className="size-[18px]" />
+                  {(theme || 'system') === 'dark' ? 'Light mode' : 'Dark mode'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" onClick={handleLinkClick} className="flex items-center gap-2">
+                    <LottieAccountIcon className="size-[18px]" />
                     Account Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+                <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2">
+                  <LottieLogoutIcon className="size-[18px]" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>

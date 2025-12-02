@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Search, SlidersHorizontal, ChevronDown, ExternalLink, Mail, Phone, MapPin, Calendar, Plus, Check } from 'lucide-react'
+import { SlidersHorizontal, ChevronDown, ExternalLink, Mail, Phone, MapPin, Calendar, Plus, Check } from 'lucide-react'
+import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
 import { cn } from '@/lib/utils'
 import {
   Sheet,
@@ -223,7 +224,7 @@ export default function LeadsPage() {
         {/* Filters & Search */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input 
               placeholder="Search leads..." 
               className="pl-9"

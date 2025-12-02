@@ -3,10 +3,11 @@
 import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
-  Search,
   SlidersHorizontal,
   ChevronDown,
 } from 'lucide-react'
+import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
+import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import { GlowCard } from '@/components/ui/glow-card'
@@ -94,7 +95,7 @@ export default function SitesPage() {
           <h1 className="text-lg font-semibold">My Sites</h1>
         </div>
         <Button size="sm" className="gap-2">
-          <Plus className="size-4" />
+          <LottieAddCardIcon className="size-[18px]" />
           New Site
         </Button>
       </header>
@@ -104,7 +105,7 @@ export default function SitesPage() {
         {/* Filters & Search */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
           <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <Input 
               placeholder="Search sites..." 
               className="pl-9"
@@ -149,7 +150,7 @@ export default function SitesPage() {
             <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer" initialGlow>
               <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
               <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
-                <Plus className="size-6" />
+                <LottieAddCardIcon className="size-[18px]" />
               </div>
               <span className="font-medium">Create New Site</span>
               <span className="text-xs mt-1">Start from scratch or use AI</span>

@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -648,8 +649,40 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <CardContent>
 
                 {appDataLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="space-y-4">
+                    {/* Avatar skeleton */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <Skeleton className="h-5 w-20" />
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="size-20 rounded-full" />
+                        <div className="flex flex-col gap-2 w-full sm:w-64">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-4 w-48" />
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                    {/* Full Name skeleton */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-10 w-full sm:w-64" />
+                    </div>
+                    <Separator />
+                    {/* Email skeleton */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-10 w-full sm:w-64" />
+                    </div>
+                    <Separator />
+                    {/* Password skeleton */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-6 w-32" />
+                    </div>
+                    {/* Save button skeleton */}
+                    <div className="flex justify-start mt-10">
+                      <Skeleton className="h-10 w-32" />
+                    </div>
                   </div>
                 ) : (
                 <form id="profile-form" onSubmit={handleSaveProfile} className="space-y-4">
@@ -821,8 +854,40 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                 </div>
 
                   {appDataLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="space-y-4">
+                      {/* Avatar skeleton */}
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <Skeleton className="h-5 w-20" />
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="size-20 rounded-full" />
+                          <div className="flex flex-col gap-2 w-full sm:w-64">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-4 w-48" />
+                          </div>
+                        </div>
+                      </div>
+                      <Separator />
+                      {/* Full Name skeleton */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <Skeleton className="h-5 w-24" />
+                        <Skeleton className="h-10 w-full sm:w-64" />
+                      </div>
+                      <Separator />
+                      {/* Email skeleton */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <Skeleton className="h-5 w-16" />
+                        <Skeleton className="h-10 w-full sm:w-64" />
+                      </div>
+                      <Separator />
+                      {/* Password skeleton */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <Skeleton className="h-5 w-20" />
+                        <Skeleton className="h-6 w-32" />
+                      </div>
+                      {/* Save button skeleton */}
+                      <div className="flex justify-start mt-10">
+                        <Skeleton className="h-10 w-32" />
+                      </div>
                     </div>
                   ) : (
                     <form id="profile-form-desktop" onSubmit={handleSaveProfile} className="space-y-4">
@@ -2001,8 +2066,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                 <div>
                       <h3 className="text-sm font-medium mb-3">Members</h3>
                   {membersLoading ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      Loading members...
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                            </div>
+                          </div>
+                          <Skeleton className="h-6 w-16 rounded-full" />
+                        </div>
+                      ))}
                     </div>
                   ) : members.length === 0 ? (
                     <div className="p-8 text-center text-sm text-muted-foreground">
@@ -2049,8 +2125,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       <div>
                         <h3 className="text-sm font-medium mb-3">Pending Invitations</h3>
                         {invitationsLoading ? (
-                          <div className="p-8 text-center text-sm text-muted-foreground">
-                            Loading...
+                          <div className="space-y-3">
+                            {[1, 2].map((i) => (
+                              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div className="space-y-2">
+                                  <Skeleton className="h-4 w-40" />
+                                  <Skeleton className="h-3 w-32" />
+                                </div>
+                                <div className="flex gap-1">
+                                  <Skeleton className="h-8 w-8 rounded-md" />
+                                  <Skeleton className="h-8 w-8 rounded-md" />
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ) : invitations.length === 0 ? (
                           <div className="p-6 text-center text-sm text-muted-foreground border rounded-lg">
@@ -2269,8 +2356,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <div>
                     <h3 className="text-sm font-medium mb-3">Members</h3>
                     {membersLoading ? (
-                      <div className="p-8 text-center text-sm text-muted-foreground">
-                        Loading members...
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-3 w-48" />
+                              </div>
+                            </div>
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                          </div>
+                        ))}
                       </div>
                     ) : members.length === 0 ? (
                       <div className="p-8 text-center text-sm text-muted-foreground">
@@ -2367,8 +2465,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     <div>
                       <h3 className="text-sm font-medium mb-3">Pending Invitations</h3>
                       {invitationsLoading ? (
-                        <div className="p-8 text-center text-sm text-muted-foreground">
-                          Loading invitations...
+                        <div className="space-y-3">
+                          {[1, 2].map((i) => (
+                            <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-40" />
+                                <Skeleton className="h-3 w-32" />
+                              </div>
+                              <div className="flex gap-1">
+                                <Skeleton className="h-8 w-8 rounded-md" />
+                                <Skeleton className="h-8 w-8 rounded-md" />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : invitations.length === 0 ? (
                         <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg">

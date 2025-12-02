@@ -11,6 +11,8 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react'
+import { LottieViewIcon } from '@/components/ui/lottie-view-icon'
+import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { GlowCard } from '@/components/ui/glow-card'
@@ -143,11 +145,12 @@ export default function DashboardPage() {
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-2">
+          <LottieViewIcon className="size-[18px]" />
           <h1 className="text-lg font-semibold">Dashboard</h1>
         </div>
         <Button size="sm" className="gap-2">
-          <Plus className="size-4" />
+          <LottieAddCardIcon className="size-[18px]" />
           New Site
         </Button>
       </header>
@@ -199,7 +202,7 @@ export default function DashboardPage() {
               <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer" initialGlow>
                 <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
                 <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
-                  <Plus className="size-6" />
+                  <LottieAddCardIcon className="size-[18px]" />
                 </div>
                 <span className="font-medium">Create New Site</span>
                 <span className="text-xs mt-1">Start from scratch or use AI</span>

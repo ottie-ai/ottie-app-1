@@ -9,8 +9,8 @@ import {
   Copy,
   Info,
   FileText,
-  ImageOff,
 } from 'lucide-react'
+import { LottiePhotoIcon } from '@/components/ui/lottie-photo-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -53,7 +53,7 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted/30">
               <div className="flex items-center justify-center size-16 rounded-2xl bg-muted/80">
-                <ImageOff className="size-6 text-muted-foreground" />
+                <LottiePhotoIcon className="text-muted-foreground" size={24} />
               </div>
             </div>
           )}

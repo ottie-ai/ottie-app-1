@@ -94,7 +94,7 @@
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0 0 0);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
@@ -728,7 +728,7 @@ canvas {
 .dark [data-sidebar="menu-button"]:hover,
 .dark [data-sidebar="menu-action"]:hover,
 .dark [data-sidebar="menu-sub-button"]:hover {
-  background-color: rgba(0, 0, 0, 0.3) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Sidebar button active state - black transparent background */
@@ -741,5 +741,31 @@ canvas {
 .dark [data-slot="sidebar-menu-button"][data-active="true"],
 .dark [data-sidebar="menu-button"][data-active="true"],
 .dark [data-sidebar="menu-sub-button"][data-active="true"] {
-  background-color: rgba(0, 0, 0, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Dropdown menu item hover styles - darker in dark mode */
+.dark [data-slot="dropdown-menu-item"]:hover,
+.dark [data-slot="dropdown-menu-item"]:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark [data-slot="dropdown-menu-checkbox-item"]:hover,
+.dark [data-slot="dropdown-menu-checkbox-item"]:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark [data-slot="dropdown-menu-radio-item"]:hover,
+.dark [data-slot="dropdown-menu-radio-item"]:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark [data-slot="dropdown-menu-sub-trigger"]:hover,
+.dark [data-slot="dropdown-menu-sub-trigger"]:focus {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Tabs background - same color as dropdown hover in dark mode */
+.dark [data-slot="tabs-list"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
