@@ -215,7 +215,7 @@ export function DashboardSidebar() {
 
 
   return (
-    <Sidebar collapsible="icon" className="relative overflow-hidden" suppressHydrationWarning>
+    <Sidebar collapsible="icon" className="relative overflow-hidden overflow-x-hidden" suppressHydrationWarning>
       {/* Background Sphere - exact same as homepage, just scaled down */}
       {!isCollapsed && (
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/4 pointer-events-none z-0">
