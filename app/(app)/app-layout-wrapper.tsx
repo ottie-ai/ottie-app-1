@@ -5,6 +5,17 @@ import { AppLayoutClient } from './app-layout-client'
 import type { Profile, Workspace, Membership } from '@/types/database'
 
 /**
+ * Cached function to get current user
+ * React cache() ensures getUser() is only called once per request
+ * This prevents duplicate network requests when layout re-renders during navigation
+ */
+const getCachedUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+})
+
+/**
  * Cached function to load app data per user
  * React cache() ensures the same user's data is only fetched once per request
  * This prevents duplicate fetches when layout re-renders during navigation
@@ -27,7 +38,8 @@ const getCachedAppData = cache(async (userId: string) => {
  * Server component wrapper that loads app data and passes it to client layout
  * 
  * OPTIMIZATION: Uses React cache() to prevent duplicate fetches during navigation
- * - Data is fetched once per request, even if layout re-renders
+ * - getUser() is cached per request (no network call on every navigation)
+ * - App data is cached per request (no RPC call on every navigation)
  * - React Query cache on client-side prevents refetching if data is fresh
  * - This ensures instant navigation between pages
  */
@@ -36,8 +48,9 @@ export async function AppLayoutWrapper({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // OPTIMIZATION: Cache getUser() to avoid network request on every navigation
+  // React cache() ensures this is only called once per request
+  const user = await getCachedUser()
 
   // Load app data server-side (cached per request)
   let initialAppData: {
