@@ -339,15 +339,9 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
     }
     
     // Don't call setActiveTab - let Radix Tabs handle it internally
-    // This prevents re-render and makes switching instant
-    
-    // Update URL completely asynchronously (doesn't block UI)
-    // Use queueMicrotask to ensure it runs after current execution
-    queueMicrotask(() => {
-      const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
-      router.replace(newUrl, { scroll: false })
-    })
-  }, [activeTab, hasUnsavedChanges, router])
+    // Don't update URL - router.replace() causes re-render
+    // Tab switching is now instant (just CSS change via Radix)
+  }, [activeTab, hasUnsavedChanges])
 
   // Handle dialog actions
   const handleSaveAndContinue = async () => {
