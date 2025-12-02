@@ -17,6 +17,7 @@ import type { User } from '@supabase/supabase-js'
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [initialized, setInitialized] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -31,18 +32,20 @@ export function useAuth() {
         // getSession() reads from cookies - no network request
         const { data: { session } } = await supabase.auth.getSession()
         
-          if (isMounted) {
+        if (isMounted) {
           // Use session.user directly (already validated server-side)
           setUser(session?.user ?? null)
-        setLoading(false)
+          setLoading(false)
+          setInitialized(true)
         }
       } catch (error) {
         console.error('[useAuth] Init error:', error)
         if (isMounted) {
-        setUser(null)
-        setLoading(false)
+          setUser(null)
+          setLoading(false)
+          setInitialized(true)
+        }
       }
-    }
     }
 
     initAuth()
@@ -66,6 +69,6 @@ export function useAuth() {
     }
   }, [router])
 
-  return { user, loading }
+  return { user, loading, initialized }
 }
 

@@ -73,18 +73,18 @@ function AppContent({
   isWorkspaceRoute: boolean
 }) {
   const { loading, currentWorkspace, profile } = useAppData()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, initialized } = useAuth()
 
   // Show loading screen while:
-  // 1. Auth is loading, OR
-  // 2. User is authenticated but app data is loading AND we don't have essential data yet
+  // 1. Auth is not initialized yet (prevents flash of unauthenticated state), OR
+  // 2. Auth is loading, OR
+  // 3. User is authenticated but app data is loading AND we don't have essential data yet
   // Essential data: profile AND workspace (both are required for app to function)
   // This prevents showing empty UI with missing data and flickering between states
-  // Only show loading on initial load (when we don't have data yet), not on background refetches
   const hasEssentialData = !!(profile && currentWorkspace)
   const isInitialLoad = !hasEssentialData && user?.id
-  // Show loading only if we're actually loading AND it's initial load (not background refetch)
-  const shouldShowLoading = authLoading || (loading && isInitialLoad && !hasEssentialData)
+  // Show loading if: not initialized OR auth loading OR (app data loading AND initial load)
+  const shouldShowLoading = !initialized || authLoading || (loading && isInitialLoad && !hasEssentialData)
 
   if (shouldShowLoading) {
     return (
