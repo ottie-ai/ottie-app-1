@@ -393,6 +393,9 @@ export async function middleware(request: NextRequest) {
 
 /**
  * Handle Supabase session refresh
+ * 
+ * OPTIMIZATION: Only validates with Supabase server if session cookie exists.
+ * This avoids network requests on every navigation when user is not logged in.
  */
 async function handleSupabaseSession(
   request: NextRequest,
@@ -408,7 +411,19 @@ async function handleSupabaseSession(
     return response
   }
 
-  // For protected routes, refresh session using standard cookie handling
+  // OPTIMIZATION: Check for session cookie first (no network request)
+  // Supabase SSR stores session in cookies with prefix 'sb-<project-ref>-auth-token'
+  const hasSessionCookie = request.cookies.getAll().some(
+    cookie => cookie.name.includes('sb-') && cookie.name.includes('-auth-token')
+  )
+
+  // If no session cookie, skip validation (auth guard will handle redirect)
+  // This avoids network request to Supabase on every navigation when user is not logged in
+  if (!hasSessionCookie) {
+    return response
+  }
+
+  // For protected routes with session cookie, refresh session using standard cookie handling
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
                       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -437,7 +452,7 @@ async function handleSupabaseSession(
     }
   )
 
-  // Validate user with Supabase server
+  // Validate user with Supabase server only if session cookie exists
   // This detects deleted users and clears invalid sessions
   try {
     const { data: { user }, error } = await supabase.auth.getUser()
