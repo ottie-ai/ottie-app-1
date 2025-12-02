@@ -214,6 +214,7 @@ export default function SitesPage() {
       const siteData: SiteInsert = {
         workspace_id: currentWorkspace.id,
         creator_id: user.id,
+        assigned_agent_id: null, // Can be assigned later
         title: formData.title.trim(),
         slug: formData.slug.trim(),
         description: formData.description.trim() || null,
