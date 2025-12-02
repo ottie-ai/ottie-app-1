@@ -335,17 +335,18 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
     if (hasUnsavedChanges()) {
       setPendingTab(newTab)
       setShowUnsavedDialog(true)
-    } else {
-      // INSTANT: Update tab immediately (synchronous, no delay)
-      setActiveTab(newTab)
-      
-      // Update URL completely asynchronously (doesn't block UI)
-      // Use queueMicrotask to ensure it runs after current execution
-      queueMicrotask(() => {
-        const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
-        router.replace(newUrl, { scroll: false })
-      })
+      return // Don't change tab if there are unsaved changes
     }
+    
+    // Don't call setActiveTab - let Radix Tabs handle it internally
+    // This prevents re-render and makes switching instant
+    
+    // Update URL completely asynchronously (doesn't block UI)
+    // Use queueMicrotask to ensure it runs after current execution
+    queueMicrotask(() => {
+      const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
+      router.replace(newUrl, { scroll: false })
+    })
   }, [activeTab, hasUnsavedChanges, router])
 
   // Handle dialog actions
