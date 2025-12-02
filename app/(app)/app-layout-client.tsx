@@ -13,6 +13,8 @@ import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
 import type { Profile, Workspace, Membership } from '@/types/database'
 import '../sphere.css'
+import { useEffect } from 'react'
+import Intercom from '@intercom/messenger-js-sdk'
 
 interface AppLayoutClientProps {
   children: React.ReactNode
@@ -47,6 +49,7 @@ export function AppLayoutClient({ children, initialAppData }: AppLayoutClientPro
         <AuthGuard>
           <AppProvider initialData={initialAppData}>
             <UserJotWithProfile />
+            <IntercomWithProfile />
             {isWorkspaceRoute ? (
               <SidebarProvider>
                 <DashboardSidebar />
@@ -86,5 +89,31 @@ function UserJotWithProfile() {
   useUserJotIdentify(userData)
   
   return <UserJotLoader />
+}
+
+// Separate component to initialize Intercom (must be inside AppProvider)
+function IntercomWithProfile() {
+  const { user } = useAuth()
+  const { profile, userName } = useUserProfile()
+  const pathname = usePathname()
+  
+  // Don't initialize Intercom on builder routes
+  const isBuilderRoute = pathname.startsWith('/builder/')
+  
+  useEffect(() => {
+    // Skip if builder route or user not loaded
+    if (isBuilderRoute || !user?.id) return
+    
+    // Initialize or update Intercom
+    Intercom({
+      app_id: 'r9srnf09',
+      user_id: user.id,
+      name: userName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      email: user.email || '',
+      created_at: user.created_at ? Math.floor(new Date(user.created_at).getTime() / 1000) : undefined,
+    })
+  }, [user?.id, user?.email, user?.created_at, userName, isBuilderRoute])
+  
+  return null
 }
 
