@@ -103,15 +103,36 @@ function IntercomWithProfile() {
   useEffect(() => {
     // Skip if builder route or user not loaded
     if (isBuilderRoute || !user?.id) return
-    
-    // Initialize or update Intercom
-    Intercom({
-      app_id: 'r9srnf09',
-      user_id: user.id,
-      name: userName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-      email: user.email || '',
-      created_at: user.created_at ? Math.floor(new Date(user.created_at).getTime() / 1000) : undefined,
-    })
+
+    // Fetch JWT token from API
+    const initializeIntercom = async () => {
+      try {
+        const response = await fetch('/api/intercom/jwt')
+        if (!response.ok) {
+          console.error('Failed to get Intercom JWT token')
+          return
+        }
+
+        const { token } = await response.json()
+
+        // Initialize Intercom with JWT token
+        Intercom({
+          api_base: 'https://api-iam.intercom.io',
+          app_id: 'r9srnf09',
+          intercom_user_jwt: token,
+          // Non-sensitive attributes can be included directly
+          name: userName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          created_at: user.created_at ? Math.floor(new Date(user.created_at).getTime() / 1000) : undefined,
+          session_duration: 86400000, // 1 day
+        })
+      } catch (error) {
+        console.error('Error initializing Intercom:', error)
+      }
+    }
+
+    initializeIntercom()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.email, user?.created_at, userName, isBuilderRoute])
   
   return null
