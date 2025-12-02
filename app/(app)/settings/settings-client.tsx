@@ -626,7 +626,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   {showTeamTab && (
                   <TabsTrigger value="team">Team</TabsTrigger>
                   )}
-                  <TabsTrigger value="appearance">Appearance</TabsTrigger>
                   <TabsTrigger value="notifications">Notifications</TabsTrigger>
                   {showBillingTab && (
                   <TabsTrigger value="plan">Billing</TabsTrigger>
@@ -1521,109 +1520,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </TabsContent>
                   )}
                 </>
-              )}
-
-              {/* Appearance Tab */}
-              {isMobile ? (
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle>Appearance</CardTitle>
-                    <CardDescription>
-                      Customize how Ottie looks on your device
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                {/* Settings Fields */}
-                <div className="space-y-4">
-                  {/* Theme */}
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <Label htmlFor="theme" className="text-sm font-medium">Theme</Label>
-                    <div className="flex items-center gap-3">
-                          <div className="flex gap-2 flex-wrap">
-                        <Button
-                          variant={theme === 'light' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('light')}
-                          className="gap-2"
-                        >
-                          <Sun className="size-4" />
-                          Light
-                        </Button>
-                        <Button
-                          variant={theme === 'dark' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('dark')}
-                          className="gap-2"
-                        >
-                          <Moon className="size-4" />
-                          Dark
-                        </Button>
-                        <Button
-                          variant={theme === 'system' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('system')}
-                          className="gap-2"
-                        >
-                          <Monitor className="size-4" />
-                          System
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <TabsContent value="appearance" className="mt-0 sm:mt-6 space-y-6">
-                  {/* Duplicate appearance content for desktop */}
-                <div>
-                    <h2 className="text-lg font-semibold">Appearance</h2>
-                  <p className="text-sm text-muted-foreground">
-                      Customize how Ottie looks on your device
-                  </p>
-                </div>
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label>Theme</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Choose your preferred theme
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant={theme === 'light' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('light')}
-                          className="gap-2"
-                        >
-                          <Sun className="size-4" />
-                          Light
-                        </Button>
-                        <Button
-                          variant={theme === 'dark' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('dark')}
-                          className="gap-2"
-                        >
-                          <Moon className="size-4" />
-                          Dark
-                        </Button>
-                        <Button
-                          variant={theme === 'system' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setTheme('system')}
-                          className="gap-2"
-                        >
-                          <Monitor className="size-4" />
-                          System
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
               )}
 
               {/* Notifications Tab */}

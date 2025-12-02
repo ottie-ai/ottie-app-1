@@ -31,6 +31,8 @@ import {
   Crown,
   Zap,
   Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react'
 import { LottieGlobeIcon } from '@/components/ui/lottie-globe-icon'
 import { LottieViewIcon } from '@/components/ui/lottie-view-icon'
@@ -76,6 +78,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 const mainNavItems = [
@@ -229,13 +232,14 @@ export function DashboardSidebar() {
         </div>
       )}
 
-      <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0 px-0 py-2">
+      <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0">
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild suppressHydrationWarning>
                 <SidebarMenuButton
                   size="lg"
+                  tooltip={displayName}
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <div className="gradient-ottie flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
@@ -369,7 +373,6 @@ export function DashboardSidebar() {
                       </DropdownMenuItem>
                           )
                         })}
-                    <DropdownMenuSeparator />
                   </>
                 )}
                 {!workspaceLoading && workspace && isMultiUserPlan(workspace.plan) ? (
@@ -593,23 +596,29 @@ export function DashboardSidebar() {
                 align="end"
                 sideOffset={4}
               >
+                <div className="px-2 py-1.5 flex items-center justify-between">
+                  <span className="text-sm">Theme</span>
+                  <Tabs value={theme || 'system'} onValueChange={(value) => setTheme(value as 'system' | 'light' | 'dark')}>
+                    <TabsList className="h-9 p-1">
+                      <TabsTrigger value="system" className="size-8 p-0">
+                        <Monitor className="size-4" />
+                      </TabsTrigger>
+                      <TabsTrigger value="light" className="size-8 p-0">
+                        <Sun className="size-4" />
+                      </TabsTrigger>
+                      <TabsTrigger value="dark" className="size-8 p-0">
+                        <Moon className="size-4" />
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/" onClick={handleLinkClick} className="flex items-center gap-2">
                     <LottieLinkIcon className="size-[18px]" />
                     Homepage
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => {
-                    const currentTheme = theme || 'system'
-                    setTheme(currentTheme === 'dark' ? 'light' : 'dark')
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <LottieSunIcon className="size-[18px]" />
-                  {(theme || 'system') === 'dark' ? 'Light mode' : 'Dark mode'}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/settings" onClick={handleLinkClick} className="flex items-center gap-2">
                     <LottieAccountIcon className="size-[18px]" />
