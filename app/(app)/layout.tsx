@@ -8,12 +8,13 @@ import { DashboardSidebar } from '@/components/workspace/sidebar'
 import { useUserJotIdentify } from '@/components/workspace/use-userjot-identify'
 import { UserJotLoader } from '@/components/workspace/userjot-loader'
 import { useAuth } from '@/hooks/use-auth'
-import { AppProvider, useUserProfile } from '@/contexts/app-context'
+import { AppProvider, useUserProfile, useAppData } from '@/contexts/app-context'
 import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
 import '../sphere.css'
 import { useEffect } from 'react'
 import Intercom from '@intercom/messenger-js-sdk'
+import { Loader2 } from 'lucide-react'
 
 /**
  * App Root Layout (Client Component - SPA style)
@@ -52,23 +53,56 @@ export default function AppRootLayout({
         <AuthGuard>
           {/* AppProvider without initialData - fetches via React Query (cached) */}
           <AppProvider>
-            <UserJotWithProfile />
-            <IntercomWithProfile />
-            {isWorkspaceRoute ? (
-              <SidebarProvider>
-                <DashboardSidebar />
-                <SidebarInset className="h-screen overflow-hidden">
-                  {children}
-                </SidebarInset>
-              </SidebarProvider>
-            ) : (
-              children
-            )}
+            <AppContent isWorkspaceRoute={isWorkspaceRoute}>
+              {children}
+            </AppContent>
           </AppProvider>
         </AuthGuard>
         <Toaster position="top-right" richColors />
       </ThemeProvider>
     </QueryProvider>
+  )
+}
+
+// AppContent - Shows loading screen while app data is loading
+function AppContent({ 
+  children, 
+  isWorkspaceRoute 
+}: { 
+  children: React.ReactNode
+  isWorkspaceRoute: boolean
+}) {
+  const { loading, currentWorkspace } = useAppData()
+  const { user } = useAuth()
+
+  // Show loading screen while app data is being fetched (only on first load when we don't have workspace yet)
+  // This prevents showing empty UI with missing data
+  if (loading && user?.id && !currentWorkspace) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading your workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <UserJotWithProfile />
+      <IntercomWithProfile />
+      {isWorkspaceRoute ? (
+        <SidebarProvider>
+          <DashboardSidebar />
+          <SidebarInset className="h-screen overflow-hidden">
+            {children}
+          </SidebarInset>
+        </SidebarProvider>
+      ) : (
+        children
+      )}
+    </>
   )
 }
 
