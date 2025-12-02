@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle2, XCircle, Users, ArrowRight, Clock, Mail } from 'lucide-react'
+import { CheckCircle2, XCircle, Users, ArrowRight, Clock, Mail } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -169,7 +170,7 @@ export default function InvitePage({ params }: InvitePageProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+          <LottieSpinner size={32} className="mx-auto" />
           <p className="text-sm text-muted-foreground">Loading invitation...</p>
         </div>
       </div>
@@ -263,7 +264,7 @@ export default function InvitePage({ params }: InvitePageProps) {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">Redirecting to dashboard...</p>
-            <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+            <LottieSpinner size={16} className="mx-auto" />
           </CardContent>
         </Card>
       </div>
@@ -276,7 +277,7 @@ export default function InvitePage({ params }: InvitePageProps) {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground mb-4" />
+            <LottieSpinner size={32} className="mx-auto mb-4" />
             <CardTitle>Joining {workspaceName}</CardTitle>
             <CardDescription>Please wait while we add you to the workspace...</CardDescription>
           </CardHeader>

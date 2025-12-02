@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useOptimisticNavigation } from '@/hooks/use-optimistic-navigation'
-import { Loader2 } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 
 /**
  * Auth Guard Component
@@ -44,7 +44,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     console.log('[AuthGuard] Loading...')
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <LottieSpinner size={32} />
       </div>
     )
   }

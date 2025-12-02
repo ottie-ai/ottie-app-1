@@ -14,7 +14,7 @@ import { Toaster } from 'sonner'
 import '../sphere.css'
 import { useEffect } from 'react'
 import Intercom from '@intercom/messenger-js-sdk'
-import { Loader2 } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 
 /**
  * App Root Layout (Client Component - SPA style)
@@ -72,16 +72,25 @@ function AppContent({
   children: React.ReactNode
   isWorkspaceRoute: boolean
 }) {
-  const { loading, currentWorkspace } = useAppData()
-  const { user } = useAuth()
+  const { loading, currentWorkspace, profile } = useAppData()
+  const { user, loading: authLoading } = useAuth()
 
-  // Show loading screen while app data is being fetched (only on first load when we don't have workspace yet)
-  // This prevents showing empty UI with missing data
-  if (loading && user?.id && !currentWorkspace) {
+  // Show loading screen while:
+  // 1. Auth is loading, OR
+  // 2. User is authenticated but app data is loading AND we don't have essential data yet
+  // Essential data: profile AND workspace (both are required for app to function)
+  // This prevents showing empty UI with missing data and flickering between states
+  // Only show loading on initial load (when we don't have data yet), not on background refetches
+  const hasEssentialData = !!(profile && currentWorkspace)
+  const isInitialLoad = !hasEssentialData && user?.id
+  // Show loading only if we're actually loading AND it's initial load (not background refetch)
+  const shouldShowLoading = authLoading || (loading && isInitialLoad && !hasEssentialData)
+
+  if (shouldShowLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <LottieSpinner size={32} />
           <p className="text-sm text-muted-foreground">Loading your workspace...</p>
         </div>
       </div>

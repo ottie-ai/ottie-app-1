@@ -12,7 +12,8 @@ import { signIn, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { toast } from 'sonner'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 function LoginForm() {
@@ -225,7 +226,7 @@ function LoginForm() {
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <LottieSpinner size={32} />
       </div>
     )
   }
@@ -273,7 +274,7 @@ function LoginForm() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <LottieSpinner size={16} className="mr-2" />
             ) : (
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -344,7 +345,7 @@ function LoginForm() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <LottieSpinner size={16} className="mr-2" />}
               Sign in
             </Button>
           </form>
@@ -365,7 +366,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <LottieSpinner size={32} />
       </div>
     }>
       <LoginForm />

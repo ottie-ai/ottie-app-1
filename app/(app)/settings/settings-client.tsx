@@ -7,7 +7,8 @@ import Image from 'next/image'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle, Trash2, Globe } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -822,7 +823,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       >
                       {saving ? (
                         <>
-                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          <LottieSpinner size={16} className="mr-2" />
                           Saving...
                         </>
                       ) : (
@@ -1026,7 +1027,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               >
                                 {saving ? (
                                   <>
-                                    <Loader2 className="size-4 mr-2 animate-spin" />
+                                    <LottieSpinner size={16} className="mr-2" />
                                     Saving...
                                   </>
                                 ) : (
@@ -1266,7 +1267,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             >
                               {savingWorkspace ? (
                                 <>
-                                  <Loader2 className="size-4 mr-2 animate-spin" />
+                                  <LottieSpinner size={16} className="mr-2" />
                                   Saving...
                                 </>
                               ) : (
@@ -1500,7 +1501,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 >
                                   {savingWorkspace ? (
                                     <>
-                                      <Loader2 className="size-4 mr-2 animate-spin" />
+                                      <LottieSpinner size={16} className="mr-2" />
                                       Saving...
                                     </>
                                   ) : (
@@ -2071,7 +2072,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               >
                                 {inviteLoading ? (
                                   <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    <LottieSpinner size={16} className="mr-2" />
                                     Sending...
                                   </>
                                 ) : (
@@ -2362,7 +2363,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             >
                               {inviteLoading ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  <LottieSpinner size={16} className="mr-2" />
                                   Sending...
                                 </>
                               ) : (
@@ -2680,7 +2681,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       >
                         {deleteLoading ? (
                           <>
-                            <Loader2 className="size-4 mr-2 animate-spin" />
+                            <LottieSpinner size={16} className="mr-2" />
                             Checking...
                           </>
                         ) : (
@@ -2740,7 +2741,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           >
                             {resetWorkspaceLoading ? (
                               <>
-                                <Loader2 className="size-4 mr-2 animate-spin" />
+                                <LottieSpinner size={16} className="mr-2" />
                                 Deleting...
                               </>
                             ) : (
@@ -2787,7 +2788,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     >
                       {deleteLoading ? (
                         <>
-                          <Loader2 className="size-4 mr-2 animate-spin" />
+                          <LottieSpinner size={16} className="mr-2" />
                           Checking...
                         </>
                       ) : (
@@ -2847,7 +2848,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         >
                           {resetWorkspaceLoading ? (
                             <>
-                              <Loader2 className="size-4 mr-2 animate-spin" />
+                              <LottieSpinner size={16} className="mr-2" />
                               Deleting...
                             </>
                           ) : (
@@ -3382,7 +3383,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
             <AlertDialogAction onClick={handleSaveAndContinue} disabled={saving}>
               {saving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LottieSpinner size={16} className="mr-2" />
                   Saving...
                 </>
               ) : (
@@ -3491,7 +3492,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
             >
               {deleteLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LottieSpinner size={16} className="mr-2" />
                   Deleting...
                 </>
               ) : (

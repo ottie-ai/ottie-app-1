@@ -26,6 +26,7 @@ import { useAppData } from '@/contexts/app-context'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import {
   Dialog,
   DialogContent,
@@ -318,8 +319,9 @@ export default function SitesPage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12 text-muted-foreground">
-            Loading sites...
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <LottieSpinner size={32} />
+            <p className="text-sm text-muted-foreground">Loading sites...</p>
           </div>
         )}
 

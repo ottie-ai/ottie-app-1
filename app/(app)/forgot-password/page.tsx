@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { resetPasswordAction } from './actions'
-import { Loader2 } from 'lucide-react'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 
 function ForgotPasswordForm() {
   const router = useRouter()
@@ -107,7 +107,7 @@ function ForgotPasswordForm() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <LottieSpinner size={16} className="mr-2" />}
               Send Reset Link
             </Button>
           </form>
@@ -128,7 +128,7 @@ export default function ForgotPasswordPage() {
   return (
     <Suspense fallback={
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <LottieSpinner size={32} />
       </div>
     }>
       <ForgotPasswordForm />

@@ -46,6 +46,7 @@ export function AppProvider({
   const {
     data: appData,
     isLoading: loading,
+    isFetching,
   } = useQuery({
     queryKey: ['appData', user?.id],
     queryFn: async () => {
@@ -63,7 +64,7 @@ export function AppProvider({
     initialData: initialData, // Optional: Use initial data if provided (SSR optimization)
     staleTime: 60 * 1000, // 1 minute - data is fresh for 1 minute
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-    refetchOnMount: initialData ? false : 'always', // Refetch if no initial data, use cache if initial data provided
+    refetchOnMount: false, // Don't refetch on mount - use cached data (prevents loading flicker)
     refetchOnWindowFocus: false, // Don't refetch on window focus (reduces unnecessary requests)
   })
 
@@ -73,8 +74,11 @@ export function AppProvider({
   const currentMembership = appData?.currentMembership ?? initialData?.currentMembership ?? null
   const allWorkspaces = appData?.allWorkspaces ?? initialData?.allWorkspaces ?? []
   
-  // If we have initial data (either from prop or pre-populated cache), we're not loading
-  const isLoading = (initialData || appData) ? false : loading
+  // Loading state: true if we're fetching AND don't have complete data yet
+  // This prevents flickering - show loading until we have all essential data
+  // Use isFetching to catch background refetches, but only show loading if we don't have data yet
+  const hasData = !!(appData || initialData)
+  const isLoading = !hasData && (loading || isFetching)
 
   const refresh = async () => {
     if (!user?.id) return
