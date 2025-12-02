@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useTransition } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -106,7 +106,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') || 'profile'
   const [activeTab, setActiveTab] = useState(initialTab)
-  const [isPending, startTransition] = useTransition()
   
   // Update active tab when URL changes (only if different to prevent race conditions)
   useEffect(() => {
@@ -326,7 +325,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   })
 
   // Handle tab change with unsaved changes check
-  // OPTIMIZATION: Use startTransition for instant UI update
+  // OPTIMIZATION: Instant tab switching (like Linear) - no delay
   const handleTabChange = useCallback((newTab: string) => {
     // Prevent unnecessary updates if already on this tab
     if (newTab === activeTab) {
@@ -337,17 +336,17 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       setPendingTab(newTab)
       setShowUnsavedDialog(true)
     } else {
-      // OPTIMIZATION: Update tab immediately (instant UI feedback)
-      // URL update happens in background via startTransition
+      // INSTANT: Update tab immediately (synchronous, no delay)
       setActiveTab(newTab)
       
-      // Update URL in background (non-blocking)
-      startTransition(() => {
+      // Update URL completely asynchronously (doesn't block UI)
+      // Use queueMicrotask to ensure it runs after current execution
+      queueMicrotask(() => {
         const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
         router.replace(newUrl, { scroll: false })
       })
     }
-  }, [activeTab, hasUnsavedChanges, router, startTransition])
+  }, [activeTab, hasUnsavedChanges, router])
 
   // Handle dialog actions
   const handleSaveAndContinue = async () => {
@@ -852,7 +851,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="profile" className="mt-0 sm:mt-6 space-y-6">
+                <TabsContent value="profile" forceMount className="mt-0 sm:mt-6 space-y-6">
                   {/* Duplicate content for desktop - same as mobile */}
                 <div>
                     <h2 className="text-lg font-semibold">Account</h2>
@@ -1295,7 +1294,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </CardContent>
                     </Card>
                   ) : (
-                    <TabsContent value="workspace" className="mt-0 sm:mt-6 space-y-6">
+                    <TabsContent value="workspace" forceMount className="mt-0 sm:mt-6 space-y-6">
                 <div>
                         <h2 className="text-lg font-semibold">Workspace</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1584,7 +1583,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="notifications" className="mt-0 sm:mt-6 space-y-6">
+                <TabsContent value="notifications" forceMount className="mt-0 sm:mt-6 space-y-6">
                   {/* Duplicate notifications content for desktop */}
                   <div>
                     <h2 className="text-lg font-semibold">Notifications</h2>
@@ -1702,7 +1701,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="domain" className="mt-0 sm:mt-6 space-y-6">
+                <TabsContent value="domain" forceMount className="mt-0 sm:mt-6 space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold">Domain</h2>
                     <p className="text-sm text-muted-foreground">
@@ -1880,7 +1879,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </CardContent>
                   </Card>
                 ) : (
-                  <TabsContent value="plan" className="mt-0 sm:mt-6 space-y-6">
+                  <TabsContent value="plan" forceMount className="mt-0 sm:mt-6 space-y-6">
                     {/* Header */}
                     <div className="flex items-start justify-between">
                       <div>
@@ -2258,7 +2257,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="team" className="mt-0 sm:mt-6 space-y-6">
+                <TabsContent value="team" forceMount className="mt-0 sm:mt-6 space-y-6">
                   {/* Header with Invite Button */}
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
@@ -2758,7 +2757,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="data" className="mt-0 sm:mt-6 space-y-6">
+                <TabsContent value="data" forceMount className="mt-0 sm:mt-6 space-y-6">
                   <div>
                     <h2 className="text-lg font-semibold">Data</h2>
                     <p className="text-sm text-muted-foreground">
@@ -2861,7 +2860,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         </Button>
                       </div>
                     </>
-                  )}
                   )}
                 </TabsContent>
               )}
@@ -3116,7 +3114,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </CardContent>
                 </Card>
               ) : (
-                <TabsContent value="integrations" className="mt-0 sm:mt-6 space-y-8 pb-8">
+                <TabsContent value="integrations" forceMount className="mt-0 sm:mt-6 space-y-8 pb-8">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <h2 className="text-lg font-semibold">Integrations</h2>
