@@ -7,7 +7,7 @@ import { AppLayoutWrapper } from './app-layout-wrapper'
  * - Loads app data server-side for immediate availability
  * - Applies ThemeProvider for admin UI theming
  * - Applies AuthGuard to protect all routes
- * - Applies Sidebar for workspace routes (overview, sites, settings, client-portals)
+ * - Applies Sidebar for workspace routes (dashboard, sites, settings, client-portals)
  * 
  * This is used for app.ottie.com subdomain
  */

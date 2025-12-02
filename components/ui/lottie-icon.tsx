@@ -43,8 +43,8 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     if (!containerRef.current || !isMounted) return
 
     const container = containerRef.current
-    // Look for interactive parent elements: links, buttons, or dropdown menu items
-    const parent = container.closest('a, button, [role="button"], [data-slot="dropdown-menu-item"]')
+    // Look for interactive parent elements: links, buttons, dropdown menu items, or elements with .group class
+    const parent = container.closest('a, button, [role="button"], [data-slot="dropdown-menu-item"], .group')
     
     if (!parent) return
 

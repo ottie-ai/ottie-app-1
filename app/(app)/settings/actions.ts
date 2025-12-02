@@ -1557,7 +1557,7 @@ export async function acceptInvitation(
 
   // Revalidate pages
   revalidatePath('/settings')
-  revalidatePath('/overview')
+  revalidatePath('/dashboard')
 
   return { success: true, workspaceId: invitation.workspace_id }
 }

@@ -41,7 +41,7 @@ Pre testovanie subdomén lokálne:
 ```
 
 2. Prístup cez:
-- `http://app.localhost:3000/overview`
+- `http://app.localhost:3000/dashboard`
 - `http://app.localhost:3000/sites`
 - `http://app.localhost:3000/settings`
 - `http://app.localhost:3000/builder/[id]`

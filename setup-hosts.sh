@@ -18,7 +18,7 @@ echo "✓ DNS cache flushed"
 
 echo ""
 echo "You can now access:"
-echo "  - http://app.localhost:3000/overview"
+echo "  - http://app.localhost:3000/dashboard"
 echo "  - http://app.localhost:3000/sites"
 echo "  - http://app.localhost:3000/settings"
 echo "  - http://app.localhost:3000/builder/1"

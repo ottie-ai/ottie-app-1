@@ -8,7 +8,7 @@ interface LottieViewIconProps {
 }
 
 /**
- * View Icon Component for Overview Page
+ * View Icon Component for Dashboard Page
  * Uses Lottie animation with hover effect
  */
 export function LottieViewIcon({ className = '' }: LottieViewIconProps) {

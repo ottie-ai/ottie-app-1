@@ -76,7 +76,7 @@ export function WorkspaceNavbar({
         {/* Left side - Back button */}
         <div className="flex items-center">
           <Button variant="ghost" size="sm" className="gap-1" asChild>
-            <Link href="/overview">
+            <Link href="/dashboard">
               <ArrowLeft className="size-4" />
               <span className="hidden md:inline">Back to Dashboard</span>
             </Link>

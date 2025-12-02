@@ -26,7 +26,7 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const redirectTo = searchParams.get('redirect') || '/overview'
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
   const prefillEmail = searchParams.get('email')
   const rateLimitExceeded = searchParams.get('rateLimit') === 'true'
   const retryAfterMinutes = searchParams.get('retryAfter')
@@ -138,7 +138,7 @@ function RegisterForm() {
           }
         }
         
-        router.push('/overview')
+        router.push('/dashboard')
         router.refresh()
       }
     }

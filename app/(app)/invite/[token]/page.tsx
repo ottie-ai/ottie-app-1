@@ -115,9 +115,9 @@ export default function InvitePage({ params }: InvitePageProps) {
         if (typeof window !== 'undefined' && 'workspaceId' in result) {
           localStorage.setItem('current_workspace_id', result.workspaceId)
         }
-        // Redirect to overview after a short delay - workspace will be loaded automatically
+        // Redirect to dashboard after a short delay - workspace will be loaded automatically
         setTimeout(() => {
-          router.push('/overview')
+          router.push('/dashboard')
           router.refresh()
         }, 1500)
       }
@@ -194,7 +194,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               <Button variant="outline" asChild>
-                <Link href="/overview">Go to Dashboard</Link>
+                <Link href="/dashboard">Go to Dashboard</Link>
               </Button>
             </CardContent>
           </Card>
@@ -218,7 +218,7 @@ export default function InvitePage({ params }: InvitePageProps) {
             </CardHeader>
             <CardContent className="flex justify-center">
               <Button asChild>
-                <Link href="/overview">Go to Dashboard</Link>
+                <Link href="/dashboard">Go to Dashboard</Link>
               </Button>
             </CardContent>
           </Card>
@@ -239,7 +239,7 @@ export default function InvitePage({ params }: InvitePageProps) {
           </CardHeader>
           <CardContent className="flex justify-center">
             <Button asChild>
-              <Link href="/overview">Go to Dashboard</Link>
+              <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
           </CardContent>
         </Card>

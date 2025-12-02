@@ -78,8 +78,8 @@ import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 const mainNavItems = [
   {
-    title: 'Overview',
-    url: '/overview',
+    title: 'Dashboard',
+    url: '/dashboard',
     icon: LottieViewIcon,
   },
   {
@@ -323,50 +323,50 @@ export function DashboardSidebar() {
                     <DropdownMenuLabel className="text-sidebar-foreground/70 text-xs font-medium px-2 h-8">
                       Workspaces
                     </DropdownMenuLabel>
-                    {workspaces.map(({ workspace: ws, membership }) => {
-                      const isCurrent = workspace?.id === ws.id
-                      return (
-                        <DropdownMenuItem
-                          key={ws.id}
-                          onClick={() => {
-                            if (!isCurrent) {
-                              handleSwitchWorkspace(ws.id)
-                              if (isMobile) {
-                                setOpenMobile(false)
-                              }
-                            }
-                          }}
-                          className={isCurrent 
-                            ? 'cursor-default opacity-60 pointer-events-none' 
-                            : ''
+                        {workspaces.map(({ workspace: ws, membership }) => {
+                          const isCurrent = workspace?.id === ws.id
+                          return (
+                      <DropdownMenuItem
+                        key={ws.id}
+                        onClick={() => {
+                                if (!isCurrent) {
+                          handleSwitchWorkspace(ws.id)
+                          if (isMobile) {
+                            setOpenMobile(false)
                           }
-                          onPointerDown={(e) => {
-                            if (isCurrent) {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }
-                          }}
-                          onMouseEnter={(e) => {
-                            if (isCurrent) {
-                              e.currentTarget.style.backgroundColor = ''
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-2 w-full">
-                            <Avatar className="h-6 w-6 shrink-0 rounded">
-                              <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
-                              <AvatarFallback className="text-xs rounded bg-muted">
-                                {ws.name.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="truncate flex-1">{ws.name}</span>
-                            {isCurrent && (
-                              <Check className="h-4 w-4 shrink-0 text-primary" />
-                            )}
-                          </div>
-                        </DropdownMenuItem>
-                      )
-                    })}
+                                }
+                        }}
+                              className={isCurrent 
+                                ? 'cursor-default opacity-60 pointer-events-none' 
+                                : ''
+                              }
+                              onPointerDown={(e) => {
+                                if (isCurrent) {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                }
+                              }}
+                              onMouseEnter={(e) => {
+                                if (isCurrent) {
+                                  e.currentTarget.style.backgroundColor = ''
+                                }
+                              }}
+                      >
+                              <div className="flex items-center gap-2 w-full">
+                                <Avatar className="h-6 w-6 shrink-0 rounded">
+                                  <AvatarImage src={ws.logo_url || undefined} alt={ws.name} />
+                                  <AvatarFallback className="text-xs rounded bg-muted">
+                                    {ws.name.substring(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="truncate flex-1">{ws.name}</span>
+                                {isCurrent && (
+                                  <Check className="h-4 w-4 shrink-0 text-primary" />
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                          )
+                        })}
                     <DropdownMenuSeparator />
                   </>
                 )}

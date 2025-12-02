@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
  * 5. We render the site using SectionRenderer with the fetched data
  * 
  * IMPORTANT: This route should NOT catch workspace/builder routes.
- * Workspace routes (/overview, /sites, /settings, /client-portals) and
+ * Workspace routes (/dashboard, /sites, /settings, /client-portals) and
  * builder routes (/builder/*) are handled by (app) route group.
  * 
  * The "z-" prefix in the route group name ensures this route group is checked
@@ -141,7 +141,7 @@ export default async function SitePage({
   // If this route matches a workspace/builder path, it means Next.js couldn't find
   // the static route in (app) route group, which shouldn't happen.
   // But we check anyway to prevent rendering the wrong page.
-  const workspaceRoutes = ['overview', 'sites', 'settings', 'client-portals', 'builder']
+  const workspaceRoutes = ['dashboard', 'sites', 'settings', 'client-portals', 'builder']
   if (workspaceRoutes.includes(site) || site.startsWith('builder-')) {
     // This should never happen if routes are set up correctly
     // Return 404 so Next.js tries the next matching route (which should be (app) route group)

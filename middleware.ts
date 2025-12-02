@@ -297,13 +297,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
   }
   
-  // Redirect app subdomain root (/) to /overview
+  // Redirect app subdomain root (/) to /dashboard
   const isAppSubdomain = isLocalhost 
     ? hostnameWithoutPort.startsWith('app.')
     : (hostnameWithoutPort === appDomain || hostnameWithoutPort.startsWith('app.'))
   
   if (isAppSubdomain && pathname === '/') {
-    return NextResponse.redirect(new URL('/overview', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
   
   let response: NextResponse
@@ -335,12 +335,12 @@ export async function middleware(request: NextRequest) {
       // We need to ensure workspace/builder routes are explicitly routed to (app)
       // by checking if it's a workspace route and passing through without rewrite
       // Next.js will match (app) routes first due to alphabetical order
-      const workspaceRoutes = ['/overview', '/sites', '/settings', '/client-portals']
+      const workspaceRoutes = ['/dashboard', '/sites', '/settings', '/client-portals']
       const isWorkspaceRoute = workspaceRoutes.includes(pathname) || pathname.startsWith('/builder/')
       
       if (isWorkspaceRoute) {
         // Workspace/builder route on app.localhost - ensure it goes to (app) route group
-        // We pass through and Next.js should match (app)/overview
+        // We pass through and Next.js should match (app)/dashboard
         response = NextResponse.next()
       } else {
         // Other routes on app.localhost - also go to (app) route group
@@ -354,7 +354,7 @@ export async function middleware(request: NextRequest) {
     } else {
       // Root localhost (localhost:3000) - only marketing routes allowed
       // App routes should redirect to app.localhost subdomain
-      const appRoutes = ['/overview', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
+      const appRoutes = ['/dashboard', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
       const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
                          pathname.startsWith('/builder/')
       
@@ -475,7 +475,7 @@ export const config = {
      * 
      * Note: Public routes (/, /privacy, /terms, /login, /signup, /auth) are handled in middleware
      * and don't require session refresh, but still go through middleware.
-     * Protected routes: /overview, /sites, /settings, /client-portals, /builder/* require authentication.
+     * Protected routes: /dashboard, /sites, /settings, /client-portals, /builder/* require authentication.
      */
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

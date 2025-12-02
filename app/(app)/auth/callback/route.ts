@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/overview'
+  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
   const error = requestUrl.searchParams.get('error')
 
   // Handle OAuth errors
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   }
 
   // Validate redirect URL - only allow internal paths
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/overview'
+    const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
 
   return NextResponse.redirect(new URL(safeNext, requestUrl.origin))
 }

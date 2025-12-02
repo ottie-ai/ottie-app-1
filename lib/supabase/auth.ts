@@ -77,7 +77,7 @@ export async function signInWithOAuth(provider: 'google', redirectTo?: string, e
   }
   
   const appOrigin = getAppOrigin()
-  const nextPath = redirectTo || '/overview'
+  const nextPath = redirectTo || '/dashboard'
   const callbackUrl = `${appOrigin}/auth/callback?next=${encodeURIComponent(nextPath)}`
 
   // Build query params for OAuth

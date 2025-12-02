@@ -104,8 +104,8 @@ export function SiteCard({ site, href = `/builder/${site.id}` }: SiteCardProps) 
       {/* Info below card */}
       <div className="pt-4 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-foreground truncate">{site.title}</h3>
-          <p className="text-sm text-muted-foreground font-mono truncate">{site.slug}</p>
+          <h3 className="text-sm font-semibold text-foreground truncate">{site.title}</h3>
+          <p className="text-xs text-muted-foreground font-mono truncate">{site.slug}</p>
         </div>
         <Badge 
           variant="secondary" 

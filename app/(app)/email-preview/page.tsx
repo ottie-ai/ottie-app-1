@@ -12,7 +12,7 @@ import { redirect } from 'next/navigation'
 // Only allow in development
 export default function EmailPreviewPage() {
   if (process.env.NODE_ENV === 'production') {
-    redirect('/overview')
+    redirect('/dashboard')
   }
 
   const inviterName = 'Sonia Adamec'

@@ -24,7 +24,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const redirectTo = searchParams.get('redirect') || '/overview'
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
   const rateLimitExceeded = searchParams.get('rateLimit') === 'true'
   const retryAfterMinutes = searchParams.get('retryAfter')
 
@@ -122,9 +122,9 @@ function LoginForm() {
             if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
               localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
             }
-            // If redirectTo is invite page, redirect to overview instead
+            // If redirectTo is invite page, redirect to dashboard instead
             if (redirectTo.includes('/invite/')) {
-              router.replace('/overview')
+              router.replace('/dashboard')
               router.refresh()
               return
             }
@@ -145,8 +145,8 @@ function LoginForm() {
       console.log('[Login Page] User authenticated, redirecting to:', redirectTo)
       router.replace(redirectTo)
       } else if (!redirectTo || redirectTo.includes('/invite/')) {
-        // Default to overview if no redirect or if redirect is invite page
-        router.replace('/overview')
+        // Default to dashboard if no redirect or if redirect is invite page
+        router.replace('/dashboard')
         router.refresh()
       }
     }

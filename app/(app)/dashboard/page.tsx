@@ -113,7 +113,7 @@ export default function DashboardPage() {
       const tokenHash = sessionStorage.getItem('pending_invite_token_hash')
       const expectedEmail = sessionStorage.getItem('pending_invite_email')
       
-      // On overview page, we can't extract the full token from URL, so clear the hash
+      // On dashboard page, we can't extract the full token from URL, so clear the hash
       // User should visit the invite link directly if they need to accept an invitation
       if (tokenHash) {
         sessionStorage.removeItem('pending_invite_token_hash')
@@ -138,7 +138,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       <PageTitle 
-        title="Overview" 
+        title="Dashboard" 
         description="View your real estate sites, analytics, and manage your portfolio."
       />
       {/* Header */}
@@ -181,47 +181,6 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Sites Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">My Sites</h2>
-              <p className="text-sm text-muted-foreground">
-                Manage your property landing sites
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              View All
-            </Button>
-          </div>
-
-          {/* Sites Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {/* New Site Card */}
-            <div className="group">
-              <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer" initialGlow>
-                <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
-                <div className="size-12 rounded-full border-2 border-dashed flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
-                  <LottieAddCardIcon className="size-[18px]" />
-                </div>
-                <span className="font-medium">Create New Site</span>
-                <span className="text-xs mt-1">Start from scratch or use AI</span>
-              </CardContent>
-            </GlowCard>
-              {/* Empty space below to match other cards */}
-              <div className="pt-4 pb-1">
-                <div className="h-5" />
-                <div className="h-4" />
-              </div>
-            </div>
-
-            {/* Site Cards */}
-            {mockSites.map((site) => (
-              <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
-            ))}
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Quick Actions</h2>
@@ -250,6 +209,47 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
+          </div>
+        </div>
+
+        {/* Sites Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">My Sites</h2>
+              <p className="text-sm text-muted-foreground">
+                Manage your property landing sites
+              </p>
+            </div>
+            <Button variant="outline" size="sm">
+              View All
+            </Button>
+          </div>
+
+          {/* Sites Grid */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {/* New Site Card */}
+            <div className="group">
+              <GlowCard className="border-dashed hover:border-transparent transition-colors cursor-pointer bg-transparent !bg-transparent dark:border-muted-foreground/30" initialGlow>
+                <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-muted-foreground group-hover:text-primary transition-colors p-0">
+                <div className="mb-4">
+                  <LottieAddCardIcon size={28} invertTheme={false} />
+                </div>
+                <span className="font-medium">Create New Site</span>
+                <span className="text-xs mt-1">Start from scratch or use AI</span>
+              </CardContent>
+            </GlowCard>
+              {/* Empty space below to match other cards */}
+              <div className="pt-4 pb-1">
+                <div className="h-5" />
+                <div className="h-4" />
+              </div>
+            </div>
+
+            {/* Site Cards */}
+            {mockSites.map((site) => (
+              <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
+            ))}
           </div>
         </div>
       </main>
