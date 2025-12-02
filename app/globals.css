@@ -523,7 +523,30 @@ canvas {
   @media (max-width: 639px) {
     [data-slot="tabs-content"][data-state="inactive"] {
       display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      position: static !important;
+      pointer-events: auto !important;
     }
+  }
+
+  /* Instant tab switching: Hide inactive tabs with opacity instead of display: none */
+  [data-slot="tabs-content"][data-state="inactive"] {
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    pointer-events: none;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  [data-slot="tabs-content"][data-state="active"] {
+    opacity: 1;
+    visibility: visible;
+    position: static;
+    pointer-events: auto;
   }
 }
 
