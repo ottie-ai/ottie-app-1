@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
+import { useOptimisticNavigation } from '@/hooks/use-optimistic-navigation'
 import { Loader2 } from 'lucide-react'
 
 /**
@@ -13,7 +14,7 @@ import { Loader2 } from 'lucide-react'
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  const router = useRouter()
+  const { navigate } = useOptimisticNavigation()
   const pathname = usePathname()
 
   // Public routes that don't need authentication
@@ -28,9 +29,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!loading && !user && !isPublicRoute) {
       console.log('[AuthGuard] No user, redirecting to login')
       // Preserve the current pathname in redirect so user returns after login
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      // Use optimistic navigation for instant UI update
+      navigate(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [user, loading, router, isPublicRoute, pathname])
+  }, [user, loading, navigate, isPublicRoute, pathname])
 
   // For public routes, always render children
   if (isPublicRoute) {

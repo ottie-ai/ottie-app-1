@@ -10,7 +10,7 @@ import type { User } from '@supabase/supabase-js'
  * 
  * OPTIMIZATION: Uses session.user from cookies (no network request)
  * - getSession() reads from cookies, no network call needed
- * - User validation is handled by middleware and AppLayoutWrapper (server-side)
+ * - User validation is handled by middleware (server-side)
  * - This eliminates duplicate getUser() network requests on every navigation
  * - onAuthStateChange handles auth events (sign in, sign out, token refresh)
  */
@@ -25,7 +25,7 @@ export function useAuth() {
 
     // OPTIMIZATION: Use getSession() which reads from cookies (no network request)
     // Session already contains user object, no need for getUser() call
-    // User validation is handled server-side by middleware and AppLayoutWrapper
+    // User validation is handled server-side by middleware
     const initAuth = async () => {
       try {
         // getSession() reads from cookies - no network request

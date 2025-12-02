@@ -41,6 +41,8 @@ export function AppProvider({
   const queryClient = useQueryClient()
 
   // Use React Query for app data
+  // OPTIMIZATION: Always fetch if user exists (SPA style)
+  // initialData is optional and only used for SSR optimization
   const {
     data: appData,
     isLoading: loading,
@@ -57,11 +59,11 @@ export function AppProvider({
       }
       return loadAppData(user.id)
     },
-    enabled: !!user?.id && !initialData, // Skip fetch if initial data provided
-    initialData: initialData, // Use initial data if provided
+    enabled: !!user?.id, // Always fetch if user exists (SPA style)
+    initialData: initialData, // Optional: Use initial data if provided (SSR optimization)
     staleTime: 60 * 1000, // 1 minute - data is fresh for 1 minute
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
-    refetchOnMount: initialData ? false : true, // Don't refetch if we have initial data (from server-side)
+    refetchOnMount: initialData ? false : 'always', // Refetch if no initial data, use cache if initial data provided
     refetchOnWindowFocus: false, // Don't refetch on window focus (reduces unnecessary requests)
   })
 

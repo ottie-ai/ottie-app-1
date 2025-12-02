@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useTransition } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, Loader2, AlertTriangle, Trash2, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,7 @@ import type { Profile, Workspace, Membership, Invitation } from '@/types/databas
 import { useQueryClient } from '@tanstack/react-query'
 import { pricingTiers } from '@/lib/pricing-data'
 import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, Crown } from 'lucide-react'
+import { LottieLinkIconFocus } from '@/components/ui/lottie-link-icon-focus'
 import {
   Dialog,
   DialogContent,
@@ -105,6 +106,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab') || 'profile'
   const [activeTab, setActiveTab] = useState(initialTab)
+  const [isPending, startTransition] = useTransition()
   
   // Update active tab when URL changes (only if different to prevent race conditions)
   useEffect(() => {
@@ -324,6 +326,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   })
 
   // Handle tab change with unsaved changes check
+  // OPTIMIZATION: Use startTransition for instant UI update
   const handleTabChange = useCallback((newTab: string) => {
     // Prevent unnecessary updates if already on this tab
     if (newTab === activeTab) {
@@ -334,12 +337,17 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       setPendingTab(newTab)
       setShowUnsavedDialog(true)
     } else {
+      // OPTIMIZATION: Update tab immediately (instant UI feedback)
+      // URL update happens in background via startTransition
       setActiveTab(newTab)
-      // Update URL with tab parameter using replace to avoid history pollution
-      const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
-      router.replace(newUrl, { scroll: false })
+      
+      // Update URL in background (non-blocking)
+      startTransition(() => {
+        const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
+        router.replace(newUrl, { scroll: false })
+      })
     }
-  }, [activeTab, hasUnsavedChanges, router])
+  }, [activeTab, hasUnsavedChanges, router, startTransition])
 
   // Handle dialog actions
   const handleSaveAndContinue = async () => {
@@ -630,6 +638,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   {showBillingTab && (
                   <TabsTrigger value="plan">Billing</TabsTrigger>
                   )}
+                  <TabsTrigger value="domain">Domain</TabsTrigger>
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
@@ -1615,6 +1624,155 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </div>
                 </div>
               </TabsContent>
+              )}
+
+              {/* Domain Tab */}
+              {isMobile ? (
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle>Domain</CardTitle>
+                    <CardDescription>
+                      Configure your custom domain and branding settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Custom Domain */}
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="custom-domain">Custom Domain</Label>
+                        <div className="relative w-full sm:w-64">
+                          <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                          <Input
+                            id="custom-domain"
+                            placeholder="yourdomain.com"
+                            className="pl-9 w-full"
+                            disabled={normalizePlan(workspace?.plan) !== 'growth'}
+                          />
+                        </div>
+                      </div>
+                      {normalizePlan(workspace?.plan) !== 'growth' && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                              <p className="text-sm text-green-900 dark:text-green-100">
+                                Upgrade to Growth to add your custom domain
+                              </p>
+                            </div>
+                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <span
+                                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
+                              >
+                                Upgrade
+                              </span>
+                            </PricingDialog>
+                          </div>
+                        </div>
+                      )}
+
+                      <Separator />
+
+                      {/* Powered by Ottie Branding */}
+                      <div className="flex items-center justify-between">
+                        <Label>Hide "Powered by Ottie"</Label>
+                        <Switch
+                          disabled={normalizePlan(workspace?.plan) === 'free'}
+                        />
+                      </div>
+                      {normalizePlan(workspace?.plan) === 'free' && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                              <p className="text-sm text-green-900 dark:text-green-100">
+                                This feature is available on our paid plans.
+                              </p>
+                            </div>
+                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <span
+                                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
+                              >
+                                Upgrade
+                              </span>
+                            </PricingDialog>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TabsContent value="domain" className="mt-0 sm:mt-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">Domain</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Configure your custom domain and branding settings
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    {/* Custom Domain */}
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="custom-domain">Custom Domain</Label>
+                      <div className="relative w-full sm:w-64">
+                        <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                        <Input
+                          id="custom-domain"
+                          placeholder="yourdomain.com"
+                          className="pl-9 w-full"
+                          disabled={normalizePlan(workspace?.plan) !== 'growth'}
+                        />
+                      </div>
+                    </div>
+                    {normalizePlan(workspace?.plan) !== 'growth' && (
+                      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                            <p className="text-sm text-green-900 dark:text-green-100">
+                              Upgrade to Growth to add your custom domain
+                            </p>
+                          </div>
+                          <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <span
+                              className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
+                            >
+                              Upgrade
+                            </span>
+                          </PricingDialog>
+                        </div>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    {/* Powered by Ottie Branding */}
+                    <div className="flex items-center justify-between">
+                      <Label>Hide "Powered by Ottie"</Label>
+                      <Switch
+                        disabled={normalizePlan(workspace?.plan) === 'free'}
+                      />
+                    </div>
+                    {normalizePlan(workspace?.plan) === 'free' && (
+                      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                            <p className="text-sm text-green-900 dark:text-green-100">
+                              This feature is available on our paid plans.
+                            </p>
+                          </div>
+                          <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <span
+                              className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
+                            >
+                              Upgrade
+                            </span>
+                          </PricingDialog>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
               )}
 
               {/* Billing Tab */}
@@ -2703,6 +2861,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         </Button>
                       </div>
                     </>
+                  )}
                   )}
                 </TabsContent>
               )}
