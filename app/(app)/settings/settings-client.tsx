@@ -614,7 +614,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
 
       {/* Main Content with Top Tabs */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
+        <Tabs defaultValue={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col min-h-0">
           {/* Content - scrollable and centered */}
           <div className="flex-1 overflow-y-auto scrollbar-hide">
             <div className="max-w-4xl mx-auto">
