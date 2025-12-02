@@ -338,9 +338,10 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       return // Don't change tab if there are unsaved changes
     }
     
-    // Don't call setActiveTab - let Radix Tabs handle it internally
-    // Don't update URL - router.replace() causes re-render
-    // Tab switching is now instant (just CSS change via Radix)
+    // Update URL without re-render using native History API
+    // This doesn't trigger Next.js router and keeps tab switching instant
+    const newUrl = `/settings${newTab !== 'profile' ? `?tab=${newTab}` : ''}`
+    window.history.replaceState(null, '', newUrl)
   }, [activeTab, hasUnsavedChanges])
 
   // Handle dialog actions
