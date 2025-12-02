@@ -119,11 +119,13 @@ function IntercomWithProfile() {
 
         const { token } = await response.json()
 
-        // Initialize Intercom with JWT token
+        // Initialize Intercom with JWT token for authenticated users
+        // This enables identity verification and shows home/messenger tabs
+        // Use Intercom() function (not .boot()) with intercom_user_jwt parameter
         Intercom({
           api_base: 'https://api-iam.intercom.io',
           app_id: 'r9srnf09',
-          intercom_user_jwt: token,
+          intercom_user_jwt: token, // JWT token enables identity verification
           // Non-sensitive attributes can be included directly
           name: userName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           email: user.email || '',

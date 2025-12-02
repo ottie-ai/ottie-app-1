@@ -19,58 +19,58 @@ import { GlowCard } from '@/components/ui/glow-card'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { SiteCard, type SiteCardData } from '@/components/workspace/site-card'
+import { useSites } from '@/hooks/use-sites'
+import { useAppData } from '@/contexts/app-context'
+import { formatDistanceToNow } from 'date-fns'
+import { useMemo } from 'react'
+import type { Site } from '@/types/database'
 
-// Mock data for sites
-const mockSites: SiteCardData[] = [
-  {
-    id: '1',
-    title: '21 Maine Street',
-    slug: '21-maine-street',
-    status: 'published',
-    views: 1234,
-    lastEdited: '2 hours ago',
-    thumbnail: 'https://images.unsplash.com/photo-1679364297777-1db77b6199be?w=400&q=80',
-  },
-  {
-    id: '2',
-    title: 'Luxury Villa Palm Beach',
-    slug: 'luxury-villa-palm-beach',
-    status: 'draft',
-    views: 0,
-    lastEdited: '1 day ago',
-    thumbnail: null,
-  },
-  {
-    id: '3',
-    title: 'Modern Apartment NYC',
-    slug: 'modern-apartment-nyc',
-    status: 'published',
-    views: 567,
-    lastEdited: '3 days ago',
-    thumbnail: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80',
-  },
-  {
-    id: '4',
-    title: 'Beachfront Condo Miami',
-    slug: 'beachfront-condo-miami',
-    status: 'archived',
-    views: 0,
-    lastEdited: '1 week ago',
-    thumbnail: null,
-  },
-]
+// Helper to convert Site to SiteCardData
+function siteToCardData(site: Site): SiteCardData {
+  return {
+    id: site.id,
+    title: site.title,
+    slug: site.slug,
+    status: site.status,
+    views: site.views_count,
+    lastEdited: formatDistanceToNow(new Date(site.updated_at), { addSuffix: true }),
+    thumbnail: site.thumbnail_url,
+  }
+}
 
-// Mock stats
-const stats = [
-  { label: 'Total Sites', value: '4', change: '+2', trend: 'up' },
-  { label: 'Published', value: '2', change: '+1', trend: 'up' },
-  { label: 'Total Views', value: '1,801', change: '+12%', trend: 'up' },
-  { label: 'This Month', value: '432', change: '-5%', trend: 'down' },
-]
 
 export default function DashboardPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { currentWorkspace } = useAppData()
+  const { sites, loading: sitesLoading } = useSites(currentWorkspace?.id)
+
+  // Get recent sites (last 4, sorted by updated_at)
+  const recentSites = useMemo(() => {
+    return sites
+      .map(siteToCardData)
+      .sort((a, b) => {
+        // Sort by updated_at desc
+        const dateA = new Date(sites.find(s => s.id === a.id)?.updated_at || 0).getTime()
+        const dateB = new Date(sites.find(s => s.id === b.id)?.updated_at || 0).getTime()
+        return dateB - dateA
+      })
+      .slice(0, 4) // Show only 4 most recent
+  }, [sites])
+
+  // Calculate stats from real data
+  const stats = useMemo(() => {
+    const totalSites = sites.length
+    const publishedSites = sites.filter(s => s.status === 'published').length
+    const totalViews = sites.reduce((sum, s) => sum + (s.views_count || 0), 0)
+    
+    return [
+      { label: 'Total Sites', value: totalSites.toString(), change: '', trend: 'up' as const },
+      { label: 'Published', value: publishedSites.toString(), change: '', trend: 'up' as const },
+      { label: 'Total Views', value: totalViews.toLocaleString(), change: '', trend: 'up' as const },
+      { label: 'This Month', value: '0', change: '', trend: 'down' as const }, // TODO: Calculate monthly views
+    ]
+  }, [sites])
 
   // Check for pending invitation after login (e.g., from OAuth redirect)
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                 Manage your property landing sites
               </p>
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => router.push('/sites')}>
               View All
             </Button>
           </div>
@@ -254,7 +254,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Site Cards */}
-            {mockSites.map((site) => (
+            {!sitesLoading && recentSites.length > 0 && recentSites.map((site) => (
               <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
             ))}
           </div>

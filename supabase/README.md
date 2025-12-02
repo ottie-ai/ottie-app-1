@@ -19,13 +19,16 @@ This directory contains SQL migration files for the Supabase database.
 ### Policies & Security
 - **`workspace-members-profile-policy.sql`** - RLS policies for workspace members
 - **`invitation-accept-policy.sql`** - RLS policies for workspace invitations
+- **`sites-rls-policies.sql`** - RLS policies for sites (role-based access control)
 
 ### Storage
 - **`create-workspace-logos-bucket.sql`** - Creates storage bucket for workspace logos
+- **`create-site-thumbnails-bucket.sql`** - Creates storage bucket for site thumbnails
 
 ### Migrations
 - **`add-soft-delete-migration.sql`** - Adds soft delete functionality
 - **`add-performance-indexes.sql`** - Performance indexes for faster queries (IMPORTANT: Run this after schema.sql)
+- **`add-sites-columns.sql`** - Adds thumbnail_url, published_at, and description columns to sites table
 
 ## Setup Instructions
 
@@ -37,7 +40,10 @@ Run these files in order in Supabase SQL Editor:
 3. `add-performance-indexes.sql` - **IMPORTANT**: Creates indexes for faster queries (run this!)
 4. `workspace-members-profile-policy.sql` - Sets up RLS policies
 5. `invitation-accept-policy.sql` - Sets up invitation policies
-6. `create-workspace-logos-bucket.sql` - Creates storage bucket
+6. `sites-rls-policies.sql` - Sets up sites RLS policies (role-based access)
+7. `create-workspace-logos-bucket.sql` - Creates storage bucket for workspace logos
+8. `create-site-thumbnails-bucket.sql` - Creates storage bucket for site thumbnails (requires bucket creation in Dashboard first)
+9. `add-sites-columns.sql` - Adds missing columns to sites table (thumbnail_url, published_at, description)
 
 ### 2. Updating Functions
 When updating functions (like `handle_new_profile` or `get_user_dashboard_data`):

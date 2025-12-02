@@ -74,12 +74,15 @@ export interface Site {
   title: string
   slug: string
   status: SiteStatus
+  description: string | null
   config: Record<string, any> // jsonb (SiteConfig/PageConfig)
   custom_domain: string | null
+  thumbnail_url: string | null
   views_count: number
   metadata: Record<string, any> // jsonb
   created_at: string // timestamp
   updated_at: string // timestamp
+  published_at: string | null // timestamp (when site was published)
   deleted_at: string | null // timestamp (soft delete)
 }
 

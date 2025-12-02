@@ -207,9 +207,11 @@ create table public.sites (
   title text not null,
   slug text not null,
   status site_status default 'draft',
+  description text,
   
   config jsonb default '{}'::jsonb, 
   custom_domain text unique,
+  thumbnail_url text,
   
   -- Stats & Meta:
   views_count int default 0,
@@ -217,6 +219,7 @@ create table public.sites (
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default now(),
+  published_at timestamp with time zone,
   deleted_at timestamp with time zone, -- Soft Delete!
   
   unique(workspace_id, slug)
