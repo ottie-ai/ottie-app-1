@@ -323,8 +323,8 @@ export default function SitesPage() {
             {[...Array(8)].map((_, i) => (
               <div key={i} className="group">
                 {/* Skeleton Card */}
-                <div className="relative aspect-[4/3] bg-muted rounded-2xl overflow-hidden">
-                  <Skeleton className="w-full h-full" />
+                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
+                  <Skeleton className="w-full h-full rounded-2xl" />
                   {/* Skeleton Avatar */}
                   <div className="absolute top-3 left-3 z-10">
                     <Skeleton className="size-12 rounded-full" />
