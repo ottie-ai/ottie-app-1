@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { LottieGlobeIcon } from '@/components/ui/lottie-globe-icon'
 import { LottieViewIcon } from '@/components/ui/lottie-view-icon'
+import { LottieAnalyticsIcon } from '@/components/ui/lottie-analytics-icon'
 import { LottieGroupsIcon } from '@/components/ui/lottie-groups-icon'
 import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
 import { LottieBulbIcon } from '@/components/ui/lottie-bulb-icon'
@@ -45,6 +46,10 @@ import { LottieMailOpenIcon } from '@/components/ui/lottie-mail-open-icon'
 import { LottieSupportIcon } from '@/components/ui/lottie-support-icon'
 import { LottieForumIcon } from '@/components/ui/lottie-forum-icon'
 import { LottieContactsIcon } from '@/components/ui/lottie-contacts-icon'
+import { LottieScreenShareIcon } from '@/components/ui/lottie-screen-share-icon'
+import { LottieLaptopIcon } from '@/components/ui/lottie-laptop-icon'
+import { LottieViewArrayIcon } from '@/components/ui/lottie-view-array-icon'
+import { LottieViewQuiltIcon } from '@/components/ui/lottie-view-quilt-icon'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
 import { LottieLogoutIcon } from '@/components/ui/lottie-logout-icon'
@@ -85,7 +90,7 @@ const mainNavItems = [
   {
     title: 'Dashboard',
     url: '/dashboard',
-    icon: LottieViewIcon,
+    icon: LottieAnalyticsIcon,
   },
   {
     title: 'Sites',
@@ -100,7 +105,7 @@ const mainNavItems = [
   {
     title: 'Client Portals',
     url: '/client-portals',
-    icon: LottieContactsIcon,
+    icon: LottieViewQuiltIcon,
     badge: 'Coming Soon',
   },
 ]

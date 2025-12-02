@@ -32,7 +32,7 @@ export function useAuth() {
         // getSession() reads from cookies - no network request
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (isMounted) {
+          if (isMounted) {
           // Use session.user directly (already validated server-side)
           setUser(session?.user ?? null)
           setLoading(false)
@@ -41,11 +41,11 @@ export function useAuth() {
       } catch (error) {
         console.error('[useAuth] Init error:', error)
         if (isMounted) {
-          setUser(null)
-          setLoading(false)
+        setUser(null)
+        setLoading(false)
           setInitialized(true)
-        }
       }
+    }
     }
 
     initAuth()

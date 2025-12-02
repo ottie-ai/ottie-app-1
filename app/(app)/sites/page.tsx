@@ -274,47 +274,47 @@ export default function SitesPage() {
       <main className="flex-1 p-6 space-y-6 overflow-y-auto">
         {/* Filters & Search - Only show if there are sites */}
         {sites.length > 0 && (
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="relative w-full sm:w-80">
-              <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input 
-                placeholder="Search sites..." 
-                className="pl-9"
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="relative w-full sm:w-80">
+            <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <Input 
+              placeholder="Search sites..." 
+              className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    Status
-                    <ChevronDown className="size-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+            />
+          </div>
+          <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  Status
+                  <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter('published')}>Published</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter('draft')}>Draft</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setStatusFilter('archived')}>Archived</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    Sort by
-                    <ChevronDown className="size-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  Sort by
+                  <ChevronDown className="size-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setSortBy('lastEdited')}>Last edited</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('nameAsc')}>Name A-Z</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('nameDesc')}>Name Z-A</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSortBy('views')}>Most views</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        </div>
         )}
 
         {/* Loading State */}
@@ -359,37 +359,37 @@ export default function SitesPage() {
 
         {/* Sites Grid - Show when there are sites */}
         {!loading && sites.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {/* New Site Card */}
-            <div className="group">
-              <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
-                <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
-                <div className="mb-4">
-                  <LottieAddCardIcon size={28} invertTheme={false} />
-                </div>
-                <span className="font-medium mb-1">Create New Site</span>
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm">
-                    Generate from URL
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
-                    Create manually
-                  </Button>
-                </div>
-              </CardContent>
-            </GlowCard>
-              {/* Empty space below to match other cards */}
-              <div className="pt-4 pb-1">
-                <div className="h-5" />
-                <div className="h-4" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {/* New Site Card */}
+          <div className="group">
+            <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
+              <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
+              <div className="mb-4">
+                <LottieAddCardIcon size={28} invertTheme={false} />
               </div>
+              <span className="font-medium mb-1">Create New Site</span>
+              <div className="flex gap-2 mt-4">
+                <Button size="sm">
+                  Generate from URL
+                </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                  Create manually
+                </Button>
+              </div>
+            </CardContent>
+          </GlowCard>
+            {/* Empty space below to match other cards */}
+            <div className="pt-4 pb-1">
+              <div className="h-5" />
+              <div className="h-4" />
             </div>
-
-            {/* Site Cards */}
-            {displaySites.map((site) => (
-              <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
-            ))}
           </div>
+
+          {/* Site Cards */}
+            {displaySites.map((site) => (
+            <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
+          ))}
+        </div>
         )}
       </main>
 
