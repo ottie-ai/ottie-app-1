@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { PageTitle } from '@/components/page-title'
 import { Check } from 'lucide-react'
 import { LottieViewQuiltIcon } from '@/components/ui/lottie-view-quilt-icon'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -91,33 +93,53 @@ export default function ClientPortalsPage() {
           </div>
 
           {/* Early Access Form */}
-          <Card>
-            <CardContent>
-              {isRequested ? (
-                <div className="flex items-center justify-center gap-2 py-4">
-                  <Check className="size-5 gradient-ottie-text" />
-                  <div className="text-left">
-                    <p className="font-medium gradient-ottie-text">Request recorded!</p>
-                    <p className="text-sm text-muted-foreground">
-                      We'll contact you when the beta is ready.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <CardTitle className="text-base mb-1">Get Early Access</CardTitle>
-                    <CardDescription>
-                      Be the first to try Client Portals before launch.
-                    </CardDescription>
-                  </div>
-                  <Button onClick={handleGetEarlyAccess} disabled={isLoading || isRequested}>
-                    {isLoading ? 'Requesting...' : 'Request Early Access'}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <AnimatePresence mode="wait">
+            {isRequested ? (
+              <motion.div
+                key="alert"
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ 
+                  duration: 0.3, 
+                  ease: [0.16, 1, 0.3, 1] 
+                }}
+              >
+                <Alert>
+                  <Check className="size-4" />
+                  <AlertDescription>
+                    Request recorded! We'll contact you when the beta is ready.
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="card"
+                initial={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                transition={{ 
+                  duration: 0.3, 
+                  ease: [0.16, 1, 0.3, 1] 
+                }}
+              >
+                <Card>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="text-left">
+                        <CardTitle className="text-base mb-1">Get Early Access</CardTitle>
+                        <CardDescription>
+                          Be the first to try Client Portals before launch.
+                        </CardDescription>
+                      </div>
+                      <Button onClick={handleGetEarlyAccess} disabled={isLoading || isRequested}>
+                        {isLoading ? 'Requesting...' : 'Request Early Access'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
     </div>

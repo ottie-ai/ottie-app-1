@@ -649,6 +649,66 @@ canvas {
   opacity: 1;
 }
 
+/* ===== Request Recorded Card ===== */
+/* Card with gradient border on top half (via shadow), gray border on bottom half */
+/* Gradient background on top half, transparent on bottom half */
+.request-recorded-card {
+  position: relative;
+  border: none;
+  background: transparent;
+  overflow: hidden;
+  /* Border via box-shadow: gradient on top, gray on bottom */
+  box-shadow: 
+    /* Top border - gradient (using middle gradient color) */
+    0 -1px 0 0 #e5a4b4,
+    /* Bottom border - gray */
+    0 1px 0 0 hsl(var(--border));
+}
+
+/* Border: gradient top half, gray bottom half using mask for all sides */
+.request-recorded-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom,
+    #fda90f 0%,
+    #f5a82d 12.5%,
+    #e5a4b4 25%,
+    #d9a1e1 37.5%,
+    #c89eff 50%,
+    hsl(var(--border)) 50%,
+    hsl(var(--border)) 100%
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Background: gradient top half, transparent bottom half */
+.request-recorded-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to bottom,
+    rgba(253, 169, 15, 0.08) 0%,
+    rgba(245, 168, 45, 0.08) 12.5%,
+    rgba(229, 164, 180, 0.08) 25%,
+    rgba(217, 161, 225, 0.08) 37.5%,
+    rgba(200, 158, 255, 0.08) 50%,
+    transparent 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ===== Glow Card Effect ===== */
 /* Uses shadcn Card as base, adds glowing border effect on hover */
 .glow-card {
@@ -791,5 +851,16 @@ canvas {
 
 /* Tabs background - same color as dropdown hover in dark mode */
 .dark [data-slot="tabs-list"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Select item hover styles - match dropdown hover color */
+[data-slot="select-item"]:hover,
+[data-slot="select-item"]:focus {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark [data-slot="select-item"]:hover,
+.dark [data-slot="select-item"]:focus {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }

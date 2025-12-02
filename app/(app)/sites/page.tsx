@@ -26,7 +26,7 @@ import { useAppData } from '@/contexts/app-context'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
-import { LottieSpinner } from '@/components/ui/lottie-spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
   DialogContent,
@@ -317,11 +317,33 @@ export default function SitesPage() {
         </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - Skeleton Cards */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <LottieSpinner size={32} />
-            <p className="text-sm text-muted-foreground">Loading sites...</p>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="group">
+                {/* Skeleton Card */}
+                <div className="relative aspect-[4/3] bg-muted rounded-2xl overflow-hidden">
+                  <Skeleton className="w-full h-full" />
+                  {/* Skeleton Avatar */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <Skeleton className="size-12 rounded-full" />
+                  </div>
+                  {/* Skeleton Views Badge */}
+                  <div className="absolute bottom-3 right-3 z-10">
+                    <Skeleton className="h-6 w-16 rounded-md" />
+                  </div>
+                </div>
+                {/* Skeleton Title and Status */}
+                <div className="pt-4 pb-1">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

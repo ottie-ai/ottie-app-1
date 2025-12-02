@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
+import { RoleSelect } from '@/components/workspace/role-select'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
@@ -86,6 +87,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const { user: clientUser } = useAuth()
+  const queryClient = useQueryClient()
   
   // Get data from context (already loaded in layout via AppProvider)
   const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
@@ -159,6 +161,9 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'agent'>('agent')
   const [inviteLoading, setInviteLoading] = useState(false)
+  
+  // Role update loading state (track which membership is being updated)
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null)
   
   // Sync workspaceName when workspace changes
   useEffect(() => {
@@ -2292,33 +2297,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             </div>
                             <div className="grid gap-2">
                               <Label htmlFor="invite-role">Role</Label>
-                              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'agent')}>
-                                <SelectTrigger id="invite-role" className="w-full">
-                                  <SelectValue>
-                                    <div className="flex items-center gap-2">
-                                      {inviteRole === 'admin' && <Crown className="size-4 text-amber-500" />}
-                                      <span className="capitalize">{inviteRole}</span>
-                                    </div>
-                                  </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="admin" className="items-start py-2">
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <Crown className="size-4 text-amber-500" />
-                                        <span className="font-medium">Admin</span>
-                                      </div>
-                                      <span className="text-xs text-muted-foreground leading-tight">Can manage team and settings</span>
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="agent" className="items-start py-2">
-                                    <div className="flex flex-col gap-0.5">
-                                      <span className="font-medium">Agent</span>
-                                      <span className="text-xs text-muted-foreground leading-tight">Can create and manage sites</span>
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <RoleSelect
+                                value={inviteRole}
+                                onValueChange={(v) => setInviteRole(v)}
+                                triggerClassName="w-full"
+                              />
                             </div>
                           </div>
                           <DialogFooter>
@@ -2463,41 +2446,36 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               <td className="p-4">
                                 <div className="flex items-center justify-end gap-2">
                                   {isOwnerOrAdmin && membership.role !== 'owner' && membership.user_id !== user?.id ? (
-                                    <Select
-                                      value={membership.role}
-                                      onValueChange={async (value: UserRole) => {
+                                    <RoleSelect
+                                      value={membership.role as 'admin' | 'agent'}
+                                      loading={updatingRoleId === membership.id}
+                                      onValueChange={async (value) => {
                                         if (!workspace || !user?.id) return
-                                        
-                                        if (value === 'owner') {
-                                          toast.error('Cannot change role to owner')
-                                          return
-                                        }
 
+                                        setUpdatingRoleId(membership.id)
+                                        
                                         const result = await updateMembershipRole(
                                           membership.id,
                                           workspace.id,
                                           user.id,
-                                          value as 'admin' | 'agent'
+                                          value
                                         )
 
                                         if ('error' in result) {
                                           toast.error(result.error)
+                                          setUpdatingRoleId(null)
                                         } else {
                                           toast.success('Role updated successfully')
-                                          window.location.reload()
+                                          // Invalidate queries to refresh data without page reload
+                                          await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                                          await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                                          setUpdatingRoleId(null)
                                         }
                                       }}
-                                    >
-                                      <SelectTrigger className="w-32">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                        <SelectItem value="agent">Agent</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                    />
                                   ) : (
-                                    <Badge variant="secondary" className="capitalize">
+                                    <Badge variant="secondary" className="capitalize flex items-center gap-1.5">
+                                      {membership.role === 'admin' && <Crown className="size-3 text-amber-500" />}
                                       {membership.role}
                                     </Badge>
                                   )}
