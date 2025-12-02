@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { PageTitle } from '@/components/page-title'
 import { Check } from 'lucide-react'
 import { LottieViewQuiltIcon } from '@/components/ui/lottie-view-quilt-icon'
@@ -8,10 +9,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { useAuth } from '@/hooks/use-auth'
+import { useAppData } from '@/contexts/app-context'
+import { requestClientPortalsEarlyAccess } from './actions'
+import { toast } from 'sonner'
 
 export default function ClientPortalsPage() {
-  const handleGetEarlyAccess = () => {
-    // TODO: Connect to database
+  const { user } = useAuth()
+  const { profile, refreshProfile } = useAppData()
+  const [isRequested, setIsRequested] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Check if user already requested early access
+  useEffect(() => {
+    if (profile?.preferences?.clientPortalsEarlyAccess === true) {
+      setIsRequested(true)
+    }
+  }, [profile?.preferences])
+
+  const handleGetEarlyAccess = async () => {
+    if (!user?.id) {
+      toast.error('Please log in to request early access')
+      return
+    }
+
+    if (isRequested) {
+      return // Already requested, don't allow duplicate requests
+    }
+
+    setIsLoading(true)
+    const result = await requestClientPortalsEarlyAccess(user.id)
+    setIsLoading(false)
+
+    if ('error' in result) {
+      toast.error(result.error)
+    } else {
+      setIsRequested(true)
+      // Refresh profile to get updated preferences
+      await refreshProfile()
+    }
   }
 
   return (
@@ -57,17 +93,29 @@ export default function ClientPortalsPage() {
           {/* Early Access Form */}
           <Card>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="text-left">
-                  <CardTitle className="text-base mb-1">Get Early Access</CardTitle>
-                  <CardDescription>
-                    Be the first to try Client Portals before launch.
-                  </CardDescription>
+              {isRequested ? (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <Check className="size-5 gradient-ottie-text" />
+                  <div className="text-left">
+                    <p className="font-medium gradient-ottie-text">Request recorded!</p>
+                    <p className="text-sm text-muted-foreground">
+                      We'll contact you when the beta is ready.
+                    </p>
+                  </div>
                 </div>
-                <Button onClick={handleGetEarlyAccess}>
-                  Request Early Access
-                </Button>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <CardTitle className="text-base mb-1">Get Early Access</CardTitle>
+                    <CardDescription>
+                      Be the first to try Client Portals before launch.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleGetEarlyAccess} disabled={isLoading || isRequested}>
+                    {isLoading ? 'Requesting...' : 'Request Early Access'}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
