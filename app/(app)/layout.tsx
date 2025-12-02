@@ -72,19 +72,21 @@ function AppContent({
   children: React.ReactNode
   isWorkspaceRoute: boolean
 }) {
-  const { loading, currentWorkspace, profile } = useAppData()
+  const { loading: appDataLoading, currentWorkspace, profile } = useAppData()
   const { user, loading: authLoading, initialized } = useAuth()
 
   // Show loading screen while:
   // 1. Auth is not initialized yet (prevents flash of unauthenticated state), OR
   // 2. Auth is loading, OR
-  // 3. User is authenticated but app data is loading AND we don't have essential data yet
-  // Essential data: profile AND workspace (both are required for app to function)
+  // 3. User is authenticated but we don't have essential data yet (profile AND workspace)
   // This prevents showing empty UI with missing data and flickering between states
   const hasEssentialData = !!(profile && currentWorkspace)
-  const isInitialLoad = !hasEssentialData && user?.id
-  // Show loading if: not initialized OR auth loading OR (app data loading AND initial load)
-  const shouldShowLoading = !initialized || authLoading || (loading && isInitialLoad && !hasEssentialData)
+  
+  // Single loading condition: show loading until we have everything we need
+  // - Not initialized: show loading (auth not ready)
+  // - Auth loading: show loading (still checking auth)
+  // - User exists but no essential data: show loading (app data not ready)
+  const shouldShowLoading = !initialized || authLoading || (user?.id && !hasEssentialData)
 
   if (shouldShowLoading) {
     return (
