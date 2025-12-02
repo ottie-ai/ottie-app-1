@@ -541,7 +541,7 @@ export function DashboardSidebar() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={openUserJot}>
                       <LottieBugIcon className="mr-2 size-4" />
-                      Flag Bug
+                      Report Bug
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

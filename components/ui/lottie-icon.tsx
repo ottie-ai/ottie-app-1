@@ -284,7 +284,6 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
         style={{ width: size, height: size }}
         loop={false}
         autoplay={false}
-        direction={direction}
         onComplete={() => {
           if (!lottieRef.current) return
 
