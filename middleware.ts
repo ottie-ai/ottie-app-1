@@ -283,10 +283,55 @@ export async function middleware(request: NextRequest) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'
   const rootDomainWithoutPort = rootDomain.split(':')[0]
   const appDomain = `app.${rootDomainWithoutPort}` // Remove port for domain comparison
+  const sitesDomain = 'ottie.site' // Domain for published sites
   
   // Extract subdomain (remove port for localhost)
   const hostnameWithoutPort = hostname.split(':')[0]
   const isLocalhost = hostnameWithoutPort.includes('localhost')
+  
+  // Check if this is ottie.site domain (for published sites)
+  const isOttieSiteDomain = hostnameWithoutPort === sitesDomain || hostnameWithoutPort.endsWith(`.${sitesDomain}`)
+  
+  console.log('[Middleware] Hostname:', hostnameWithoutPort)
+  console.log('[Middleware] Is ottie.site domain:', isOttieSiteDomain)
+  console.log('[Middleware] Sites domain:', sitesDomain)
+  
+  // Redirect ottie.site root (without subdomain) to ottie.com
+  if (!isLocalhost && hostnameWithoutPort === sitesDomain) {
+    console.log('[Middleware] Redirecting ottie.site root to ottie.com')
+    const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
+    redirectUrl.search = request.nextUrl.search // Preserve query params
+    return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
+  }
+  
+  // CRITICAL: Block any site routes on ottie.com (root domain)
+  // Sites should ONLY be accessible on ottie.site subdomains
+  // Marketing routes (/, /privacy, /terms) are ALWAYS publicly accessible on ottie.com
+  if (!isLocalhost && hostnameWithoutPort === rootDomainWithoutPort) {
+    // Marketing routes that are always publicly accessible
+    const marketingRoutes = ['/', '/privacy', '/terms']
+    const isMarketingRoute = marketingRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+    
+    // Auth routes are also allowed (they redirect to app subdomain if needed)
+    const authRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
+    const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+    
+    // API routes are allowed
+    const isApiRoute = pathname.startsWith('/api/')
+    
+    // If it's a marketing, auth, or API route, allow it to continue
+    // Marketing routes are handled by (marketing) route group and are always public
+    if (isMarketingRoute || isAuthRoute || isApiRoute) {
+      // Allow these routes - continue to route groups
+      // Marketing will be handled by (marketing) route group
+    } else if (pathname.split('/').filter(Boolean).length > 0) {
+      // Looks like a site route on ottie.com - block it and redirect to homepage
+      // Sites should ONLY be accessible on ottie.site subdomains
+      const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
+      return NextResponse.redirect(redirectUrl, 301)
+    }
+    // If pathname is '/' or empty, it's the homepage - allow it (marketing route)
+  }
   
   // Redirect www.app.* to app.* (remove www prefix from app subdomain)
   if (!isLocalhost && hostnameWithoutPort.startsWith('www.app.')) {
@@ -310,7 +355,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle sites subdomain routing (needs rewrite to [site] dynamic route)
   if (!isLocalhost) {
-    // Production: Check for client subdomain
+    // Production: Check for client subdomain on ottie.site
     // Exclude: root domain, www.root, app domain, www.app.*, and any app.* subdomain
     const isAppOrMarketingDomain = 
       hostnameWithoutPort === rootDomainWithoutPort || 
@@ -319,11 +364,23 @@ export async function middleware(request: NextRequest) {
       hostnameWithoutPort.startsWith('app.') ||
       hostnameWithoutPort.startsWith('www.app.')
     
-    if (!isAppOrMarketingDomain) {
-      // Client subdomain -> rewrite to (z-sites)/[site] route
-      const subdomain = hostnameWithoutPort.split('.')[0]
+    // Check if this is an ottie.site subdomain (e.g., mysite.ottie.site)
+    if (isOttieSiteDomain && !isAppOrMarketingDomain) {
+      // Extract subdomain from ottie.site (e.g., "mysite" from "mysite.ottie.site")
+      const subdomain = hostnameWithoutPort.replace(`.${sitesDomain}`, '').split('.')[0]
+      
+      console.log('[Middleware] ottie.site subdomain detected:', subdomain)
+      console.log('[Middleware] Rewriting to path:', `/${subdomain}${pathname === '/' ? '' : pathname}`)
+      
+      // Rewrite to (z-sites)/[site] route
       url.pathname = `/${subdomain}${pathname === '/' ? '' : pathname}`
       response = NextResponse.rewrite(url)
+      console.log('[Middleware] Rewrite complete, new pathname:', url.pathname)
+    } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {
+      // Other subdomains (not ottie.site, not app/marketing) - redirect to ottie.com
+      const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
+      redirectUrl.search = request.nextUrl.search
+      return NextResponse.redirect(redirectUrl, 301)
     } else {
       // App or marketing domain - no rewrite needed, Next.js will match route groups automatically
       response = NextResponse.next()

@@ -1,0 +1,31 @@
+# Robots.txt for Ottie
+# 
+# Marketing (ottie.com): Public, indexable
+# App (app.ottie.com): Private, NOT indexable (noindex via metadata)
+# Sites (ottie.site subdomains): Public, indexable (only published sites)
+
+User-agent: *
+Allow: /
+
+# Block app routes (app.ottie.com) - these are private and have noindex metadata
+Disallow: /builder/
+Disallow: /dashboard/
+Disallow: /sites/
+Disallow: /settings/
+Disallow: /client-portals/
+Disallow: /leads/
+Disallow: /login/
+Disallow: /signup/
+Disallow: /auth/
+
+# Block any site routes on ottie.com (sites should ONLY be on ottie.site)
+Disallow: /*/site/
+Disallow: /*/sites/
+
+# Note: ottie.site subdomains are handled by their own robots meta tags
+# Published sites on ottie.site are indexable (robots: index, follow)
+# App routes on app.ottie.com are NOT indexable (robots: noindex, nofollow via metadata)
+
+# Sitemap
+Sitemap: https://ottie.com/sitemap.xml
+

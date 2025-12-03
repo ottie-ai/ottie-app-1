@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
@@ -9,23 +9,39 @@ import type { ThemeConfig, Section, PageConfig } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   const { site } = await params
-  const siteConfig = await getSiteConfig(site)
+  const siteData = await getSiteConfig(site)
   
-  if (!siteConfig) {
+  if (!siteData) {
     return {
       title: 'Site Not Found',
       description: 'The requested site could not be found.',
+      robots: 'noindex, nofollow', // Don't index 404 pages
     }
   }
+
+  const { config: siteConfig } = siteData
 
   // Extract site title from first section (usually Hero)
   const heroSection = siteConfig.sections?.find((s: Section) => s.type === 'hero')
   const siteTitle = (heroSection?.data as any)?.title || 'Property Site'
   const siteSubtitle = (heroSection?.data as any)?.subtitle || ''
+  
+  // Canonical URL for SEO - only on ottie.site subdomain
+  const canonicalUrl = `https://${site}.ottie.site`
 
   return {
     title: siteTitle,
     description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
+    robots: 'index, follow', // Allow indexing on ottie.site subdomains
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: siteTitle,
+      description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
+      url: canonicalUrl,
+      type: 'website',
+    },
   }
 }
 
@@ -87,21 +103,43 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
 /**
  * Fetch site configuration from database by slug
  * The slug comes from the subdomain (e.g., "231-keaton-street" from "231-keaton-street.ottie.site")
+ * Only returns site if it's published
  */
-async function getSiteConfig(slug: string): Promise<PageConfig | null> {
+async function getSiteConfig(slug: string): Promise<{ site: any; config: PageConfig } | null> {
   const supabase = await createClient()
   
+  // First, try to find the site (without status filter to see what we have)
+  const { data: allSites, error: allError } = await supabase
+    .from('sites')
+    .select('*')
+    .eq('slug', slug)
+    .is('deleted_at', null)
+  
+  console.log('[getSiteConfig] Looking for slug:', slug)
+  console.log('[getSiteConfig] All sites with this slug:', allSites)
+  console.log('[getSiteConfig] Error:', allError)
+  
+  // TEMPORARY: For testing - allow draft sites too
   // Fetch site by slug on ottie.site domain
-  // Sites can be published, draft, or archived - all are accessible via subdomain
+  // Only published sites are accessible via subdomain (in production)
   const { data: site, error } = await supabase
     .from('sites')
     .select('*')
     .eq('slug', slug)
     .eq('domain', 'ottie.site')
+    // .eq('status', 'published') // TEMPORARILY DISABLED FOR TESTING
     .is('deleted_at', null)
     .single()
   
-  if (error || !site) {
+  console.log('[getSiteConfig] Site result (any status):', { site, error })
+  
+  if (error) {
+    console.error('[getSiteConfig] Error fetching site:', error)
+    return null
+  }
+  
+  if (!site) {
+    console.log('[getSiteConfig] No published site found with slug:', slug)
     return null
   }
   
@@ -109,10 +147,12 @@ async function getSiteConfig(slug: string): Promise<PageConfig | null> {
   const config = site.config as PageConfig | null
   
   if (!config) {
-    return null
+    console.log('[getSiteConfig] Site found but config is null')
+    // For testing, allow sites without config
+    return { site, config: { theme: {}, sections: [] } as PageConfig }
   }
   
-  return config
+  return { site, config }
 }
 
 /**
@@ -135,6 +175,8 @@ export default async function SitePage({
   // In Next.js 15+, params is a Promise
   const { site } = await params
   
+  console.log('[SitePage] Received slug:', site)
+  
   // IMPORTANT: Exclude workspace/builder routes - these should be handled by (app) route group
   // If this route matches a workspace/builder path, it means Next.js couldn't find
   // the static route in (app) route group, which shouldn't happen.
@@ -143,51 +185,86 @@ export default async function SitePage({
   if (workspaceRoutes.includes(site) || site.startsWith('builder-')) {
     // This should never happen if routes are set up correctly
     // Return 404 so Next.js tries the next matching route (which should be (app) route group)
+    console.log('[SitePage] Workspace route detected, returning 404')
     notFound()
   }
   
   // Fetch site configuration from database
-  const siteConfig = await getSiteConfig(site)
+  console.log('[SitePage] Fetching site config for slug:', site)
+  const siteData = await getSiteConfig(site)
+  console.log('[SitePage] Site data result:', siteData ? 'Found' : 'Not found')
   
-  // If site doesn't exist, show 404
-  if (!siteConfig) {
-    notFound()
+  // If site doesn't exist or isn't published, redirect to ottie.com
+  if (!siteData) {
+    console.log('[SitePage] Site not found or not published, redirecting to ottie.com')
+    // Redirect to ottie.com (main domain)
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+    const rootDomainWithoutPort = rootDomain.split(':')[0]
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+    const redirectUrl = new URL(`${protocol}://${rootDomainWithoutPort}`)
+    redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
+    redirect(redirectUrl.toString())
   }
   
-  // Extract theme and sections from config
-  const { theme, sections } = siteConfig
-  const ctaType = theme?.ctaType || 'none'
-  const ctaValue = theme?.ctaValue || ''
+  const { site, config: siteConfig } = siteData
   
-  // Render the site
+  // TEMPORARY: For testing - just show the property title
+  // This confirms that subdomain routing is working
   return (
-    <>
-      <FontLoader 
-        fontFamily={theme?.fontFamily} 
-        headingFontFamily={theme?.headingFontFamily} 
-      />
-      <FontTransition />
-      <div 
-        style={{ 
-          fontFamily: theme?.fontFamily, 
-          backgroundColor: theme?.backgroundColor, 
-          color: theme?.textColor 
-        }}
-      >
-        {sections?.map((section: Section) => (
-          <SectionRenderer 
-            key={section.id} 
-            section={section} 
-            theme={theme || {}} 
-            colorScheme={section.colorScheme || 'light'} 
-          />
-        ))}
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      minHeight: '100vh',
+      fontSize: '2rem',
+      fontWeight: 'bold',
+      padding: '2rem',
+      textAlign: 'center'
+    }}>
+      <div>
+        <h1>{site.title}</h1>
+        <p style={{ fontSize: '1rem', marginTop: '1rem', opacity: 0.7 }}>
+          Slug: {site.slug} | Status: {site.status} | Domain: {site.domain}
+        </p>
       </div>
-      <FloatingCTAButton 
-        type={ctaType} 
-        value={ctaValue} 
-        colorScheme={sections?.[0]?.colorScheme || 'light'} 
-      />
-    </>
+    </div>
   )
+  
+  // TODO: Uncomment when ready to render full site
+  // Extract theme and sections from config
+  // const { theme, sections } = siteConfig
+  // const ctaType = theme?.ctaType || 'none'
+  // const ctaValue = theme?.ctaValue || ''
+  // 
+  // // Render the site
+  // return (
+  //   <>
+  //     <FontLoader 
+  //       fontFamily={theme?.fontFamily} 
+  //       headingFontFamily={theme?.headingFontFamily} 
+  //     />
+  //     <FontTransition />
+  //     <div 
+  //       style={{ 
+  //         fontFamily: theme?.fontFamily, 
+  //         backgroundColor: theme?.backgroundColor, 
+  //         color: theme?.textColor 
+  //       }}
+  //     >
+  //       {sections?.map((section: Section) => (
+  //         <SectionRenderer 
+  //           key={section.id} 
+  //           section={section} 
+  //           theme={theme || {}} 
+  //           colorScheme={section.colorScheme || 'light'} 
+  //         />
+  //       ))}
+  //     </div>
+  //     <FloatingCTAButton 
+  //       type={ctaType} 
+  //       value={ctaValue} 
+  //       colorScheme={sections?.[0]?.colorScheme || 'light'} 
+  //     />
+  //   </>
+  // )
 }

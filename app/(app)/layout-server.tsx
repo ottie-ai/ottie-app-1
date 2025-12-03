@@ -30,3 +30,4 @@ export default function AppRootLayout({
 }) {
   return <AppRootLayoutClient>{children}</AppRootLayoutClient>
 }
+
