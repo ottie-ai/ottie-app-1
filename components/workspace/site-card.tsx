@@ -54,6 +54,7 @@ export interface SiteCardData {
   avatar?: string | null
   avatarFallback?: string
   domain?: string // Domain where site is hosted (default: 'ottie.site', can be custom domain)
+  assigned_agent_id?: string | null // ID of assigned agent
 }
 
 interface SiteCardProps {
