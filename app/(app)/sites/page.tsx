@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { PageTitle } from '@/components/page-title'
+import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { 
   Plus, 
   SlidersHorizontal,
@@ -613,10 +614,13 @@ export default function SitesPage() {
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <div className="flex-1">
-          <h1 className="text-lg font-semibold">Sites</h1>
-        </div>
-        <Button size="sm" className="gap-2">
+        <Breadcrumbs
+          items={[
+            { label: 'Sites', href: '/sites' },
+          ]}
+        />
+        <div className="flex-1" />
+        <Button size="sm" className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
           <LottieAddCardIcon className="size-[18px]" />
           New Site
         </Button>
@@ -1111,7 +1115,6 @@ export default function SitesPage() {
               >
                 <SiteCard 
                   site={site} 
-                  href={`/builder/${site.id}`}
                   onStatusChange={refresh}
                   members={members}
                 />

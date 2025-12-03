@@ -118,16 +118,40 @@ const bottomNavItems = [
   },
 ]
 
+const SIDEBAR_RESTORE_KEY = 'site_detail_restore_sidebar'
+
 export function DashboardSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
-  const { state, isMobile, setOpenMobile } = useSidebar()
+  const { state, isMobile, setOpenMobile, setOpen } = useSidebar()
   const isCollapsed = state === 'collapsed'
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan } = useAppData()
   const { workspaces: workspacesFromHook } = useWorkspaces()
+
+  // Restore sidebar state when navigating away from site detail page
+  useEffect(() => {
+    const isDetailPage = pathname?.startsWith('/sites/') && pathname !== '/sites'
+    if (!isDetailPage) {
+      const pending = sessionStorage.getItem(SIDEBAR_RESTORE_KEY + '_pending')
+      if (pending) {
+        try {
+          const prevState = JSON.parse(pending)
+          console.log('[Sidebar] Restoring state:', prevState)
+          if (!isMobile) {
+            setOpen(prevState.open)
+          } else {
+            setOpenMobile(prevState.openMobile)
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+        sessionStorage.removeItem(SIDEBAR_RESTORE_KEY + '_pending')
+      }
+    }
+  }, [pathname, isMobile, setOpen, setOpenMobile])
   
   // Use currentWorkspace and allWorkspaces from app-context (loaded with appData) - they're immediately available
   const workspace = currentWorkspace

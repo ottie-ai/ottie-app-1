@@ -7,7 +7,6 @@ import {
   Eye,
   Check,
   ChevronRight,
-  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
@@ -21,6 +20,7 @@ import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
 import { LottieCopyIcon } from '@/components/ui/lottie-copy-icon'
 import { LottieTrashIcon } from '@/components/ui/lottie-trash-icon'
 import { LottieInboxIcon } from '@/components/ui/lottie-inbox-icon'
+import { LottieLockIcon } from '@/components/ui/lottie-lock-icon'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -76,7 +76,7 @@ interface SiteCardProps {
   members?: Array<{ membership: { user_id: string }; profile: { avatar_url: string | null; full_name: string | null; email: string | null } }> // Workspace members for reassign
 }
 
-export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, members = [] }: SiteCardProps) {
+export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, members = [] }: SiteCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
@@ -291,7 +291,7 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                     setIsMenuOpen(false)
                   }}
                 >
-                  <Lock className="size-4 mr-2" />
+                  <LottieLockIcon className="size-4 mr-2" />
                   {site.password_protected ? 'Change Password' : 'Set Password'}
                 </DropdownMenuItem>
                 <DropdownMenuSub>
@@ -447,7 +447,7 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
             {site.password_protected && (
-              <Lock className="size-3.5 text-muted-foreground shrink-0" />
+              <LottieLockIcon className="size-3.5 shrink-0" size={14} />
             )}
             <span className="truncate">{site.title}</span>
           </h3>

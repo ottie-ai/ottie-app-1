@@ -179,12 +179,12 @@ export async function deleteSite(siteId: string): Promise<{ success: true } | { 
   const { data, error } = await supabase.rpc('soft_delete_site', { site_id: siteId })
   
   console.log('🔍 soft_delete_site RPC result:', { data, error })
-  
+
   if (error) {
     console.error('❌ Error calling soft_delete_site RPC:', error)
     return { error: error.message || 'Failed to delete site' }
   }
-  
+
   // Check RPC response
   if (data && typeof data === 'object') {
     if ('error' in data && data.error) {
@@ -193,7 +193,7 @@ export async function deleteSite(siteId: string): Promise<{ success: true } | { 
     }
     if ('success' in data && data.success) {
       console.log('✅ Site deleted successfully:', siteId)
-      return { success: true }
+  return { success: true }
     }
   }
   
