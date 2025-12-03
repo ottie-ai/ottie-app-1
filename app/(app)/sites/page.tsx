@@ -11,7 +11,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  X,
   Filter,
 } from 'lucide-react'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
@@ -27,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
 import { SiteCard, type SiteCardData } from '@/components/workspace/site-card'
 import { useSites } from '@/hooks/use-sites'
@@ -34,6 +34,7 @@ import { useAppData } from '@/contexts/app-context'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -135,8 +136,9 @@ export default function SitesPage() {
   const { sites, loading, refresh } = useSites(currentWorkspace?.id)
   const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'archived'>('all')
+  const [statusFilter, setStatusFilter] = useState<('published' | 'draft' | 'archived')[]>(['published', 'draft', 'archived'])
   const [sortBy, setSortBy] = useState<'lastEdited' | 'nameAsc' | 'nameDesc' | 'viewsDesc' | 'viewsAsc'>('lastEdited')
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -163,8 +165,8 @@ export default function SitesPage() {
         if (searchQuery && !site.title.toLowerCase().includes(searchQuery.toLowerCase())) {
           return false
         }
-        // Status filter
-        if (statusFilter !== 'all' && site.status !== statusFilter) {
+        // Status filter (multi-select)
+        if (statusFilter.length > 0 && !statusFilter.includes(site.status)) {
           return false
         }
         return true
@@ -486,55 +488,88 @@ export default function SitesPage() {
               />
             </div>
             <div className="flex gap-2">
-              <DropdownMenu>
+              <DropdownMenu open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className={`gap-2 transition-colors ${
+                      statusFilter.length < 3 
+                        ? 'bg-[#7c3aed]/10 border-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/30' 
+                        : ''
+                    }`}
+                  >
                     <Filter className="size-4" />
                     Status
-                    {statusFilter !== 'all' && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                        {statusFilter}
-                      </Badge>
+                    {statusFilter.length < 3 && (
+                      <span className="ml-1 h-5 px-1.5 text-xs capitalize rounded-full border-transparent bg-white dark:bg-zinc-800 text-[#000] dark:text-[#fff] inline-flex items-center justify-center font-medium">
+                        {statusFilter.length === 1 
+                          ? statusFilter[0] 
+                          : statusFilter.sort().join(', ')}
+                      </span>
                     )}
                     <ChevronDown className="size-3" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem 
-                    onClick={() => setStatusFilter('all')}
-                    className={statusFilter === 'all' ? 'bg-accent' : ''}
-                  >
-                    All
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setStatusFilter('published')}
-                    className={statusFilter === 'published' ? 'bg-accent' : ''}
+                <DropdownMenuContent align="end" className="w-40" onCloseAutoFocus={(e) => e.preventDefault()}>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes('published')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setStatusFilter([...statusFilter, 'published'])
+                      } else {
+                        setStatusFilter(statusFilter.filter(s => s !== 'published'))
+                      }
+                    }}
+                    onSelect={(e) => e.preventDefault()}
                   >
                     Published
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setStatusFilter('draft')}
-                    className={statusFilter === 'draft' ? 'bg-accent' : ''}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes('draft')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setStatusFilter([...statusFilter, 'draft'])
+                      } else {
+                        setStatusFilter(statusFilter.filter(s => s !== 'draft'))
+                      }
+                    }}
+                    onSelect={(e) => e.preventDefault()}
                   >
                     Draft
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setStatusFilter('archived')}
-                    className={statusFilter === 'archived' ? 'bg-accent' : ''}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem
+                    checked={statusFilter.includes('archived')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setStatusFilter([...statusFilter, 'archived'])
+                      } else {
+                        setStatusFilter(statusFilter.filter(s => s !== 'archived'))
+                      }
+                    }}
+                    onSelect={(e) => e.preventDefault()}
                   >
                     Archived
-                  </DropdownMenuItem>
+                  </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className={`gap-2 transition-colors ${
+                      sortBy !== 'lastEdited' 
+                        ? 'bg-[#7c3aed]/10 border-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/30' 
+                        : ''
+                    }`}
+                  >
                     <ArrowUpDown className="size-4" />
                     Sort
                     {sortBy !== 'lastEdited' && (
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-white dark:bg-zinc-800 text-[#000] dark:text-[#fff] inline-flex items-center justify-center font-medium">
                         {sortBy === 'nameAsc' ? 'A-Z' : sortBy === 'nameDesc' ? 'Z-A' : sortBy === 'viewsDesc' ? 'Views ↓' : 'Views ↑'}
-                      </Badge>
+                      </span>
                     )}
                     <ChevronDown className="size-3" />
                   </Button>
@@ -580,64 +615,6 @@ export default function SitesPage() {
             </div>
           </div>
 
-          {/* Active Filters Bar */}
-          {(searchQuery || statusFilter !== 'all' || sortBy !== 'lastEdited') && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground">Active filters:</span>
-              {searchQuery && (
-                <Badge variant="secondary" className="gap-1.5">
-                  Search: "{searchQuery}"
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="ml-1 hover:bg-muted rounded-full p-0.5"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              )}
-              {statusFilter !== 'all' && (
-                <Badge variant="secondary" className="gap-1.5 capitalize">
-                  Status: {statusFilter}
-                  <button
-                    onClick={() => setStatusFilter('all')}
-                    className="ml-1 hover:bg-muted rounded-full p-0.5"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              )}
-              {sortBy !== 'lastEdited' && (
-                <Badge variant="secondary" className="gap-1.5">
-                  Sort: {sortBy === 'nameAsc' ? 'A-Z' : sortBy === 'nameDesc' ? 'Z-A' : sortBy === 'viewsDesc' ? 'Views ↓' : 'Views ↑'}
-                  <button
-                    onClick={() => setSortBy('lastEdited')}
-                    className="ml-1 hover:bg-muted rounded-full p-0.5"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => {
-                  setSearchQuery('')
-                  setStatusFilter('all')
-                  setSortBy('lastEdited')
-                }}
-              >
-                Clear all
-              </Button>
-            </div>
-          )}
-
-          {/* Results Count */}
-          {displaySites.length > 0 && (
-            <div className="text-sm text-muted-foreground">
-              Showing {displaySites.length} of {sites.length} site{sites.length !== 1 ? 's' : ''}
-            </div>
-          )}
         </div>
         )}
 
@@ -672,14 +649,19 @@ export default function SitesPage() {
         )}
 
         {/* Empty State - No sites match filters */}
-        {!loading && displaySites.length === 0 && (searchQuery || statusFilter !== 'all') && (
-          <div className="text-center py-12 text-muted-foreground">
+        {!loading && displaySites.length === 0 && (searchQuery || statusFilter.length < 3) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="text-center py-12 text-muted-foreground"
+          >
             No sites found matching your filters.
-          </div>
+          </motion.div>
         )}
 
         {/* Empty State - No sites at all (centered) */}
-        {!loading && sites.length === 0 && !searchQuery && statusFilter === 'all' && (
+        {!loading && sites.length === 0 && !searchQuery && statusFilter.length === 3 && (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="w-full max-w-md">
               <CardContent className="flex flex-col items-center justify-center text-foreground p-8">
@@ -706,35 +688,61 @@ export default function SitesPage() {
         {/* Sites Grid - Show when there are sites */}
         {!loading && sites.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {/* New Site Card */}
-          <div className="group">
-            <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
-              <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
-              <div className="mb-4">
-                <LottieAddCardIcon size={28} invertTheme={false} />
-              </div>
-              <span className="font-medium mb-1">Create New Site</span>
-              <div className="flex gap-2 mt-4">
-                <Button size="sm">
-                  Generate from URL
-                </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
-                  Create manually
-                </Button>
-              </div>
-            </CardContent>
-          </GlowCard>
-            {/* Empty space below to match other cards */}
-            <div className="pt-4 pb-1">
-              <div className="h-5" />
-              <div className="h-4" />
-            </div>
-          </div>
+          <AnimatePresence mode="popLayout">
+            {/* New Site Card - Only show when no filters are active */}
+            {!searchQuery && statusFilter.length === 3 && sortBy === 'lastEdited' && (
+              <motion.div
+                key="new-site-card"
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                className="group"
+              >
+                <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
+                  <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
+                  <div className="mb-4">
+                    <LottieAddCardIcon size={28} invertTheme={false} />
+                  </div>
+                  <span className="font-medium mb-1">Create New Site</span>
+                  <div className="flex gap-2 mt-4">
+                    <Button size="sm">
+                      Generate from URL
+                    </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                      Create manually
+                    </Button>
+                  </div>
+                </CardContent>
+              </GlowCard>
+                {/* Empty space below to match other cards */}
+                <div className="pt-4 pb-1">
+                  <div className="h-5" />
+                  <div className="h-4" />
+                </div>
+              </motion.div>
+            )}
 
-          {/* Site Cards */}
-            {displaySites.map((site) => (
-            <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
-          ))}
+            {/* Site Cards */}
+            {displaySites.map((site, index) => (
+              <motion.div
+                key={site.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ 
+                  duration: 0.3, 
+                  ease: [0.4, 0, 0.2, 1],
+                  layout: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
+                  delay: index * 0.02 // Stagger effect
+                }}
+              >
+                <SiteCard site={site} href={`/builder/${site.id}`} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
         )}
       </main>
