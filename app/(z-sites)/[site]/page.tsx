@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { SectionRenderer } from '@/components/templates/SectionRenderer'
+import { FontLoader } from '@/components/builder/FontLoader'
+import { FontTransition } from '@/components/builder/FontTransition'
+import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { PageConfig, Section } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
@@ -143,9 +147,9 @@ async function getSiteConfig(slug: string): Promise<{ site: any; config: PageCon
   const config = site.config as PageConfig | null
   
   if (!config) {
-    console.log('[getSiteConfig] Site found but config is null')
-    // For testing, allow sites without config
-    return { site, config: { theme: {}, sections: [] } as PageConfig }
+    console.log('[getSiteConfig] Site found but config is null - returning null to redirect')
+    // If site has no config, redirect to ottie.com
+    return null
   }
   
   return { site, config }
@@ -204,66 +208,43 @@ export default async function SitePage({
   
   const { site: siteRecord, config: siteConfig } = siteData
   
-  // TEMPORARY: For testing - just show the property title
-  // This confirms that subdomain routing is working
-  return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      fontSize: '2rem',
-      fontWeight: 'bold',
-      padding: '2rem',
-      textAlign: 'center'
-    }}>
-      <div>
-        <h1>{siteRecord.title}</h1>
-        <p style={{ fontSize: '1rem', marginTop: '1rem', opacity: 0.7 }}>
-          Slug: {siteRecord.slug} | Status: {siteRecord.status} | Domain: {siteRecord.domain}
-        </p>
-      </div>
-    </div>
-  )
-  
-  // TODO: Uncomment when ready to render full site
   // Extract theme and sections from config
-  // const { theme, sections } = siteConfig
-  // const ctaType = theme?.ctaType || 'none'
-  // const ctaValue = theme?.ctaValue || ''
-  // 
-  // // Collect unique fonts for FontLoader
-  // const fonts = [
-  //   theme?.fontFamily,
-  //   theme?.headingFontFamily,
-  // ].filter(Boolean) as string[]
-  // 
-  // // Render the site
-  // return (
-  //   <>
-  //     <FontLoader fonts={fonts} />
-  //     <FontTransition />
-  //     <div 
-  //       style={{ 
-  //         fontFamily: theme?.fontFamily, 
-  //         backgroundColor: theme?.backgroundColor, 
-  //         color: theme?.textColor 
-  //       }}
-  //     >
-  //       {sections?.map((section: Section) => (
-  //         <SectionRenderer 
-  //           key={section.id} 
-  //           section={section} 
-  //           theme={theme || {}} 
-  //           colorScheme={section.colorScheme || 'light'} 
-  //         />
-  //       ))}
-  //     </div>
-  //     <FloatingCTAButton 
-  //       type={ctaType} 
-  //       value={ctaValue} 
-  //       colorScheme={sections?.[0]?.colorScheme || 'light'} 
-  //     />
-  //   </>
-  // )
+  const { theme, sections } = siteConfig
+  const ctaType = theme?.ctaType || 'none'
+  const ctaValue = theme?.ctaValue || ''
+  
+  // Collect unique fonts for FontLoader
+  const fonts = [
+    theme?.fontFamily,
+    theme?.headingFontFamily,
+  ].filter(Boolean) as string[]
+  
+  // Render the site
+  return (
+    <>
+      <FontLoader fonts={fonts} />
+      <FontTransition />
+      <div 
+        style={{ 
+          fontFamily: theme?.fontFamily, 
+          backgroundColor: theme?.backgroundColor, 
+          color: theme?.textColor 
+        }}
+      >
+        {sections?.map((section: Section) => (
+          <SectionRenderer 
+            key={section.id} 
+            section={section} 
+            theme={theme} 
+            colorScheme={section.colorScheme || 'light'} 
+          />
+        ))}
+      </div>
+      <FloatingCTAButton 
+        type={ctaType} 
+        value={ctaValue} 
+        colorScheme={sections?.[0]?.colorScheme || 'light'} 
+      />
+    </>
+  )
 }

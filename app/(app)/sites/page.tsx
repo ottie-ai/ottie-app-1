@@ -196,8 +196,8 @@ export default function SitesPage() {
     // Ensure minimum length (pad if needed)
     if (slug.length < 5) {
       slug = slug + '-site'
-    }
-    
+  }
+
     // Ensure maximum length (truncate if needed)
     if (slug.length > 63) {
       slug = slug.substring(0, 63)
@@ -631,12 +631,12 @@ export default function SitesPage() {
             <div className="space-y-2">
               <Label htmlFor="slug">Slug *</Label>
               <div className="relative">
-                <Input
-                  id="slug"
-                  placeholder="e.g., 21-maine-street"
-                  value={formData.slug}
+              <Input
+                id="slug"
+                placeholder="e.g., 21-maine-street"
+                value={formData.slug}
                   onChange={(e) => handleSlugChange(e.target.value)}
-                  disabled={isCreating}
+                disabled={isCreating}
                   className={slugAvailability.checking ? 'pr-10' : slugAvailability.available === false ? 'pr-10 border-destructive' : slugAvailability.available === true ? 'pr-10 border-green-500' : 'pr-10'}
                 />
                 {slugAvailability.checking && (
