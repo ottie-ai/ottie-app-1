@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
-import { handleArchiveSite, handleUnarchiveSite, handleDuplicateSite, handleDeleteSite, handleReassignSite } from '@/app/actions/site-actions'
+import { handleArchiveSite, handleUnarchiveSite, handleDuplicateSite, handleDeleteSite, handleReassignSite, handleUpdateSiteTitle } from '@/app/actions/site-actions'
+import { Input } from '@/components/ui/input'
 import { LottiePhotoIcon } from '@/components/ui/lottie-photo-icon'
 import { LottieAnalyticsIcon } from '@/components/ui/lottie-analytics-icon'
 import { LottieEditIcon } from '@/components/ui/lottie-edit-icon'
@@ -42,6 +43,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 export interface SiteCardData {
   id: string
@@ -67,6 +76,8 @@ interface SiteCardProps {
 
 export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, members = [] }: SiteCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
+  const [renameValue, setRenameValue] = useState(site.title)
   const [isSlugHovered, setIsSlugHovered] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
@@ -217,7 +228,15 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                   <LottieEditIcon className="size-4 mr-2" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setRenameValue(site.title)
+                    setIsRenameDialogOpen(true)
+                    setIsMenuOpen(false)
+                  }}
+                >
                   <LottieBookIcon className="size-4 mr-2" />
                   Rename
                 </DropdownMenuItem>
@@ -275,6 +294,29 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
+                <DropdownMenuItem
+                  onClick={async (e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (isDuplicating) return
+                    
+                    setIsDuplicating(true)
+                    const result = await handleDuplicateSite(site.id)
+                    setIsDuplicating(false)
+                    setIsMenuOpen(false)
+                    
+                    if ('error' in result) {
+                      toast.error(result.error)
+                    } else {
+                      toastSuccess('Site duplicated successfully')
+                      onStatusChange?.()
+                    }
+                  }}
+                  disabled={isDuplicating}
+                >
+                  <LottieCopyIcon className="size-4 mr-2" />
+                  Duplicate
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {site.status === 'archived' ? (
                   <DropdownMenuItem
@@ -327,30 +369,6 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                     Archive
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    if (isDuplicating) return
-                    
-                    setIsDuplicating(true)
-                    const result = await handleDuplicateSite(site.id)
-                    setIsDuplicating(false)
-                    setIsMenuOpen(false)
-                    
-                    if ('error' in result) {
-                      toast.error(result.error)
-                    } else {
-                      toastSuccess('Site duplicated successfully')
-                      onStatusChange?.()
-                    }
-                  }}
-                  disabled={isDuplicating}
-                >
-                  <LottiePhotoIcon className="size-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   variant="destructive"
                   onClick={(e) => {
@@ -450,6 +468,82 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={(open) => {
+        setIsRenameDialogOpen(open)
+        if (!open) {
+          setRenameValue(site.title) // Reset on close
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Site</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this site.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="Site title"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (renameValue.trim() && renameValue !== site.title) {
+                    handleUpdateSiteTitle(site.id, renameValue.trim()).then((result) => {
+                      if ('error' in result) {
+                        toast.error(result.error)
+                      } else {
+                        toastSuccess('Site renamed successfully')
+                        setIsRenameDialogOpen(false)
+                        onStatusChange?.()
+                      }
+                    })
+                  } else {
+                    setIsRenameDialogOpen(false)
+                  }
+                } else if (e.key === 'Escape') {
+                  setRenameValue(site.title)
+                  setIsRenameDialogOpen(false)
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameValue(site.title)
+                setIsRenameDialogOpen(false)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (renameValue.trim() && renameValue !== site.title) {
+                  const result = await handleUpdateSiteTitle(site.id, renameValue.trim())
+                  if ('error' in result) {
+                    toast.error(result.error)
+                  } else {
+                    toastSuccess('Site renamed successfully')
+                    setIsRenameDialogOpen(false)
+                    onStatusChange?.()
+                  }
+                } else {
+                  setIsRenameDialogOpen(false)
+                }
+              }}
+              disabled={!renameValue.trim() || renameValue === site.title}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

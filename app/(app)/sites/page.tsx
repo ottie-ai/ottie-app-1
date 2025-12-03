@@ -732,8 +732,8 @@ export default function SitesPage() {
                         {(assignedToFilter.length === 0 || assignedToFilter.length === members.length) && <ChevronDown className="size-3 shrink-0 hidden md:inline" />}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="end">
-                      <Command>
+                    <PopoverContent className="w-[300px] p-1" align="end">
+                      <Command className="rounded-md">
                         <CommandInput 
                           placeholder="Search members..." 
                           value={assignedToSearchQuery}
@@ -762,10 +762,7 @@ export default function SitesPage() {
                                         setAssignedToFilter([...assignedToFilter, member.membership.user_id])
                                       }
                                     }}
-                                    className={cn(
-                                      "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none",
-                                      isSelected && "bg-accent"
-                                    )}
+                                    className="relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground focus:bg-accent focus:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground"
                                   >
                                     <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
                                       {isSelected && <CheckIcon className="size-4" />}

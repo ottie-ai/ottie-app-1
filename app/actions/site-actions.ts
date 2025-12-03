@@ -99,3 +99,17 @@ export async function handleReassignSite(siteId: string, agentId: string | null)
   return result
 }
 
+/**
+ * Update site title
+ * Note: We don't revalidate here - the client will refresh React Query cache
+ */
+export async function handleUpdateSiteTitle(siteId: string, title: string) {
+  const result = await updateSite(siteId, { title })
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
+}
+

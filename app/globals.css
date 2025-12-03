@@ -839,6 +839,12 @@ canvas {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
+.dark [data-slot="command-item"]:hover,
+.dark [data-slot="command-item"]:focus,
+.dark [data-slot="command-item"][data-selected="true"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 .dark [data-slot="dropdown-menu-radio-item"]:hover,
 .dark [data-slot="dropdown-menu-radio-item"]:focus {
   background-color: rgba(255, 255, 255, 0.08) !important;
