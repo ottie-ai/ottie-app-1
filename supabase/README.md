@@ -33,6 +33,11 @@ This directory contains SQL migration files for the Supabase database.
 - **`create-plans-table.sql`** - Creates plans table for subscription plans (free, starter, growth, agency, enterprise) with RLS policies
 - **`add-annual-price-to-plans.sql`** - Adds annual_price_cents column to plans table (monthly price when paid annually with 15% discount)
 - **`update-invitations-rls-to-use-plans.sql`** - Updates invitations RLS policy to use plans table as single source of truth
+- **`hybrid-soft-delete-setup.sql`** - **IMPORTANT**: Hybrid soft delete setup with automatic hard delete after 90 days
+  - Creates partial indexes on active rows only (deleted_at IS NULL)
+  - Sets up automatic cleanup cron job (hard delete after 90 days)
+  - Keeps database size manageable while allowing recovery window
+  - Run this after all other migrations are complete
 
 ## Setup Instructions
 
@@ -50,6 +55,7 @@ Run these files in order in Supabase SQL Editor:
 9. `add-sites-columns.sql` - Adds missing columns to sites table (thumbnail_url, published_at, description)
 10. `create-plans-table.sql` - Creates plans table with predefined subscription plans
 11. `add-annual-price-to-plans.sql` - Adds annual_price_cents column to plans table (monthly price when paid annually)
+12. `hybrid-soft-delete-setup.sql` - **IMPORTANT**: Sets up hybrid soft delete with automatic cleanup (run after all other migrations)
 
 ### 2. Updating Functions
 When updating functions (like `handle_new_profile` or `get_user_dashboard_data`):
@@ -106,4 +112,36 @@ When making changes to:
 - **RLS policies**: Update corresponding policy files
 
 Always test changes in a development environment before applying to production.
+
+## Soft Delete Strategy
+
+The app uses a **hybrid soft delete approach**:
+
+1. **Soft delete as default**: All deletions set `deleted_at` timestamp (no hard delete)
+2. **RLS policies filter**: All SELECT queries automatically filter `deleted_at IS NULL`
+3. **Partial indexes**: Indexes only include active rows (`WHERE deleted_at IS NULL`)
+4. **Automatic cleanup**: Cron job hard deletes rows soft-deleted more than 90 days ago
+
+### Benefits
+- **Recovery window**: 90 days to recover accidentally deleted data
+- **Database size**: Automatic cleanup prevents database bloat
+- **Performance**: Partial indexes keep queries fast (only index active rows)
+- **Support**: 90-day window for debugging and support requests
+
+### Manual Cleanup
+If you need to manually run cleanup:
+```sql
+SELECT * FROM public.hard_delete_old_soft_deleted_rows(90);
+```
+
+### Adjusting Retention Period
+To change from 90 to 30 days:
+```sql
+SELECT cron.unschedule('hard-delete-old-soft-deleted-rows');
+SELECT cron.schedule(
+  'hard-delete-old-soft-deleted-rows',
+  '0 2 * * *',
+  $$ SELECT public.hard_delete_old_soft_deleted_rows(30); $$
+);
+```
 
