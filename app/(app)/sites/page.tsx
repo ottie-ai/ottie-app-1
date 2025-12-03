@@ -527,6 +527,7 @@ export default function SitesPage() {
         workspace_id: currentWorkspace.id,
         creator_id: user.id,
         assigned_agent_id: assignedAgentId,
+        availability: 'available',
         title: formData.title.trim(),
         slug: finalSlug,
         description: formData.description.trim() || null,
