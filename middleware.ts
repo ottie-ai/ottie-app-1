@@ -370,10 +370,14 @@ export async function middleware(request: NextRequest) {
       const subdomain = hostnameWithoutPort.replace(`.${sitesDomain}`, '').split('.')[0]
       
       console.log('[Middleware] ottie.site subdomain detected:', subdomain)
-      console.log('[Middleware] Rewriting to path:', `/${subdomain}${pathname === '/' ? '' : pathname}`)
+      console.log('[Middleware] Original pathname:', pathname)
       
       // Rewrite to (z-sites)/[site] route
-      url.pathname = `/${subdomain}${pathname === '/' ? '' : pathname}`
+      // For root path, rewrite to /[site], for other paths, rewrite to /[site]/path
+      const rewritePath = pathname === '/' ? `/${subdomain}` : `/${subdomain}${pathname}`
+      console.log('[Middleware] Rewriting to path:', rewritePath)
+      
+      url.pathname = rewritePath
       response = NextResponse.rewrite(url)
       console.log('[Middleware] Rewrite complete, new pathname:', url.pathname)
     } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {

@@ -202,7 +202,7 @@ export default async function SitePage({
     redirect(redirectUrl.toString())
   }
   
-  const { site, config: siteConfig } = siteData
+  const { site: siteRecord, config: siteConfig } = siteData
   
   // TEMPORARY: For testing - just show the property title
   // This confirms that subdomain routing is working
@@ -218,9 +218,9 @@ export default async function SitePage({
       textAlign: 'center'
     }}>
       <div>
-        <h1>{site.title}</h1>
+        <h1>{siteRecord.title}</h1>
         <p style={{ fontSize: '1rem', marginTop: '1rem', opacity: 0.7 }}>
-          Slug: {site.slug} | Status: {site.status} | Domain: {site.domain}
+          Slug: {siteRecord.slug} | Status: {siteRecord.status} | Domain: {siteRecord.domain}
         </p>
       </div>
     </div>
