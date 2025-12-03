@@ -108,6 +108,12 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   const realIp = request.headers.get('x-real-ip')
   const cfConnectingIp = request.headers.get('cf-connecting-ip') // Cloudflare
   
+  // DEBUG: Log all IP headers
+  console.log('[ACCESS CONTROL] IP Headers:')
+  console.log('  - x-forwarded-for:', forwardedFor || '(not set)')
+  console.log('  - x-real-ip:', realIp || '(not set)')
+  console.log('  - cf-connecting-ip:', cfConnectingIp || '(not set)')
+  
   // x-forwarded-for can contain multiple IPs: "client, proxy1, proxy2"
   // The first IP is usually the original client IP
   const clientIp = forwardedFor?.split(',')[0]?.trim() ||
@@ -133,11 +139,17 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   
   // In restricted mode, if both lists are empty, deny all access (security)
   if (allowedDomains.length === 0 && allowedIps.length === 0) {
-    console.log('[ACCESS CONTROL] Denying access - both lists are empty')
+    console.log('[ACCESS CONTROL] Denying access - both lists are empty in restricted mode')
+    console.log('[ACCESS CONTROL] HINT: Set ALLOWED_DOMAINS or ALLOWED_IPS environment variables')
     return new NextResponse(
       JSON.stringify({ 
         error: 'Access denied',
-        message: 'This site is currently restricted. Please contact the administrator.'
+        message: 'This site is currently restricted. Please contact the administrator.',
+        debug: process.env.NODE_ENV === 'development' ? {
+          reason: 'Both ALLOWED_DOMAINS and ALLOWED_IPS are empty in restricted mode',
+          clientIp,
+          hostname: hostnameWithoutPort
+        } : undefined
       }),
       { 
         status: 403,
@@ -174,10 +186,18 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   
   // Access denied - return 403
   console.log('[ACCESS CONTROL] Denying access - no match found')
+  console.log('[ACCESS CONTROL] ❌ Access denied for:', { clientIp, hostname: hostnameWithoutPort })
   return new NextResponse(
     JSON.stringify({ 
       error: 'Access denied',
-      message: 'This site is currently restricted. Please contact the administrator.'
+      message: 'This site is currently restricted. Please contact the administrator.',
+      debug: process.env.NODE_ENV === 'development' ? {
+        reason: 'IP or domain not in allowed lists',
+        clientIp,
+        hostname: hostnameWithoutPort,
+        allowedDomains,
+        allowedIps
+      } : undefined
     }),
     { 
       status: 403,
@@ -189,15 +209,25 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
 }
 
 export async function middleware(request: NextRequest) {
-  // Check access control first (before routing)
+  const url = request.nextUrl.clone()
+  const pathname = url.pathname
+  const hostname = request.headers.get('host') || ''
+
+  // Skip access control for static assets and API routes
+  const isStaticAsset = pathname.match(/\.(ico|png|jpg|jpeg|svg|gif|webp|woff|woff2|ttf|otf)$/)
+  const isApiRoute = pathname.startsWith('/api/')
+  const isNextAsset = pathname.startsWith('/_next/')
+  
+  if (isStaticAsset || isApiRoute || isNextAsset) {
+    // For static assets, skip all middleware processing
+    return NextResponse.next()
+  }
+
+  // Check access control (after static asset check)
   const accessCheck = checkAccessControl(request)
   if (accessCheck) {
     return accessCheck
   }
-
-  const url = request.nextUrl.clone()
-  const pathname = url.pathname
-  const hostname = request.headers.get('host') || ''
 
   // Rate limiting for authentication endpoints
   const authEndpoints = ['/login', '/signup', '/forgot-password', '/reset-password']

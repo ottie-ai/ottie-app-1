@@ -189,6 +189,7 @@ export async function generateStaticParams() {
 }
 
 export const dynamicParams = true
+export const dynamic = 'force-dynamic' // Always render dynamically to support cookies/headers
 
 export default async function SitePage({
   params,
