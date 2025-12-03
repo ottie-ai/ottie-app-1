@@ -52,19 +52,55 @@ export async function getSite(siteId: string): Promise<Site | null> {
 }
 
 /**
+ * Get a site by slug and domain
+ * Used for public site routing (e.g., slug.ottie.site)
+ */
+export async function getSiteBySlug(
+  slug: string,
+  domain: string = 'ottie.site'
+): Promise<Site | null> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('sites')
+    .select('*')
+    .eq('slug', slug)
+    .eq('domain', domain)
+    .is('deleted_at', null)
+    .single()
+
+  if (error) {
+    console.error('Error fetching site by slug:', error)
+    return null
+  }
+
+  return data
+}
+
+/**
  * Create a new site
  */
 export async function createSite(site: SiteInsert): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
   
+  // Ensure domain is set (default to 'ottie.site')
+  const siteData: SiteInsert = {
+    ...site,
+    domain: site.domain || 'ottie.site',
+  }
+  
   const { data, error } = await supabase
     .from('sites')
-    .insert(site)
+    .insert(siteData)
     .select()
     .single()
 
   if (error) {
     console.error('Error creating site:', error)
+    // Check if error is due to duplicate slug
+    if (error.code === '23505') { // Unique violation
+      return { error: 'This slug is already taken. Please choose a different one.' }
+    }
     return { error: 'Failed to create site' }
   }
 

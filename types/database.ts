@@ -76,6 +76,7 @@ export interface Site {
   status: SiteStatus
   description: string | null
   config: Record<string, any> // jsonb (SiteConfig/PageConfig)
+  domain: string // Domain where site is hosted (default: 'ottie.site')
   custom_domain: string | null
   thumbnail_url: string | null
   views_count: number

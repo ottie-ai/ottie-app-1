@@ -5,6 +5,9 @@ import {
   Plus, 
   SlidersHorizontal,
   ChevronDown,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from 'lucide-react'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
@@ -24,7 +27,7 @@ import { SiteCard, type SiteCardData } from '@/components/workspace/site-card'
 import { useSites } from '@/hooks/use-sites'
 import { useAppData } from '@/contexts/app-context'
 import { formatDistanceToNow } from 'date-fns'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -47,6 +50,8 @@ import {
 import { createSite } from '@/lib/data/site-data'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import { checkSlugAvailability, generateAvailableSlug } from '@/lib/data/slug-availability'
+import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
 
 // Helper to convert Site to SiteCardData
 function siteToCardData(site: Site): SiteCardData {
@@ -136,6 +141,12 @@ export default function SitesPage() {
     description: '',
     status: 'draft' as 'draft' | 'published' | 'archived',
   })
+  const [slugAvailability, setSlugAvailability] = useState<{
+    checking: boolean
+    available: boolean | null
+    error: string | null
+  }>({ checking: false, available: null, error: null })
+  const slugCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Convert sites to card data and apply filters/sorting
   const displaySites = useMemo(() => {
@@ -175,22 +186,185 @@ export default function SitesPage() {
 
   // Generate slug from title
   const generateSlug = (title: string) => {
-    return title
+    let slug = title
       .toLowerCase()
       .trim()
       .replace(/[^\w\s-]/g, '') // Remove special characters
       .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
       .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    
+    // Ensure minimum length (pad if needed)
+    if (slug.length < 5) {
+      slug = slug + '-site'
+    }
+    
+    // Ensure maximum length (truncate if needed)
+    if (slug.length > 63) {
+      slug = slug.substring(0, 63)
+      // Remove trailing hyphen if truncation created one
+      slug = slug.replace(/-+$/, '')
+    }
+    
+    return slug
   }
 
-  // Handle title change and auto-generate slug
+  // Reserved words are imported from shared constant
+
+  // Validate slug format
+  const validateSlug = (slug: string): string | null => {
+    const trimmedSlug = slug.trim().toLowerCase()
+    
+    if (!trimmedSlug) {
+      return null // Empty is OK, will be validated on submit
+    }
+    
+    // Check minimum length
+    if (trimmedSlug.length < 5) {
+      return 'Slug must be at least 5 characters long'
+    }
+    
+    // Check maximum length (DNS subdomain limit)
+    if (trimmedSlug.length > 63) {
+      return 'Slug must be at most 63 characters long'
+    }
+    
+    // Check format: only lowercase letters, numbers, and hyphens
+    if (!/^[a-z0-9][a-z0-9-]{3,61}[a-z0-9]$/.test(trimmedSlug)) {
+      if (trimmedSlug[0] === '-' || trimmedSlug[trimmedSlug.length - 1] === '-') {
+        return 'Slug cannot start or end with a hyphen'
+      }
+      if (!/^[a-z0-9]/.test(trimmedSlug)) {
+        return 'Slug must start with a letter or number'
+      }
+      if (!/[a-z0-9]$/.test(trimmedSlug)) {
+        return 'Slug must end with a letter or number'
+      }
+      return 'Slug can only contain lowercase letters, numbers, and hyphens'
+    }
+    
+    // Check reserved words
+    if (RESERVED_SLUGS.includes(trimmedSlug)) {
+      return `"${trimmedSlug}" is a reserved word and cannot be used`
+    }
+    
+    return null
+  }
+
+  // Check slug availability with debounce
+  const checkSlug = async (slug: string) => {
+    const trimmedSlug = slug.trim()
+    
+    if (!trimmedSlug) {
+      setSlugAvailability({ checking: false, available: null, error: null })
+      return
+    }
+
+    // Validate slug format first
+    const validationError = validateSlug(trimmedSlug)
+    if (validationError) {
+      setSlugAvailability({ checking: false, available: false, error: validationError })
+      return
+    }
+
+    setSlugAvailability({ checking: true, available: null, error: null })
+
+    try {
+      const result = await checkSlugAvailability(trimmedSlug, 'ottie.site')
+      setSlugAvailability({ 
+        checking: false, 
+        available: result.available, 
+        error: result.error || null 
+      })
+      
+      // If there's a format/reserved word error, don't auto-generate
+      if (result.error) {
+        return
+      }
+      
+      // If not available (taken), auto-generate an available slug
+      if (!result.available) {
+        const availableSlug = await generateAvailableSlug(trimmedSlug, 'ottie.site')
+        setFormData(prev => ({ ...prev, slug: availableSlug }))
+        // Check the new slug
+        const newResult = await checkSlugAvailability(availableSlug, 'ottie.site')
+        setSlugAvailability({ 
+          checking: false, 
+          available: newResult.available, 
+          error: newResult.error || null 
+        })
+      }
+    } catch (error) {
+      console.error('Error checking slug availability:', error)
+      setSlugAvailability({ checking: false, available: null, error: null })
+    }
+  }
+
+  // Handle title change (don't generate slug yet)
   const handleTitleChange = (title: string) => {
     setFormData(prev => ({
       ...prev,
       title,
-      slug: prev.slug || generateSlug(title), // Only auto-generate if slug is empty
     }))
   }
+
+  // Handle title blur - generate slug when user finishes typing
+  const handleTitleBlur = async () => {
+    // Only generate slug if slug field is empty
+    if (!formData.slug.trim() && formData.title.trim()) {
+      const newSlug = generateSlug(formData.title)
+      setFormData(prev => ({ ...prev, slug: newSlug }))
+      
+      // Check availability of the generated slug
+      await checkSlug(newSlug)
+    }
+  }
+
+  // Handle slug change
+  const handleSlugChange = (slug: string) => {
+    setFormData(prev => ({ ...prev, slug }))
+    
+    // Clear previous timeout
+    if (slugCheckTimeoutRef.current) {
+      clearTimeout(slugCheckTimeoutRef.current)
+    }
+    
+    // Validate immediately for instant feedback
+    const validationError = validateSlug(slug)
+    if (validationError) {
+      setSlugAvailability({ checking: false, available: false, error: validationError })
+      return
+    }
+    
+    // Reset availability state if valid
+    setSlugAvailability({ checking: false, available: null, error: null })
+    
+    // Debounce slug check
+    slugCheckTimeoutRef.current = setTimeout(() => {
+      checkSlug(slug)
+    }, 500)
+  }
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (slugCheckTimeoutRef.current) {
+        clearTimeout(slugCheckTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isCreateModalOpen) {
+      setFormData({
+        title: '',
+        slug: '',
+        description: '',
+        status: 'draft',
+      })
+      setSlugAvailability({ checking: false, available: null, error: null })
+    }
+  }, [isCreateModalOpen])
 
   // Handle create site
   const handleCreateSite = async () => {
@@ -204,23 +378,39 @@ export default function SitesPage() {
       return
     }
 
-    if (!formData.slug.trim()) {
+    const trimmedSlug = formData.slug.trim()
+    
+    if (!trimmedSlug) {
       toast.error('Slug is required')
+      return
+    }
+
+    // Validate slug length
+    const validationError = validateSlug(trimmedSlug)
+    if (validationError) {
+      toast.error(validationError)
+      setSlugAvailability(prev => ({ ...prev, error: validationError }))
       return
     }
 
     setIsCreating(true)
 
     try {
+      // Ensure slug is available before creating
+      const finalSlug = slugAvailability.available 
+        ? trimmedSlug 
+        : await generateAvailableSlug(trimmedSlug, 'ottie.site')
+
       const siteData: SiteInsert = {
         workspace_id: currentWorkspace.id,
         creator_id: user.id,
         assigned_agent_id: null, // Can be assigned later
         title: formData.title.trim(),
-        slug: formData.slug.trim(),
+        slug: finalSlug,
         description: formData.description.trim() || null,
         status: formData.status,
         config: {}, // Empty config for new site
+        domain: 'ottie.site', // Default domain for all sites
         custom_domain: null,
         metadata: {},
         thumbnail_url: null,
@@ -433,22 +623,52 @@ export default function SitesPage() {
                 placeholder="e.g., 21 Maine Street"
                 value={formData.title}
                 onChange={(e) => handleTitleChange(e.target.value)}
+                onBlur={handleTitleBlur}
                 disabled={isCreating}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="slug">Slug *</Label>
-              <Input
-                id="slug"
-                placeholder="e.g., 21-maine-street"
-                value={formData.slug}
-                onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
-                disabled={isCreating}
-              />
-              <p className="text-xs text-muted-foreground">
-                URL-friendly identifier for your site
-              </p>
+              <div className="relative">
+                <Input
+                  id="slug"
+                  placeholder="e.g., 21-maine-street"
+                  value={formData.slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  disabled={isCreating}
+                  className={slugAvailability.checking ? 'pr-10' : slugAvailability.available === false ? 'pr-10 border-destructive' : slugAvailability.available === true ? 'pr-10 border-green-500' : 'pr-10'}
+                />
+                {slugAvailability.checking && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
+                )}
+                {!slugAvailability.checking && slugAvailability.available === true && (
+                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-green-500" />
+                )}
+                {!slugAvailability.checking && slugAvailability.available === false && (
+                  <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-destructive" />
+                )}
+              </div>
+              <div className="space-y-1">
+                {slugAvailability.checking && (
+                  <p className="text-xs text-muted-foreground">Checking availability...</p>
+                )}
+                {!slugAvailability.checking && slugAvailability.error && (
+                  <p className="text-xs text-destructive">
+                    ✗ {slugAvailability.error}
+                  </p>
+                )}
+                {!slugAvailability.checking && !slugAvailability.error && slugAvailability.available === true && (
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    ✓ Available {formData.slug}.ottie.site
+                  </p>
+                )}
+                {!slugAvailability.checking && !slugAvailability.error && slugAvailability.available === false && (
+                  <p className="text-xs text-destructive">
+                    ✗ This slug is already taken. We'll suggest an available one.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -494,7 +714,14 @@ export default function SitesPage() {
             </Button>
             <Button
               onClick={handleCreateSite}
-              disabled={isCreating || !formData.title.trim() || !formData.slug.trim()}
+              disabled={
+                isCreating || 
+                !formData.title.trim() || 
+                !formData.slug.trim() || 
+                formData.slug.trim().length < 5 ||
+                slugAvailability.available === false ||
+                !!slugAvailability.error
+              }
             >
               {isCreating ? 'Creating...' : 'Create Site'}
             </Button>

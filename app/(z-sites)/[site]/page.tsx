@@ -85,36 +85,34 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
  */
 
 /**
- * Fetch site configuration from database
- * TODO: Implement when database is ready
+ * Fetch site configuration from database by slug
+ * The slug comes from the subdomain (e.g., "231-keaton-street" from "231-keaton-street.ottie.site")
  */
-async function getSiteConfig(subdomain: string): Promise<PageConfig | null> {
-  // TODO: Uncomment when database is ready
-  /*
+async function getSiteConfig(slug: string): Promise<PageConfig | null> {
   const supabase = await createClient()
   
-  const { data: siteConfig, error } = await supabase
+  // Fetch site by slug on ottie.site domain
+  // Sites can be published, draft, or archived - all are accessible via subdomain
+  const { data: site, error } = await supabase
     .from('sites')
     .select('*')
-    .or(`subdomain.eq.${subdomain},custom_domain.eq.${subdomain}`)
-    .eq('published', true)
+    .eq('slug', slug)
+    .eq('domain', 'ottie.site')
+    .is('deleted_at', null)
     .single()
   
-  if (error || !siteConfig) {
+  if (error || !site) {
     return null
   }
   
-  return {
-    theme: siteConfig.theme_json as ThemeConfig,
-    sections: siteConfig.content_json as Section[],
-    // CTA is stored in theme config
-    ctaType: (siteConfig.theme_json as ThemeConfig).ctaType || 'none',
-    ctaValue: (siteConfig.theme_json as ThemeConfig).ctaValue || '',
-  }
-  */
+  // Extract config (PageConfig) from site.config
+  const config = site.config as PageConfig | null
   
-  // Placeholder: Return null to show "not found" message
-  return null
+  if (!config) {
+    return null
+  }
+  
+  return config
 }
 
 /**
@@ -151,41 +149,45 @@ export default async function SitePage({
   // Fetch site configuration from database
   const siteConfig = await getSiteConfig(site)
   
-  // If site doesn't exist or isn't published, show 404
+  // If site doesn't exist, show 404
   if (!siteConfig) {
     notFound()
   }
   
-  // TODO: When database is ready, replace this placeholder with actual rendering code
-  // See the implementation guide in the component comments above
+  // Extract theme and sections from config
+  const { theme, sections } = siteConfig
+  const ctaType = theme?.ctaType || 'none'
+  const ctaValue = theme?.ctaValue || ''
+  
+  // Render the site
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
-      <div className="text-center space-y-6 max-w-2xl px-4">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold">Site Ready for Database Integration</h1>
-          <p className="text-muted-foreground text-lg">
-            Subdomain: <code className="bg-muted px-3 py-1 rounded-md font-mono">{site}</code>
-        </p>
-        </div>
-        
-        <div className="bg-muted/50 rounded-lg p-6 space-y-4 text-left">
-          <h2 className="font-semibold text-lg">Next Steps:</h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Create <code className="bg-background px-2 py-0.5 rounded">sites</code> table in Supabase</li>
-            <li>Add columns: <code className="bg-background px-2 py-0.5 rounded">subdomain</code>, <code className="bg-background px-2 py-0.5 rounded">theme_json</code>, <code className="bg-background px-2 py-0.5 rounded">content_json</code></li>
-            <li>Uncomment the database fetch code in <code className="bg-background px-2 py-0.5 rounded">getSiteConfig()</code></li>
-            <li>Uncomment the rendering code in the component</li>
-            <li>Test with a real subdomain (e.g., <code className="bg-background px-2 py-0.5 rounded">jozko.ottie.com</code>)</li>
-          </ol>
-        </div>
-        
-        <div className="pt-4">
-          <p className="text-xs text-muted-foreground">
-            This page will automatically render the published site once database is connected.
-            No rebuild needed - changes appear instantly when saved in the builder!
-          </p>
-        </div>
+    <>
+      <FontLoader 
+        fontFamily={theme?.fontFamily} 
+        headingFontFamily={theme?.headingFontFamily} 
+      />
+      <FontTransition />
+      <div 
+        style={{ 
+          fontFamily: theme?.fontFamily, 
+          backgroundColor: theme?.backgroundColor, 
+          color: theme?.textColor 
+        }}
+      >
+        {sections?.map((section: Section) => (
+          <SectionRenderer 
+            key={section.id} 
+            section={section} 
+            theme={theme || {}} 
+            colorScheme={section.colorScheme || 'light'} 
+          />
+        ))}
       </div>
-    </div>
+      <FloatingCTAButton 
+        type={ctaType} 
+        value={ctaValue} 
+        colorScheme={sections?.[0]?.colorScheme || 'light'} 
+      />
+    </>
   )
 }
