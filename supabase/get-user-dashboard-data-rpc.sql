@@ -49,6 +49,7 @@ create or replace function public.get_user_dashboard_data(
 returns jsonb
 language plpgsql
 security definer
+set search_path to ''
 as $$
 declare
   v_profile jsonb;

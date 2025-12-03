@@ -16,7 +16,7 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role IN ('owner', 'admin')
   )
 );
@@ -31,12 +31,12 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role = 'agent'
   )
   AND (
-    sites.creator_id = auth.uid()
-    OR sites.assigned_agent_id = auth.uid()
+    sites.creator_id = (select auth.uid())
+    OR sites.assigned_agent_id = (select auth.uid())
   )
 );
 
@@ -53,7 +53,7 @@ WITH CHECK (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
   )
 );
 
@@ -71,7 +71,7 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role IN ('owner', 'admin')
   )
 );
@@ -86,12 +86,12 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role = 'agent'
   )
   AND (
-    sites.creator_id = auth.uid()
-    OR sites.assigned_agent_id = auth.uid()
+    sites.creator_id = (select auth.uid())
+    OR sites.assigned_agent_id = (select auth.uid())
   )
 );
 
@@ -108,7 +108,7 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role IN ('owner', 'admin')
   )
 )
@@ -126,12 +126,12 @@ USING (
     SELECT 1
     FROM memberships m
     WHERE m.workspace_id = sites.workspace_id
-      AND m.user_id = auth.uid()
+      AND m.user_id = (select auth.uid())
       AND m.role = 'agent'
   )
   AND (
-    sites.creator_id = auth.uid()
-    OR sites.assigned_agent_id = auth.uid()
+    sites.creator_id = (select auth.uid())
+    OR sites.assigned_agent_id = (select auth.uid())
   )
 )
 WITH CHECK (
@@ -143,6 +143,7 @@ WITH CHECK (
 -- Performance Notes
 -- ==========================================
 -- These policies use EXISTS subqueries which are optimized by PostgreSQL
+-- auth.uid() is wrapped in (select auth.uid()) to ensure it's evaluated once per query, not per row
 -- Make sure to run add-performance-indexes.sql for optimal performance
 -- Indexes on: memberships(workspace_id, user_id), sites(workspace_id), sites(creator_id), sites(assigned_agent_id)
 

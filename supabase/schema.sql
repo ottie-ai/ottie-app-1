@@ -35,6 +35,7 @@ create or replace function public.anonymize_auth_user(user_uuid uuid, anonymized
 returns void
 language plpgsql
 security definer
+set search_path to ''
 as $$
 begin
   -- Anonymize email in auth.users so user can re-register with original email
@@ -47,12 +48,32 @@ begin
 end;
 $$;
 
+-- Function to delete auth.users (hard delete)
+-- This requires service role key to work - call from server action with SUPABASE_SERVICE_ROLE_KEY
+-- Note: This is a hard delete, not a soft delete. Use anonymize_auth_user for soft delete.
+create or replace function public.delete_auth_user(user_uuid uuid)
+returns void
+language plpgsql
+security definer
+set search_path to ''
+as $$
+begin
+  -- This requires service role key to work
+  -- Call from server action with SUPABASE_SERVICE_ROLE_KEY
+  delete from auth.users where id = user_uuid;
+end;
+$$;
+
 -- Trigger: Auto-create profile
 -- Creates a new profile when a new auth.users record is created
 -- Note: When user deletes account, auth.users is deleted, which cascades to profile
 -- When user re-registers, a new auth.users is created with a NEW ID, so a new profile is created
 create function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path to ''
+as $$
 begin
   -- Always create a new profile for new auth.users
   -- Since auth.users was deleted (cascade deleted profile), this is always a new user
@@ -69,7 +90,7 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -78,7 +99,11 @@ create trigger on_auth_user_created
 -- Trigger: Auto-create workspace and membership after profile creation
 -- This creates a workspace for every new user (single-user plan by default)
 create or replace function public.handle_new_profile()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path to ''
+as $$
 declare
   workspace_name text;
   workspace_slug text;
@@ -135,7 +160,7 @@ begin
   raise notice 'handle_new_profile: Successfully completed for user_id: %', new.id;
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 create trigger on_profile_created
   after insert on public.profiles
@@ -255,46 +280,48 @@ alter table public.integrations enable row level security;
 
 -- PROFILES
 create policy "Users can view own profile" on profiles 
-  for select using (auth.uid() = id AND deleted_at IS NULL);
+  for select using ((select auth.uid()) = id AND deleted_at IS NULL);
 create policy "Users can update own profile" on profiles 
-  for update using (auth.uid() = id AND deleted_at IS NULL);
-create policy "Users can soft delete own profile" on profiles 
-  for update using (auth.uid() = id);
+  for update using ((select auth.uid()) = id)
+  with check ((select auth.uid()) = id);
+create policy "Users can delete own profile" on profiles 
+  for delete using ((select auth.uid()) = id);
+create policy "Workspace admins can view team member profiles" on profiles
+  for select using (
+    (select auth.uid()) = id 
+    OR (
+      deleted_at IS NULL 
+      AND EXISTS (
+        SELECT 1
+        FROM memberships m1
+        JOIN memberships m2 ON m1.workspace_id = m2.workspace_id
+        WHERE m1.user_id = (select auth.uid())
+          AND m1.role IN ('owner', 'admin')
+          AND m2.user_id = profiles.id
+      )
+    )
+  );
 
 
 
 -- WORKSPACES (Soft Delete Filter!)
 create policy "Access workspaces via membership" on workspaces
   for select using (
-    deleted_at is null AND -- Nevracať zmazané
-    exists (
-      select 1 from memberships
-      where workspace_id = workspaces.id
-      and user_id = auth.uid()
+    deleted_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM memberships
+      WHERE workspace_id = workspaces.id
+        AND user_id = (select auth.uid())
     )
   );
 
--- Allow security definer functions to create workspaces (for triggers)
--- The trigger function runs with security definer, so it has elevated privileges
--- This policy allows the trigger to create workspaces during user registration
-create policy "System can create workspaces" on workspaces
-  for insert with check (true);
-
--- Allow security definer functions to update workspaces (for system operations)
-create policy "System can update workspaces" on workspaces
-  for update using (true) with check (true);
-
--- Allow security definer functions to delete workspaces (for system operations)
-create policy "System can delete workspaces" on workspaces
-  for delete using (true);
-
 create policy "Owners can update workspace" on workspaces
   for update using (
-    exists (
-      select 1 from memberships
-      where workspace_id = workspaces.id
-      and user_id = auth.uid()
-      and role = 'owner'
+    EXISTS (
+      SELECT 1 FROM memberships
+      WHERE workspace_id = workspaces.id
+        AND user_id = (select auth.uid())
+        AND role = 'owner'
     )
   );
 
@@ -303,54 +330,67 @@ create policy "Owners can update workspace" on workspaces
 -- MEMBERSHIPS
 -- Fix: Use a security definer function to avoid recursion
 create or replace function public.user_has_workspace_access(ws_id uuid)
-returns boolean as $$
+returns boolean
+language sql
+security definer
+set search_path to ''
+as $$
   select exists (
     select 1 from public.memberships
     where workspace_id = ws_id
-    and user_id = auth.uid()
+    and user_id = (select auth.uid())
   );
-$$ language sql security definer;
+$$;
 
 create policy "View team members" on memberships
   for select using (
     public.user_has_workspace_access(workspace_id)
   );
 
--- Allow security definer functions to create memberships (for triggers)
--- The trigger function runs with security definer, so it has elevated privileges
--- This policy allows the trigger to create memberships during user registration
-create policy "System can create memberships" on memberships
-  for insert with check (true);
+create policy "Owners/admins can create memberships" on memberships
+  for insert with check (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.workspace_id = m.workspace_id
+        AND m.user_id = (select auth.uid())
+        AND m.role IN ('owner', 'admin')
+    )
+    OR NOT EXISTS (
+      SELECT 1 FROM memberships memberships_1
+      WHERE memberships_1.user_id = (select auth.uid())
+    )
+  );
 
--- Allow security definer functions to update memberships (for system operations)
-create policy "System can update memberships" on memberships
-  for update using (true) with check (true);
+create policy "Owners/admins can update memberships" on memberships
+  for update using (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.workspace_id = memberships.workspace_id
+        AND m.user_id = (select auth.uid())
+        AND m.role IN ('owner', 'admin')
+    )
+  );
 
--- Allow security definer functions to delete memberships (for system operations)
-create policy "System can delete memberships" on memberships
-  for delete using (true);
+create policy "Owners/admins can delete memberships" on memberships
+  for delete using (
+    EXISTS (
+      SELECT 1 FROM memberships m
+      WHERE m.workspace_id = memberships.workspace_id
+        AND m.user_id = (select auth.uid())
+        AND m.role IN ('owner', 'admin')
+    )
+    OR user_id = (select auth.uid())
+  );
 
 -- Update last_active (Každý môže updatovať svoj timestamp)
 create policy "Update own activity" on memberships
-  for update using (user_id = auth.uid());
+  for update using (user_id = (select auth.uid()));
 
 
 
--- SITES (Soft Delete Filter!)
-create policy "Access sites based on role" on sites
-  for all using (
-    deleted_at is null AND -- Nevracať zmazané (pokiaľ to nie je Trash Bin view)
-    exists (
-      select 1 from memberships m
-      where m.workspace_id = sites.workspace_id
-      and m.user_id = auth.uid()
-      and (
-         m.role in ('owner', 'admin')
-         or
-         (sites.assigned_agent_id = auth.uid() or sites.creator_id = auth.uid())
-      )
-    )
-  );
+-- SITES
+-- Note: Sites policies are defined in sites-rls-policies.sql
+-- Run that file separately after schema.sql
 
 
 
@@ -361,7 +401,7 @@ create policy "Admins manage invitations" on invitations
       select 1 from memberships m
       join workspaces w on w.id = m.workspace_id
       where m.workspace_id = invitations.workspace_id
-      and m.user_id = auth.uid()
+      and m.user_id = (select auth.uid())
       and m.role in ('owner', 'admin')
       and w.plan in ('agency', 'enterprise')
     )
@@ -374,17 +414,25 @@ create policy "Admins manage invitations" on invitations
 -- 2. User is workspace owner/admin
 create policy "Read invitation by token" on invitations 
   for select using (
-    auth.jwt() ->> 'email' = email 
+    ((select auth.jwt()) ->> 'email') = email 
     OR EXISTS (
       SELECT 1 FROM memberships m
       WHERE m.workspace_id = invitations.workspace_id
-      AND m.user_id = auth.uid()
-      AND m.role IN ('owner', 'admin')
+        AND m.user_id = (select auth.uid())
+        AND m.role IN ('owner', 'admin')
     )
   );
 
--- Migration: If you already have the old policy, run:
--- DROP POLICY IF EXISTS "Public read invite" ON invitations;
+create policy "Users can accept own invitation" on invitations
+  for update using (
+    ((select auth.jwt()) ->> 'email') = email
+    AND status = 'pending'
+    AND expires_at > now()
+  )
+  with check (
+    status = 'accepted'
+    AND ((select auth.jwt()) ->> 'email') = email
+  );
 
 
 
@@ -394,7 +442,7 @@ create policy "Admins manage integrations" on integrations
     exists (
       select 1 from memberships m
       where m.workspace_id = integrations.workspace_id
-      and m.user_id = auth.uid()
+      and m.user_id = (select auth.uid())
       and m.role in ('owner', 'admin')
     )
   );
