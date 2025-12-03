@@ -384,6 +384,7 @@ export async function duplicateSite(siteId: string): Promise<{ success: true; si
     workspace_id: originalSite.workspace_id,
     creator_id: originalSite.creator_id,
     assigned_agent_id: originalSite.assigned_agent_id,
+    published_at: null, // Reset published_at for duplicate
     title: `${originalSite.title} (Copy)`,
     slug: newSlug,
     status: 'draft', // Always draft
