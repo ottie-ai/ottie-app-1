@@ -8,6 +8,11 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Filter,
 } from 'lucide-react'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
@@ -30,6 +35,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -130,7 +136,7 @@ export default function SitesPage() {
   const { user } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft' | 'archived'>('all')
-  const [sortBy, setSortBy] = useState<'lastEdited' | 'nameAsc' | 'nameDesc' | 'views'>('lastEdited')
+  const [sortBy, setSortBy] = useState<'lastEdited' | 'nameAsc' | 'nameDesc' | 'viewsDesc' | 'viewsAsc'>('lastEdited')
   
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -172,8 +178,11 @@ export default function SitesPage() {
       case 'nameDesc':
         filtered.sort((a, b) => b.title.localeCompare(a.title))
         break
-      case 'views':
+      case 'viewsDesc':
         filtered.sort((a, b) => (b.views || 0) - (a.views || 0))
+        break
+      case 'viewsAsc':
+        filtered.sort((a, b) => (a.views || 0) - (b.views || 0))
         break
       case 'lastEdited':
       default:
@@ -464,46 +473,171 @@ export default function SitesPage() {
       <main className="flex-1 p-6 space-y-6 overflow-y-auto">
         {/* Filters & Search - Only show if there are sites */}
         {sites.length > 0 && (
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative w-full sm:w-80">
-            <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-            <Input 
-              placeholder="Search sites..." 
-              className="pl-9"
+        <div className="space-y-4">
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="relative w-full sm:w-80">
+              <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input 
+                placeholder="Search sites..." 
+                className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-            />
+              />
+            </div>
+            <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Filter className="size-4" />
+                    Status
+                    {statusFilter !== 'all' && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {statusFilter}
+                      </Badge>
+                    )}
+                    <ChevronDown className="size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem 
+                    onClick={() => setStatusFilter('all')}
+                    className={statusFilter === 'all' ? 'bg-accent' : ''}
+                  >
+                    All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setStatusFilter('published')}
+                    className={statusFilter === 'published' ? 'bg-accent' : ''}
+                  >
+                    Published
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setStatusFilter('draft')}
+                    className={statusFilter === 'draft' ? 'bg-accent' : ''}
+                  >
+                    Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setStatusFilter('archived')}
+                    className={statusFilter === 'archived' ? 'bg-accent' : ''}
+                  >
+                    Archived
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <ArrowUpDown className="size-4" />
+                    Sort
+                    {sortBy !== 'lastEdited' && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {sortBy === 'nameAsc' ? 'A-Z' : sortBy === 'nameDesc' ? 'Z-A' : sortBy === 'viewsDesc' ? 'Views ↓' : 'Views ↑'}
+                      </Badge>
+                    )}
+                    <ChevronDown className="size-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('lastEdited')}
+                    className={sortBy === 'lastEdited' ? 'bg-accent' : ''}
+                  >
+                    <ArrowDown className="size-4 mr-2" />
+                    Last edited
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('nameAsc')}
+                    className={sortBy === 'nameAsc' ? 'bg-accent' : ''}
+                  >
+                    <ArrowUp className="size-4 mr-2" />
+                    Name A-Z
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('nameDesc')}
+                    className={sortBy === 'nameDesc' ? 'bg-accent' : ''}
+                  >
+                    <ArrowDown className="size-4 mr-2" />
+                    Name Z-A
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('viewsDesc')}
+                    className={sortBy === 'viewsDesc' ? 'bg-accent' : ''}
+                  >
+                    <ArrowDown className="size-4 mr-2" />
+                    Most views
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('viewsAsc')}
+                    className={sortBy === 'viewsAsc' ? 'bg-accent' : ''}
+                  >
+                    <ArrowUp className="size-4 mr-2" />
+                    Least views
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  Status
-                  <ChevronDown className="size-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setStatusFilter('all')}>All</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter('published')}>Published</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter('draft')}>Draft</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter('archived')}>Archived</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  Sort by
-                  <ChevronDown className="size-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setSortBy('lastEdited')}>Last edited</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('nameAsc')}>Name A-Z</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('nameDesc')}>Name Z-A</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortBy('views')}>Most views</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+
+          {/* Active Filters Bar */}
+          {(searchQuery || statusFilter !== 'all' || sortBy !== 'lastEdited') && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {searchQuery && (
+                <Badge variant="secondary" className="gap-1.5">
+                  Search: "{searchQuery}"
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              )}
+              {statusFilter !== 'all' && (
+                <Badge variant="secondary" className="gap-1.5 capitalize">
+                  Status: {statusFilter}
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              )}
+              {sortBy !== 'lastEdited' && (
+                <Badge variant="secondary" className="gap-1.5">
+                  Sort: {sortBy === 'nameAsc' ? 'A-Z' : sortBy === 'nameDesc' ? 'Z-A' : sortBy === 'viewsDesc' ? 'Views ↓' : 'Views ↑'}
+                  <button
+                    onClick={() => setSortBy('lastEdited')}
+                    className="ml-1 hover:bg-muted rounded-full p-0.5"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  setSearchQuery('')
+                  setStatusFilter('all')
+                  setSortBy('lastEdited')
+                }}
+              >
+                Clear all
+              </Button>
+            </div>
+          )}
+
+          {/* Results Count */}
+          {displaySites.length > 0 && (
+            <div className="text-sm text-muted-foreground">
+              Showing {displaySites.length} of {sites.length} site{sites.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
         )}
 
