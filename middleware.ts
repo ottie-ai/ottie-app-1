@@ -326,27 +326,27 @@ export async function middleware(request: NextRequest) {
   console.log('[Middleware] Is ottie.site domain:', isOttieSiteDomain)
   console.log('[Middleware] Sites domain:', sitesDomain)
   
-  // Redirect www.ottie.com to ottie.com (remove www prefix from root domain)
-  // MUST be before root domain check to redirect www before blocking
-  if (!isLocalhost && hostnameWithoutPort === `www.${rootDomainWithoutPort}`) {
-    console.log('[Middleware] Redirecting www.ottie.com to ottie.com')
-    const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
-    redirectUrl.search = request.nextUrl.search // Preserve query params
-    return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
-  }
+  // NOTE: Vercel redirects ottie.com → www.ottie.com (HTTP 307)
+  // So all requests to ottie.com come to middleware as www.ottie.com
+  // We need to block site routes on BOTH ottie.com AND www.ottie.com
   
-  // Redirect ottie.site root (without subdomain) to ottie.com
+  // Redirect ottie.site root (without subdomain) to www.ottie.com
+  // (Vercel redirects ottie.site → www.ottie.site, but we redirect to ottie.com)
   if (!isLocalhost && hostnameWithoutPort === sitesDomain) {
-    console.log('[Middleware] Redirecting ottie.site root to ottie.com')
-    const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
+    console.log('[Middleware] Redirecting ottie.site root to www.ottie.com')
+    const redirectUrl = new URL(pathname, `https://www.${rootDomainWithoutPort}`)
     redirectUrl.search = request.nextUrl.search // Preserve query params
     return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
   }
   
-  // CRITICAL: Block any site routes on ottie.com (root domain)
+  // CRITICAL: Block any site routes on ottie.com AND www.ottie.com (root domain)
   // Sites should ONLY be accessible on ottie.site subdomains
   // Marketing routes (/, /privacy, /terms) are ALWAYS publicly accessible on ottie.com
-  const isRootDomain = !isLocalhost && hostnameWithoutPort === rootDomainWithoutPort
+  // NOTE: Vercel redirects ottie.com → www.ottie.com, so we check for both
+  const isRootDomain = !isLocalhost && (
+    hostnameWithoutPort === rootDomainWithoutPort || 
+    hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+  )
   
   if (isRootDomain) {
     // Marketing routes that are always publicly accessible
