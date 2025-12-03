@@ -79,9 +79,15 @@ export async function getSiteBySlug(
 
 /**
  * Create a new site
+ * Validates that published sites have assigned_agent_id
  */
 export async function createSite(site: SiteInsert): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
+  
+  // Validate: Cannot publish site without assigned agent
+  if (site.status === 'published' && !site.assigned_agent_id) {
+    return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+  }
   
   // Ensure domain is set (default to 'ottie.site')
   const siteData: SiteInsert = {
@@ -101,6 +107,11 @@ export async function createSite(site: SiteInsert): Promise<{ success: true; sit
     if (error.code === '23505') { // Unique violation
       return { error: 'This slug is already taken. Please choose a different one.' }
     }
+    // Check if it's the constraint violation
+    if (error.message?.includes('cannot be published without an assigned agent') || 
+        error.message?.includes('sites_published_must_be_assigned')) {
+      return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+    }
     return { error: 'Failed to create site' }
   }
 
@@ -116,6 +127,24 @@ export async function updateSite(
 ): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
   
+  // Validate: Cannot publish site without assigned agent
+  if (updates.status === 'published') {
+    // Get current site to check assigned_agent_id
+    const { data: currentSite } = await supabase
+      .from('sites')
+      .select('assigned_agent_id')
+      .eq('id', siteId)
+      .single()
+    
+    const assignedAgentId = updates.assigned_agent_id !== undefined 
+      ? updates.assigned_agent_id 
+      : currentSite?.assigned_agent_id
+    
+    if (!assignedAgentId) {
+      return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+    }
+  }
+  
   const { data, error } = await supabase
     .from('sites')
     .update({
@@ -128,6 +157,11 @@ export async function updateSite(
 
   if (error) {
     console.error('Error updating site:', error)
+    // Check if it's the constraint violation
+    if (error.message?.includes('cannot be published without an assigned agent') || 
+        error.message?.includes('sites_published_must_be_assigned')) {
+      return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+    }
     return { error: 'Failed to update site' }
   }
 
@@ -138,117 +172,62 @@ export async function updateSite(
  * Soft delete a site
  */
 export async function deleteSite(siteId: string): Promise<{ success: true } | { error: string }> {
+  console.log('🚀 deleteSite called with siteId:', siteId)
   const supabase = await createClient()
   
-  // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) {
-    console.error('❌ Error getting user:', userError)
-    return { error: 'You must be logged in to delete a site' }
-  }
-
-  // First check if site exists
-  const { data: site, error: fetchError } = await supabase
-    .from('sites')
-    .select('id, workspace_id, deleted_at, creator_id, assigned_agent_id')
-    .eq('id', siteId)
-    .single()
-
-  if (fetchError || !site) {
-    console.error('❌ Error fetching site for delete:', fetchError)
-    return { error: 'Site not found or access denied' }
-  }
-
-  // Check if already deleted
-  if (site.deleted_at) {
-    return { error: 'Site is already deleted' }
-  }
-
-  // Check user's membership
-  const { data: membership, error: membershipError } = await supabase
-    .from('memberships')
-    .select('role')
-    .eq('workspace_id', site.workspace_id)
-    .eq('user_id', user.id)
-    .single()
-
-  console.log('🔍 Delete attempt debug:', {
-    siteId,
-    userId: user.id,
-    userEmail: user.email,
-    workspaceId: site.workspace_id,
-    membership: membership?.role,
-    membershipError: membershipError?.message,
-    creatorId: site.creator_id,
-    assignedAgentId: site.assigned_agent_id,
-    isCreator: site.creator_id === user.id,
-    isAssigned: site.assigned_agent_id === user.id,
-    canDeleteAsOwner: membership?.role === 'owner' || membership?.role === 'admin',
-    canDeleteAsAgent: membership?.role === 'agent' && (site.creator_id === user.id || site.assigned_agent_id === user.id)
-  })
-
-  if (membershipError || !membership) {
-    console.error('❌ Error fetching membership:', membershipError)
-    return { error: 'You are not a member of this workspace' }
-  }
-
-  // Check permissions
-  const isOwnerOrAdmin = membership.role === 'owner' || membership.role === 'admin'
-  const isCreatorOrAssigned = site.creator_id === user.id || site.assigned_agent_id === user.id
-  const canDelete = isOwnerOrAdmin || (membership.role === 'agent' && isCreatorOrAssigned)
-
-  if (!canDelete) {
-    console.error('❌ Permission check failed:', {
-      role: membership.role,
-      isOwnerOrAdmin,
-      isCreatorOrAssigned,
-      canDelete
-    })
-    return { error: `You do not have permission to delete this site. Your role: ${membership.role}` }
-  }
-
-  // Perform soft delete - no .select() to avoid SELECT policy check on result
-  // After soft delete, the row won't pass SELECT policy (deleted_at IS NULL check)
-  // If UPDATE succeeds without error, it means RLS policies allowed it and row was updated
-  const { error } = await supabase
-    .from('sites')
-    .update({ deleted_at: new Date().toISOString() })
-    .eq('id', siteId)
-    .is('deleted_at', null)
-
+  // Use RPC function to soft delete (bypasses RLS issues)
+  const { data, error } = await supabase.rpc('soft_delete_site', { site_id: siteId })
+  
+  console.log('🔍 soft_delete_site RPC result:', { data, error })
+  
   if (error) {
-    console.error('❌ Error deleting site:', error)
-    console.error('Error details:', {
-      code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint
-    })
-    // Return user-facing error message
-    if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy') || error.message?.includes('violates row-level security')) {
-      return { error: 'You do not have permission to delete this site' }
-    }
-    return { error: 'Failed to delete site' }
+    console.error('❌ Error calling soft_delete_site RPC:', error)
+    return { error: error.message || 'Failed to delete site' }
   }
-
-  // If UPDATE succeeded without error, RLS policies allowed it and row was updated
-  // We can't verify with SELECT because deleted rows don't pass SELECT policy
-  console.log('✅ Site deleted successfully:', siteId)
-  return { success: true }
+  
+  // Check RPC response
+  if (data && typeof data === 'object') {
+    if ('error' in data && data.error) {
+      console.error('❌ RPC returned error:', data.error)
+      return { error: data.error as string }
+    }
+    if ('success' in data && data.success) {
+      console.log('✅ Site deleted successfully:', siteId)
+      return { success: true }
+    }
+  }
+  
+  console.error('❌ Unexpected RPC response:', data)
+  return { error: 'Failed to delete site' }
 }
 
 /**
  * Publish a site (sets status to published and records published_at)
+ * Validates that site has assigned_agent_id before publishing
  */
 export async function publishSite(siteId: string): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
   
-  // Get current site to check if it's already published
-  const { data: currentSite } = await supabase
+  // Get current site to check if it can be published
+  const { data: currentSite, error: fetchError } = await supabase
     .from('sites')
-    .select('published_at')
+    .select('assigned_agent_id, status, published_at')
     .eq('id', siteId)
     .single()
+
+  if (fetchError || !currentSite) {
+    return { error: 'Site not found' }
+  }
+
+  // Validate: Cannot publish site without assigned agent
+  if (!currentSite.assigned_agent_id) {
+    return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+  }
+
+  // If already published, just return success
+  if (currentSite.status === 'published') {
+    return { error: 'Site is already published' }
+  }
 
   const updates: SiteUpdate = {
     status: 'published',
@@ -256,7 +235,7 @@ export async function publishSite(siteId: string): Promise<{ success: true; site
   }
 
   // Only set published_at if it's the first time publishing
-  if (!currentSite?.published_at) {
+  if (!currentSite.published_at) {
     updates.published_at = new Date().toISOString()
   }
 
@@ -269,6 +248,11 @@ export async function publishSite(siteId: string): Promise<{ success: true; site
 
   if (error) {
     console.error('Error publishing site:', error)
+    // Check if it's the constraint violation
+    if (error.message?.includes('cannot be published without an assigned agent') || 
+        error.message?.includes('sites_published_must_be_assigned')) {
+      return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+    }
     return { error: 'Failed to publish site' }
   }
 

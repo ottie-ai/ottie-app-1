@@ -48,6 +48,7 @@ export interface SiteCardData {
   title: string
   slug: string
   status: 'published' | 'draft' | 'archived'
+  availability?: 'available' | 'under_offer' | 'reserved' | 'sold' | 'off_market'
   views?: number
   lastEdited?: string
   thumbnail: string | null
@@ -74,6 +75,24 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isReassigning, setIsReassigning] = useState(false)
+  const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false)
+
+  // Helper function to handle unassign
+  const handleUnassignSite = async (agentId: string | null) => {
+    if (isReassigning) return
+    
+    setIsReassigning(true)
+    const result = await handleReassignSite(site.id, agentId)
+    setIsReassigning(false)
+    setIsMenuOpen(false)
+    
+    if ('error' in result) {
+      toast.error(result.error)
+    } else {
+      toastSuccess('Site reassigned successfully')
+      onStatusChange?.()
+    }
+  }
 
   const handleCopyUrl = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -128,13 +147,50 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
               </Avatar>
             </div>
           </div>
-          {/* Views in bottom right corner */}
-          {site.views !== undefined && (
-            <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50">
-              <Eye className="size-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium text-foreground">{site.views.toLocaleString()}</span>
-            </div>
-          )}
+          {/* Views and Availability in bottom right corner */}
+          <div className="absolute bottom-3 right-3 z-10 flex items-center gap-2">
+            {site.availability && (() => {
+              const getAvailabilityBadgeClass = (availability: string) => {
+                switch (availability) {
+                  case 'available':
+                    return 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/15'
+                  case 'under_offer':
+                    return 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/15'
+                  case 'reserved':
+                    return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/15'
+                  case 'sold':
+                    return 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/15'
+                  case 'off_market':
+                    return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 hover:bg-purple-500/15'
+                  default:
+                    return 'bg-muted text-muted-foreground border-border'
+                }
+              }
+              
+              const getAvailabilityLabel = (availability: string) => {
+                switch (availability) {
+                  case 'under_offer':
+                    return 'Under offer'
+                  case 'off_market':
+                    return 'Off market'
+                  default:
+                    return availability.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                }
+              }
+              
+              return (
+                <Badge className={getAvailabilityBadgeClass(site.availability)}>
+                  {getAvailabilityLabel(site.availability)}
+                </Badge>
+              )
+            })()}
+            {site.views !== undefined && (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50">
+                <Eye className="size-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium text-foreground">{site.views.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
           
           {/* Menu Button - appears on hover */}
           <div 
@@ -172,21 +228,18 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
                         if (isReassigning || site.assigned_agent_id === null) return
                         
-                        setIsReassigning(true)
-                        const result = await handleReassignSite(site.id, null)
-                        setIsReassigning(false)
-                        setIsMenuOpen(false)
-                        
-                        if ('error' in result) {
-                          toast.error(result.error)
+                        // If site is published, show warning dialog
+                        if (site.status === 'published') {
+                          setIsUnassignDialogOpen(true)
+                          setIsMenuOpen(false)
                         } else {
-                          toastSuccess('Site reassigned successfully')
-                          onStatusChange?.()
+                          // If not published, directly unassign
+                          handleUnassignSite(null)
                         }
                       }}
                       disabled={isReassigning || site.assigned_agent_id === null}
@@ -202,17 +255,9 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                           e.stopPropagation()
                           if (isReassigning || site.assigned_agent_id === member.membership.user_id) return
                           
-                          setIsReassigning(true)
-                          const result = await handleReassignSite(site.id, member.membership.user_id)
-                          setIsReassigning(false)
-                          setIsMenuOpen(false)
-                          
-                          if ('error' in result) {
-                            toast.error(result.error)
-                          } else {
-                            toastSuccess('Site reassigned successfully')
-                            onStatusChange?.()
-                          }
+                          // If site is published and we're changing from one agent to another, no warning needed
+                          // Only warn if unassigning (setting to null)
+                          handleUnassignSite(member.membership.user_id)
                         }}
                         disabled={isReassigning || site.assigned_agent_id === member.membership.user_id}
                         className="flex items-center gap-2"
@@ -230,30 +275,6 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                     ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
-                <DropdownMenuItem
-                  onClick={async (e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    if (isDuplicating) return
-                    
-                    setIsDuplicating(true)
-                    const result = await handleDuplicateSite(site.id)
-                    setIsDuplicating(false)
-                    setIsMenuOpen(false)
-                    
-                    if ('error' in result) {
-                      toast.error(result.error)
-                    } else {
-                      toastSuccess('Site duplicated successfully')
-                      // Trigger refresh of sites list
-                      onStatusChange?.()
-                    }
-                  }}
-                  disabled={isDuplicating}
-                >
-                  <LottieCopyIcon className="size-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {site.status === 'archived' ? (
                   <DropdownMenuItem
@@ -306,11 +327,36 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                     Archive
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  onClick={async (e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (isDuplicating) return
+                    
+                    setIsDuplicating(true)
+                    const result = await handleDuplicateSite(site.id)
+                    setIsDuplicating(false)
+                    setIsMenuOpen(false)
+                    
+                    if ('error' in result) {
+                      toast.error(result.error)
+                    } else {
+                      toastSuccess('Site duplicated successfully')
+                      onStatusChange?.()
+                    }
+                  }}
+                  disabled={isDuplicating}
+                >
+                  <LottiePhotoIcon className="size-4 mr-2" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   variant="destructive"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
+                    console.log('🟡 [SiteCard] Delete menu item clicked, opening dialog')
                     setIsDeleteDialogOpen(true)
                     setIsMenuOpen(false)
                   }}
@@ -345,11 +391,13 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
               } hover:bg-muted active:scale-95`}
               title="Copy site URL"
             >
-              {isCopied ? (
-                <Check className="size-3 text-green-600 dark:text-green-400" />
-              ) : (
-                <LottieCopyIcon className="size-3" />
-              )}
+              <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
+                {isCopied ? (
+                  <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                ) : (
+                  <LottieCopyIcon className="size-3" />
+                )}
+              </div>
             </button>
           </div>
         </div>
@@ -367,6 +415,42 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
         </Badge>
       </div>
 
+      {/* Unassign Warning Dialog */}
+      <AlertDialog open={isUnassignDialogOpen} onOpenChange={setIsUnassignDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unassign Site</AlertDialogTitle>
+            <AlertDialogDescription>
+              This site is currently published. If you unassign it, the listing will be changed to draft status and will no longer be publicly accessible. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReassigning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async (e) => {
+                e.preventDefault()
+                if (isReassigning) return
+                
+                setIsReassigning(true)
+                const result = await handleReassignSite(site.id, null)
+                setIsReassigning(false)
+                setIsUnassignDialogOpen(false)
+                
+                if ('error' in result) {
+                  toast.error(result.error)
+                } else {
+                  toastSuccess('Site unassigned and changed to draft')
+                  onStatusChange?.()
+                }
+              }}
+              disabled={isReassigning}
+            >
+              {isReassigning ? 'Unassigning...' : 'Unassign & Change to Draft'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -381,23 +465,28 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
             <AlertDialogAction
               onClick={async (e) => {
                 e.preventDefault()
+                console.log('🟢 [SiteCard] Delete button clicked for site:', site.id)
                 if (isDeleting) return
                 
                 setIsDeleting(true)
+                console.log('🟢 [SiteCard] Calling handleDeleteSite...')
                 const result = await handleDeleteSite(site.id)
+                console.log('🟢 [SiteCard] handleDeleteSite result:', result)
                 setIsDeleting(false)
                 setIsDeleteDialogOpen(false)
                 
                 if ('error' in result) {
+                  console.error('🟢 [SiteCard] Delete error:', result.error)
                   toast.error(result.error)
                 } else {
+                  console.log('🟢 [SiteCard] Delete success!')
                   toastSuccess('Site deleted successfully')
                   // Trigger refresh of sites list
                   onStatusChange?.()
                 }
               }}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

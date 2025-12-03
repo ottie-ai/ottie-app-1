@@ -57,12 +57,12 @@ export function LottieViewQuiltIcon({ className = '', size = 18, invertTheme, au
     
     if (!parent) return
 
-    const handleMouseEnter = () => {
-      setIsHovered(true)
-      if (lottieRef.current) {
-        lottieRef.current.goToAndPlay(0, true)
-      }
+  const handleMouseEnter = () => {
+    setIsHovered(true)
+    if (lottieRef.current) {
+      lottieRef.current.goToAndPlay(0, true)
     }
+  }
     const handleMouseLeave = () => setIsHovered(false)
 
     parent.addEventListener('mouseenter', handleMouseEnter)
@@ -71,7 +71,7 @@ export function LottieViewQuiltIcon({ className = '', size = 18, invertTheme, au
     return () => {
       parent.removeEventListener('mouseenter', handleMouseEnter)
       parent.removeEventListener('mouseleave', handleMouseLeave)
-    }
+  }
   }, [isMounted])
 
   if (!isMounted) {

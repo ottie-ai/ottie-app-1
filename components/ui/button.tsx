@@ -57,4 +57,6 @@ function Button({
   )
 }
 
+export type ButtonProps = React.ComponentProps<typeof Button> & VariantProps<typeof buttonVariants>
+
 export { Button, buttonVariants }

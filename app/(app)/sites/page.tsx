@@ -35,6 +35,20 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Check, CheckIcon } from 'lucide-react'
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -73,6 +87,7 @@ import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { checkSlugAvailability, generateAvailableSlug } from '@/lib/data/slug-availability'
 import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
+import { cn } from '@/lib/utils'
 
 // Helper to get user initials
 function getUserInitials(fullName: string | null, email: string | null): string {
@@ -108,6 +123,7 @@ function siteToCardData(site: Site, members?: Array<{ membership: { user_id: str
     title: site.title,
     slug: site.slug,
     status: site.status,
+    availability: site.availability,
     views: site.views_count,
     lastEdited: formatDistanceToNow(new Date(site.updated_at), { addSuffix: true }),
     thumbnail: site.thumbnail_url,
@@ -182,14 +198,26 @@ export default function SitesPage() {
   const { user } = useAuth()
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null)
   const isMultiUser = isMultiUserPlan(currentWorkspace?.plan ?? null)
+  
+  // Sort members so current user is always first
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => {
+      const aIsCurrent = a.membership.user_id === user?.id
+      const bIsCurrent = b.membership.user_id === user?.id
+      if (aIsCurrent && !bIsCurrent) return -1
+      if (!aIsCurrent && bIsCurrent) return 1
+      return 0
+    })
+  }, [members, user?.id])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<('published' | 'draft' | 'archived')[]>(['published', 'draft', 'archived'])
   const [assignedToFilter, setAssignedToFilter] = useState<string[]>([]) // Array of user IDs - will be initialized with all members
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityStatus[]>(['available', 'under_offer', 'reserved', 'sold', 'off_market']) // Array of availability values - default to all
   const [sortBy, setSortBy] = useState<'createdDesc' | 'editedDesc' | 'nameAsc' | 'viewsDesc'>('createdDesc')
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
-  const [isAssignedToDropdownOpen, setIsAssignedToDropdownOpen] = useState(false)
+  const [isAssignedToComboboxOpen, setIsAssignedToComboboxOpen] = useState(false)
   const [isAvailabilityDropdownOpen, setIsAvailabilityDropdownOpen] = useState(false)
+  const [assignedToSearchQuery, setAssignedToSearchQuery] = useState('')
   
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -219,7 +247,7 @@ export default function SitesPage() {
           const titleMatch = site.title.toLowerCase().includes(query)
           const slugMatch = site.slug.toLowerCase().includes(query)
           if (!titleMatch && !slugMatch) {
-            return false
+          return false
           }
         }
         // Status filter (multi-select)
@@ -523,10 +551,17 @@ export default function SitesPage() {
         ? formData.assignedAgentId 
         : user.id
 
+      // Validate: Cannot publish site without assigned agent
+      if (formData.status === 'published' && !assignedAgentId) {
+        toast.error('Site cannot be published without an assigned agent. Please assign an agent first.')
+        setIsCreating(false)
+        return
+      }
+
       const siteData: SiteInsert = {
         workspace_id: currentWorkspace.id,
         creator_id: user.id,
-        assigned_agent_id: assignedAgentId,
+        assigned_agent_id: assignedAgentId || null,
         availability: 'available',
         title: formData.title.trim(),
         slug: finalSlug,
@@ -591,11 +626,11 @@ export default function SitesPage() {
           {/* Search and Filter Bar */}
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <SearchInput
-              value={searchQuery}
+                value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search sites..."
               desktopWidth="md:w-80"
-            />
+              />
             <div className="flex flex-wrap gap-1.5 md:gap-2 items-center w-full md:w-auto">
               <div className="relative inline-flex items-center">
                 <DropdownMenu open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
@@ -666,16 +701,24 @@ export default function SitesPage() {
               </div>
               {isMultiUser && (
                 <div className="relative inline-flex items-center">
-                  <DropdownMenu open={isAssignedToDropdownOpen} onOpenChange={setIsAssignedToDropdownOpen}>
-                    <DropdownMenuTrigger asChild>
+                  <Popover 
+                    open={isAssignedToComboboxOpen} 
+                    onOpenChange={(open) => {
+                      setIsAssignedToComboboxOpen(open)
+                      if (!open) {
+                        setAssignedToSearchQuery('')
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
                         size="sm" 
-                      className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
-                        assignedToFilter.length > 0 && assignedToFilter.length < members.length
-                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
-                          : ''
-                      }`}
+                        className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
+                          assignedToFilter.length > 0 && assignedToFilter.length < members.length
+                            ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                            : ''
+                        }`}
                       >
                         <LottieAvatarIcon size={18} className="shrink-0" />
                         <span className="whitespace-nowrap hidden md:inline">Assigned to</span>
@@ -688,33 +731,60 @@ export default function SitesPage() {
                         )}
                         {(assignedToFilter.length === 0 || assignedToFilter.length === members.length) && <ChevronDown className="size-3 shrink-0 hidden md:inline" />}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
-                      {members.map((member) => (
-                        <DropdownMenuCheckboxItem
-                          key={member.membership.user_id}
-                          checked={assignedToFilter.includes(member.membership.user_id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setAssignedToFilter([...assignedToFilter, member.membership.user_id])
-                            } else {
-                              setAssignedToFilter(assignedToFilter.filter(id => id !== member.membership.user_id))
-                            }
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                          className="flex items-center gap-2"
-                        >
-                          <Avatar className="size-6 shrink-0">
-                            <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
-                            <AvatarFallback className="text-xs">
-                              {getUserInitials(member.profile.full_name, member.profile.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="end">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search members..." 
+                          value={assignedToSearchQuery}
+                          onValueChange={setAssignedToSearchQuery}
+                        />
+                        <CommandList>
+                          <CommandEmpty>No members found.</CommandEmpty>
+                          <CommandGroup>
+                            {sortedMembers
+                              .filter((member) => {
+                                if (!assignedToSearchQuery) return true
+                                const query = assignedToSearchQuery.toLowerCase()
+                                const fullName = member.profile.full_name?.toLowerCase() || ''
+                                const email = member.profile.email?.toLowerCase() || ''
+                                return fullName.includes(query) || email.includes(query)
+                              })
+                              .map((member) => {
+                                const isSelected = assignedToFilter.includes(member.membership.user_id)
+                                return (
+                                  <CommandItem
+                                    key={member.membership.user_id}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        setAssignedToFilter(assignedToFilter.filter(id => id !== member.membership.user_id))
+                                      } else {
+                                        setAssignedToFilter([...assignedToFilter, member.membership.user_id])
+                                      }
+                                    }}
+                                    className={cn(
+                                      "relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none",
+                                      isSelected && "bg-accent"
+                                    )}
+                                  >
+                                    <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+                                      {isSelected && <CheckIcon className="size-4" />}
+                                    </span>
+                                    <Avatar className="size-6 shrink-0">
+                                      <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
+                                      <AvatarFallback className="text-xs">
+                                        {getUserInitials(member.profile.full_name, member.profile.email)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
+                                  </CommandItem>
+                                )
+                              })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
               <div className="relative inline-flex items-center">

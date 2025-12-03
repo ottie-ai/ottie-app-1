@@ -44,7 +44,7 @@ function ThemedToaster() {
 
   return (
     <Toaster 
-      position="top-right" 
+      position="top-center" 
       richColors 
       theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
     />
