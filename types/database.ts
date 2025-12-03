@@ -12,6 +12,7 @@ export type UserRole = 'owner' | 'admin' | 'agent'
 export type SubPlan = 'free' | 'starter' | 'growth' | 'agency' | 'enterprise'
 export type SiteStatus = 'draft' | 'published' | 'archived'
 export type InviteStatus = 'pending' | 'accepted' | 'expired'
+export type AvailabilityStatus = 'available' | 'under_offer' | 'reserved' | 'sold' | 'off_market'
 
 // ==========================================
 // TABLES
@@ -74,10 +75,10 @@ export interface Site {
   title: string
   slug: string
   status: SiteStatus
+  availability: AvailabilityStatus // Property availability status
   description: string | null
   config: Record<string, any> // jsonb (SiteConfig/PageConfig)
-  domain: string // Domain where site is hosted (default: 'ottie.site')
-  custom_domain: string | null
+  domain: string // Domain where site is hosted (default: 'ottie.site', can be custom domain)
   thumbnail_url: string | null
   views_count: number
   metadata: Record<string, any> // jsonb

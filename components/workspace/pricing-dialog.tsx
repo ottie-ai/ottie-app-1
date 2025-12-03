@@ -314,10 +314,10 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                 
                 // Badge text logic:
                 // - If highlighted and current plan < growth: "Most Popular"
-                // - If highlighted and current plan >= growth: "Next Step"
+                // - If highlighted and current plan >= growth: "Upgrade"
                 const currentOrder = getPlanOrder(normalizedCurrentPlan)
                 const badgeText = isHighlighted 
-                  ? (currentOrder < 2 ? 'Most Popular' : 'Next Step')
+                  ? (currentOrder < 2 ? 'Most Popular' : 'Upgrade')
                   : null
                 
                 // Enterprise plan special handling
@@ -485,10 +485,10 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
               
               // Badge text logic:
               // - If highlighted and current plan < growth: "Most Popular"
-              // - If highlighted and current plan >= growth: "Next Step"
+              // - If highlighted and current plan >= growth: "Upgrade"
               const currentOrder = getPlanOrder(normalizedCurrentPlan)
               const badgeText = isHighlighted 
-                ? (currentOrder < 2 ? 'Most Popular' : 'Next Step')
+                ? (currentOrder < 2 ? 'Most Popular' : 'Upgrade')
                 : null
               
               // Enterprise plan special handling

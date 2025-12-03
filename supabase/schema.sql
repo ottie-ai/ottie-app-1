@@ -13,6 +13,8 @@ create type sub_plan as enum ('free', 'starter', 'growth', 'agency', 'enterprise
 
 create type site_status as enum ('draft', 'published', 'archived');
 
+create type availability_status as enum ('available', 'under_offer', 'reserved', 'sold', 'off_market');
+
 create type invite_status as enum ('pending', 'accepted', 'expired');
 
 
@@ -232,10 +234,11 @@ create table public.sites (
   title text not null,
   slug text not null,
   status site_status default 'draft',
+  availability availability_status default 'available',
   description text,
   
   config jsonb default '{}'::jsonb, 
-  custom_domain text unique,
+  domain text default 'ottie.site' not null, -- Domain where site is hosted (default: 'ottie.site', can be custom domain)
   thumbnail_url text,
   
   -- Stats & Meta:

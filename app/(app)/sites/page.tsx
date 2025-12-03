@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { PageTitle } from '@/components/page-title'
 import { 
   Plus, 
@@ -7,12 +8,14 @@ import {
   ChevronDown,
   CheckCircle2,
   XCircle,
+  X,
   Loader2,
   ArrowUp,
   ArrowDown,
 } from 'lucide-react'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
+import { SearchInput } from '@/components/ui/search-input'
 import { LottieFilterIcon } from '@/components/ui/lottie-filter-icon'
 import { LottieSwapIcon } from '@/components/ui/lottie-swap-icon'
 import { LottieResetIcon } from '@/components/ui/lottie-reset-icon'
@@ -42,7 +45,7 @@ import { useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState, useEffect, useRef } from 'react'
-import type { Site, SiteInsert } from '@/types/database'
+import type { Site, SiteInsert, AvailabilityStatus } from '@/types/database'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -67,6 +70,7 @@ import {
 import { createSite } from '@/lib/data/site-data'
 import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import { toastSuccess } from '@/lib/toast-helpers'
 import { checkSlugAvailability, generateAvailableSlug } from '@/lib/data/slug-availability'
 import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
 
@@ -109,6 +113,8 @@ function siteToCardData(site: Site, members?: Array<{ membership: { user_id: str
     thumbnail: site.thumbnail_url,
     avatar,
     avatarFallback,
+    domain: site.domain,
+    assigned_agent_id: site.assigned_agent_id,
   }
 }
 
@@ -179,11 +185,11 @@ export default function SitesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<('published' | 'draft' | 'archived')[]>(['published', 'draft', 'archived'])
   const [assignedToFilter, setAssignedToFilter] = useState<string[]>([]) // Array of user IDs - will be initialized with all members
-  const [stateFilter, setStateFilter] = useState<string[]>(['available', 'under_offer', 'reserved', 'sold', 'off_market']) // Array of state values - default to all
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityStatus[]>(['available', 'under_offer', 'reserved', 'sold', 'off_market']) // Array of availability values - default to all
   const [sortBy, setSortBy] = useState<'createdDesc' | 'editedDesc' | 'nameAsc' | 'viewsDesc'>('createdDesc')
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [isAssignedToDropdownOpen, setIsAssignedToDropdownOpen] = useState(false)
-  const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false)
+  const [isAvailabilityDropdownOpen, setIsAvailabilityDropdownOpen] = useState(false)
   
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -207,9 +213,14 @@ export default function SitesPage() {
     let filtered = sites
       .map(site => siteToCardData(site, members))
       .filter(site => {
-        // Search filter
-        if (searchQuery && !site.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-          return false
+        // Search filter - search in title and slug
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase()
+          const titleMatch = site.title.toLowerCase().includes(query)
+          const slugMatch = site.slug.toLowerCase().includes(query)
+          if (!titleMatch && !slugMatch) {
+            return false
+          }
         }
         // Status filter (multi-select)
         if (statusFilter.length > 0 && !statusFilter.includes(site.status)) {
@@ -221,6 +232,13 @@ export default function SitesPage() {
         if (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) {
           const siteData = sites.find(s => s.id === site.id)
           if (!siteData || !siteData.assigned_agent_id || !assignedToFilter.includes(siteData.assigned_agent_id)) {
+            return false
+          }
+        }
+        // Availability filter (multi-select)
+        if (availabilityFilter.length > 0 && availabilityFilter.length < 5) {
+          const siteData = sites.find(s => s.id === site.id)
+          if (!siteData || !siteData.availability || !availabilityFilter.includes(siteData.availability)) {
             return false
           }
         }
@@ -265,7 +283,7 @@ export default function SitesPage() {
     }
 
     return filtered
-  }, [sites, members, searchQuery, statusFilter, assignedToFilter, isMultiUser, sortBy])
+  }, [sites, members, searchQuery, statusFilter, assignedToFilter, availabilityFilter, isMultiUser, sortBy])
 
   // Generate slug from title
   const generateSlug = (title: string) => {
@@ -514,8 +532,7 @@ export default function SitesPage() {
         description: formData.description.trim() || null,
         status: formData.status,
         config: {}, // Empty config for new site
-        domain: 'ottie.site', // Default domain for all sites
-        custom_domain: null,
+        domain: 'ottie.site', // Default domain for all sites (can be changed to custom domain)
         metadata: {},
         thumbnail_url: null,
         published_at: formData.status === 'published' ? new Date().toISOString() : null,
@@ -526,7 +543,7 @@ export default function SitesPage() {
       if ('error' in result) {
         toast.error(result.error)
       } else {
-        toast.success('Site created successfully!')
+        toastSuccess('Site created successfully!')
         setIsCreateModalOpen(false)
         setFormData({
           title: '',
@@ -571,39 +588,36 @@ export default function SitesPage() {
         {sites.length > 0 && (
         <div className="space-y-4">
           {/* Search and Filter Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="relative w-full sm:w-80">
-              <LottieSearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input 
-                placeholder="Search sites..." 
-                className="pl-9"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2 items-center">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search sites..."
+              desktopWidth="md:w-80"
+            />
+            <div className="flex flex-wrap gap-1.5 md:gap-2 items-center w-full md:w-auto">
               <div className="relative inline-flex items-center">
                 <DropdownMenu open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className={`gap-2 transition-colors ${
+                      className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
                         statusFilter.length < 3 
                           ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
                           : ''
                       }`}
                     >
-                      <LottieFilterIcon size={18} />
-                      Status
+                      <LottieFilterIcon size={18} className="shrink-0" />
+                      <span className="whitespace-nowrap hidden md:inline">Status</span>
                       {statusFilter.length < 3 && (
-                        <span className="ml-1 h-5 px-1.5 text-xs capitalize rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                        <span className="ml-0.5 md:ml-1 h-5 px-1 md:px-1.5 text-xs capitalize rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium max-w-[120px] md:max-w-none truncate" style={{ color: 'white' }}>
                           {statusFilter.length === 1 
                             ? statusFilter[0] 
                             : statusFilter.sort().join(', ')}
                         </span>
                       )}
-                      {statusFilter.length === 3 && <ChevronDown className="size-3" />}
+                      {statusFilter.length === 3 && <ChevronDown className="size-3 shrink-0 hidden md:inline" />}
                     </Button>
                   </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
@@ -656,22 +670,22 @@ export default function SitesPage() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                      className={`gap-2 transition-colors ${
+                      className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
                         assignedToFilter.length > 0 && assignedToFilter.length < members.length
                           ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
                           : ''
                       }`}
                       >
-                        <LottieAvatarIcon size={18} />
-                        Assigned to
+                        <LottieAvatarIcon size={18} className="shrink-0" />
+                        <span className="whitespace-nowrap hidden md:inline">Assigned to</span>
                         {assignedToFilter.length > 0 && assignedToFilter.length < members.length && (
-                          <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                          <span className="ml-0.5 md:ml-1 h-5 px-1 md:px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium max-w-[100px] md:max-w-none truncate" style={{ color: 'white' }}>
                             {assignedToFilter.length === 1 
                               ? members.find(m => m.membership.user_id === assignedToFilter[0])?.profile.full_name ?? assignedToFilter[0]
                               : `${assignedToFilter.length} users`}
                           </span>
                         )}
-                        {(assignedToFilter.length === 0 || assignedToFilter.length === members.length) && <ChevronDown className="size-3" />}
+                        {(assignedToFilter.length === 0 || assignedToFilter.length === members.length) && <ChevronDown className="size-3 shrink-0 hidden md:inline" />}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
@@ -703,37 +717,37 @@ export default function SitesPage() {
                 </div>
               )}
               <div className="relative inline-flex items-center">
-                <DropdownMenu open={isStateDropdownOpen} onOpenChange={setIsStateDropdownOpen}>
+                <DropdownMenu open={isAvailabilityDropdownOpen} onOpenChange={setIsAvailabilityDropdownOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className={`gap-2 transition-colors ${
-                        stateFilter.length > 0 && stateFilter.length < 5
+                      className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
+                        availabilityFilter.length > 0 && availabilityFilter.length < 5
                           ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
                           : ''
                       }`}
                     >
-                      <LottieFlagIcon size={18} />
-                      State
-                      {stateFilter.length > 0 && stateFilter.length < 5 && (
-                        <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
-                          {stateFilter.length === 1 
-                            ? stateFilter[0].replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
-                            : stateFilter.sort().map(s => s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}
+                      <LottieFlagIcon size={18} className="shrink-0" />
+                      <span className="whitespace-nowrap hidden md:inline">Availability</span>
+                      {availabilityFilter.length > 0 && availabilityFilter.length < 5 && (
+                        <span className="ml-0.5 md:ml-1 h-5 px-1 md:px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium max-w-[120px] md:max-w-none truncate" style={{ color: 'white' }}>
+                          {availabilityFilter.length === 1 
+                            ? availabilityFilter[0].replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            : availabilityFilter.sort().map(s => s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}
                         </span>
                       )}
-                      {(stateFilter.length === 0 || stateFilter.length === 5) && <ChevronDown className="size-3" />}
+                      {(availabilityFilter.length === 0 || availabilityFilter.length === 5) && <ChevronDown className="size-3 shrink-0 hidden md:inline" />}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DropdownMenuCheckboxItem
-                      checked={stateFilter.includes('available')}
+                      checked={availabilityFilter.includes('available')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setStateFilter([...stateFilter, 'available'])
+                          setAvailabilityFilter([...availabilityFilter, 'available'])
                         } else {
-                          setStateFilter(stateFilter.filter(s => s !== 'available'))
+                          setAvailabilityFilter(availabilityFilter.filter(s => s !== 'available'))
                         }
                       }}
                       onSelect={(e) => e.preventDefault()}
@@ -743,12 +757,12 @@ export default function SitesPage() {
                       </Badge>
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
-                      checked={stateFilter.includes('under_offer')}
+                      checked={availabilityFilter.includes('under_offer')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setStateFilter([...stateFilter, 'under_offer'])
+                          setAvailabilityFilter([...availabilityFilter, 'under_offer'])
                         } else {
-                          setStateFilter(stateFilter.filter(s => s !== 'under_offer'))
+                          setAvailabilityFilter(availabilityFilter.filter(s => s !== 'under_offer'))
                         }
                       }}
                       onSelect={(e) => e.preventDefault()}
@@ -758,12 +772,12 @@ export default function SitesPage() {
                       </Badge>
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
-                      checked={stateFilter.includes('reserved')}
+                      checked={availabilityFilter.includes('reserved')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setStateFilter([...stateFilter, 'reserved'])
+                          setAvailabilityFilter([...availabilityFilter, 'reserved'])
                         } else {
-                          setStateFilter(stateFilter.filter(s => s !== 'reserved'))
+                          setAvailabilityFilter(availabilityFilter.filter(s => s !== 'reserved'))
                         }
                       }}
                       onSelect={(e) => e.preventDefault()}
@@ -773,12 +787,12 @@ export default function SitesPage() {
                       </Badge>
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
-                      checked={stateFilter.includes('sold')}
+                      checked={availabilityFilter.includes('sold')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setStateFilter([...stateFilter, 'sold'])
+                          setAvailabilityFilter([...availabilityFilter, 'sold'])
                         } else {
-                          setStateFilter(stateFilter.filter(s => s !== 'sold'))
+                          setAvailabilityFilter(availabilityFilter.filter(s => s !== 'sold'))
                         }
                       }}
                       onSelect={(e) => e.preventDefault()}
@@ -788,12 +802,12 @@ export default function SitesPage() {
                       </Badge>
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
-                      checked={stateFilter.includes('off_market')}
+                      checked={availabilityFilter.includes('off_market')}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setStateFilter([...stateFilter, 'off_market'])
+                          setAvailabilityFilter([...availabilityFilter, 'off_market'])
                         } else {
-                          setStateFilter(stateFilter.filter(s => s !== 'off_market'))
+                          setAvailabilityFilter(availabilityFilter.filter(s => s !== 'off_market'))
                         }
                       }}
                       onSelect={(e) => e.preventDefault()}
@@ -811,22 +825,22 @@ export default function SitesPage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className={`gap-2 transition-colors ${
+                      className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
                         sortBy !== 'createdDesc' 
                           ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
                           : ''
                       }`}
                     >
-                      <LottieSwapIcon size={18} />
-                      Sort
+                      <LottieSwapIcon size={18} className="shrink-0" />
+                      <span className="whitespace-nowrap hidden md:inline">Sort</span>
                       {sortBy !== 'createdDesc' && (
-                        <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                        <span className="ml-0.5 md:ml-1 h-5 px-1 md:px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium max-w-[100px] md:max-w-none truncate" style={{ color: 'white' }}>
                           {sortBy === 'editedDesc' ? 'Updated (newest)' : 
                            sortBy === 'nameAsc' ? 'Name (A–Z)' : 
                            sortBy === 'viewsDesc' ? 'Most views' : ''}
                         </span>
                       )}
-                      <ChevronDown className="size-3" />
+                      <ChevronDown className="size-3 shrink-0 hidden md:inline" />
                     </Button>
                   </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -862,7 +876,7 @@ export default function SitesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
               </div>
-              {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || (stateFilter.length > 0 && stateFilter.length < 5)) && (
+              {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || (availabilityFilter.length > 0 && availabilityFilter.length < 5)) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -876,10 +890,10 @@ export default function SitesPage() {
                         } else {
                           setAssignedToFilter([])
                         }
-                        // Reset stateFilter to all states (default)
-                        setStateFilter(['available', 'under_offer', 'reserved', 'sold', 'off_market'])
+                        // Reset availabilityFilter to all availability options (default)
+                        setAvailabilityFilter(['available', 'under_offer', 'reserved', 'sold', 'off_market'])
                       }}
-                      className="ml-2 p-1.5 rounded-full hover:bg-muted/50 transition-colors"
+                      className="p-1.5 rounded-full hover:bg-muted/50 transition-colors shrink-0"
                     >
                       <LottieResetIcon size={18} />
                     </button>
@@ -931,7 +945,7 @@ export default function SitesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="text-center py-12 text-muted-foreground"
+            className="text-center py-12 text-muted-foreground dark:text-muted-foreground/60"
           >
             No sites found matching your filters.
           </motion.div>
@@ -946,7 +960,7 @@ export default function SitesPage() {
                   <LottieAddCardIcon size={48} invertTheme={false} autoLoop />
                 </div>
                 <span className="font-medium mb-1 text-lg">Create Your First Site</span>
-                <p className="text-sm text-muted-foreground mb-6 text-center">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground/60 mb-6 text-center">
                   Get started by generating a site from a URL or creating one manually.
                 </p>
                 <div className="flex gap-2">
@@ -967,7 +981,7 @@ export default function SitesPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence mode="popLayout">
             {/* New Site Card - Only show when no filters are active */}
-            {!searchQuery && statusFilter.length === 3 && sortBy === 'createdDesc' && (isMultiUser ? (assignedToFilter.length === 0 || assignedToFilter.length === members.length) : assignedToFilter.length === 0) && (stateFilter.length === 0 || stateFilter.length === 5) && (
+            {!searchQuery && statusFilter.length === 3 && sortBy === 'createdDesc' && (isMultiUser ? (assignedToFilter.length === 0 || assignedToFilter.length === members.length) : assignedToFilter.length === 0) && (availabilityFilter.length === 0 || availabilityFilter.length === 5) && (
               <motion.div
                 key="new-site-card"
                 layout
@@ -975,7 +989,7 @@ export default function SitesPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                className="group"
+                className="group hidden md:block"
               >
                 <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
                   <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
@@ -983,13 +997,20 @@ export default function SitesPage() {
                     <LottieAddCardIcon size={28} invertTheme={false} />
                   </div>
                   <span className="font-medium mb-1">Create New Site</span>
-                  <div className="flex gap-2 mt-4">
-                    <Button size="sm">
+                  <div className="flex flex-col gap-2 mt-4 w-full">
+                    <Button size="sm" className="w-full">
                       Generate from URL
                     </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                    <Link
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setIsCreateModalOpen(true)
+                      }}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
+                    >
                       Create manually
-                    </Button>
+                    </Link>
                   </div>
                 </CardContent>
               </GlowCard>
@@ -1016,7 +1037,12 @@ export default function SitesPage() {
                   delay: index * 0.02 // Stagger effect
                 }}
               >
-                <SiteCard site={site} href={`/builder/${site.id}`} />
+                <SiteCard 
+                  site={site} 
+                  href={`/builder/${site.id}`}
+                  onStatusChange={refresh}
+                  members={members}
+                />
               </motion.div>
             ))}
           </AnimatePresence>

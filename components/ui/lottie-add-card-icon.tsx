@@ -203,10 +203,9 @@ export function LottieAddCardIcon({ className = '', size = 18, invertTheme = tru
         style={{ 
           width: size, 
           height: size,
-          opacity: shouldApplyOpacity ? 0.85 : 1
+          opacity: shouldApplyOpacity ? 0.85 : 1,
+          pointerEvents: 'none' // Prevent hover events on icon itself
         }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <Lottie
           lottieRef={lottieRef}

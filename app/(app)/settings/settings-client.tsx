@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { toastSuccess } from '@/lib/toast-helpers'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe } from 'lucide-react'
@@ -492,7 +493,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       // Refresh user profile in all components
       refreshUserProfile()
       setSuccess(true)
-      toast.success('Avatar removed successfully!')
+      toastSuccess('Avatar removed successfully!')
       setTimeout(() => setSuccess(false), 3000)
     }
 
@@ -557,12 +558,12 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       // Refresh user profile in all components (sidebar, navbar, etc.)
       refreshUserProfile()
       setSuccess(true)
-      toast.success('Profile updated successfully!')
+      toastSuccess('Profile updated successfully!')
       // Show warning if avatar upload failed but profile was saved
       if ('warning' in result && result.warning) {
         const warningMessage = typeof result.warning === 'string' ? result.warning : String(result.warning)
         setError(warningMessage)
-        toast.warning(warningMessage)
+        toast(warningMessage)
         setTimeout(() => setError(null), 5000)
       } else {
         setTimeout(() => setSuccess(false), 3000)
@@ -811,7 +812,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       onClick={async () => {
                         if (!userEmail) return
                         await sendPasswordResetEmail(userEmail)
-                        toast.success('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
+                        toastSuccess('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
                       }}
                       className="text-sm text-primary hover:underline"
                     >
@@ -1015,7 +1016,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             onClick={async () => {
                               if (!userEmail) return
                               await sendPasswordResetEmail(userEmail)
-                              toast.success('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
+                              toastSuccess('Check your email for a password reset link. If an account exists with this email, you will receive the link shortly.')
                             }}
                             className="text-sm text-primary hover:underline"
                           >
@@ -1139,7 +1140,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
 
                       // Refresh workspace in sidebar and other components
                       await refreshWorkspace()
-                      toast.success('Workspace updated successfully!')
+                      toastSuccess('Workspace updated successfully!')
                       setSavingWorkspace(false)
                     }}
                     className="space-y-4"
@@ -1175,7 +1176,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                     workspaceLogoInputRef.current.value = ''
                                   }
                                   await refreshWorkspace()
-                                  toast.success('Logo removed successfully!')
+                                  toastSuccess('Logo removed successfully!')
                                 }
                               }}
                               title="Delete logo"
@@ -1373,7 +1374,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
 
                           // Refresh workspace in sidebar and other components
                           await refreshWorkspace()
-                          toast.success('Workspace updated successfully!')
+                          toastSuccess('Workspace updated successfully!')
                           setSavingWorkspace(false)
                         }}
                         className="space-y-4"
@@ -1409,7 +1410,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                         workspaceLogoInputRef.current.value = ''
                                       }
                                       await refreshWorkspace()
-                                      toast.success('Logo removed successfully!')
+                                      toastSuccess('Logo removed successfully!')
                                     }
                                   }}
                                   title="Delete logo"
@@ -2068,7 +2069,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                   if ('error' in result) {
                                     toast.error(result.error)
                                   } else {
-                                    toast.success(`Invitation sent to ${inviteEmail}`)
+                                    toastSuccess(`Invitation sent to ${inviteEmail}`)
                                     setInviteDialogOpen(false)
                                     setInviteEmail('')
                                     setInviteRole('agent')
@@ -2227,7 +2228,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                       if ('error' in result) {
                                         toast.error(result.error)
                                       } else {
-                                          toast.success('Invitation resent')
+                                          toastSuccess('Invitation resent')
                                           refreshInvitations()
                                       }
                                     }}
@@ -2244,7 +2245,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                         if ('error' in result) {
                                           toast.error(result.error)
                                         } else {
-                                          toast.success('Invitation cancelled')
+                                          toastSuccess('Invitation cancelled')
                                           refreshInvitations()
                                         }
                                       }}
@@ -2338,7 +2339,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {
-                                  toast.success(`Invitation sent to ${inviteEmail}`)
+                                  toast(`Invitation sent to ${inviteEmail}`)
                                   setInviteDialogOpen(false)
                                   setInviteEmail('')
                                   setInviteRole('agent')
@@ -2468,7 +2469,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                           toast.error(result.error)
                                           setUpdatingRoleId(null)
                                         } else {
-                                          toast.success('Role updated successfully')
+                                          toastSuccess('Role updated successfully')
                                           // Invalidate queries to refresh data without page reload
                                           await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
                                           await queryClient.invalidateQueries({ queryKey: ['appData'] })
@@ -2575,7 +2576,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                               if ('error' in result) {
                                                 toast.error(result.error)
                                               } else {
-                                                toast.success('Invitation resent')
+                                                toastSuccess('Invitation resent')
                                                 refreshInvitations()
                                               }
                                             }}
@@ -2601,7 +2602,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                               if ('error' in result) {
                                                 toast.error(result.error)
                                               } else {
-                                                toast.success('Invitation cancelled')
+                                                toastSuccess('Invitation cancelled')
                                                 refreshInvitations()
                                               }
                                             }}
@@ -2700,7 +2701,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               if ('error' in result) {
                                 toast.error(result.error)
                               } else {
-                                toast.success('Workspace deleted and new workspace created successfully')
+                                toastSuccess('Workspace deleted and new workspace created successfully')
                                 // Refresh workspace data - this will load the new workspace
                                 await refreshWorkspace()
                                 // Reset local state
@@ -2807,7 +2808,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             if ('error' in result) {
                               toast.error(result.error)
                             } else {
-                              toast.success('Workspace deleted and new workspace created successfully')
+                              toast('Workspace deleted and new workspace created successfully')
                               // Refresh workspace data - this will load the new workspace
                               await refreshWorkspace()
                               // Reset local state

@@ -1,0 +1,21 @@
+'use client'
+
+import { toast as sonnerToast } from 'sonner'
+import { LottieCheckIcon } from '@/components/ui/lottie-check-icon'
+
+/**
+ * Toast helper with Lottie check icon for success messages
+ */
+export function toastSuccess(message: string, options?: Parameters<typeof sonnerToast>[1]) {
+  return sonnerToast(message, {
+    ...options,
+    icon: <LottieCheckIcon size={20} autoPlay={true} />,
+  })
+}
+
+/**
+ * Re-export other toast functions for convenience
+ */
+export { toast as toastError, toast as toastInfo, toast as toastWarning } from 'sonner'
+export { toast } from 'sonner'
+

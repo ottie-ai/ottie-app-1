@@ -12,6 +12,7 @@ import { signIn, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
 import { toast } from 'sonner'
+import { toastSuccess } from '@/lib/toast-helpers'
 import { AlertCircle } from 'lucide-react'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -47,7 +48,7 @@ function LoginForm() {
             if (!('error' in inviteResult)) {
               const acceptResult = await acceptInvitation(token, user.id)
               if (!('error' in acceptResult)) {
-                toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+                toastSuccess(`You've successfully joined ${inviteResult.workspace.name}!`)
               } else {
                 toast.error(acceptResult.error)
               }
@@ -118,7 +119,7 @@ function LoginForm() {
           if ('error' in acceptResult) {
             toast.error(acceptResult.error)
           } else {
-            toast.success(`You've successfully joined ${inviteResult.workspace.name}!`)
+            toastSuccess(`You've successfully joined ${inviteResult.workspace.name}!`)
             // Set the workspace as current workspace in localStorage
             if (typeof window !== 'undefined' && 'workspaceId' in acceptResult) {
               localStorage.setItem('current_workspace_id', acceptResult.workspaceId)

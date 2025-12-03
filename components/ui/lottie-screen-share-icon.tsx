@@ -46,17 +46,33 @@ export function LottieScreenShareIcon({ className = '', size = 18, invertTheme =
     }
   }, [autoLoop, isMounted, isHovered])
 
-  // Handle hover - pause auto-loop and play animation
-  const handleMouseEnter = () => {
-    setIsHovered(true)
-    if (lottieRef.current) {
-      lottieRef.current.goToAndPlay(0, true)
-    }
-  }
+  // Detect hover on parent element instead of icon itself
+  const containerRef = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    if (!containerRef.current || !isMounted) return
 
-  const handleMouseLeave = () => {
-    setIsHovered(false)
-  }
+    const container = containerRef.current
+    const parent = container.closest('a, button, [role="button"], [data-slot="dropdown-menu-item"], .group')
+    
+    if (!parent) return
+
+    const handleMouseEnter = () => {
+      setIsHovered(true)
+      if (lottieRef.current) {
+        lottieRef.current.goToAndPlay(0, true)
+      }
+    }
+    const handleMouseLeave = () => setIsHovered(false)
+
+    parent.addEventListener('mouseenter', handleMouseEnter)
+    parent.addEventListener('mouseleave', handleMouseLeave)
+
+    return () => {
+      parent.removeEventListener('mouseenter', handleMouseEnter)
+      parent.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [isMounted])
 
   if (!isMounted) {
     return <div className={className} style={{ width: size, height: size }} />
@@ -65,10 +81,9 @@ export function LottieScreenShareIcon({ className = '', size = 18, invertTheme =
   if (autoLoop) {
     return (
       <div
+        ref={containerRef}
         className={className}
-        style={{ width: size, height: size }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        style={{ width: size, height: size, pointerEvents: 'none' }}
       >
         <LottieIcon
           animationData={screenShareAnimation}

@@ -119,15 +119,14 @@ async function getSiteConfig(slug: string): Promise<{ site: any; config: PageCon
   try {
     const supabase = await createClient()
     
-    // TEMPORARY: For testing - allow draft sites too
     // Fetch site by slug on ottie.site domain
-    // Only published sites are accessible via subdomain (in production)
+    // Only published sites are accessible via subdomain (archived sites are not accessible)
     const { data: site, error } = await supabase
       .from('sites')
       .select('*')
       .eq('slug', slug)
       .eq('domain', 'ottie.site')
-      // .eq('status', 'published') // TEMPORARILY DISABLED FOR TESTING
+      .eq('status', 'published') // Only published sites are accessible
       .is('deleted_at', null)
       .single()
     

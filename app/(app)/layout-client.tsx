@@ -11,8 +11,9 @@ import { useAuth } from '@/hooks/use-auth'
 import { AppProvider, useUserProfile, useAppData } from '@/contexts/app-context'
 import { usePathname } from 'next/navigation'
 import { Toaster } from 'sonner'
+import { useTheme } from 'next-themes'
 import '../sphere.css'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Intercom from '@intercom/messenger-js-sdk'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import Head from 'next/head'
@@ -32,6 +33,24 @@ import Head from 'next/head'
  * 
  * This is used for app.ottie.com subdomain
  */
+// Toast component that uses theme
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  return (
+    <Toaster 
+      position="top-right" 
+      richColors 
+      theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+    />
+  )
+}
+
 export default function AppRootLayout({
   children,
 }: {
@@ -59,7 +78,7 @@ export default function AppRootLayout({
             </AppContent>
           </AppProvider>
         </AuthGuard>
-        <Toaster position="top-right" richColors />
+        <ThemedToaster />
       </ThemeProvider>
     </QueryProvider>
   )

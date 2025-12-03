@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { getInvitationByToken, acceptInvitation } from '@/app/(app)/settings/actions'
 import { signOut } from '@/lib/supabase/auth'
 import { toast } from 'sonner'
+import { toastSuccess } from '@/lib/toast-helpers'
 import type { Invitation } from '@/types/database'
 
 interface InvitePageProps {
@@ -107,7 +108,7 @@ export default function InvitePage({ params }: InvitePageProps) {
         toast.error(result.error)
       } else {
         setAccepted(true)
-        toast.success(`You've successfully joined ${workspaceName}!`)
+        toastSuccess(`You've successfully joined ${workspaceName}!`)
         // Fix #9: Clear sessionStorage after successful acceptance
         sessionStorage.removeItem('pending_invite_token_hash')
         sessionStorage.removeItem('pending_invite_email')
