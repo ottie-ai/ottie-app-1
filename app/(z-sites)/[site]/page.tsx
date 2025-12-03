@@ -8,40 +8,50 @@ import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { PageConfig, Section } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
-  const { site } = await params
-  const siteData = await getSiteConfig(site)
-  
-  if (!siteData) {
-    return {
-      title: 'Site Not Found',
-      description: 'The requested site could not be found.',
-      robots: 'noindex, nofollow', // Don't index 404 pages
+  try {
+    const { site } = await params
+    const siteData = await getSiteConfig(site)
+    
+    if (!siteData) {
+      return {
+        title: 'Site Not Found',
+        description: 'The requested site could not be found.',
+        robots: 'noindex, nofollow', // Don't index 404 pages
+      }
     }
-  }
 
-  const { config: siteConfig } = siteData
+    const { config: siteConfig } = siteData
 
-  // Extract site title from first section (usually Hero)
-  const heroSection = siteConfig.sections?.find((s: Section) => s.type === 'hero')
-  const siteTitle = (heroSection?.data as any)?.title || 'Property Site'
-  const siteSubtitle = (heroSection?.data as any)?.subtitle || ''
-  
-  // Canonical URL for SEO - only on ottie.site subdomain
-  const canonicalUrl = `https://${site}.ottie.site`
+    // Extract site title from first section (usually Hero)
+    // Handle case where sections might be empty or undefined
+    const heroSection = siteConfig?.sections?.find((s: Section) => s.type === 'hero')
+    const siteTitle = (heroSection?.data as any)?.title || siteData.site?.title || 'Property Site'
+    const siteSubtitle = (heroSection?.data as any)?.subtitle || ''
+    
+    // Canonical URL for SEO - only on ottie.site subdomain
+    const canonicalUrl = `https://${site}.ottie.site`
 
-  return {
-    title: siteTitle,
-    description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
-    robots: 'index, follow', // Allow indexing on ottie.site subdomains
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
+    return {
       title: siteTitle,
       description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
-      url: canonicalUrl,
-      type: 'website',
-    },
+      robots: 'index, follow', // Allow indexing on ottie.site subdomains
+      alternates: {
+        canonical: canonicalUrl,
+      },
+      openGraph: {
+        title: siteTitle,
+        description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
+        url: canonicalUrl,
+        type: 'website',
+      },
+    }
+  } catch (error) {
+    console.error('[generateMetadata] Error:', error)
+    return {
+      title: 'Site Error',
+      description: 'An error occurred while loading the site.',
+      robots: 'noindex, nofollow',
+    }
   }
 }
 
@@ -106,42 +116,32 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
  * Only returns site if it's published
  */
 async function getSiteConfig(slug: string): Promise<{ site: any; config: PageConfig } | null> {
-  const supabase = await createClient()
-  
-  // First, try to find the site (without status filter to see what we have)
-  const { data: allSites, error: allError } = await supabase
-    .from('sites')
-    .select('*')
-    .eq('slug', slug)
-    .is('deleted_at', null)
-  
-  console.log('[getSiteConfig] Looking for slug:', slug)
-  console.log('[getSiteConfig] All sites with this slug:', allSites)
-  console.log('[getSiteConfig] Error:', allError)
-  
-  // TEMPORARY: For testing - allow draft sites too
-  // Fetch site by slug on ottie.site domain
-  // Only published sites are accessible via subdomain (in production)
-  const { data: site, error } = await supabase
-    .from('sites')
-    .select('*')
-    .eq('slug', slug)
-    .eq('domain', 'ottie.site')
-    // .eq('status', 'published') // TEMPORARILY DISABLED FOR TESTING
-    .is('deleted_at', null)
-    .single()
-  
-  console.log('[getSiteConfig] Site result (any status):', { site, error })
-  
-  if (error) {
-    console.error('[getSiteConfig] Error fetching site:', error)
-    return null
-  }
-  
-  if (!site) {
-    console.log('[getSiteConfig] No published site found with slug:', slug)
-    return null
-  }
+  try {
+    const supabase = await createClient()
+    
+    // TEMPORARY: For testing - allow draft sites too
+    // Fetch site by slug on ottie.site domain
+    // Only published sites are accessible via subdomain (in production)
+    const { data: site, error } = await supabase
+      .from('sites')
+      .select('*')
+      .eq('slug', slug)
+      .eq('domain', 'ottie.site')
+      // .eq('status', 'published') // TEMPORARILY DISABLED FOR TESTING
+      .is('deleted_at', null)
+      .single()
+    
+    console.log('[getSiteConfig] Site result (any status):', { site, error })
+    
+    if (error) {
+      console.error('[getSiteConfig] Error fetching site:', error)
+      return null
+    }
+    
+    if (!site) {
+      console.log('[getSiteConfig] No site found with slug:', slug)
+      return null
+    }
   
   // Extract config (PageConfig) from site.config
   const config = site.config as PageConfig | null
@@ -171,7 +171,11 @@ async function getSiteConfig(slug: string): Promise<{ site: any; config: PageCon
     }
   }
   
-  return { site, config }
+    return { site, config }
+  } catch (error) {
+    console.error('[getSiteConfig] Unexpected error:', error)
+    return null
+  }
 }
 
 /**
