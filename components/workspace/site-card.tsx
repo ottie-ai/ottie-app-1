@@ -7,10 +7,11 @@ import {
   Eye,
   Check,
   ChevronRight,
+  Lock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
-import { handleArchiveSite, handleUnarchiveSite, handleDuplicateSite, handleDeleteSite, handleReassignSite, handleUpdateSiteTitle } from '@/app/actions/site-actions'
+import { handleArchiveSite, handleUnarchiveSite, handleDuplicateSite, handleDeleteSite, handleReassignSite, handleUpdateSiteTitle, handleSetSitePassword, handleRemoveSitePassword } from '@/app/actions/site-actions'
 import { Input } from '@/components/ui/input'
 import { LottiePhotoIcon } from '@/components/ui/lottie-photo-icon'
 import { LottieAnalyticsIcon } from '@/components/ui/lottie-analytics-icon'
@@ -65,6 +66,7 @@ export interface SiteCardData {
   avatarFallback?: string
   domain?: string // Domain where site is hosted (default: 'ottie.site', can be custom domain)
   assigned_agent_id?: string | null // ID of assigned agent
+  password_protected?: boolean // Whether site is password protected
 }
 
 interface SiteCardProps {
@@ -78,6 +80,9 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
+  const [passwordValue, setPasswordValue] = useState('')
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false)
   const [isSlugHovered, setIsSlugHovered] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
@@ -87,6 +92,43 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
   const [isDeleting, setIsDeleting] = useState(false)
   const [isReassigning, setIsReassigning] = useState(false)
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false)
+
+  // Helper function to handle password save
+  const handlePasswordSave = async () => {
+    if (isPasswordSaving) return
+
+    setIsPasswordSaving(true)
+
+    try {
+      if (passwordValue.trim()) {
+        // Set or update password
+        const result = await handleSetSitePassword(site.id, passwordValue.trim())
+        if ('error' in result) {
+          toast.error(result.error)
+        } else {
+          toastSuccess(site.password_protected ? 'Password updated successfully' : 'Password protection enabled')
+          setIsPasswordDialogOpen(false)
+          setPasswordValue('')
+          onStatusChange?.()
+        }
+      } else if (site.password_protected) {
+        // Remove password protection
+        const result = await handleRemoveSitePassword(site.id)
+        if ('error' in result) {
+          toast.error(result.error)
+        } else {
+          toastSuccess('Password protection removed')
+          setIsPasswordDialogOpen(false)
+          setPasswordValue('')
+          onStatusChange?.()
+        }
+      }
+    } catch (error) {
+      toast.error('An error occurred. Please try again.')
+    } finally {
+      setIsPasswordSaving(false)
+    }
+  }
 
   // Helper function to handle unassign
   const handleUnassignSite = async (agentId: string | null) => {
@@ -240,6 +282,18 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
                   <LottieBookIcon className="size-4 mr-2" />
                   Rename
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setPasswordValue('')
+                    setIsPasswordDialogOpen(true)
+                    setIsMenuOpen(false)
+                  }}
+                >
+                  <Lock className="size-4 mr-2" />
+                  {site.password_protected ? 'Change Password' : 'Set Password'}
+                </DropdownMenuItem>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <LottieAccountIcon className="size-4 mr-2" />
@@ -391,7 +445,12 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
       {/* Info below card */}
       <div className="pt-4 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-foreground truncate">{site.title}</h3>
+          <h3 className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+            {site.password_protected && (
+              <Lock className="size-3.5 text-muted-foreground shrink-0" />
+            )}
+            <span className="truncate">{site.title}</span>
+          </h3>
           <div 
             className="relative flex items-center gap-1.5 group/slug"
             onMouseEnter={() => setIsSlugHovered(true)}
@@ -468,6 +527,77 @@ export function SiteCard({ site, href = `/builder/${site.id}`, onStatusChange, m
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Password Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={(open) => {
+        setIsPasswordDialogOpen(open)
+        if (!open) {
+          setPasswordValue('') // Reset on close
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {site.password_protected ? 'Change Password' : 'Set Password Protection'}
+            </DialogTitle>
+            <DialogDescription>
+              {site.password_protected 
+                ? 'Enter a new password for this site. Leave empty to remove password protection.'
+                : 'Set a password to protect this site from public access.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="site-password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="site-password"
+                type="password"
+                value={passwordValue}
+                onChange={(e) => setPasswordValue(e.target.value)}
+                placeholder="Enter password"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && passwordValue.trim()) {
+                    handlePasswordSave()
+                  } else if (e.key === 'Escape') {
+                    setPasswordValue('')
+                    setIsPasswordDialogOpen(false)
+                  }
+                }}
+              />
+              {site.password_protected && (
+                <p className="text-sm text-muted-foreground">
+                  Leave empty to remove password protection
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPasswordValue('')
+                setIsPasswordDialogOpen(false)
+              }}
+              disabled={isPasswordSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePasswordSave}
+              disabled={isPasswordSaving || (!passwordValue.trim() && !site.password_protected)}
+            >
+              {isPasswordSaving 
+                ? 'Saving...' 
+                : passwordValue.trim() 
+                  ? (site.password_protected ? 'Update Password' : 'Set Password')
+                  : 'Remove Protection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Rename Dialog */}
       <Dialog open={isRenameDialogOpen} onOpenChange={(open) => {

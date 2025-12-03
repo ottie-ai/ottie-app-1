@@ -30,6 +30,7 @@ import { FileUpload } from '@/components/ui/file-upload'
 import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SitePasswordSettings } from '@/components/site-password-settings'
 
 // ============================================
 // Color Scheme Selector Component
@@ -171,6 +172,9 @@ export function HeroRemixPanel({
 interface PageSettingsPanelProps {
   theme: ThemeConfig
   onThemeChange: (theme: ThemeConfig) => void
+  siteId?: string // Optional site ID for password protection
+  passwordProtected?: boolean // Whether site is password protected
+  onPasswordUpdate?: () => void // Callback when password is updated
 }
 
 const ctaOptions: { value: CTAType; label: string }[] = [
@@ -189,7 +193,10 @@ const ctaPlaceholders: Record<CTAType, string> = {
 
 export function PageSettingsPanel({ 
   theme, 
-  onThemeChange
+  onThemeChange,
+  siteId,
+  passwordProtected,
+  onPasswordUpdate
 }: PageSettingsPanelProps) {
   const ctaType = theme.ctaType || 'whatsapp'
   
@@ -246,6 +253,14 @@ export function PageSettingsPanel({
             placeholder={ctaPlaceholders[ctaType]}
           />
         </Field>
+      )}
+
+      {siteId && (
+        <SitePasswordSettings
+          siteId={siteId}
+          passwordProtected={passwordProtected ?? false}
+          onUpdate={onPasswordUpdate}
+        />
       )}
     </FieldGroup>
   )

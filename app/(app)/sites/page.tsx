@@ -106,6 +106,7 @@ function getUserInitials(fullName: string | null, email: string | null): string 
 
 // Helper to convert Site to SiteCardData
 function siteToCardData(site: Site, members?: Array<{ membership: { user_id: string }; profile: { avatar_url: string | null; full_name: string | null; email: string | null } }>): SiteCardData {
+  // Find assigned agent profile
   // Find assigned user profile if assigned_agent_id exists
   let avatar: string | null = null
   let avatarFallback: string | undefined = undefined
@@ -131,6 +132,7 @@ function siteToCardData(site: Site, members?: Array<{ membership: { user_id: str
     avatarFallback,
     domain: site.domain,
     assigned_agent_id: site.assigned_agent_id,
+    password_protected: site.password_protected ?? false,
   }
 }
 
@@ -572,6 +574,8 @@ export default function SitesPage() {
         metadata: {},
         thumbnail_url: null,
         published_at: formData.status === 'published' ? new Date().toISOString() : null,
+        password_protected: false,
+        password_hash: null,
       }
 
       const result = await createSite(siteData)

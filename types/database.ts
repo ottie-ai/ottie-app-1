@@ -82,6 +82,8 @@ export interface Site {
   thumbnail_url: string | null
   views_count: number
   metadata: Record<string, any> // jsonb
+  password_protected: boolean // Whether site requires password to access
+  password_hash: string | null // Bcrypt hash of password (never plaintext)
   created_at: string // timestamp
   updated_at: string // timestamp
   published_at: string | null // timestamp (when site was published)

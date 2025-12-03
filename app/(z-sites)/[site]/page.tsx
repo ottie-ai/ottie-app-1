@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 // import { FontTransition } from '@/components/builder/FontTransition'
 // import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { PageConfig, Section } from '@/types/builder'
+import { PasswordCheck } from './password-check'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   try {
@@ -121,9 +122,10 @@ async function getSiteConfig(slug: string): Promise<{ site: any; config: PageCon
     
     // Fetch site by slug on ottie.site domain
     // Only published sites are accessible via subdomain (archived sites are not accessible)
+    // Include password_protected and password_hash for password check
     const { data: site, error } = await supabase
       .from('sites')
-      .select('*')
+      .select('*, password_protected, password_hash')
       .eq('slug', slug)
       .eq('domain', 'ottie.site')
       .eq('status', 'published') // Only published sites are accessible
@@ -231,9 +233,12 @@ export default async function SitePage({
   
   const { site: siteRecord, config: siteConfig } = siteData
   
+  // Check if site is password protected
+  const isPasswordProtected = siteRecord.password_protected === true
+  
   // TEMPORARY: Simple render for testing
   // This confirms that database fetch and routing work
-  return (
+  const siteContent = (
     <div style={{ 
       display: 'flex', 
       alignItems: 'center', 
@@ -261,12 +266,28 @@ export default async function SitePage({
           <p>Slug: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.slug}</code></p>
           <p>Status: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.status}</code></p>
           <p>Domain: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.domain}</code></p>
+          <p>Password Protected: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{isPasswordProtected ? 'Yes' : 'No'}</code></p>
           <p>Has Config: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig ? 'Yes' : 'No'}</code></p>
           <p>Sections: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig?.sections?.length || 0}</code></p>
         </div>
       </div>
     </div>
   )
+  
+  // Wrap content with password check if site is password protected
+  if (isPasswordProtected) {
+    return (
+      <PasswordCheck
+        siteId={siteRecord.id}
+        siteTitle={siteRecord.title}
+        passwordProtected={isPasswordProtected}
+      >
+        {siteContent}
+      </PasswordCheck>
+    )
+  }
+  
+  return siteContent
   
   // TODO: Uncomment when ready to render full site with sections
   // const { theme, sections } = siteConfig
