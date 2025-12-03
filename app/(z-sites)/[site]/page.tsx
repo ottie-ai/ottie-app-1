@@ -238,32 +238,36 @@ export default async function SitePage({
     theme?.headingFontFamily,
   ].filter(Boolean) as string[]
   
+  // Get primary font for FontTransition
+  const primaryFont = theme?.fontFamily || 'Inter'
+  
   // Render the site
   return (
     <>
       <FontLoader fonts={fonts} />
-      <FontTransition />
-      <div 
-        style={{ 
-          fontFamily: theme?.fontFamily, 
-          backgroundColor: theme?.backgroundColor, 
-          color: theme?.textColor 
-        }}
-      >
-        {sections?.map((section: Section) => (
-          <SectionRenderer 
-            key={section.id} 
-            section={section} 
-            theme={theme} 
-            colorScheme={section.colorScheme || 'light'} 
-          />
-        ))}
-      </div>
-      <FloatingCTAButton 
-        type={ctaType} 
-        value={ctaValue} 
-        colorScheme={sections?.[0]?.colorScheme || 'light'} 
-      />
+      <FontTransition font={primaryFont}>
+        <div 
+          style={{ 
+            fontFamily: theme?.fontFamily, 
+            backgroundColor: theme?.backgroundColor, 
+            color: theme?.textColor 
+          }}
+        >
+          {sections?.map((section: Section) => (
+            <SectionRenderer 
+              key={section.id} 
+              section={section} 
+              theme={theme} 
+              colorScheme={section.colorScheme || 'light'} 
+            />
+          ))}
+        </div>
+        <FloatingCTAButton 
+          type={ctaType} 
+          value={ctaValue} 
+          colorScheme={sections?.[0]?.colorScheme || 'light'} 
+        />
+      </FontTransition>
     </>
   )
 }
