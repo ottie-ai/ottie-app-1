@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import type { Profile, Workspace, Membership } from '@/types/database'
+import type { Profile, Workspace, Membership, Plan } from '@/types/database'
 
 /**
  * Client-side version of loadAppData
@@ -39,6 +39,7 @@ export async function loadAppData(userId: string): Promise<{
   currentWorkspace: Workspace | null
   currentMembership: Membership | null
   allWorkspaces: Array<{ workspace: Workspace; role: string }>
+  plans: Plan[]
 }> {
   const supabase = createClient()
   const preferredId = getPreferredWorkspaceId()
@@ -61,6 +62,7 @@ export async function loadAppData(userId: string): Promise<{
       currentWorkspace: null,
       currentMembership: null,
       allWorkspaces: [],
+      plans: [],
     }
   }
 
@@ -92,11 +94,18 @@ export async function loadAppData(userId: string): Promise<{
       }))
   }
 
+  // Parse plans from RPC result (now included in the RPC call)
+  let plans: Plan[] = []
+  if (dashboardData?.plans && Array.isArray(dashboardData.plans)) {
+    plans = dashboardData.plans as Plan[]
+  }
+
   return {
     profile,
     currentWorkspace,
     currentMembership,
     allWorkspaces,
+    plans,
   }
 }
 

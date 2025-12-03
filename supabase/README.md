@@ -6,9 +6,10 @@ This directory contains SQL migration files for the Supabase database.
 
 ### Core Schema
 - **`schema.sql`** - Main database schema including tables, triggers, and functions
-  - Defines: profiles, workspaces, memberships, invitations, sites, pages, sections
+  - Defines: profiles, workspaces, memberships, invitations, sites, integrations, plans
   - Auto-creates workspace and membership when new user signs up
   - Default workspace name: "Personal Workspace"
+  - Plans table: Contains subscription plan definitions (free, starter, growth, agency, enterprise)
 
 ### RPC Functions
 - **`get-user-dashboard-data-rpc.sql`** - Batched query function for app initialization
@@ -29,6 +30,8 @@ This directory contains SQL migration files for the Supabase database.
 - **`add-soft-delete-migration.sql`** - Adds soft delete functionality
 - **`add-performance-indexes.sql`** - Performance indexes for faster queries (IMPORTANT: Run this after schema.sql)
 - **`add-sites-columns.sql`** - Adds thumbnail_url, published_at, and description columns to sites table
+- **`create-plans-table.sql`** - Creates plans table for subscription plans (free, starter, growth, agency, enterprise) with RLS policies
+- **`update-invitations-rls-to-use-plans.sql`** - Updates invitations RLS policy to use plans table as single source of truth
 
 ## Setup Instructions
 
@@ -44,6 +47,7 @@ Run these files in order in Supabase SQL Editor:
 7. `create-workspace-logos-bucket.sql` - Creates storage bucket for workspace logos
 8. `create-site-thumbnails-bucket.sql` - Creates storage bucket for site thumbnails (requires bucket creation in Dashboard first)
 9. `add-sites-columns.sql` - Adds missing columns to sites table (thumbnail_url, published_at, description)
+10. `create-plans-table.sql` - Creates plans table with predefined subscription plans
 
 ### 2. Updating Functions
 When updating functions (like `handle_new_profile` or `get_user_dashboard_data`):
@@ -74,6 +78,7 @@ JSONB object with:
 - `membership` - Current workspace membership
 - `members` - Array of workspace members with profiles
 - `allWorkspaces` - Array of all workspaces user is a member of (with role)
+- `plans` - Array of all subscription plans (single source of truth for plan features)
 
 ### Example Usage
 ```sql

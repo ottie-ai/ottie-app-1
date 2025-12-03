@@ -8,13 +8,16 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Filter,
 } from 'lucide-react'
 import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
+import { LottieFilterIcon } from '@/components/ui/lottie-filter-icon'
+import { LottieSwapIcon } from '@/components/ui/lottie-swap-icon'
+import { LottieResetIcon } from '@/components/ui/lottie-reset-icon'
+import { LottieAvatarIcon } from '@/components/ui/lottie-avatar-icon'
+import { LottieFlagIcon } from '@/components/ui/lottie-flag-icon'
 import { Button } from '@/components/ui/button'
 import { CardContent } from '@/components/ui/card'
 import { GlowCard } from '@/components/ui/glow-card'
@@ -28,15 +31,22 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { SiteCard, type SiteCardData } from '@/components/workspace/site-card'
 import { useSites } from '@/hooks/use-sites'
 import { useAppData } from '@/contexts/app-context'
+import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { formatDistanceToNow } from 'date-fns'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import type { Site, SiteInsert } from '@/types/database'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Dialog,
   DialogContent,
@@ -59,6 +69,21 @@ import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { checkSlugAvailability, generateAvailableSlug } from '@/lib/data/slug-availability'
 import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
+
+// Helper to get user initials
+function getUserInitials(fullName: string | null, email: string | null): string {
+  if (fullName) {
+    const parts = fullName.trim().split(' ')
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return fullName.substring(0, 2).toUpperCase()
+  }
+  if (email) {
+    return email.substring(0, 2).toUpperCase()
+  }
+  return '??'
+}
 
 // Helper to convert Site to SiteCardData
 function siteToCardData(site: Site): SiteCardData {
@@ -132,13 +157,19 @@ const mockSites: SiteCardData[] = [
 ]
 
 export default function SitesPage() {
-  const { currentWorkspace } = useAppData()
+  const { currentWorkspace, isMultiUserPlan } = useAppData()
   const { sites, loading, refresh } = useSites(currentWorkspace?.id)
   const { user } = useAuth()
+  const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null)
+  const isMultiUser = isMultiUserPlan(currentWorkspace?.plan ?? null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<('published' | 'draft' | 'archived')[]>(['published', 'draft', 'archived'])
-  const [sortBy, setSortBy] = useState<'lastEdited' | 'nameAsc' | 'nameDesc' | 'viewsDesc' | 'viewsAsc'>('lastEdited')
+  const [assignedToFilter, setAssignedToFilter] = useState<string[]>([]) // Array of user IDs - will be initialized with all members
+  const [stateFilter, setStateFilter] = useState<string[]>([]) // Array of state values (placeholder for now)
+  const [sortBy, setSortBy] = useState<'createdDesc' | 'editedDesc' | 'nameAsc' | 'viewsDesc'>('createdDesc')
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
+  const [isAssignedToDropdownOpen, setIsAssignedToDropdownOpen] = useState(false)
+  const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false)
   
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -148,6 +179,7 @@ export default function SitesPage() {
     slug: '',
     description: '',
     status: 'draft' as 'draft' | 'published' | 'archived',
+    assignedAgentId: '' as string, // Only used in multi-user workspaces
   })
   const [slugAvailability, setSlugAvailability] = useState<{
     checking: boolean
@@ -169,31 +201,57 @@ export default function SitesPage() {
         if (statusFilter.length > 0 && !statusFilter.includes(site.status)) {
           return false
         }
+        // Assigned to filter (multi-select) - only for multi-user workspaces
+        // If all members are selected (default), show all sites
+        // If some members are selected, filter by those members
+        if (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) {
+          const siteData = sites.find(s => s.id === site.id)
+          if (!siteData || !siteData.assigned_agent_id || !assignedToFilter.includes(siteData.assigned_agent_id)) {
+            return false
+          }
+        }
         return true
       })
 
     // Sort
     switch (sortBy) {
+      case 'createdDesc':
+        // Sort by created_at desc (newest first)
+        filtered.sort((a, b) => {
+          const siteA = sites.find(s => s.id === a.id)
+          const siteB = sites.find(s => s.id === b.id)
+          if (!siteA || !siteB) return 0
+          return new Date(siteB.created_at).getTime() - new Date(siteA.created_at).getTime()
+        })
+        break
+      case 'editedDesc':
+        // Sort by updated_at desc (latest edited first)
+        filtered.sort((a, b) => {
+          const siteA = sites.find(s => s.id === a.id)
+          const siteB = sites.find(s => s.id === b.id)
+          if (!siteA || !siteB) return 0
+          return new Date(siteB.updated_at).getTime() - new Date(siteA.updated_at).getTime()
+        })
+        break
       case 'nameAsc':
         filtered.sort((a, b) => a.title.localeCompare(b.title))
-        break
-      case 'nameDesc':
-        filtered.sort((a, b) => b.title.localeCompare(a.title))
         break
       case 'viewsDesc':
         filtered.sort((a, b) => (b.views || 0) - (a.views || 0))
         break
-      case 'viewsAsc':
-        filtered.sort((a, b) => (a.views || 0) - (b.views || 0))
-        break
-      case 'lastEdited':
       default:
-        // Already sorted by updated_at desc from query
+        // Default to createdDesc
+        filtered.sort((a, b) => {
+          const siteA = sites.find(s => s.id === a.id)
+          const siteB = sites.find(s => s.id === b.id)
+          if (!siteA || !siteB) return 0
+          return new Date(siteB.created_at).getTime() - new Date(siteA.created_at).getTime()
+        })
         break
     }
 
     return filtered
-  }, [sites, searchQuery, statusFilter, sortBy])
+  }, [sites, searchQuery, statusFilter, assignedToFilter, isMultiUser, sortBy])
 
   // Generate slug from title
   const generateSlug = (title: string) => {
@@ -364,6 +422,14 @@ export default function SitesPage() {
     }
   }, [])
 
+  // Initialize assignedToFilter with all members when members are loaded (for multi-user workspaces)
+  useEffect(() => {
+    if (isMultiUser && members.length > 0 && assignedToFilter.length === 0) {
+      const allMemberIds = members.map(m => m.membership.user_id)
+      setAssignedToFilter(allMemberIds)
+    }
+  }, [isMultiUser, members, assignedToFilter.length])
+
   // Reset form when modal closes
   useEffect(() => {
     if (!isCreateModalOpen) {
@@ -372,6 +438,7 @@ export default function SitesPage() {
         slug: '',
         description: '',
         status: 'draft',
+        assignedAgentId: '',
       })
       setSlugAvailability({ checking: false, available: null, error: null })
     }
@@ -396,6 +463,12 @@ export default function SitesPage() {
       return
     }
 
+    // Validate assigned agent for multi-user workspaces
+    if (isMultiUser && !formData.assignedAgentId) {
+      toast.error('Please assign an agent')
+      return
+    }
+
     // Validate slug length
     const validationError = validateSlug(trimmedSlug)
     if (validationError) {
@@ -412,10 +485,16 @@ export default function SitesPage() {
         ? trimmedSlug 
         : await generateAvailableSlug(trimmedSlug, 'ottie.site')
 
+      // In single-user workspaces, automatically assign current user
+      // In multi-user workspaces, use selected agent
+      const assignedAgentId = isMultiUser 
+        ? formData.assignedAgentId 
+        : user.id
+
       const siteData: SiteInsert = {
         workspace_id: currentWorkspace.id,
         creator_id: user.id,
-        assigned_agent_id: null, // Can be assigned later
+        assigned_agent_id: assignedAgentId,
         title: formData.title.trim(),
         slug: finalSlug,
         description: formData.description.trim() || null,
@@ -440,6 +519,7 @@ export default function SitesPage() {
           slug: '',
           description: '',
           status: 'draft',
+          assignedAgentId: '',
         })
         // Refresh sites list
         await refresh()
@@ -487,31 +567,32 @@ export default function SitesPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
-              <DropdownMenu open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className={`gap-2 transition-colors ${
-                      statusFilter.length < 3 
-                        ? 'bg-[#7c3aed]/10 border-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/30' 
-                        : ''
-                    }`}
-                  >
-                    <Filter className="size-4" />
-                    Status
-                    {statusFilter.length < 3 && (
-                      <span className="ml-1 h-5 px-1.5 text-xs capitalize rounded-full border-transparent bg-white dark:bg-zinc-800 text-[#000] dark:text-[#fff] inline-flex items-center justify-center font-medium">
-                        {statusFilter.length === 1 
-                          ? statusFilter[0] 
-                          : statusFilter.sort().join(', ')}
-                      </span>
-                    )}
-                    <ChevronDown className="size-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40" onCloseAutoFocus={(e) => e.preventDefault()}>
+            <div className="flex gap-2 items-center">
+              <div className="relative inline-flex items-center">
+                <DropdownMenu open={isStatusDropdownOpen} onOpenChange={setIsStatusDropdownOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className={`gap-2 transition-colors ${
+                        statusFilter.length < 3 
+                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                          : ''
+                      }`}
+                    >
+                      <LottieFilterIcon size={18} />
+                      Status
+                      {statusFilter.length < 3 && (
+                        <span className="ml-1 h-5 px-1.5 text-xs capitalize rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                          {statusFilter.length === 1 
+                            ? statusFilter[0] 
+                            : statusFilter.sort().join(', ')}
+                        </span>
+                      )}
+                      {statusFilter.length === 3 && <ChevronDown className="size-3" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
                   <DropdownMenuCheckboxItem
                     checked={statusFilter.includes('published')}
                     onCheckedChange={(checked) => {
@@ -553,65 +634,177 @@ export default function SitesPage() {
                   </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className={`gap-2 transition-colors ${
-                      sortBy !== 'lastEdited' 
-                        ? 'bg-[#7c3aed]/10 border-[#7c3aed]/20 text-[#7c3aed] hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/30' 
-                        : ''
-                    }`}
+              </div>
+              {isMultiUser && (
+                <div className="relative inline-flex items-center">
+                  <DropdownMenu open={isAssignedToDropdownOpen} onOpenChange={setIsAssignedToDropdownOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                      className={`gap-2 transition-colors ${
+                        assignedToFilter.length > 0 && assignedToFilter.length < members.length
+                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                          : ''
+                      }`}
+                      >
+                        <LottieAvatarIcon size={18} />
+                        Assigned to
+                        {assignedToFilter.length > 0 && assignedToFilter.length < members.length && (
+                          <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                            {assignedToFilter.length === 1 
+                              ? members.find(m => m.membership.user_id === assignedToFilter[0])?.profile.full_name ?? assignedToFilter[0]
+                              : `${assignedToFilter.length} users`}
+                          </span>
+                        )}
+                        {(assignedToFilter.length === 0 || assignedToFilter.length === members.length) && <ChevronDown className="size-3" />}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                      {members.map((member) => (
+                        <DropdownMenuCheckboxItem
+                          key={member.membership.user_id}
+                          checked={assignedToFilter.includes(member.membership.user_id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setAssignedToFilter([...assignedToFilter, member.membership.user_id])
+                            } else {
+                              setAssignedToFilter(assignedToFilter.filter(id => id !== member.membership.user_id))
+                            }
+                          }}
+                          onSelect={(e) => e.preventDefault()}
+                          className="flex items-center gap-2"
+                        >
+                          <Avatar className="size-6 shrink-0">
+                            <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
+                            <AvatarFallback className="text-xs">
+                              {getUserInitials(member.profile.full_name, member.profile.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+              <div className="relative inline-flex items-center">
+                <DropdownMenu open={isStateDropdownOpen} onOpenChange={setIsStateDropdownOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className={`gap-2 transition-colors ${
+                        stateFilter.length > 0 
+                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                          : ''
+                      }`}
+                    >
+                      <LottieFlagIcon size={18} />
+                      State
+                      {stateFilter.length > 0 && (
+                        <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                          {stateFilter.length === 1 
+                            ? stateFilter[0] 
+                            : stateFilter.sort().join(', ')}
+                        </span>
+                      )}
+                      {stateFilter.length === 0 && <ChevronDown className="size-3" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <DropdownMenuCheckboxItem
+                      checked={false}
+                      disabled
+                    >
+                      Coming soon
+                    </DropdownMenuCheckboxItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="relative inline-flex items-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className={`gap-2 transition-colors ${
+                        sortBy !== 'createdDesc' 
+                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                          : ''
+                      }`}
+                    >
+                      <LottieSwapIcon size={18} />
+                      Sort
+                      {sortBy !== 'createdDesc' && (
+                        <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                          {sortBy === 'editedDesc' ? 'Updated (newest)' : 
+                           sortBy === 'nameAsc' ? 'Name (A–Z)' : 
+                           sortBy === 'viewsDesc' ? 'Most views' : ''}
+                        </span>
+                      )}
+                      <ChevronDown className="size-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => setSortBy('createdDesc')}
+                    className={sortBy === 'createdDesc' ? 'bg-accent' : ''}
                   >
-                    <ArrowUpDown className="size-4" />
-                    Sort
-                    {sortBy !== 'lastEdited' && (
-                      <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-white dark:bg-zinc-800 text-[#000] dark:text-[#fff] inline-flex items-center justify-center font-medium">
-                        {sortBy === 'nameAsc' ? 'A-Z' : sortBy === 'nameDesc' ? 'Z-A' : sortBy === 'viewsDesc' ? 'Views ↓' : 'Views ↑'}
+                    <span className="flex-1">Created (newest first)</span>
+                    {sortBy === 'createdDesc' && (
+                      <span className="ml-2 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
+                        Default
                       </span>
                     )}
-                    <ChevronDown className="size-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
-                    onClick={() => setSortBy('lastEdited')}
-                    className={sortBy === 'lastEdited' ? 'bg-accent' : ''}
+                    onClick={() => setSortBy('editedDesc')}
+                    className={sortBy === 'editedDesc' ? 'bg-accent' : ''}
                   >
-                    <ArrowDown className="size-4 mr-2" />
-                    Last edited
+                    Updated (newest first)
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => setSortBy('nameAsc')}
                     className={sortBy === 'nameAsc' ? 'bg-accent' : ''}
                   >
-                    <ArrowUp className="size-4 mr-2" />
-                    Name A-Z
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setSortBy('nameDesc')}
-                    className={sortBy === 'nameDesc' ? 'bg-accent' : ''}
-                  >
-                    <ArrowDown className="size-4 mr-2" />
-                    Name Z-A
+                    Name (A–Z)
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => setSortBy('viewsDesc')}
                     className={sortBy === 'viewsDesc' ? 'bg-accent' : ''}
                   >
-                    <ArrowDown className="size-4 mr-2" />
                     Most views
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setSortBy('viewsAsc')}
-                    className={sortBy === 'viewsAsc' ? 'bg-accent' : ''}
-                  >
-                    <ArrowUp className="size-4 mr-2" />
-                    Least views
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </div>
+              {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || stateFilter.length > 0) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        setStatusFilter(['published', 'draft', 'archived'])
+                        setSortBy('createdDesc')
+                        setSearchQuery('')
+                        // Reset assignedToFilter to all members (default)
+                        if (isMultiUser && members.length > 0) {
+                          setAssignedToFilter(members.map(m => m.membership.user_id))
+                        } else {
+                          setAssignedToFilter([])
+                        }
+                        setStateFilter([])
+                      }}
+                      className="ml-2 p-1.5 rounded-full hover:bg-muted/50 transition-colors"
+                    >
+                      <LottieResetIcon size={18} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Reset filters</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </div>
 
@@ -690,7 +883,7 @@ export default function SitesPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence mode="popLayout">
             {/* New Site Card - Only show when no filters are active */}
-            {!searchQuery && statusFilter.length === 3 && sortBy === 'lastEdited' && (
+            {!searchQuery && statusFilter.length === 3 && sortBy === 'createdDesc' && (isMultiUser ? (assignedToFilter.length === 0 || assignedToFilter.length === members.length) : assignedToFilter.length === 0) && stateFilter.length === 0 && (
               <motion.div
                 key="new-site-card"
                 layout
@@ -825,6 +1018,52 @@ export default function SitesPage() {
               />
             </div>
 
+            {isMultiUser && (
+              <div className="space-y-2">
+                <Label htmlFor="assignedAgent">Assigned Agent *</Label>
+                <Select
+                  value={formData.assignedAgentId}
+                  onValueChange={(value) => 
+                    setFormData(prev => ({ ...prev, assignedAgentId: value }))
+                  }
+                  disabled={isCreating}
+                >
+                  <SelectTrigger id="assignedAgent" className="w-full">
+                    <SelectValue placeholder="Select an agent">
+                      {formData.assignedAgentId && (() => {
+                        const selectedMember = members.find(m => m.membership.user_id === formData.assignedAgentId)
+                        if (!selectedMember) return null
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="size-5 shrink-0">
+                              <AvatarImage src={selectedMember.profile.avatar_url || undefined} alt={selectedMember.profile.full_name || selectedMember.profile.email || 'Unknown'} />
+                              <AvatarFallback className="text-xs">
+                                {getUserInitials(selectedMember.profile.full_name, selectedMember.profile.email)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{selectedMember.profile.full_name || selectedMember.profile.email || 'Unknown'}</span>
+                          </div>
+                        )
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map((member) => (
+                      <SelectItem key={member.membership.user_id} value={member.membership.user_id} className="flex items-center gap-2">
+                        <Avatar className="size-6 shrink-0">
+                          <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
+                          <AvatarFallback className="text-xs">
+                            {getUserInitials(member.profile.full_name, member.profile.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select
@@ -862,7 +1101,8 @@ export default function SitesPage() {
                 !formData.slug.trim() || 
                 formData.slug.trim().length < 5 ||
                 slugAvailability.available === false ||
-                !!slugAvailability.error
+                !!slugAvailability.error ||
+                (isMultiUser && !formData.assignedAgentId)
               }
             >
               {isCreating ? 'Creating...' : 'Create Site'}

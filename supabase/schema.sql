@@ -265,6 +265,41 @@ create table public.integrations (
 
 
 
+-- 8. PLANS (Subscription Plans)
+
+create table public.plans (
+  id serial primary key,
+  name varchar(100) not null unique,
+  description text,
+  max_users int default 1,
+  max_sites int default 1,
+  feature_lead_generation boolean default false,
+  feature_custom_domain boolean default false,
+  feature_analytics boolean default false,
+  feature_api_access boolean default false,
+  feature_priority_support boolean default false,
+  feature_3d_tours boolean default false,
+  feature_pdf_flyers boolean default false,
+  feature_crm_sync boolean default false,
+  price_cents int default 0,
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+-- Trigger for updated_at
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+   new.updated_at = now();
+   return new;
+end;
+$$ language 'plpgsql';
+
+create trigger update_plan_updated_at before update on plans
+for each row execute function update_updated_at_column();
+
+
+
 -- ==========================================
 -- SECURITY (RLS POLICIES)
 -- ==========================================
@@ -275,6 +310,7 @@ alter table public.memberships enable row level security;
 alter table public.invitations enable row level security;
 alter table public.sites enable row level security;
 alter table public.integrations enable row level security;
+alter table public.plans enable row level security;
 
 
 
@@ -395,15 +431,17 @@ create policy "Update own activity" on memberships
 
 
 -- INVITATIONS
+-- Policy uses plans table as single source of truth for multi-user access
 create policy "Admins manage invitations" on invitations
   for all using (
     exists (
       select 1 from memberships m
       join workspaces w on w.id = m.workspace_id
+      join plans p on p.name = coalesce(w.plan::text, 'free')
       where m.workspace_id = invitations.workspace_id
       and m.user_id = (select auth.uid())
       and m.role in ('owner', 'admin')
-      and w.plan in ('agency', 'enterprise')
+      and p.max_users > 1  -- Only multi-user plans can manage invitations
     )
   );
 
@@ -446,4 +484,35 @@ create policy "Admins manage integrations" on integrations
       and m.role in ('owner', 'admin')
     )
   );
+
+
+
+-- PLANS (Public read, no user modifications)
+create policy "Public read plans" on plans
+  for select using (true);
+
+create policy "No user insert" on plans
+  for insert with check (false);
+
+create policy "No user update" on plans
+  for update using (false);
+
+create policy "No user delete" on plans
+  for delete using (false);
+
+
+
+-- ==========================================
+-- INITIAL DATA (Run once - Service Role bypasses RLS)
+-- ==========================================
+
+-- Insert predefined plans (idempotent - use ON CONFLICT to prevent duplicates)
+INSERT INTO plans (name, description, max_users, max_sites, feature_lead_generation, feature_custom_domain, feature_analytics, feature_api_access, feature_priority_support, feature_3d_tours, feature_pdf_flyers, feature_crm_sync, price_cents) 
+VALUES 
+('free', 'Free to try', 1, 3, false, false, false, false, false, false, false, false, 0),
+('starter', 'Basic plan for individuals', 2, 10, true, false, true, false, false, false, false, false, 3900),
+('growth', 'For small agencies', 5, 50, true, true, true, false, true, true, true, true, 9900),
+('agency', 'For real estate companies', 20, 200, true, true, true, true, true, true, true, true, 19900),
+('enterprise', 'For large networks (contact us)', 999, 9999, true, true, true, true, true, true, true, true, 39900)
+ON CONFLICT (name) DO NOTHING;
 

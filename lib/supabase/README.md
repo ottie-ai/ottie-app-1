@@ -11,6 +11,7 @@ Tento projekt používa nasledujúcu databázovú schému v Supabase:
 - `sites` - Property websites
 - `invitations` - Team invitations
 - `integrations` - CRM integrations
+- `plans` - Subscription plans (free, starter, growth, agency, enterprise)
 
 ### Enums
 - `user_role`: 'owner' | 'admin' | 'agent'

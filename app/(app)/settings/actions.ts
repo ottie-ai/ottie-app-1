@@ -1110,6 +1110,7 @@ export async function createInvitation(
   }
 
   // Verify workspace is on a multi-user plan
+  // Get workspace with plan details from plans table (single source of truth)
   const { data: workspace, error: workspaceError } = await supabase
     .from('workspaces')
     .select('plan, name')
@@ -1121,9 +1122,21 @@ export async function createInvitation(
     return { error: 'Workspace not found' }
   }
 
-  const multiUserPlans = ['agency', 'enterprise']
-  if (!multiUserPlans.includes(workspace.plan || '')) {
-    return { error: 'Upgrade to Agency or Enterprise plan to invite team members' }
+  // Check if plan allows multiple users (from plans table - single source of truth)
+  const { data: planData, error: planError } = await supabase
+    .from('plans')
+    .select('max_users')
+    .eq('name', workspace.plan || 'free')
+    .single()
+
+  if (planError || !planData) {
+    // Fallback: if plan not found in DB, deny access (safe default)
+    return { error: 'Plan configuration not found. Please contact support.' }
+  }
+
+  // Check if plan allows more than 1 user
+  if (planData.max_users <= 1) {
+    return { error: 'Upgrade to a team plan to invite team members' }
   }
 
   // Check if user is already a member

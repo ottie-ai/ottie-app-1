@@ -26,7 +26,8 @@ import {
 } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ChevronsUpDown, Settings, ArrowLeft } from 'lucide-react'
-import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
+import { normalizePlan } from '@/lib/utils'
+import { useAppData } from '@/contexts/app-context'
 import type { Workspace } from '@/types/database'
 
 interface WorkspaceNavbarProps {
@@ -48,8 +49,11 @@ export function WorkspaceNavbar({
   settingsPanel,
   onSaveSettings,
 }: WorkspaceNavbarProps) {
-  // For single-user plans (free, starter, growth), show user name instead of workspace name
-  // For multi-user plans (agency, enterprise), show workspace name
+  // Get isMultiUserPlan from context (single source of truth from DB)
+  const { isMultiUserPlan } = useAppData()
+  
+  // For single-user plans (max_users = 1), show user name instead of workspace name
+  // For multi-user plans (max_users > 1), show workspace name
   // If plan is null/undefined, treat as 'free' (single-user)
   const displayName = workspace && isMultiUserPlan(workspace.plan)
     ? workspace.name

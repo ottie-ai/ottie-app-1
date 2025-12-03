@@ -4,17 +4,26 @@ import { createContext, useContext } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { loadAppData } from '@/lib/data/app-data-client'
-import type { Profile, Workspace, Membership } from '@/types/database'
+import { isMultiUserPlanFromDB, isSingleUserPlanFromDB, getMaxUsersForPlan, getMaxSitesForPlan, hasFeature, getPlanByName } from '@/lib/data/plans'
+import type { Profile, Workspace, Membership, Plan } from '@/types/database'
 
 interface AppContextType {
   profile: Profile | null
   currentWorkspace: Workspace | null
   currentMembership: Membership | null
   allWorkspaces: Array<{ workspace: Workspace; role: string }>
+  plans: Plan[]
   loading: boolean
   refresh: () => Promise<void>
   refreshProfile: () => Promise<void>
   refreshWorkspace: () => Promise<void>
+  // Plan helper functions (single source of truth from DB)
+  isMultiUserPlan: (planName: string | null | undefined) => boolean
+  isSingleUserPlan: (planName: string | null | undefined) => boolean
+  getMaxUsers: (planName: string | null | undefined) => number
+  getMaxSites: (planName: string | null | undefined) => number
+  getPlan: (planName: string | null | undefined) => Plan | null
+  hasPlanFeature: (planName: string | null | undefined, feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync'>) => boolean
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -35,6 +44,7 @@ export function AppProvider({
     currentWorkspace: Workspace | null
     currentMembership: Membership | null
     allWorkspaces: Array<{ workspace: Workspace; role: string }>
+    plans?: Plan[]
   }
 }) {
   const { user } = useAuth()
@@ -56,6 +66,7 @@ export function AppProvider({
           currentWorkspace: null,
           currentMembership: null,
           allWorkspaces: [],
+          plans: [],
         }
       }
       return loadAppData(user.id)
@@ -73,12 +84,25 @@ export function AppProvider({
   const currentWorkspace = appData?.currentWorkspace ?? initialData?.currentWorkspace ?? null
   const currentMembership = appData?.currentMembership ?? initialData?.currentMembership ?? null
   const allWorkspaces = appData?.allWorkspaces ?? initialData?.allWorkspaces ?? []
+  // Plans are now loaded together with app data in a single RPC call
+  const plans = appData?.plans ?? initialData?.plans ?? []
   
   // Loading state: true if we're fetching AND don't have complete data yet
   // This prevents flickering - show loading until we have all essential data
   // Use isFetching to catch background refetches, but only show loading if we don't have data yet
   const hasData = !!(appData || initialData)
   const isLoading = !hasData && (loading || isFetching)
+
+  // Plan helper functions - single source of truth from database
+  const isMultiUserPlan = (planName: string | null | undefined) => isMultiUserPlanFromDB(plans, planName)
+  const isSingleUserPlan = (planName: string | null | undefined) => isSingleUserPlanFromDB(plans, planName)
+  const getMaxUsers = (planName: string | null | undefined) => getMaxUsersForPlan(plans, planName)
+  const getMaxSites = (planName: string | null | undefined) => getMaxSitesForPlan(plans, planName)
+  const getPlan = (planName: string | null | undefined) => getPlanByName(plans, planName)
+  const hasPlanFeature = (
+    planName: string | null | undefined, 
+    feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync'>
+  ) => hasFeature(plans, planName, feature)
 
   const refresh = async () => {
     if (!user?.id) return
@@ -106,10 +130,18 @@ export function AppProvider({
         currentWorkspace,
         currentMembership,
         allWorkspaces,
+        plans,
         loading: isLoading,
         refresh,
         refreshProfile,
         refreshWorkspace,
+        // Plan helper functions (single source of truth from DB)
+        isMultiUserPlan,
+        isSingleUserPlan,
+        getMaxUsers,
+        getMaxSites,
+        getPlan,
+        hasPlanFeature,
       }}
     >
       {children}

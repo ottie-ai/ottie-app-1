@@ -38,7 +38,7 @@ import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspaces
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
-import { isMultiUserPlan, normalizePlan } from '@/lib/utils'
+import { normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
@@ -92,7 +92,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   // Get data from context (already loaded in layout via AppProvider)
   const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
   const { workspace: workspaceFromContext, refresh: refreshWorkspace } = useWorkspace()
-  const { currentMembership, loading: appDataLoading } = useAppData()
+  const { currentMembership, loading: appDataLoading, isMultiUserPlan } = useAppData()
   
   // Use data from context (preferred) or fallback to null
   const profile = profileFromContext

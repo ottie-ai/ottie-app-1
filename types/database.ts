@@ -96,6 +96,25 @@ export interface Integration {
   created_at: string // timestamp
 }
 
+export interface Plan {
+  id: number // serial
+  name: string // 'free' | 'starter' | 'growth' | 'agency' | 'enterprise'
+  description: string | null
+  max_users: number
+  max_sites: number
+  feature_lead_generation: boolean
+  feature_custom_domain: boolean
+  feature_analytics: boolean
+  feature_api_access: boolean
+  feature_priority_support: boolean
+  feature_3d_tours: boolean
+  feature_pdf_flyers: boolean
+  feature_crm_sync: boolean
+  price_cents: number
+  created_at: string // timestamp
+  updated_at: string // timestamp
+}
+
 // ==========================================
 // INSERT TYPES (for creating new records)
 // ==========================================
@@ -106,6 +125,7 @@ export type MembershipInsert = Omit<Membership, 'id' | 'created_at' | 'last_acti
 export type InvitationInsert = Omit<Invitation, 'id' | 'created_at' | 'expires_at' | 'status' | 'token'>
 export type SiteInsert = Omit<Site, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'views_count'>
 export type IntegrationInsert = Omit<Integration, 'id' | 'created_at'>
+export type PlanInsert = Omit<Plan, 'id' | 'created_at' | 'updated_at'>
 
 // ==========================================
 // UPDATE TYPES (for updating records)
@@ -117,4 +137,5 @@ export type MembershipUpdate = Partial<Omit<Membership, 'id' | 'created_at' | 'w
 export type InvitationUpdate = Partial<Omit<Invitation, 'id' | 'created_at' | 'workspace_id' | 'token'>>
 export type SiteUpdate = Partial<Omit<Site, 'id' | 'created_at' | 'workspace_id'>>
 export type IntegrationUpdate = Partial<Omit<Integration, 'id' | 'created_at' | 'workspace_id'>>
+export type PlanUpdate = Partial<Omit<Plan, 'id' | 'created_at' | 'updated_at'>>
 

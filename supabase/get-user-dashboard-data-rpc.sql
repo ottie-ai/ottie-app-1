@@ -2,13 +2,14 @@
 -- RPC Function: get_user_dashboard_data
 -- ==========================================
 -- Batches multiple queries into a single database call
--- Returns: profile, workspace, membership, workspace members, and all workspaces
+-- Returns: profile, workspace, membership, workspace members, all workspaces, and plans
 -- 
 -- This replaces separate calls to:
 -- - getProfile(userId)
 -- - getWorkspace(workspaceId) / getCurrentUserWorkspace(userId)
 -- - getMembers(workspaceId) / getWorkspaceMembers(workspaceId)
 -- - getAllUserWorkspaces(userId)
+-- - loadPlans() (plans are public data, loaded once per session)
 -- 
 -- Parameters:
 --   p_user_id (uuid, required) - The user ID to fetch data for
@@ -20,7 +21,8 @@
 --     "workspace": { ... } | null,
 --     "membership": { ... } | null,
 --     "members": [{ membership: {...}, profile: {...} }, ...],
---     "allWorkspaces": [{ workspace: {...}, role: "owner|admin|agent" }, ...]
+--     "allWorkspaces": [{ workspace: {...}, role: "owner|admin|agent" }, ...],
+--     "plans": [{ id, name, max_users, max_sites, features, ... }, ...]
 --   }
 -- 
 -- Usage:
@@ -57,6 +59,7 @@ declare
   v_membership jsonb;
   v_members jsonb;
   v_all_workspaces jsonb;
+  v_plans jsonb;
   v_workspace_id uuid;
   v_result jsonb;
 begin
@@ -145,13 +148,19 @@ begin
   where m.user_id = p_user_id
     and w.deleted_at is null;
 
+  -- Get all plans (public data, single source of truth for plan features)
+  -- Plans are cached on client side, but loaded here to reduce separate queries
+  select jsonb_agg(to_jsonb(p.*) order by p.price_cents asc) into v_plans
+  from public.plans p;
+
   -- Build result object
   v_result := jsonb_build_object(
     'profile', coalesce(v_profile, 'null'::jsonb),
     'workspace', coalesce(v_workspace, 'null'::jsonb),
     'membership', coalesce(v_membership, 'null'::jsonb),
     'members', coalesce(v_members, '[]'::jsonb),
-    'allWorkspaces', coalesce(v_all_workspaces, '[]'::jsonb)
+    'allWorkspaces', coalesce(v_all_workspaces, '[]'::jsonb),
+    'plans', coalesce(v_plans, '[]'::jsonb)
   );
 
   return v_result;

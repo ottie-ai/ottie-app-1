@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes'
 import { useAuth } from '@/hooks/use-auth'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaces } from '@/hooks/use-workspaces'
-import { normalizePlan, isMultiUserPlan } from '@/lib/utils'
+import { normalizePlan } from '@/lib/utils'
 import { signOut } from '@/lib/supabase/auth'
 import {
   LayoutDashboard,
@@ -126,7 +126,7 @@ export function DashboardSidebar() {
   const isCollapsed = state === 'collapsed'
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
-  const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading } = useAppData()
+  const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan } = useAppData()
   const { workspaces: workspacesFromHook } = useWorkspaces()
   
   // Use currentWorkspace and allWorkspaces from app-context (loaded with appData) - they're immediately available
