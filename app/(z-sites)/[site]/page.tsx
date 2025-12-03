@@ -146,10 +146,29 @@ async function getSiteConfig(slug: string): Promise<{ site: any; config: PageCon
   // Extract config (PageConfig) from site.config
   const config = site.config as PageConfig | null
   
+  // In dev mode, allow sites without config - just check if slug exists
+  // Return site even if config is null (we'll show default site)
   if (!config) {
-    console.log('[getSiteConfig] Site found but config is null - returning null to redirect')
-    // If site has no config, redirect to ottie.com
-    return null
+    console.log('[getSiteConfig] Site found but config is null - returning site without config for dev mode')
+    // Return site with empty config - will show default site
+    return { 
+      site, 
+      config: { 
+        theme: {
+          fontFamily: 'Inter',
+          headingFontFamily: 'Inter',
+          headingFontSize: 1,
+          headingLetterSpacing: 0,
+          uppercaseTitles: false,
+          primaryColor: '#000000',
+          secondaryColor: '#666666',
+          backgroundColor: '#ffffff',
+          textColor: '#000000',
+          borderRadius: 'md',
+        },
+        sections: [] 
+      } as PageConfig 
+    }
   }
   
   return { site, config }
