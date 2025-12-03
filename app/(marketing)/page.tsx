@@ -14,7 +14,9 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import Navbar from '@/components/marketing/navbar'
-import { pricingTiers } from '@/lib/pricing-data'
+import { transformPlansToTiers } from '@/lib/pricing-data'
+import { createClient } from '@/lib/supabase/client'
+import type { Plan } from '@/types/database'
 import '../sphere.css'
 
 const realEstateLinks = [
@@ -47,10 +49,29 @@ export default function Home() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
   
+  // Plans from database
+  const [plans, setPlans] = useState<Plan[]>([])
+  
   // Scroll-based sphere scaling
   const secondSectionRef = useRef<HTMLElement>(null)
   const thirdSectionRef = useRef<HTMLElement>(null)
   const sphereWrapperRef = useRef<HTMLDivElement>(null)
+
+  // Load plans from database (public access)
+  useEffect(() => {
+    const loadPlans = async () => {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .order('price_cents', { ascending: true })
+      
+      if (!error && data) {
+        setPlans(data)
+      }
+    }
+    loadPlans()
+  }, [])
 
   useEffect(() => {
     const currentLink = realEstateLinks[currentLinkIndex]
@@ -512,7 +533,7 @@ export default function Home() {
       </section>
 
       {/* Pricing Section */}
-      <PricingSection isLoading={isLoading} />
+      <PricingSection isLoading={isLoading} plans={plans} />
 
       {/* Third Section - CTA */}
       <section 
@@ -550,8 +571,11 @@ export default function Home() {
 }
 
 // Pricing Section Component
-function PricingSection({ isLoading }: { isLoading: boolean }) {
+function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[] }) {
   const [isAnnual, setIsAnnual] = useState(true)
+  
+  // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
+  const pricingTiers = transformPlansToTiers(plans)
 
   const getPrice = (tier: typeof pricingTiers[0]) => {
     if (tier.monthlyPrice === 0) return '$0'
@@ -559,14 +583,17 @@ function PricingSection({ isLoading }: { isLoading: boolean }) {
   }
 
   const getPricePerListing = (tier: typeof pricingTiers[0]) => {
-    if (tier.monthlyPrice === 0) return null
-    const price = isAnnual ? tier.annualPrice : tier.monthlyPrice
-    return (price / tier.listings).toFixed(2)
+    // Use automatically calculated price per listing from database
+    const pricePerListing = isAnnual ? tier.annualPricePerListing : tier.monthlyPricePerListing
+    return pricePerListing !== null ? pricePerListing.toFixed(2) : null
   }
 
   const getAnnualSavings = (tier: typeof pricingTiers[0]) => {
     if (tier.monthlyPrice === 0) return null
-    return (tier.monthlyPrice - tier.annualPrice) * 12
+    // Calculate savings per year: (monthly price - annual price) * 12 months
+    // This is automatically calculated from database prices
+    const savings = (tier.monthlyPrice - tier.annualPrice) * 12
+    return Math.round(savings) // Round to whole dollars
   }
   
   // Helper to get feature name (handles both string and Feature object)

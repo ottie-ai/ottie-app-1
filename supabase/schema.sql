@@ -282,6 +282,7 @@ create table public.plans (
   feature_pdf_flyers boolean default false,
   feature_crm_sync boolean default false,
   price_cents int default 0,
+  annual_price_cents int default 0,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
@@ -507,12 +508,12 @@ create policy "No user delete" on plans
 -- ==========================================
 
 -- Insert predefined plans (idempotent - use ON CONFLICT to prevent duplicates)
-INSERT INTO plans (name, description, max_users, max_sites, feature_lead_generation, feature_custom_domain, feature_analytics, feature_api_access, feature_priority_support, feature_3d_tours, feature_pdf_flyers, feature_crm_sync, price_cents) 
+INSERT INTO plans (name, description, max_users, max_sites, feature_lead_generation, feature_custom_domain, feature_analytics, feature_api_access, feature_priority_support, feature_3d_tours, feature_pdf_flyers, feature_crm_sync, price_cents, annual_price_cents) 
 VALUES 
-('free', 'Free to try', 1, 3, false, false, false, false, false, false, false, false, 0),
-('starter', 'Basic plan for individuals', 2, 10, true, false, true, false, false, false, false, false, 3900),
-('growth', 'For small agencies', 5, 50, true, true, true, false, true, true, true, true, 9900),
-('agency', 'For real estate companies', 20, 200, true, true, true, true, true, true, true, true, 19900),
-('enterprise', 'For large networks (contact us)', 999, 9999, true, true, true, true, true, true, true, true, 39900)
+('free', 'Free to try', 1, 3, false, false, false, false, false, false, false, false, 0, 0),
+('starter', 'Basic plan for individuals', 2, 10, true, false, true, false, false, false, false, false, 3900, 3300),
+('growth', 'For small agencies', 5, 50, true, true, true, false, true, true, true, true, 9900, 8400),
+('agency', 'For real estate companies', 20, 200, true, true, true, true, true, true, true, true, 19900, 16900),
+('enterprise', 'For large networks (contact us)', 999, 9999, true, true, true, true, true, true, true, true, 39900, 33900)
 ON CONFLICT (name) DO NOTHING;
 

@@ -42,7 +42,7 @@ import { normalizePlan } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
-import { pricingTiers } from '@/lib/pricing-data'
+import { transformPlansToTiers } from '@/lib/pricing-data'
 import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, Crown } from 'lucide-react'
 import { LottieLinkIconFocus } from '@/components/ui/lottie-link-icon-focus'
 import {
@@ -92,7 +92,10 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   // Get data from context (already loaded in layout via AppProvider)
   const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
   const { workspace: workspaceFromContext, refresh: refreshWorkspace } = useWorkspace()
-  const { currentMembership, loading: appDataLoading, isMultiUserPlan } = useAppData()
+  const { currentMembership, loading: appDataLoading, isMultiUserPlan, plans } = useAppData()
+  
+  // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
+  const pricingTiers = transformPlansToTiers(plans)
   
   // Use data from context (preferred) or fallback to null
   const profile = profileFromContext

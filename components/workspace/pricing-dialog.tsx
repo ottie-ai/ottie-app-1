@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,7 +22,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from '@/components/ui/carousel'
-import { pricingTiers, type PricingTier } from '@/lib/pricing-data'
+import { transformPlansToTiers, type PricingTier } from '@/lib/pricing-data'
+import { useAppData } from '@/contexts/app-context'
 
 interface PricingDialogProps {
   children: React.ReactNode
@@ -32,14 +33,18 @@ interface PricingDialogProps {
 }
 
 export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier }: PricingDialogProps) {
+  // Get plans from database via context
+  const { plans } = useAppData()
+  
+  // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
+  const pricingTiers = useMemo(() => transformPlansToTiers(plans), [plans])
+  
   // Normalize current plan to match tier IDs
-  // Pricing tiers have: 'free', 'starter', 'growth', 'agency'
-  // Map 'enterprise' to 'agency' (highest available tier)
+  // Pricing tiers have: 'free', 'starter', 'growth', 'agency', 'enterprise'
   const normalizePlanForPricing = (plan: string | null | undefined): string => {
     if (!plan || plan === '') return 'free'
-    if (plan === 'enterprise') return 'agency'
     // Only return if it's a valid tier ID
-    if (['free', 'starter', 'growth', 'agency'].includes(plan)) {
+    if (['free', 'starter', 'growth', 'agency', 'enterprise'].includes(plan)) {
       return plan
     }
     return 'free' // Default fallback
@@ -57,20 +62,22 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     if (normalizedCurrentPlan === 'free') return 'starter'
     if (normalizedCurrentPlan === 'starter') return 'growth'
     if (normalizedCurrentPlan === 'growth') return 'agency'
-    if (normalizedCurrentPlan === 'agency') return 'agency' // Already on highest tier
+    if (normalizedCurrentPlan === 'agency') return 'enterprise'
+    if (normalizedCurrentPlan === 'enterprise') return 'enterprise' // Already on highest tier
     return 'growth' // Default fallback
   }
   
   const [selectedTier, setSelectedTier] = useState(() => {
     // If defaultSelectedTier is provided, use it
-    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency'].includes(defaultSelectedTier)) {
+    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency', 'enterprise'].includes(defaultSelectedTier)) {
       return defaultSelectedTier
     }
     // Otherwise use default logic
     if (normalizedCurrentPlan === 'free') return 'starter'
     if (normalizedCurrentPlan === 'starter') return 'growth'
     if (normalizedCurrentPlan === 'growth') return 'agency'
-    if (normalizedCurrentPlan === 'agency') return 'agency'
+    if (normalizedCurrentPlan === 'agency') return 'enterprise'
+    if (normalizedCurrentPlan === 'enterprise') return 'enterprise'
     return 'growth'
   })
   const [isAnnual, setIsAnnual] = useState(true)
@@ -78,7 +85,7 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   // Update selected tier when current plan or defaultSelectedTier changes
   useEffect(() => {
     // If defaultSelectedTier is provided, use it
-    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency'].includes(defaultSelectedTier)) {
+    if (defaultSelectedTier && ['free', 'starter', 'growth', 'agency', 'enterprise'].includes(defaultSelectedTier)) {
       setSelectedTier(defaultSelectedTier)
       return
     }
@@ -87,7 +94,8 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     if (normalizedCurrentPlan === 'free') nextTier = 'starter'
     else if (normalizedCurrentPlan === 'starter') nextTier = 'growth'
     else if (normalizedCurrentPlan === 'growth') nextTier = 'agency'
-    else if (normalizedCurrentPlan === 'agency') nextTier = 'agency'
+    else if (normalizedCurrentPlan === 'agency') nextTier = 'enterprise'
+    else if (normalizedCurrentPlan === 'enterprise') nextTier = 'enterprise'
     setSelectedTier(nextTier)
   }, [normalizedCurrentPlan, defaultSelectedTier])
 
@@ -97,14 +105,17 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   }
 
   const getPricePerListing = (tier: PricingTier) => {
-    if (tier.monthlyPrice === 0) return null
-    const price = isAnnual ? tier.annualPrice : tier.monthlyPrice
-    return (price / tier.listings).toFixed(2)
+    // Use automatically calculated price per listing from database
+    const pricePerListing = isAnnual ? tier.annualPricePerListing : tier.monthlyPricePerListing
+    return pricePerListing !== null ? pricePerListing.toFixed(2) : null
   }
 
   const getAnnualSavings = (tier: PricingTier) => {
     if (tier.monthlyPrice === 0) return null
-    return (tier.monthlyPrice - tier.annualPrice) * 12
+    // Calculate savings per year: (monthly price - annual price) * 12 months
+    // This is automatically calculated from database prices
+    const savings = (tier.monthlyPrice - tier.annualPrice) * 12
+    return Math.round(savings) // Round to whole dollars
   }
 
   // Get plan order for comparison (lower number = lower tier)
@@ -114,7 +125,7 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
       'starter': 1,
       'growth': 2,
       'agency': 3,
-      'enterprise': 3, // enterprise maps to agency
+      'enterprise': 4,
     }
     return order[planId] ?? 0
   }
@@ -125,36 +136,167 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     return getPlanOrder(tierId) < getPlanOrder(normalizedCurrentPlan)
   }
 
+  // Determine which plan should be highlighted based on current plan
+  const getHighlightedPlan = (): string | null => {
+    if (!normalizedCurrentPlan || normalizedCurrentPlan === 'enterprise') {
+      return null // Enterprise or no plan - highlight nothing
+    }
+    
+    const currentOrder = getPlanOrder(normalizedCurrentPlan)
+    
+    // If on free or starter (order < 2), highlight growth
+    if (currentOrder < 2) {
+      return 'growth'
+    }
+    
+    // If on growth (order = 2), highlight agency
+    if (currentOrder === 2) {
+      return 'agency'
+    }
+    
+    // If on agency (order = 3), highlight enterprise
+    if (currentOrder === 3) {
+      return 'enterprise'
+    }
+    
+    return null
+  }
+
   // Check if user has already used trial (has Stripe customer ID)
   const hasUsedTrial = !!stripeCustomerId
+  
+  const highlightedPlanId = getHighlightedPlan()
+  
+  // Dynamic height for header sections to align separators
+  const [headerHeight, setHeaderHeight] = useState<number | null>(null)
+  const headerRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  
+  // Dynamic height for card wrappers (including trial text) to make all cards same height
+  const [cardWrapperHeight, setCardWrapperHeight] = useState<number | null>(null)
+  const cardWrapperRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  
+  // Update header height when plans change or window resizes
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      // Use double requestAnimationFrame to ensure DOM is fully updated
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const heights: number[] = []
+          headerRefs.current.forEach((ref) => {
+            if (ref) {
+              // Temporarily remove fixed height to measure natural height
+              const currentHeight = ref.style.height
+              ref.style.height = 'auto'
+              // Force reflow
+              void ref.offsetHeight
+              const naturalHeight = ref.offsetHeight
+              ref.style.height = currentHeight
+              heights.push(naturalHeight)
+            }
+          })
+          if (heights.length > 0) {
+            const maxHeight = Math.max(...heights)
+            setHeaderHeight(maxHeight)
+          }
+        })
+      })
+    }
+    
+    // Initial calculation
+    const initialTimeout = setTimeout(updateHeaderHeight, 0)
+    
+    // Update when isAnnual changes (with delay for DOM update)
+    const changeTimeout = setTimeout(updateHeaderHeight, 100)
+    
+    // Use ResizeObserver for more accurate tracking
+    const observers: ResizeObserver[] = []
+    headerRefs.current.forEach((ref) => {
+      if (ref) {
+        const observer = new ResizeObserver(() => {
+          updateHeaderHeight()
+        })
+        observer.observe(ref)
+        observers.push(observer)
+      }
+    })
+    
+    window.addEventListener('resize', updateHeaderHeight)
+    
+    return () => {
+      clearTimeout(initialTimeout)
+      clearTimeout(changeTimeout)
+      window.removeEventListener('resize', updateHeaderHeight)
+      observers.forEach(observer => observer.disconnect())
+    }
+  }, [pricingTiers, isAnnual])
+  
+  // Update card wrapper height to make all cards same height
+  useEffect(() => {
+    const updateCardWrapperHeight = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const heights: number[] = []
+          cardWrapperRefs.current.forEach((ref) => {
+            if (ref) {
+              // Temporarily remove fixed height to measure natural height
+              const currentHeight = ref.style.height
+              ref.style.height = 'auto'
+              // Force reflow
+              void ref.offsetHeight
+              const naturalHeight = ref.offsetHeight
+              ref.style.height = currentHeight
+              heights.push(naturalHeight)
+            }
+          })
+          if (heights.length > 0) {
+            const maxHeight = Math.max(...heights)
+            setCardWrapperHeight(maxHeight)
+          }
+        })
+      })
+    }
+    
+    // Initial calculation
+    const initialTimeout = setTimeout(updateCardWrapperHeight, 0)
+    
+    // Update when isAnnual changes (with delay for DOM update)
+    const changeTimeout = setTimeout(updateCardWrapperHeight, 100)
+    
+    // Use ResizeObserver for more accurate tracking
+    const observers: ResizeObserver[] = []
+    cardWrapperRefs.current.forEach((ref) => {
+      if (ref) {
+        const observer = new ResizeObserver(() => {
+          updateCardWrapperHeight()
+        })
+        observer.observe(ref)
+        observers.push(observer)
+      }
+    })
+    
+    window.addEventListener('resize', updateCardWrapperHeight)
+    
+    return () => {
+      clearTimeout(initialTimeout)
+      clearTimeout(changeTimeout)
+      window.removeEventListener('resize', updateCardWrapperHeight)
+      observers.forEach(observer => observer.disconnect())
+    }
+  }, [pricingTiers, isAnnual])
 
   return (
     <Dialog>
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Upgrade your plan</DialogTitle>
-          <DialogDescription>
-            Choose the plan that best fits your needs.{!hasUsedTrial && ' All paid plans include a 14-day free trial.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-3 py-2 shrink-0">
-          <Label htmlFor="billing-toggle" className={cn("text-sm", !isAnnual && "font-medium")}>
-            Monthly
-          </Label>
-          <Switch
-            id="billing-toggle"
-            checked={isAnnual}
-            onCheckedChange={setIsAnnual}
-          />
-          <Label htmlFor="billing-toggle" className={cn("text-sm flex items-center gap-2", isAnnual && "font-medium")}>
-            Annual
-            <Badge variant="secondary" className="text-xs">Save 15%</Badge>
-          </Label>
+      <DialogContent className="!max-w-[90vw] w-[90vw] max-h-[95vh] flex flex-col overflow-hidden p-0">
+        <div className="px-6 pt-6 pb-2 shrink-0">
+          <DialogHeader>
+            <DialogTitle>Upgrade your plan</DialogTitle>
+            <DialogDescription>
+              Choose the plan that best fits your needs.{!hasUsedTrial && ' All paid plans include a 14-day free trial.'}
+            </DialogDescription>
+          </DialogHeader>
         </div>
         
         {/* Mobile Carousel */}
@@ -166,34 +308,33 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                 const pricePerListing = getPricePerListing(tier)
                 const isCurrentPlan = tier.id === normalizedCurrentPlan
                 const isDowngrade = isLowerTier(tier.id)
-                // If current plan is growth, mark agency as most popular instead of growth
-                const isMostPopular = normalizedCurrentPlan === 'growth' 
-                  ? tier.id === 'agency' 
-                  : tier.popular || false
-                // Badge text: "Upgrade" if growth -> agency, otherwise "Most Popular"
-                const badgeText = normalizedCurrentPlan === 'growth' && tier.id === 'agency' 
-                  ? 'Upgrade' 
-                  : 'Most Popular'
+                
+                // Determine if this tier should be highlighted
+                const isHighlighted = highlightedPlanId === tier.id
+                
+                // Badge text logic:
+                // - If highlighted and current plan < growth: "Most Popular"
+                // - If highlighted and current plan >= growth: "Next Step"
+                const currentOrder = getPlanOrder(normalizedCurrentPlan)
+                const badgeText = isHighlighted 
+                  ? (currentOrder < 2 ? 'Most Popular' : 'Next Step')
+                  : null
+                
+                // Enterprise plan special handling
+                const isEnterprise = tier.id === 'enterprise'
                 
                 return (
                   <CarouselItem key={tier.id} className="pl-4 basis-[90%] pt-4 pb-1">
                     <div
-                      onClick={() => !tier.disabled && !isCurrentPlan && setSelectedTier(tier.id)}
                       className={cn(
                         'relative flex flex-col rounded-xl p-5 transition-all min-h-[520px]',
-                        !tier.disabled && !isCurrentPlan && 'cursor-pointer',
-                        isMostPopular 
+                        isHighlighted 
                           ? 'gradient-ottie-card-border'
-                          : cn(
-                              'border',
-                        selectedTier === tier.id && !tier.disabled && !isCurrentPlan
-                          ? 'border-foreground ring-1 ring-foreground'
-                                : !tier.disabled && !isCurrentPlan && 'hover:border-foreground/30'
-                            ),
-                        (tier.disabled || isCurrentPlan) && 'opacity-50 cursor-default'
+                          : 'border',
+                        (tier.disabled || isCurrentPlan) && 'opacity-50'
                       )}
                     >
-                      {isMostPopular && (
+                      {isHighlighted && badgeText && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap">
                             {badgeText}
@@ -208,30 +349,56 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                       
                       {/* Price */}
                       <div className="mb-2">
-                        <span className="text-3xl font-bold">{getPrice(tier)}</span>
-                        {tier.monthlyPrice !== 0 && (
-                          <span className="text-muted-foreground">/month</span>
-                        )}
+                        {isEnterprise ? (
+                          <>
+                            <span className="text-3xl font-bold">Custom</span>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Starts from ${tier.monthlyPrice}/month
+                            </p>
+                          </>
+                        ) : (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">{getPrice(tier)}</span>
+                          {tier.monthlyPrice !== 0 && (
+                            <span className="text-sm text-muted-foreground">/month</span>
+                          )}
+                        </div>
                         {savings && (
                           <p className="text-xs text-green-600 mt-1">
                             Save ${savings}/year
                           </p>
                         )}
+                      </>
+                        )}
                       </div>
                       
                       {/* Listings & Price per listing */}
                       <div className="mb-4 pb-4 border-b">
-                        <p className="text-sm font-medium">
-                          {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
-                          {tier.extraListingPrice && (
-                            <span className="text-muted-foreground font-normal"> + ${tier.extraListingPrice}/extra</span>
-                          )}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
-                        {pricePerListing && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            ${pricePerListing}/listing
-                          </p>
+                        {isEnterprise ? (
+                          <>
+                            <p className="text-sm font-medium">
+                              100+ Active Listings
+                            </p>
+                            <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium">
+                              {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
+                            </p>
+                            {tier.extraListingPrice && (
+                              <p className="text-xs text-muted-foreground">
+                                + ${tier.extraListingPrice} /month for each additional listing
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                            {pricePerListing && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                ${pricePerListing}/listing
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                       
@@ -256,15 +423,24 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                         )}
                       </ul>
                       
-                      <Button
-                        variant={isMostPopular ? 'default' : 'outline'}
-                        className="w-full mt-auto"
-                        disabled={tier.disabled || isCurrentPlan}
-                      >
-                        {isCurrentPlan ? 'Current Plan' : isDowngrade ? 'Downgrade' : tier.cta}
-                      </Button>
+                      {isDowngrade ? (
+                        <p className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors mt-auto">
+                          Downgrade
+                        </p>
+                      ) : (
+                        <Button
+                          variant={isHighlighted ? 'default' : 'outline'}
+                          className="w-full mt-auto"
+                          disabled={tier.disabled || isCurrentPlan}
+                        >
+                          {isCurrentPlan ? 'Current Plan' : tier.cta}
+                        </Button>
+                      )}
+                    </div>
+                    {/* Trial text outside card - with fixed height to maintain equal card heights */}
+                    <div className="h-5 mt-2">
                       {tier.trial && !hasUsedTrial && (
-                        <p className="text-xs text-center text-muted-foreground mt-2">
+                        <p className="text-xs text-center text-muted-foreground">
                           14-day free trial • No credit card required
                         </p>
                       )}
@@ -278,71 +454,69 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
               <CarouselNext className="static translate-y-0" />
             </div>
           </Carousel>
-
-          {/* Enterprise Section - Mobile */}
-          <div className="mx-2 mt-4 rounded-xl border p-5">
-            <h3 className="font-semibold text-lg mb-1">Enterprise</h3>
-            <p className="text-sm text-muted-foreground mb-3">For large brokerages and franchises</p>
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="size-4 text-green-600 shrink-0" />
-                Starts from 100 listings
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="size-4 text-green-600 shrink-0" />
-                Everything in Pro
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="size-4 text-green-600 shrink-0" />
-                API access
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Check className="size-4 text-green-600 shrink-0" />
-                Dedicated account manager
-              </div>
-            </div>
-            <Button variant="outline" className="w-full">
-              Contact Sales
-            </Button>
-          </div>
         </div>
 
         {/* Desktop Grid */}
-        <div className="hidden md:block pt-6 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-4 gap-4">
+        <div className="hidden md:block flex-1 overflow-y-auto overflow-x-visible px-6 pb-6">
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center gap-3 py-3">
+            <Label htmlFor="billing-toggle" className={cn("text-sm", !isAnnual && "font-medium")}>
+              Monthly
+            </Label>
+            <Switch
+              id="billing-toggle"
+              checked={isAnnual}
+              onCheckedChange={setIsAnnual}
+            />
+            <Label htmlFor="billing-toggle" className={cn("text-sm flex items-center gap-2", isAnnual && "font-medium")}>
+              Annual
+              <Badge variant="secondary" className="text-xs">Save 15%</Badge>
+            </Label>
+          </div>
+          <div className="grid grid-cols-5 gap-4 items-stretch py-4">
           {pricingTiers.map((tier) => {
               const savings = isAnnual ? getAnnualSavings(tier) : null
               const pricePerListing = getPricePerListing(tier)
               const isCurrentPlan = tier.id === normalizedCurrentPlan
               const isDowngrade = isLowerTier(tier.id)
-              // If current plan is growth, mark agency as most popular instead of growth
-              const isMostPopular = normalizedCurrentPlan === 'growth' 
-                ? tier.id === 'agency' 
-                : tier.popular || false
-              // Badge text: "Upgrade" if growth -> agency, otherwise "Most Popular"
-              const badgeText = normalizedCurrentPlan === 'growth' && tier.id === 'agency' 
-                ? 'Upgrade' 
-                : 'Most Popular'
+              
+              // Determine if this tier should be highlighted
+              const isHighlighted = highlightedPlanId === tier.id
+              
+              // Badge text logic:
+              // - If highlighted and current plan < growth: "Most Popular"
+              // - If highlighted and current plan >= growth: "Next Step"
+              const currentOrder = getPlanOrder(normalizedCurrentPlan)
+              const badgeText = isHighlighted 
+                ? (currentOrder < 2 ? 'Most Popular' : 'Next Step')
+                : null
+              
+              // Enterprise plan special handling
+              const isEnterprise = tier.id === 'enterprise'
             
             return (
+              <div 
+                key={tier.id} 
+                ref={(el) => {
+                  if (el) {
+                    cardWrapperRefs.current.set(tier.id, el)
+                  } else {
+                    cardWrapperRefs.current.delete(tier.id)
+                  }
+                }}
+                className="flex flex-col"
+                style={cardWrapperHeight ? { height: `${cardWrapperHeight}px` } : {}}
+              >
               <div
-                key={tier.id}
-                onClick={() => !tier.disabled && !isCurrentPlan && setSelectedTier(tier.id)}
                 className={cn(
-                    'relative flex flex-col rounded-xl p-5 transition-all',
-                  !tier.disabled && !isCurrentPlan && 'cursor-pointer',
-                    isMostPopular 
+                    'relative flex flex-col rounded-xl p-5 transition-all flex-1',
+                    isHighlighted 
                       ? 'gradient-ottie-card-border'
-                      : cn(
-                          'border',
-                  selectedTier === tier.id && !tier.disabled && !isCurrentPlan
-                    ? 'border-foreground ring-1 ring-foreground'
-                            : !tier.disabled && !isCurrentPlan && 'hover:border-foreground/30'
-                        ),
-                  (tier.disabled || isCurrentPlan) && 'opacity-50 cursor-default'
+                      : 'border',
+                  (tier.disabled || isCurrentPlan) && 'opacity-50'
                 )}
               >
-                {isMostPopular && (
+                {isHighlighted && badgeText && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="gradient-ottie text-white text-xs font-medium px-3 py-1 rounded-full">
                       {badgeText}
@@ -350,42 +524,81 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                   </div>
                 )}
                 
+                {/* Fixed height header section (name, description, price, listings) */}
+                <div 
+                  ref={(el) => {
+                    if (el) {
+                      headerRefs.current.set(tier.id, el)
+                    } else {
+                      headerRefs.current.delete(tier.id)
+                    }
+                  }}
+                  className="flex flex-col shrink-0"
+                  style={headerHeight ? { height: `${headerHeight}px` } : { minHeight: '180px' }}
+                >
                   <div className="mb-3">
-                  <h3 className="font-semibold text-lg">{tier.name}</h3>
-                  <p className="text-sm text-muted-foreground">{tier.description}</p>
-                </div>
-                
-                  {/* Price */}
-                  <div className="mb-2">
-                    <span className="text-3xl font-bold">{getPrice(tier)}</span>
-                    {tier.monthlyPrice !== 0 && (
-                    <span className="text-muted-foreground">/month</span>
-                  )}
-                  {savings && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Save ${savings}/year
-                    </p>
-                  )}
-                </div>
-                
-                  {/* Listings & Price per listing */}
-                  <div className="mb-4 pb-4 border-b">
-                    <p className="text-sm font-medium">
-                      {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
-                      {tier.extraListingPrice && (
-                        <span className="text-muted-foreground font-normal"> + ${tier.extraListingPrice}/extra</span>
-                      )}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
-                    {pricePerListing && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        ${pricePerListing}/listing
-                      </p>
-                    )}
+                    <h3 className="font-semibold text-lg">{tier.name}</h3>
+                    <p className="text-sm text-muted-foreground">{tier.description}</p>
                   </div>
                   
-                  {/* Features */}
-                  <ul className="space-y-2 mb-6 flex-1">
+                  {/* Price */}
+                  <div className="mb-2 flex-1 flex flex-col justify-start">
+                    {isEnterprise ? (
+                      <>
+                        <span className="text-3xl font-bold">Custom</span>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Starts from ${tier.monthlyPrice}/month
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">{getPrice(tier)}</span>
+                          {tier.monthlyPrice !== 0 && (
+                            <span className="text-sm text-muted-foreground">/month</span>
+                          )}
+                        </div>
+                        {savings && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Save ${savings}/year
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                
+                  {/* Listings & Price per listing */}
+                  <div className="pb-4 border-b">
+                    {isEnterprise ? (
+                      <>
+                        <p className="text-sm font-medium">
+                          100+ Active Listings
+                        </p>
+                        <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium">
+                          {tier.listings} Active Listing{tier.listings > 1 ? 's' : ''}
+                        </p>
+                        {tier.extraListingPrice && (
+                          <p className="text-xs text-muted-foreground">
+                            + ${tier.extraListingPrice} /month for each additional listing
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">{tier.teamSeats}</p>
+                        {pricePerListing && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ${pricePerListing}/listing
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                  
+                  {/* Features - flexible section */}
+                  <ul className="space-y-2 mb-6 flex-1 mt-4">
                     {tier.includesFrom && (
                       <li className="flex items-start gap-2 text-sm font-medium text-foreground pb-1">
                         <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
@@ -400,62 +613,33 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                   ))}
                 </ul>
                 
-                <Button
-                  variant={isMostPopular ? 'default' : 'outline'}
-                  className="w-full"
-                  disabled={tier.disabled || isCurrentPlan}
-                >
-                  {isCurrentPlan ? 'Current Plan' : isDowngrade ? 'Downgrade' : tier.cta}
-                </Button>
-                  {tier.trial && !hasUsedTrial && (
-                    <p className="text-xs text-center text-muted-foreground mt-2">
-                      14-day free trial
+                <div className="mt-auto">
+                  {isDowngrade ? (
+                    <p className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                      Downgrade
                     </p>
+                  ) : (
+                    <Button
+                      variant={isHighlighted ? 'default' : 'outline'}
+                      className="w-full"
+                      disabled={tier.disabled || isCurrentPlan}
+                    >
+                      {isCurrentPlan ? 'Current Plan' : tier.cta}
+                    </Button>
                   )}
+                </div>
+              </div>
+              {/* Trial text outside card - with fixed height to maintain equal card heights */}
+              <div className="h-5 mt-2">
+                {tier.trial && !hasUsedTrial && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    14-day free trial
+                  </p>
+                )}
+              </div>
               </div>
             )
           })}
-          </div>
-
-          {/* Enterprise Section - Full Width */}
-          <div className="mt-4 rounded-xl border p-5 hover:border-foreground/30 transition-all">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg mb-1">Enterprise</h3>
-                <p className="text-sm text-muted-foreground mb-3">For large brokerages and franchises with custom needs</p>
-                <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    Starts from 100 listings
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    Everything in Pro
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    API access
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    Dedicated account manager
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    Custom integrations
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0" />
-                    SLA guarantee
-                  </div>
-                </div>
-              </div>
-              <div className="shrink-0">
-                <Button variant="outline">
-                  Contact Sales
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </DialogContent>

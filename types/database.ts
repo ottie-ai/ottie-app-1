@@ -110,7 +110,8 @@ export interface Plan {
   feature_3d_tours: boolean
   feature_pdf_flyers: boolean
   feature_crm_sync: boolean
-  price_cents: number
+  price_cents: number // Monthly price in cents
+  annual_price_cents: number // Monthly price in cents when paid annually (with 15% discount)
   created_at: string // timestamp
   updated_at: string // timestamp
 }

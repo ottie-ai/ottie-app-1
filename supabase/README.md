@@ -31,6 +31,7 @@ This directory contains SQL migration files for the Supabase database.
 - **`add-performance-indexes.sql`** - Performance indexes for faster queries (IMPORTANT: Run this after schema.sql)
 - **`add-sites-columns.sql`** - Adds thumbnail_url, published_at, and description columns to sites table
 - **`create-plans-table.sql`** - Creates plans table for subscription plans (free, starter, growth, agency, enterprise) with RLS policies
+- **`add-annual-price-to-plans.sql`** - Adds annual_price_cents column to plans table (monthly price when paid annually with 15% discount)
 - **`update-invitations-rls-to-use-plans.sql`** - Updates invitations RLS policy to use plans table as single source of truth
 
 ## Setup Instructions
@@ -48,6 +49,7 @@ Run these files in order in Supabase SQL Editor:
 8. `create-site-thumbnails-bucket.sql` - Creates storage bucket for site thumbnails (requires bucket creation in Dashboard first)
 9. `add-sites-columns.sql` - Adds missing columns to sites table (thumbnail_url, published_at, description)
 10. `create-plans-table.sql` - Creates plans table with predefined subscription plans
+11. `add-annual-price-to-plans.sql` - Adds annual_price_cents column to plans table (monthly price when paid annually)
 
 ### 2. Updating Functions
 When updating functions (like `handle_new_profile` or `get_user_dashboard_data`):

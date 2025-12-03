@@ -179,7 +179,7 @@ export default function SitesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<('published' | 'draft' | 'archived')[]>(['published', 'draft', 'archived'])
   const [assignedToFilter, setAssignedToFilter] = useState<string[]>([]) // Array of user IDs - will be initialized with all members
-  const [stateFilter, setStateFilter] = useState<string[]>([]) // Array of state values (placeholder for now)
+  const [stateFilter, setStateFilter] = useState<string[]>(['available', 'under_offer', 'reserved', 'sold', 'off_market']) // Array of state values - default to all
   const [sortBy, setSortBy] = useState<'createdDesc' | 'editedDesc' | 'nameAsc' | 'viewsDesc'>('createdDesc')
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [isAssignedToDropdownOpen, setIsAssignedToDropdownOpen] = useState(false)
@@ -709,29 +709,98 @@ export default function SitesPage() {
                       variant="outline" 
                       size="sm" 
                       className={`gap-2 transition-colors ${
-                        stateFilter.length > 0 
+                        stateFilter.length > 0 && stateFilter.length < 5
                           ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
                           : ''
                       }`}
                     >
                       <LottieFlagIcon size={18} />
                       State
-                      {stateFilter.length > 0 && (
+                      {stateFilter.length > 0 && stateFilter.length < 5 && (
                         <span className="ml-1 h-5 px-1.5 text-xs rounded-full border-transparent bg-[#7c3aed] inline-flex items-center justify-center font-medium" style={{ color: 'white' }}>
                           {stateFilter.length === 1 
-                            ? stateFilter[0] 
-                            : stateFilter.sort().join(', ')}
+                            ? stateFilter[0].replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                            : stateFilter.sort().map(s => s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')}
                         </span>
                       )}
-                      {stateFilter.length === 0 && <ChevronDown className="size-3" />}
+                      {(stateFilter.length === 0 || stateFilter.length === 5) && <ChevronDown className="size-3" />}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
                     <DropdownMenuCheckboxItem
-                      checked={false}
-                      disabled
+                      checked={stateFilter.includes('available')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStateFilter([...stateFilter, 'available'])
+                        } else {
+                          setStateFilter(stateFilter.filter(s => s !== 'available'))
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
                     >
-                      Coming soon
+                      <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/15">
+                        Available
+                      </Badge>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={stateFilter.includes('under_offer')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStateFilter([...stateFilter, 'under_offer'])
+                        } else {
+                          setStateFilter(stateFilter.filter(s => s !== 'under_offer'))
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Badge className="bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/15">
+                        Under offer
+                      </Badge>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={stateFilter.includes('reserved')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStateFilter([...stateFilter, 'reserved'])
+                        } else {
+                          setStateFilter(stateFilter.filter(s => s !== 'reserved'))
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/15">
+                        Reserved
+                      </Badge>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={stateFilter.includes('sold')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStateFilter([...stateFilter, 'sold'])
+                        } else {
+                          setStateFilter(stateFilter.filter(s => s !== 'sold'))
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Badge className="bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20 hover:bg-gray-500/15">
+                        Sold
+                      </Badge>
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={stateFilter.includes('off_market')}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStateFilter([...stateFilter, 'off_market'])
+                        } else {
+                          setStateFilter(stateFilter.filter(s => s !== 'off_market'))
+                        }
+                      }}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 hover:bg-purple-500/15">
+                        Off market
+                      </Badge>
                     </DropdownMenuCheckboxItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -793,7 +862,7 @@ export default function SitesPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
               </div>
-              {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || stateFilter.length > 0) && (
+              {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || (stateFilter.length > 0 && stateFilter.length < 5)) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -807,7 +876,8 @@ export default function SitesPage() {
                         } else {
                           setAssignedToFilter([])
                         }
-                        setStateFilter([])
+                        // Reset stateFilter to all states (default)
+                        setStateFilter(['available', 'under_offer', 'reserved', 'sold', 'off_market'])
                       }}
                       className="ml-2 p-1.5 rounded-full hover:bg-muted/50 transition-colors"
                     >
@@ -897,7 +967,7 @@ export default function SitesPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence mode="popLayout">
             {/* New Site Card - Only show when no filters are active */}
-            {!searchQuery && statusFilter.length === 3 && sortBy === 'createdDesc' && (isMultiUser ? (assignedToFilter.length === 0 || assignedToFilter.length === members.length) : assignedToFilter.length === 0) && stateFilter.length === 0 && (
+            {!searchQuery && statusFilter.length === 3 && sortBy === 'createdDesc' && (isMultiUser ? (assignedToFilter.length === 0 || assignedToFilter.length === members.length) : assignedToFilter.length === 0) && (stateFilter.length === 0 || stateFilter.length === 5) && (
               <motion.div
                 key="new-site-card"
                 layout
