@@ -326,6 +326,15 @@ export async function middleware(request: NextRequest) {
   console.log('[Middleware] Is ottie.site domain:', isOttieSiteDomain)
   console.log('[Middleware] Sites domain:', sitesDomain)
   
+  // Redirect www.ottie.com to ottie.com (remove www prefix from root domain)
+  // MUST be before root domain check to redirect www before blocking
+  if (!isLocalhost && hostnameWithoutPort === `www.${rootDomainWithoutPort}`) {
+    console.log('[Middleware] Redirecting www.ottie.com to ottie.com')
+    const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
+    redirectUrl.search = request.nextUrl.search // Preserve query params
+    return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
+  }
+  
   // Redirect ottie.site root (without subdomain) to ottie.com
   if (!isLocalhost && hostnameWithoutPort === sitesDomain) {
     console.log('[Middleware] Redirecting ottie.site root to ottie.com')
@@ -337,7 +346,9 @@ export async function middleware(request: NextRequest) {
   // CRITICAL: Block any site routes on ottie.com (root domain)
   // Sites should ONLY be accessible on ottie.site subdomains
   // Marketing routes (/, /privacy, /terms) are ALWAYS publicly accessible on ottie.com
-  if (!isLocalhost && hostnameWithoutPort === rootDomainWithoutPort) {
+  const isRootDomain = !isLocalhost && hostnameWithoutPort === rootDomainWithoutPort
+  
+  if (isRootDomain) {
     // Marketing routes that are always publicly accessible
     const marketingRoutes = ['/', '/privacy', '/terms']
     const isMarketingRoute = marketingRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
@@ -354,13 +365,15 @@ export async function middleware(request: NextRequest) {
     if (isMarketingRoute || isAuthRoute || isApiRoute) {
       // Allow these routes - continue to route groups
       // Marketing will be handled by (marketing) route group
-    } else if (pathname.split('/').filter(Boolean).length > 0) {
-      // Looks like a site route on ottie.com - block it and redirect to homepage
+      console.log('[Middleware] Allowing route on root domain:', pathname)
+    } else {
+      // ANY other path on ottie.com is BLOCKED
       // Sites should ONLY be accessible on ottie.site subdomains
+      console.log('[Middleware] BLOCKING site route on root domain:', pathname)
+      console.log('[Middleware] Sites are only accessible on ottie.site subdomains (e.g., testujem.ottie.site)')
       const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
       return NextResponse.redirect(redirectUrl, 301)
     }
-    // If pathname is '/' or empty, it's the homepage - allow it (marketing route)
   }
   
   // Redirect www.app.* to app.* (remove www prefix from app subdomain)
