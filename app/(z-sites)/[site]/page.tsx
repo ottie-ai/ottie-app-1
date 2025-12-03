@@ -1,11 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { SectionRenderer } from '@/components/templates/SectionRenderer'
-import { FontLoader } from '@/components/builder/FontLoader'
-import { FontTransition } from '@/components/builder/FontTransition'
-import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
-import type { ThemeConfig, Section, PageConfig } from '@/types/builder'
+import type { PageConfig } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   const { site } = await params
@@ -236,13 +232,16 @@ export default async function SitePage({
   // const ctaType = theme?.ctaType || 'none'
   // const ctaValue = theme?.ctaValue || ''
   // 
+  // // Collect unique fonts for FontLoader
+  // const fonts = [
+  //   theme?.fontFamily,
+  //   theme?.headingFontFamily,
+  // ].filter(Boolean) as string[]
+  // 
   // // Render the site
   // return (
   //   <>
-  //     <FontLoader 
-  //       fontFamily={theme?.fontFamily} 
-  //       headingFontFamily={theme?.headingFontFamily} 
-  //     />
+  //     <FontLoader fonts={fonts} />
   //     <FontTransition />
   //     <div 
   //       style={{ 
