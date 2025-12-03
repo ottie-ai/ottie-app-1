@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { SectionRenderer } from '@/components/templates/SectionRenderer'
-import { FontLoader } from '@/components/builder/FontLoader'
-import { FontTransition } from '@/components/builder/FontTransition'
-import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
+// import { SectionRenderer } from '@/components/templates/SectionRenderer'
+// import { FontLoader } from '@/components/builder/FontLoader'
+// import { FontTransition } from '@/components/builder/FontTransition'
+// import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { PageConfig, Section } from '@/types/builder'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
@@ -231,47 +231,62 @@ export default async function SitePage({
   
   const { site: siteRecord, config: siteConfig } = siteData
   
-  // Extract theme and sections from config
-  const { theme, sections } = siteConfig
-  const ctaType = theme?.ctaType || 'none'
-  const ctaValue = theme?.ctaValue || ''
-  
-  // Collect unique fonts for FontLoader
-  const fonts = [
-    theme?.fontFamily,
-    theme?.headingFontFamily,
-  ].filter(Boolean) as string[]
-  
-  // Get primary font for FontTransition
-  const primaryFont = theme?.fontFamily || 'Inter'
-  
-  // Render the site
+  // TEMPORARY: Simple render for testing
+  // This confirms that database fetch and routing work
   return (
-    <>
-      <FontLoader fonts={fonts} />
-      <FontTransition font={primaryFont}>
-        <div 
-          style={{ 
-            fontFamily: theme?.fontFamily, 
-            backgroundColor: theme?.backgroundColor, 
-            color: theme?.textColor 
-          }}
-        >
-          {sections?.map((section: Section) => (
-            <SectionRenderer 
-              key={section.id} 
-              section={section} 
-              theme={theme} 
-              colorScheme={section.colorScheme || 'light'} 
-            />
-          ))}
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      minHeight: '100vh',
+      backgroundColor: '#f5f5f5',
+      fontFamily: 'system-ui, sans-serif',
+      padding: '2rem',
+      textAlign: 'center'
+    }}>
+      <div style={{
+        backgroundColor: '#fff',
+        padding: '3rem',
+        borderRadius: '12px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        maxWidth: '600px'
+      }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#333' }}>
+          {siteRecord.title}
+        </h1>
+        <p style={{ fontSize: '1rem', color: '#666', marginBottom: '1.5rem' }}>
+          Site is working! 🎉
+        </p>
+        <div style={{ fontSize: '0.875rem', color: '#888' }}>
+          <p>Slug: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.slug}</code></p>
+          <p>Status: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.status}</code></p>
+          <p>Domain: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.domain}</code></p>
+          <p>Has Config: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig ? 'Yes' : 'No'}</code></p>
+          <p>Sections: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig?.sections?.length || 0}</code></p>
         </div>
-        <FloatingCTAButton 
-          type={ctaType} 
-          value={ctaValue} 
-          colorScheme={sections?.[0]?.colorScheme || 'light'} 
-        />
-      </FontTransition>
-    </>
+      </div>
+    </div>
   )
+  
+  // TODO: Uncomment when ready to render full site with sections
+  // const { theme, sections } = siteConfig
+  // const ctaType = theme?.ctaType || 'none'
+  // const ctaValue = theme?.ctaValue || ''
+  // 
+  // const fonts = [theme?.fontFamily, theme?.headingFontFamily].filter(Boolean) as string[]
+  // const primaryFont = theme?.fontFamily || 'Inter'
+  // 
+  // return (
+  //   <>
+  //     <FontLoader fonts={fonts} />
+  //     <FontTransition font={primaryFont}>
+  //       <div style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}>
+  //         {sections?.map((section: Section) => (
+  //           <SectionRenderer key={section.id} section={section} theme={theme} colorScheme={section.colorScheme || 'light'} />
+  //         ))}
+  //       </div>
+  //       <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
+  //     </FontTransition>
+  //   </>
+  // )
 }
