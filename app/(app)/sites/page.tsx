@@ -86,7 +86,19 @@ function getUserInitials(fullName: string | null, email: string | null): string 
 }
 
 // Helper to convert Site to SiteCardData
-function siteToCardData(site: Site): SiteCardData {
+function siteToCardData(site: Site, members?: Array<{ membership: { user_id: string }; profile: { avatar_url: string | null; full_name: string | null; email: string | null } }>): SiteCardData {
+  // Find assigned user profile if assigned_agent_id exists
+  let avatar: string | null = null
+  let avatarFallback: string | undefined = undefined
+
+  if (site.assigned_agent_id && members) {
+    const assignedMember = members.find(m => m.membership.user_id === site.assigned_agent_id)
+    if (assignedMember) {
+      avatar = assignedMember.profile.avatar_url
+      avatarFallback = getUserInitials(assignedMember.profile.full_name, assignedMember.profile.email)
+    }
+  }
+
   return {
     id: site.id,
     title: site.title,
@@ -95,6 +107,8 @@ function siteToCardData(site: Site): SiteCardData {
     views: site.views_count,
     lastEdited: formatDistanceToNow(new Date(site.updated_at), { addSuffix: true }),
     thumbnail: site.thumbnail_url,
+    avatar,
+    avatarFallback,
   }
 }
 
@@ -191,7 +205,7 @@ export default function SitesPage() {
   // Convert sites to card data and apply filters/sorting
   const displaySites = useMemo(() => {
     let filtered = sites
-      .map(siteToCardData)
+      .map(site => siteToCardData(site, members))
       .filter(site => {
         // Search filter
         if (searchQuery && !site.title.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -251,7 +265,7 @@ export default function SitesPage() {
     }
 
     return filtered
-  }, [sites, searchQuery, statusFilter, assignedToFilter, isMultiUser, sortBy])
+  }, [sites, members, searchQuery, statusFilter, assignedToFilter, isMultiUser, sortBy])
 
   // Generate slug from title
   const generateSlug = (title: string) => {
