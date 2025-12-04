@@ -128,17 +128,43 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       .eq('status', 'published') // Only published sites are accessible
       .is('deleted_at', null)
     
-    // If domain is provided, filter by domain
-    if (domain) {
+    // If workspaceId is provided (from brand domain), we need to get the brand domain from workspace
+    // and filter by that domain, not ottie.site
+    if (workspaceId) {
+      // Get workspace to find brand domain
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('branding_config')
+        .eq('id', workspaceId)
+        .single()
+      
+      if (workspace?.branding_config) {
+        const brandingConfig = workspace.branding_config as {
+          custom_brand_domain?: string | null
+          custom_brand_domain_verified?: boolean
+        }
+        
+        // If brand domain is verified, use it for filtering
+        if (brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain) {
+          query = query.eq('domain', brandingConfig.custom_brand_domain)
+          console.log('[getSiteConfig] Using brand domain from workspace:', brandingConfig.custom_brand_domain)
+        } else {
+          // Brand domain not verified, but workspaceId provided - this shouldn't happen, but fallback to ottie.site
+          query = query.eq('domain', 'ottie.site')
+        }
+      } else {
+        // No branding config, fallback to ottie.site
+        query = query.eq('domain', 'ottie.site')
+      }
+      
+      // Also filter by workspace_id for additional security
+      query = query.eq('workspace_id', workspaceId)
+    } else if (domain) {
+      // Domain provided directly (e.g., from ottie.site subdomain)
       query = query.eq('domain', domain)
     } else {
       // Default to ottie.site if no domain specified
       query = query.eq('domain', 'ottie.site')
-    }
-    
-    // If workspaceId is provided (from brand domain), filter by workspace
-    if (workspaceId) {
-      query = query.eq('workspace_id', workspaceId)
     }
     
     const { data: site, error } = await query.single()

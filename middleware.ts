@@ -448,6 +448,13 @@ export async function middleware(request: NextRequest) {
       const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
       const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, request)
       
+      console.log('[Middleware] Brand domain lookup result:', {
+        hostname: hostnameWithoutPort,
+        found: !!brandDomainResult,
+        verified: brandDomainResult?.verified,
+        workspaceId: brandDomainResult?.workspace?.id,
+      })
+      
       if (brandDomainResult && brandDomainResult.verified) {
         // Brand domain detected - route to site based on path
         // Brand domains ONLY serve sites, not app routes

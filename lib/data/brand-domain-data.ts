@@ -45,6 +45,8 @@ export async function getWorkspaceByBrandDomain(
     supabase = await createClient()
   }
 
+  console.log('[Brand Domain] Looking up domain:', domain)
+  
   // Query workspaces with verified brand domain
   const { data: workspaces, error } = await supabase
     .from('workspaces')
@@ -60,8 +62,27 @@ export async function getWorkspaceByBrandDomain(
   }
 
   if (!workspaces || workspaces.length === 0) {
+    console.log('[Brand Domain] No workspace found for domain:', domain)
+    // Try to find workspace with this domain even if not verified (for debugging)
+    const { data: allWorkspaces } = await supabase
+      .from('workspaces')
+      .select('id, branding_config')
+      .eq('branding_config->>custom_brand_domain', domain)
+      .is('deleted_at', null)
+      .limit(1)
+    
+    if (allWorkspaces && allWorkspaces.length > 0) {
+      const config = allWorkspaces[0].branding_config as any
+      console.log('[Brand Domain] Found workspace but domain not verified:', {
+        workspaceId: allWorkspaces[0].id,
+        domain: config?.custom_brand_domain,
+        verified: config?.custom_brand_domain_verified,
+      })
+    }
     return null
   }
+  
+  console.log('[Brand Domain] Found verified workspace:', workspaces[0].id)
 
   const workspace = workspaces[0] as Workspace
   const brandingConfig = (workspace.branding_config || {}) as {
