@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS plans (
     max_users INT DEFAULT 1,
     max_sites INT DEFAULT 1,
     feature_lead_generation BOOLEAN DEFAULT FALSE,
-    feature_custom_domain BOOLEAN DEFAULT FALSE,
+    feature_custom_brand_domain BOOLEAN DEFAULT FALSE,
+    feature_custom_property_domain BOOLEAN DEFAULT FALSE,
     feature_analytics BOOLEAN DEFAULT FALSE,
     feature_api_access BOOLEAN DEFAULT FALSE,
     feature_priority_support BOOLEAN DEFAULT FALSE,
@@ -60,12 +61,12 @@ FOR DELETE USING (false);
 
 -- Insert predefined plans (run once) - Service Role bypasses RLS
 -- Using ON CONFLICT to make it idempotent (safe to run multiple times)
-INSERT INTO plans (name, description, max_users, max_sites, feature_lead_generation, feature_custom_domain, feature_analytics, feature_api_access, feature_priority_support, feature_3d_tours, feature_pdf_flyers, feature_crm_sync, price_cents, annual_price_cents) 
+INSERT INTO plans (name, description, max_users, max_sites, feature_lead_generation, feature_custom_brand_domain, feature_custom_property_domain, feature_analytics, feature_api_access, feature_priority_support, feature_3d_tours, feature_pdf_flyers, feature_crm_sync, price_cents, annual_price_cents) 
 VALUES 
-('free', 'Free to try', 1, 3, false, false, false, false, false, false, false, false, 0, 0),
-('starter', 'Basic plan for individuals', 2, 10, true, false, true, false, false, false, false, false, 3900, 3300),
-('growth', 'For small agencies', 5, 50, true, true, true, false, true, true, true, true, 9900, 8400),
-('agency', 'For real estate companies', 20, 200, true, true, true, true, true, true, true, true, 19900, 16900),
-('enterprise', 'For large networks (contact us)', 999, 9999, true, true, true, true, true, true, true, true, 39900, 33900)
+('free', 'Free to try', 1, 3, false, false, false, false, false, false, false, false, false, 0, 0),
+('starter', 'Basic plan for individuals', 2, 10, true, false, false, true, false, false, false, false, false, 3900, 3300),
+('growth', 'For small agencies', 5, 50, true, true, false, true, false, true, true, true, true, 9900, 8400),
+('agency', 'For real estate companies', 20, 200, true, true, true, true, true, true, true, true, true, 19900, 16900),
+('enterprise', 'For large networks (contact us)', 999, 9999, true, true, true, true, true, true, true, true, true, 39900, 33900)
 ON CONFLICT (name) DO NOTHING;
 

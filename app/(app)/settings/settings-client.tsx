@@ -36,6 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { RoleSelect } from '@/components/workspace/role-select'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, removeMembership, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
+import { setBrandDomain, verifyBrandDomain, removeBrandDomain } from './brand-domain-actions'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
@@ -96,7 +97,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   // Get data from context (already loaded in layout via AppProvider)
   const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
   const { workspace: workspaceFromContext, refresh: refreshWorkspace } = useWorkspace()
-  const { currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan, plans } = useAppData()
+  const { currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan, plans, hasPlanFeature } = useAppData()
   
   // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
   const pricingTiers = transformPlansToTiers(plans)
@@ -139,6 +140,28 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   
+  // Brand domain state
+  const brandingConfig = (workspace?.branding_config || {}) as {
+    custom_brand_domain?: string | null
+    custom_brand_domain_verified?: boolean
+    custom_brand_domain_vercel_dns_instructions?: Array<{
+      type: string
+      domain: string
+      value: string
+      reason: string
+    }>
+  }
+  const [brandDomain, setBrandDomain] = useState(brandingConfig.custom_brand_domain || '')
+  const [vercelDNSInstructions, setVercelDNSInstructions] = useState<Array<{
+    type: string
+    domain: string
+    value: string
+    reason: string
+  }> | null>(brandingConfig.custom_brand_domain_vercel_dns_instructions || null)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isSavingDomain, setIsSavingDomain] = useState(false)
+  const [isRemovingDomain, setIsRemovingDomain] = useState(false)
+  
   // Sync workspace form state with context data when it changes
   useEffect(() => {
     if (workspace) {
@@ -146,6 +169,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       setOriginalWorkspaceName(workspace.name || '')
       setWorkspaceLogoUrl(workspace.logo_url || '')
       setOriginalWorkspaceLogoUrl(workspace.logo_url || '')
+      
+      // Sync brand domain
+      const config = (workspace.branding_config || {}) as {
+        custom_brand_domain?: string | null
+        custom_brand_domain_vercel_dns_instructions?: Array<{
+          type: string
+          domain: string
+          value: string
+          reason: string
+        }>
+      }
+      setBrandDomain(config.custom_brand_domain || '')
+      setVercelDNSInstructions(config.custom_brand_domain_vercel_dns_instructions || null)
     }
   }, [workspace])
   
@@ -1728,30 +1764,179 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <div>
                     <h2 className="text-lg font-semibold">Domain</h2>
                     <p className="text-sm text-muted-foreground">
-                      Configure your custom domain and branding settings
+                      Configure your custom brand domain. All your sites will be accessible at yourdomain.com/site-slug
                     </p>
                   </div>
                   <div className="space-y-4">
-                    {/* Custom Domain */}
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="custom-domain">Custom Domain</Label>
-                      <div className="relative w-full sm:w-64">
-                        <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                        <Input
-                          id="custom-domain"
-                          placeholder="yourdomain.com"
-                          className="pl-9 w-full"
-                          disabled={normalizePlan(workspace?.plan) !== 'growth'}
-                        />
+                    {/* Custom Brand Domain */}
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-domain">Brand Domain</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                          <Input
+                            id="custom-domain"
+                            placeholder="yourdomain.com"
+                            value={brandDomain}
+                            onChange={(e) => setBrandDomain(e.target.value)}
+                            className="pl-9"
+                            disabled={
+                              !hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') ||
+                              isSavingDomain ||
+                              isRemovingDomain ||
+                              brandingConfig.custom_brand_domain_verified
+                            }
+                          />
+                        </div>
+                        {brandDomain && !brandingConfig.custom_brand_domain_verified && (
+                          <Button
+                            onClick={async () => {
+                              if (!workspace?.id || !user?.id) return
+                              setIsSavingDomain(true)
+                              try {
+                                const result = await setBrandDomain(workspace.id, user.id, brandDomain)
+                                if ('error' in result) {
+                                  toast.error(result.error)
+                                } else {
+                                  setVercelDNSInstructions(result.vercelDNSInstructions || null)
+                                  if (result.vercelVerified) {
+                                    toast.success('Domain verified and ready to use!')
+                                  } else {
+                                    toast.success('Domain added! Please configure DNS settings below.')
+                                  }
+                                  await refreshWorkspace()
+                                }
+                              } catch (error) {
+                                toast.error('Failed to set domain')
+                              } finally {
+                                setIsSavingDomain(false)
+                              }
+                            }}
+                            disabled={isSavingDomain || !brandDomain.trim()}
+                          >
+                            {isSavingDomain ? <LottieSpinner size={16} /> : 'Save'}
+                          </Button>
+                        )}
+                        {brandingConfig.custom_brand_domain && (
+                          <Button
+                            variant="destructive"
+                            onClick={async () => {
+                              if (!workspace?.id || !user?.id) return
+                              if (!confirm('Are you sure you want to remove the brand domain? All sites will revert to ottie.site subdomains.')) return
+                              setIsRemovingDomain(true)
+                              try {
+                                const result = await removeBrandDomain(workspace.id, user.id)
+                                if ('error' in result) {
+                                  toast.error(result.error)
+                                } else {
+                                  setBrandDomain('')
+                                  setVercelDNSInstructions(null)
+                                  toast.success('Brand domain removed')
+                                  await refreshWorkspace()
+                                }
+                              } catch (error) {
+                                toast.error('Failed to remove domain')
+                              } finally {
+                                setIsRemovingDomain(false)
+                              }
+                            }}
+                            disabled={isRemovingDomain}
+                          >
+                            {isRemovingDomain ? <LottieSpinner size={16} /> : <Trash2 size={16} />}
+                          </Button>
+                        )}
                       </div>
+                      
+                      {/* DNS Configuration Instructions */}
+                      {vercelDNSInstructions && vercelDNSInstructions.length > 0 && !brandingConfig.custom_brand_domain_verified && (
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                            <div className="flex-1 space-y-3">
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                DNS Configuration Required
+                              </p>
+                              <p className="text-sm text-blue-800 dark:text-blue-200">
+                                Add this DNS record to point your domain to Vercel:
+                              </p>
+                              {vercelDNSInstructions.map((instruction, index) => (
+                                <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
+                                  <div className="space-y-1">
+                                    <div><span className="text-muted-foreground">Type:</span> {instruction.type}</div>
+                                    <div><span className="text-muted-foreground">Name:</span> {instruction.domain}</div>
+                                    <div><span className="text-muted-foreground">Value:</span> {instruction.value}</div>
+                                    {instruction.reason && (
+                                      <div className="text-xs text-muted-foreground mt-2">{instruction.reason}</div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              <p className="text-xs text-blue-700 dark:text-blue-300">
+                                After adding the DNS record, wait a few minutes for DNS propagation. Vercel will automatically verify the domain. Click "Check Status" below to verify.
+                              </p>
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  if (!workspace?.id || !user?.id) return
+                                  setIsVerifying(true)
+                                  try {
+                                    const result = await verifyBrandDomain(workspace.id, user.id)
+                                    if ('error' in result) {
+                                      toast.error(result.error)
+                                    } else {
+                                      toast.success('Domain verified! All sites are now accessible on your brand domain.')
+                                      await refreshWorkspace()
+                                    }
+                                  } catch (error) {
+                                    toast.error('Failed to verify domain')
+                                  } finally {
+                                    setIsVerifying(false)
+                                  }
+                                }}
+                                disabled={isVerifying}
+                              >
+                                {isVerifying ? (
+                                  <>
+                                    <LottieSpinner size={14} className="mr-2" />
+                                    Checking...
+                                  </>
+                                ) : (
+                                  <>
+                                    <RotateCw size={14} className="mr-2" />
+                                    Check Status
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Verified Status */}
+                      {brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain && (
+                        <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                          <div className="flex items-start gap-3">
+                            <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                                Domain Verified
+                              </p>
+                              <p className="text-sm text-green-800 dark:text-green-200">
+                                Your brand domain <strong>{brandingConfig.custom_brand_domain}</strong> is active. All sites are accessible at {brandingConfig.custom_brand_domain}/site-slug
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {normalizePlan(workspace?.plan) !== 'growth' && (
+                    
+                    {!hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') && (
                       <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1">
                             <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                             <p className="text-sm text-green-900 dark:text-green-100">
-                              Upgrade to Growth to add your custom domain
+                              Brand domain is available on Growth plan and higher
                             </p>
                           </div>
                           <PricingDialog 

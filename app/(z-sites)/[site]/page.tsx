@@ -116,21 +116,32 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
  * The slug comes from the subdomain (e.g., "231-keaton-street" from "231-keaton-street.ottie.site")
  * Only returns site if it's published
  */
-async function getSiteConfig(slug: string): Promise<{ site: any; config: PageConfig } | null> {
+async function getSiteConfig(slug: string, domain?: string, workspaceId?: string): Promise<{ site: any; config: PageConfig } | null> {
   try {
     const supabase = await createClient()
     
-    // Fetch site by slug on ottie.site domain
-    // Only published sites are accessible via subdomain (archived sites are not accessible)
-    // Include password_protected and password_hash for password check
-    const { data: site, error } = await supabase
+    // Build query - support both ottie.site and brand domains
+    let query = supabase
       .from('sites')
       .select('*, password_protected, password_hash')
       .eq('slug', slug)
-      .eq('domain', 'ottie.site')
       .eq('status', 'published') // Only published sites are accessible
       .is('deleted_at', null)
-      .single()
+    
+    // If domain is provided, filter by domain
+    if (domain) {
+      query = query.eq('domain', domain)
+    } else {
+      // Default to ottie.site if no domain specified
+      query = query.eq('domain', 'ottie.site')
+    }
+    
+    // If workspaceId is provided (from brand domain), filter by workspace
+    if (workspaceId) {
+      query = query.eq('workspace_id', workspaceId)
+    }
+    
+    const { data: site, error } = await query.single()
     
     console.log('[getSiteConfig] Site result (any status):', { site, error })
     
@@ -214,9 +225,26 @@ export default async function SitePage({
     notFound()
   }
   
+  // Check if this is a brand domain request (from middleware headers)
+  // In Next.js, we can access headers via headers() function
+  let brandDomain: string | undefined
+  let workspaceId: string | undefined
+  
+  try {
+    const { headers } = await import('next/headers')
+    const headersList = headers()
+    brandDomain = headersList.get('x-brand-domain') || undefined
+    workspaceId = headersList.get('x-workspace-id') || undefined
+  } catch (error) {
+    // Headers might not be available in all contexts
+    console.log('[SitePage] Could not access headers:', error)
+  }
+  
   // Fetch site configuration from database
   console.log('[SitePage] Fetching site config for slug:', site)
-  const siteData = await getSiteConfig(site)
+  console.log('[SitePage] Brand domain:', brandDomain || 'none')
+  console.log('[SitePage] Workspace ID:', workspaceId || 'none')
+  const siteData = await getSiteConfig(site, brandDomain, workspaceId)
   console.log('[SitePage] Site data result:', siteData ? 'Found' : 'Not found')
   
   // If site doesn't exist or isn't published, redirect to ottie.com

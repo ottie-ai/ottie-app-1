@@ -114,7 +114,8 @@ export interface Plan {
   max_users: number
   max_sites: number
   feature_lead_generation: boolean
-  feature_custom_domain: boolean
+  feature_custom_brand_domain: boolean
+  feature_custom_property_domain: boolean
   feature_analytics: boolean
   feature_api_access: boolean
   feature_priority_support: boolean

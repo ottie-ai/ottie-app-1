@@ -134,7 +134,8 @@ export function hasFeature(
   planName: string | null | undefined, 
   feature: keyof Pick<Plan, 
     'feature_lead_generation' | 
-    'feature_custom_domain' | 
+    'feature_custom_brand_domain' | 
+    'feature_custom_property_domain' | 
     'feature_analytics' | 
     'feature_api_access' | 
     'feature_priority_support' | 

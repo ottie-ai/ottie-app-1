@@ -429,10 +429,43 @@ export async function middleware(request: NextRequest) {
       response = NextResponse.rewrite(url)
       console.log('[Middleware] Rewrite complete, new pathname:', url.pathname)
     } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {
-      // Other subdomains (not ottie.site, not app/marketing) - redirect to ottie.com
-      const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
-      redirectUrl.search = request.nextUrl.search
-      return NextResponse.redirect(redirectUrl, 301)
+      // Check if this is a brand domain (custom domain for workspace)
+      // Import dynamically to avoid issues with server-only modules in middleware
+      const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
+      const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort)
+      
+      if (brandDomainResult && brandDomainResult.verified) {
+        // Brand domain detected - route to site based on path
+        // If path is "/" or "/site-slug", extract slug and rewrite
+        const pathSegments = pathname.split('/').filter(Boolean)
+        
+        if (pathSegments.length === 0) {
+          // Root path on brand domain - could show homepage or redirect
+          // For now, redirect to ottie.com (or could show workspace homepage)
+          const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
+          return NextResponse.redirect(redirectUrl, 301)
+        }
+        
+        // Extract site slug from first path segment
+        const siteSlug = pathSegments[0]
+        const remainingPath = pathSegments.slice(1).join('/')
+        const rewritePath = remainingPath ? `/${siteSlug}/${remainingPath}` : `/${siteSlug}`
+        
+        console.log('[Middleware] Brand domain detected:', hostnameWithoutPort)
+        console.log('[Middleware] Site slug:', siteSlug)
+        console.log('[Middleware] Rewriting to:', rewritePath)
+        
+        // Add workspace_id to headers for site lookup
+        url.pathname = rewritePath
+        response = NextResponse.rewrite(url)
+        response.headers.set('x-workspace-id', brandDomainResult.workspace.id)
+        response.headers.set('x-brand-domain', hostnameWithoutPort)
+      } else {
+        // Other subdomains (not ottie.site, not app/marketing, not brand domain) - redirect to ottie.com
+        const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
+        redirectUrl.search = request.nextUrl.search
+        return NextResponse.redirect(redirectUrl, 301)
+      }
     } else {
       // App or marketing domain - no rewrite needed, Next.js will match route groups automatically
       response = NextResponse.next()
