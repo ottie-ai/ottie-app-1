@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { useAuth } from '@/hooks/use-auth'
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe } from 'lucide-react'
+import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe, Info } from 'lucide-react'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,12 +39,12 @@ import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspaces
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
-import { normalizePlan } from '@/lib/utils'
+import { normalizePlan, cn } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { transformPlansToTiers } from '@/lib/pricing-data'
-import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, UserX } from 'lucide-react'
+import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, UserX, Crown } from 'lucide-react'
 import { LottieExitIcon } from '@/components/ui/lottie-exit-icon'
 import { LottieStarIcon } from '@/components/ui/lottie-star-icon'
 import { LottieAvatarIcon } from '@/components/ui/lottie-avatar-icon'
@@ -2196,8 +2196,14 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {members.map(({ membership, profile }) => (
-                          <div key={membership.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        {members.map(({ membership, profile }) => {
+                          const isInactive = membership.status === 'inactive' || membership.status === 'suspended'
+                          
+                          return (
+                          <div key={membership.id} className={cn(
+                            "flex items-center justify-between p-3 border rounded-lg",
+                            isInactive && "opacity-50"
+                          )}>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
                                 <AvatarImage src={profile.avatar_url || undefined} />
@@ -2213,11 +2219,23 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="font-medium text-sm">
-                                  {profile.full_name || profile.email || 'Unknown User'}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">
+                                    {profile.full_name || profile.email || 'Unknown User'}
+                                  </p>
+                                  {isInactive && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Info className="h-4 w-4 text-muted-foreground" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        This user lost access due to plan downgrade. Upgrade to Agency to reactivate.
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {profile.email}
+                                  {profile.email} {isInactive && '• Inactive'}
                                 </p>
                               </div>
                             </div>
@@ -2319,7 +2337,8 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </Badge>
                               )}
                             </div>
-                          ))}
+                          )
+                        })}
                         </div>
                       )}
                     </div>
