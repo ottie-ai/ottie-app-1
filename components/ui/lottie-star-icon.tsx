@@ -49,8 +49,9 @@ export function LottieStarIcon({ className = '', size = 18 }: LottieStarIconProp
     const handleMouseLeave = () => {
       setIsHovered(false)
       if (lottieRef.current) {
+        const totalFrames = starAnimation?.op || 60
         lottieRef.current.setDirection(-1)
-        lottieRef.current.goToAndPlay(lottieRef.current.totalFrames - 1, true)
+        lottieRef.current.goToAndPlay(totalFrames - 1, true)
       }
     }
 
