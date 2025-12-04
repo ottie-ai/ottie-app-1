@@ -47,87 +47,56 @@ export async function getWorkspaceByBrandDomain(
 
   console.log('[Brand Domain] Looking up domain:', domain)
   
-  // First, try to find workspace with this domain (even if not verified) for debugging
-  const { data: allWorkspaces, error: debugError } = await supabase
+  // WORKAROUND: JSONB queries with -> operator don't work reliably in Supabase JS client
+  // Instead, fetch all workspaces and filter in JS
+  const { data: allWorkspaces, error: fetchError } = await supabase
     .from('workspaces')
-    .select('id, branding_config')
-    .eq('branding_config->>custom_brand_domain', domain)
+    .select('*')
     .is('deleted_at', null)
-    .limit(5)
   
-  if (allWorkspaces && allWorkspaces.length > 0) {
-    console.log('[Brand Domain] Found workspace(s) with this domain (may not be verified):', 
-      allWorkspaces.map((w: any) => ({
-        id: w.id,
-        domain: (w.branding_config as any)?.custom_brand_domain,
-        verified: (w.branding_config as any)?.custom_brand_domain_verified,
-      }))
-    )
-  } else {
-    console.log('[Brand Domain] No workspace found with this domain at all')
-    // Try case-insensitive search
-    const { data: caseInsensitive } = await supabase
-      .from('workspaces')
-      .select('id, branding_config')
-      .is('deleted_at', null)
-      .limit(10)
+  if (fetchError) {
+    console.error('[Brand Domain] Error fetching workspaces:', fetchError)
+    return null
+  }
+  
+  if (!allWorkspaces || allWorkspaces.length === 0) {
+    console.log('[Brand Domain] No workspaces found in database')
+    return null
+  }
+  
+  console.log('[Brand Domain] Fetched', allWorkspaces.length, 'workspaces, filtering in JS...')
+  
+  // Filter in JS to find matching verified brand domain
+  const matchingWorkspaces = allWorkspaces.filter((w: any) => {
+    const config = w.branding_config as any
+    return config?.custom_brand_domain === domain && 
+           config?.custom_brand_domain_verified === true
+  })
+  
+  if (matchingWorkspaces.length === 0) {
+    console.log('[Brand Domain] No verified workspace found for domain:', domain)
     
-    if (caseInsensitive) {
-      const matching = caseInsensitive.filter((w: any) => {
-        const config = w.branding_config as any
-        const storedDomain = config?.custom_brand_domain
-        return storedDomain && storedDomain.toLowerCase() === domain.toLowerCase()
-      })
-      if (matching.length > 0) {
-        console.log('[Brand Domain] Found case-insensitive match:', matching.map((w: any) => ({
+    // Debug: Check if domain exists but not verified
+    const unverifiedWorkspaces = allWorkspaces.filter((w: any) => {
+      const config = w.branding_config as any
+      return config?.custom_brand_domain === domain
+    })
+    
+    if (unverifiedWorkspaces.length > 0) {
+      console.log('[Brand Domain] Found workspace(s) with this domain but not verified:', 
+        unverifiedWorkspaces.map((w: any) => ({
           id: w.id,
           domain: (w.branding_config as any)?.custom_brand_domain,
           verified: (w.branding_config as any)?.custom_brand_domain_verified,
-        })))
-      }
+        }))
+      )
     }
-  }
-  
-  // Query workspaces with verified brand domain
-  // Note: custom_brand_domain_verified is a boolean, not a string
-  // We need to use -> instead of ->> to get JSON value, then cast to boolean
-  const { data: workspaces, error } = await supabase
-    .from('workspaces')
-    .select('*')
-    .eq('branding_config->>custom_brand_domain', domain)
-    .eq('branding_config->custom_brand_domain_verified', true) // Use -> for boolean comparison
-    .is('deleted_at', null)
-    .limit(1)
-
-  if (error) {
-    console.error('[Brand Domain] Error fetching workspace:', error)
-    return null
-  }
-
-  if (!workspaces || workspaces.length === 0) {
-    console.log('[Brand Domain] No workspace found for domain:', domain)
-    // Try to find workspace with this domain even if not verified (for debugging)
-    const { data: allWorkspaces } = await supabase
-      .from('workspaces')
-      .select('id, branding_config')
-      .eq('branding_config->>custom_brand_domain', domain)
-      .is('deleted_at', null)
-      .limit(1)
     
-    if (allWorkspaces && allWorkspaces.length > 0) {
-      const config = allWorkspaces[0].branding_config as any
-      console.log('[Brand Domain] Found workspace but domain not verified:', {
-        workspaceId: allWorkspaces[0].id,
-        domain: config?.custom_brand_domain,
-        verified: config?.custom_brand_domain_verified,
-      })
-    }
     return null
   }
   
-  console.log('[Brand Domain] Found verified workspace:', workspaces[0].id)
-
-  const workspace = workspaces[0] as Workspace
+  const workspace = matchingWorkspaces[0] as Workspace
+  console.log('[Brand Domain] Found verified workspace:', workspace.id)
   const brandingConfig = (workspace.branding_config || {}) as {
     custom_brand_domain_verified?: boolean
   }
