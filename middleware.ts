@@ -430,18 +430,31 @@ export async function middleware(request: NextRequest) {
       console.log('[Middleware] Rewrite complete, new pathname:', url.pathname)
     } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {
       // Check if this is a brand domain (custom domain for workspace)
+      // Brand domains are ONLY for sites, not for app routes
+      
+      // First, check if this is an app route - if so, redirect to app.ottie.com
+      const appRoutes = ['/dashboard', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
+      const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
+                         pathname.startsWith('/builder/')
+      
+      if (isAppRoute) {
+        // App route on brand domain - redirect to app subdomain
+        const redirectUrl = new URL(pathname, `https://${appDomain}`)
+        redirectUrl.search = request.nextUrl.search
+        return NextResponse.redirect(redirectUrl, 301)
+      }
+      
       // Import dynamically to avoid issues with server-only modules in middleware
       const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
-      const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort)
+      const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, request)
       
       if (brandDomainResult && brandDomainResult.verified) {
         // Brand domain detected - route to site based on path
-        // If path is "/" or "/site-slug", extract slug and rewrite
+        // Brand domains ONLY serve sites, not app routes
         const pathSegments = pathname.split('/').filter(Boolean)
         
         if (pathSegments.length === 0) {
-          // Root path on brand domain - could show homepage or redirect
-          // For now, redirect to ottie.com (or could show workspace homepage)
+          // Root path on brand domain - redirect to ottie.com
           const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
           return NextResponse.redirect(redirectUrl, 301)
         }
