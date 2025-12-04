@@ -190,35 +190,52 @@ export async function setBrandDomain(
   
   // For CNAME - only add if it's a subdomain (not apex)
   // Apex domains should use A records, not CNAME
-  const isApexDomain = trimmedDomain.split('.').length === 2
-  if (!isApexDomain && config.recommendedCNAME && config.recommendedCNAME.length > 0) {
-    // Get the first item (highest rank)
-    const firstItem = config.recommendedCNAME[0]
-    
-    if (typeof firstItem === 'string') {
+  // Apex domain = exactly 2 parts (e.g., "ottie.ai")
+  const domainParts = trimmedDomain.split('.')
+  const isApexDomain = domainParts.length === 2
+  
+  // Only show CNAME for subdomains (www.ottie.ai, app.ottie.ai, etc.)
+  // NEVER show CNAME for apex domains - they must use A records
+  if (!isApexDomain) {
+    if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+      // Get the first item (highest rank)
+      const firstItem = config.recommendedCNAME[0]
+      
+      if (typeof firstItem === 'string') {
+        vercelDNSInstructions.push({
+          type: 'CNAME',
+          domain: domainParts[0] || '@',
+          value: firstItem,
+          reason: 'Point your subdomain to Vercel'
+        })
+      } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem) {
+        vercelDNSInstructions.push({
+          type: 'CNAME',
+          domain: domainParts[0] || '@',
+          value: firstItem.value,
+          reason: 'Point your subdomain to Vercel'
+        })
+      }
+    } else if (config.cnames && config.cnames.length > 0) {
+      // Fallback to cnames - use first one only
       vercelDNSInstructions.push({
         type: 'CNAME',
-        domain: trimmedDomain.split('.')[0] || '@',
-        value: firstItem,
-        reason: 'Point your subdomain to Vercel'
-      })
-    } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem) {
-      vercelDNSInstructions.push({
-        type: 'CNAME',
-        domain: trimmedDomain.split('.')[0] || '@',
-        value: firstItem.value,
+        domain: domainParts[0] || '@',
+        value: config.cnames[0],
         reason: 'Point your subdomain to Vercel'
       })
     }
-  } else if (!isApexDomain && config.cnames && config.cnames.length > 0) {
-    // Fallback to cnames - use first one only
-    vercelDNSInstructions.push({
-      type: 'CNAME',
-      domain: trimmedDomain.split('.')[0] || '@',
-      value: config.cnames[0],
-      reason: 'Point your subdomain to Vercel'
-    })
   }
+  
+  // Log what we're doing for debugging
+  console.log('[Brand Domain] Domain analysis:', {
+    domain: trimmedDomain,
+    parts: domainParts,
+    isApexDomain,
+    hasRecommendedCNAME: !!config.recommendedCNAME,
+    hasCnames: !!config.cnames,
+    willShowCNAME: !isApexDomain && (!!config.recommendedCNAME || !!config.cnames),
+  })
 
   // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
