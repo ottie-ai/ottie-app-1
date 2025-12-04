@@ -62,9 +62,20 @@ export function getPlanByName(plans: Plan[], planName: string | null | undefined
  * Check if a plan supports multiple users based on max_users from database
  * This is the single source of truth for multi-user functionality
  * 
+ * IMPORTANT: Always use this function (via useAppData().isMultiUserPlan()) to check
+ * if a workspace supports multi-user features. Never hardcode plan names.
+ * 
+ * Multi-user features include:
+ * - Workspace invitations
+ * - Member management
+ * - Role management (admin/agent)
+ * - Site assignment to agents
+ * 
+ * See docs/patterns/multi-user-workspace-pattern.md for implementation guidelines.
+ * 
  * @param plans - Array of plans (from context)
  * @param planName - Plan name to check
- * @returns true if plan allows more than 1 user
+ * @returns true if plan allows more than 1 user (max_users > 1)
  */
 export function isMultiUserPlanFromDB(plans: Plan[], planName: string | null | undefined): boolean {
   const plan = getPlanByName(plans, planName)

@@ -94,6 +94,9 @@ export function AppProvider({
   const isLoading = !hasData && (loading || isFetching)
 
   // Plan helper functions - single source of truth from database
+  // IMPORTANT: Always use isMultiUserPlan() to check if workspace supports multi-user features
+  // This checks max_users > 1 from the plans table, not hardcoded plan names
+  // See docs/patterns/multi-user-workspace-pattern.md for details
   const isMultiUserPlan = (planName: string | null | undefined) => isMultiUserPlanFromDB(plans, planName)
   const isSingleUserPlan = (planName: string | null | undefined) => isSingleUserPlanFromDB(plans, planName)
   const getMaxUsers = (planName: string | null | undefined) => getMaxUsersForPlan(plans, planName)

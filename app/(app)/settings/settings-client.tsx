@@ -150,8 +150,10 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const isOwner = membership?.role === 'owner'
   const isAgent = membership?.role === 'agent'
   const showWorkspaceSettings = workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin
+  // Team tab is visible for all users, but multi-user functionality is hidden behind isMultiUserPlan check
   const showTeamTab = !isAgent
   const showBillingTab = isOwner // Only owner can see billing/upgrade
+  const isMultiUser = workspace ? isMultiUserPlan(workspace.plan) : false
   
   // Load workspace members (client-side with React Query)
   // N+1 Prevention: useWorkspaceMembers uses JOIN query to fetch all members with profiles in a single query
@@ -2121,63 +2123,65 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </div>
                 )}
 
-                {/* Members List */}
-                <div>
-                      <h3 className="text-sm font-medium mb-3">Members</h3>
-                  {membersLoading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <Skeleton className="h-10 w-10 rounded-full" />
-                            <div className="space-y-2">
-                              <Skeleton className="h-4 w-32" />
-                              <Skeleton className="h-3 w-48" />
-                            </div>
-                          </div>
-                          <Skeleton className="h-6 w-16 rounded-full" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : members.length === 0 ? (
-                    <div className="p-8 text-center text-sm text-muted-foreground">
-                      No members found
-                    </div>
-                  ) : (
-                        <div className="space-y-3">
-                        {members.map(({ membership, profile }) => (
-                            <div key={membership.id} className="flex items-center justify-between p-3 border rounded-lg">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10">
-                                  <AvatarImage src={profile.avatar_url || undefined} />
-                                  <AvatarFallback>
-                                    {profile.full_name
-                                      ? profile.full_name
-                                          .split(' ')
-                                          .map(n => n[0])
-                                          .join('')
-                                          .toUpperCase()
-                                          .slice(0, 2)
-                                      : profile.email?.[0]?.toUpperCase() || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {profile.full_name || profile.email || 'Unknown User'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {profile.email}
-                                  </p>
-                                </div>
+                {/* Members List - only for multi-user workspaces */}
+                {isMultiUser && (
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Members</h3>
+                    {membersLoading ? (
+                      <div className="space-y-3">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <div className="space-y-2">
+                                <Skeleton className="h-4 w-32" />
+                                <Skeleton className="h-3 w-48" />
                               </div>
-                              <Badge variant="secondary" className="capitalize">
-                                {membership.role}
-                              </Badge>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : members.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-muted-foreground">
+                        No members found
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {members.map(({ membership, profile }) => (
+                          <div key={membership.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={profile.avatar_url || undefined} />
+                                <AvatarFallback>
+                                  {profile.full_name
+                                    ? profile.full_name
+                                        .split(' ')
+                                        .map(n => n[0])
+                                        .join('')
+                                        .toUpperCase()
+                                        .slice(0, 2)
+                                    : profile.email?.[0]?.toUpperCase() || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {profile.full_name || profile.email || 'Unknown User'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {profile.email}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="capitalize">
+                              {membership.role}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                     {/* Pending Invitations */}
                     {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (
@@ -2389,108 +2393,110 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </div>
                   )}
 
-                  {/* Members Table */}
-                  <div>
-                    <h3 className="text-sm font-medium mb-3">Members</h3>
-                    {membersLoading ? (
-                      <div className="space-y-3">
-                        {[1, 2, 3].map((i) => (
-                          <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="h-10 w-10 rounded-full" />
-                              <div className="space-y-2">
-                                <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-3 w-48" />
+                  {/* Members Table - only for multi-user workspaces */}
+                  {isMultiUser && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Members</h3>
+                      {membersLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex items-center gap-3">
+                                <Skeleton className="h-10 w-10 rounded-full" />
+                                <div className="space-y-2">
+                                  <Skeleton className="h-4 w-32" />
+                                  <Skeleton className="h-3 w-48" />
+                                </div>
                               </div>
+                              <Skeleton className="h-6 w-16 rounded-full" />
                             </div>
-                            <Skeleton className="h-6 w-16 rounded-full" />
-                          </div>
-                        ))}
-                      </div>
-                    ) : members.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-muted-foreground">
-                        No members found
-                      </div>
-                    ) : (
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left p-4 font-medium text-sm">Member</th>
-                            <th className="text-right p-4 font-medium text-sm">Role</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {members.map(({ membership, profile }) => (
-                            <tr key={membership.id} className="border-b">
-                              <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-10 w-10">
-                                    <AvatarImage src={profile.avatar_url || undefined} />
-                                    <AvatarFallback>
-                                      {profile.full_name
-                                        ? profile.full_name
-                                            .split(' ')
-                                            .map(n => n[0])
-                                            .join('')
-                                            .toUpperCase()
-                                            .slice(0, 2)
-                                        : profile.email?.[0]?.toUpperCase() || 'U'}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="font-medium text-sm">
-                                      {profile.full_name || profile.email || 'Unknown User'}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {profile.email}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center justify-end gap-2">
-                                  {isOwnerOrAdmin && membership.role !== 'owner' && membership.user_id !== user?.id ? (
-                                    <RoleSelect
-                                      value={membership.role as 'admin' | 'agent'}
-                                      loading={updatingRoleId === membership.id}
-                                      onValueChange={async (value) => {
-                                        if (!workspace || !user?.id) return
-
-                                        setUpdatingRoleId(membership.id)
-                                        
-                                        const result = await updateMembershipRole(
-                                          membership.id,
-                                          workspace.id,
-                                          user.id,
-                                          value
-                                        )
-
-                                        if ('error' in result) {
-                                          toast.error(result.error)
-                                          setUpdatingRoleId(null)
-                                        } else {
-                                          toastSuccess('Role updated successfully')
-                                          // Invalidate queries to refresh data without page reload
-                                          await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
-                                          await queryClient.invalidateQueries({ queryKey: ['appData'] })
-                                          setUpdatingRoleId(null)
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <Badge variant="secondary" className="capitalize flex items-center gap-1.5">
-                                      {membership.role === 'admin' && <Crown className="size-3 text-amber-500" />}
-                                      {membership.role}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
                           ))}
-                        </tbody>
-                      </table>
-                    )}
-                </div>
+                        </div>
+                      ) : members.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-muted-foreground">
+                          No members found
+                        </div>
+                      ) : (
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left p-4 font-medium text-sm">Member</th>
+                              <th className="text-right p-4 font-medium text-sm">Role</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {members.map(({ membership, profile }) => (
+                              <tr key={membership.id} className="border-b">
+                                <td className="p-4">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarImage src={profile.avatar_url || undefined} />
+                                      <AvatarFallback>
+                                        {profile.full_name
+                                          ? profile.full_name
+                                              .split(' ')
+                                              .map(n => n[0])
+                                              .join('')
+                                              .toUpperCase()
+                                              .slice(0, 2)
+                                          : profile.email?.[0]?.toUpperCase() || 'U'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-sm">
+                                        {profile.full_name || profile.email || 'Unknown User'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {profile.email}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isOwnerOrAdmin && isMultiUser && membership.role !== 'owner' && membership.user_id !== user?.id ? (
+                                      <RoleSelect
+                                        value={membership.role as 'admin' | 'agent'}
+                                        loading={updatingRoleId === membership.id}
+                                        onValueChange={async (value) => {
+                                          if (!workspace || !user?.id) return
+
+                                          setUpdatingRoleId(membership.id)
+                                          
+                                          const result = await updateMembershipRole(
+                                            membership.id,
+                                            workspace.id,
+                                            user.id,
+                                            value
+                                          )
+
+                                          if ('error' in result) {
+                                            toast.error(result.error)
+                                            setUpdatingRoleId(null)
+                                          } else {
+                                            toastSuccess('Role updated successfully')
+                                            // Invalidate queries to refresh data without page reload
+                                            await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                                            await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                                            setUpdatingRoleId(null)
+                                          }
+                                        }}
+                                      />
+                                    ) : (
+                                      <Badge variant="secondary" className="capitalize flex items-center gap-1.5">
+                                        {membership.role === 'admin' && <Crown className="size-3 text-amber-500" />}
+                                        {membership.role}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  )}
 
                   {/* Pending Invitations */}
                   {workspace && isMultiUserPlan(workspace.plan) && isOwnerOrAdmin && (

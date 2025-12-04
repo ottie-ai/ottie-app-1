@@ -1110,6 +1110,8 @@ export async function createInvitation(
   }
 
   // Verify workspace is on a multi-user plan
+  // IMPORTANT: Always check max_users from plans table, never hardcode plan names
+  // See docs/patterns/multi-user-workspace-pattern.md for details
   // Get workspace with plan details from plans table (single source of truth)
   const { data: workspace, error: workspaceError } = await supabase
     .from('workspaces')
@@ -1134,7 +1136,7 @@ export async function createInvitation(
     return { error: 'Plan configuration not found. Please contact support.' }
   }
 
-  // Check if plan allows more than 1 user
+  // Check if plan allows more than 1 user (max_users > 1)
   if (planData.max_users <= 1) {
     return { error: 'Upgrade to a team plan to invite team members' }
   }

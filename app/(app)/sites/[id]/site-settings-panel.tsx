@@ -77,6 +77,7 @@ import { LottieInboxIcon } from '@/components/ui/lottie-inbox-icon'
 import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
+import { useAppData } from '@/contexts/app-context'
 import { useMemo } from 'react'
 
 interface SiteSettingsPanelProps {
@@ -105,6 +106,8 @@ function getUserInitials(fullName: string | null, email: string | null): string 
 export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
   const router = useRouter()
   const { user } = useAuth()
+  const { currentWorkspace, isMultiUserPlan } = useAppData()
+  const isMultiUser = currentWorkspace ? isMultiUserPlan(currentWorkspace.plan) : false
   const [isSaving, setIsSaving] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
@@ -399,11 +402,12 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
           )}
         </div>
 
-        <Separator />
-
-        {/* Assigned To */}
-        <div className="space-y-2">
-          <Label>Assigned To</Label>
+        {/* Assigned To - only for multi-user workspaces */}
+        {isMultiUser && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <Label>Assigned To</Label>
           <Popover open={isAssignedToComboboxOpen} onOpenChange={(open) => {
             setIsAssignedToComboboxOpen(open)
             if (!open) {
@@ -494,9 +498,9 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
               </Command>
             </PopoverContent>
           </Popover>
-        </div>
-
-        <Separator />
+          </div>
+          </>
+        )}
 
         {/* Password Protection */}
         <div className="space-y-2">

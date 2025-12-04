@@ -83,26 +83,36 @@ npx shadcn-ui@latest add dropdown-menu
 
 The application supports different subscription plans with different workspace capabilities:
 
-**Single-User Plans** (Free, Starter, Growth):
+**Single-User Plans** (`max_users = 1`):
 - Only one user per workspace
 - User profile data is used instead of workspace data
 - No workspace settings tab in Settings page
 - User's name, avatar, and profile information is displayed everywhere workspace would normally appear
 - User = Workspace (they are treated as the same entity)
+- Multi-user features (invitations, members, role management, site assignment) are hidden
 
-**Multi-User Plans** (Agency, Enterprise):
+**Multi-User Plans** (`max_users > 1`):
 - Can have multiple users per workspace
 - Workspace settings tab is visible in Settings page
 - Workspace name, logo, and settings are displayed
-- Supports team collaboration features
+- Supports team collaboration features (invitations, members, roles, site assignment)
 
 ### Implementation
 
-- **Utility Functions**: `lib/utils.ts` contains `isMultiUserPlan()` and `isSingleUserPlan()` functions
+- **Single Source of Truth**: Multi-user functionality is determined by `max_users` column in `plans` table
+- **Client Components**: Use `useAppData().isMultiUserPlan(workspace.plan)` to check if workspace supports multi-user features
+- **Server Actions**: Check `max_users` from `plans` table directly
+- **Never Hardcode**: Never use hardcoded plan names (e.g., `plan === 'agency'`). Always check `max_users > 1`
 - **Workspace Hook**: `hooks/use-workspace.ts` provides workspace data for client components
 - **Server Queries**: `lib/supabase/queries.ts` contains `getCurrentUserWorkspace()` for server-side fetching
 - **Settings Page**: Conditionally shows workspace tab based on plan type
 - **WorkspaceNavbar**: Shows user name for single-user plans, workspace name for multi-user plans
+
+### Multi-User Feature Gating
+
+**IMPORTANT**: When adding new multi-user features, always gate them behind `isMultiUserPlan()` check.
+
+See [Multi-User Workspace Pattern Documentation](./docs/patterns/multi-user-workspace-pattern.md) for detailed implementation guidelines.
 
 ## Learn More
 

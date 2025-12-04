@@ -52,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useAppData } from '@/contexts/app-context'
 
 export interface SiteCardData {
   id: string
@@ -77,6 +78,8 @@ interface SiteCardProps {
 }
 
 export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, members = [] }: SiteCardProps) {
+  const { currentWorkspace, isMultiUserPlan } = useAppData()
+  const isMultiUser = currentWorkspace ? isMultiUserPlan(currentWorkspace.plan) : false
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
@@ -294,12 +297,13 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
                   <LottieLockIcon className="size-4 mr-2" />
                   {site.password_protected ? 'Change Password' : 'Set Password'}
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <LottieAccountIcon className="size-4 mr-2" />
-                    Reassign
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
+                {isMultiUser && members.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <LottieAccountIcon className="size-4 mr-2" />
+                      Reassign
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.preventDefault()
@@ -346,8 +350,9 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
                         <span>{member.profile.full_name || member.profile.email || 'Unknown'}</span>
                       </DropdownMenuItem>
                     ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
                 <DropdownMenuItem
                   onClick={async (e) => {
                     e.preventDefault()
