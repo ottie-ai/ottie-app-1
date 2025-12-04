@@ -130,10 +130,13 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
     
     // If workspaceId and brand domain are provided (from middleware headers), use brand domain directly
     // This avoids RLS issues when fetching workspace
+    // Note: We don't filter by workspace_id here because RLS policy for brand domains doesn't require it
+    // The domain filter is sufficient - RLS policy already ensures only published sites are accessible
     if (workspaceId && domain) {
       // Use brand domain directly from headers (middleware already verified it)
       query = query.eq('domain', domain)
-      query = query.eq('workspace_id', workspaceId)
+      // Don't filter by workspace_id - RLS policy for brand domains allows public access
+      // Filtering by workspace_id would require authenticated user, which we don't have for public sites
       console.log('[getSiteConfig] Using brand domain from headers:', { slug, domain, workspaceId })
     } else if (workspaceId) {
       // WorkspaceId provided but no domain - try to get brand domain from workspace
