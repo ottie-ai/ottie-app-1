@@ -246,6 +246,51 @@ export async function getVercelDomain(
 }
 
 /**
+ * Get domain DNS configuration from Vercel
+ * This returns the recommended DNS records (CNAME/A records) that need to be configured
+ */
+export async function getVercelDomainConfig(
+  domain: string,
+  projectId?: string
+): Promise<{ success: true; config: VercelDomainConfig } | { error: string }> {
+  try {
+    const { token } = getVercelCredentials()
+    const finalProjectId = projectId || await getProjectId()
+
+    if (!finalProjectId) {
+      return { error: 'Vercel Project ID not found' }
+    }
+
+    const response = await fetch(
+      `https://api.vercel.com/v6/domains/${domain}/config`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { error: 'Domain configuration not found' }
+      }
+      const data = await response.json() as VercelError
+      return { 
+        error: data.error?.message || `Failed to get domain config: ${response.statusText}` 
+      }
+    }
+
+    const data = await response.json() as VercelDomainConfig
+    return { success: true, config: data }
+  } catch (error) {
+    console.error('[Vercel API] Error getting domain config:', error)
+    return { 
+      error: error instanceof Error ? error.message : 'Unknown error getting domain config' 
+    }
+  }
+}
+
+/**
  * List all domains in Vercel project
  */
 export async function listVercelDomains(
