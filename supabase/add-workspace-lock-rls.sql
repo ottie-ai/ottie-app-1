@@ -12,20 +12,19 @@ DROP POLICY IF EXISTS "Active members or owners can access workspace" ON public.
 DROP POLICY IF EXISTS "Access workspace based on subscription" ON public.workspaces;
 
 -- Update memberships RLS: Only active members can access (unless owner)
+-- Use security definer function to avoid infinite recursion
 CREATE POLICY "Active members or owners can access workspace" ON memberships
 FOR SELECT USING (
-  -- Owner always has access
-  EXISTS (
-    SELECT 1 FROM memberships m
-    WHERE m.workspace_id = memberships.workspace_id
-      AND m.user_id = (SELECT auth.uid())
-      AND m.role = 'owner'
-  )
+  -- User can see their own membership
+  user_id = (SELECT auth.uid())
   OR
-  -- Active members have access
+  -- Owner can see all memberships in workspace
+  public.check_user_is_owner_or_admin(workspace_id, (SELECT auth.uid()))
+  OR
+  -- Active members can see other active members in same workspace
   (
     status = 'active'
-    AND user_id = (SELECT auth.uid())
+    AND public.check_user_workspace_access(workspace_id, (SELECT auth.uid()))
   )
 );
 

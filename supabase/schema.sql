@@ -385,17 +385,54 @@ $$;
 
 create policy "View team members" on memberships
   for select using (
+    -- User can see their own membership
+    user_id = (select auth.uid())
+    OR
+    -- User can see memberships in workspaces they have access to
     public.user_has_workspace_access(workspace_id)
   );
 
+-- Create security definer functions first (if not exists)
+CREATE OR REPLACE FUNCTION public.check_user_workspace_access(
+  p_workspace_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.memberships
+    WHERE workspace_id = p_workspace_id
+      AND user_id = p_user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.check_user_is_owner_or_admin(
+  p_workspace_id uuid,
+  p_user_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.memberships
+    WHERE workspace_id = p_workspace_id
+      AND user_id = p_user_id
+      AND role IN ('owner', 'admin')
+  );
+$$;
+
 create policy "Owners/admins can create memberships" on memberships
   for insert with check (
-    EXISTS (
-      SELECT 1 FROM memberships m
-      WHERE m.workspace_id = m.workspace_id
-        AND m.user_id = (select auth.uid())
-        AND m.role IN ('owner', 'admin')
-    )
+    public.check_user_is_owner_or_admin(workspace_id, (select auth.uid()))
     OR NOT EXISTS (
       SELECT 1 FROM memberships memberships_1
       WHERE memberships_1.user_id = (select auth.uid())
@@ -404,22 +441,12 @@ create policy "Owners/admins can create memberships" on memberships
 
 create policy "Owners/admins can update memberships" on memberships
   for update using (
-    EXISTS (
-      SELECT 1 FROM memberships m
-      WHERE m.workspace_id = memberships.workspace_id
-        AND m.user_id = (select auth.uid())
-        AND m.role IN ('owner', 'admin')
-    )
+    public.check_user_is_owner_or_admin(workspace_id, (select auth.uid()))
   );
 
 create policy "Owners/admins can delete memberships" on memberships
   for delete using (
-    EXISTS (
-      SELECT 1 FROM memberships m
-      WHERE m.workspace_id = memberships.workspace_id
-        AND m.user_id = (select auth.uid())
-        AND m.role IN ('owner', 'admin')
-    )
+    public.check_user_is_owner_or_admin(workspace_id, (select auth.uid()))
     OR user_id = (select auth.uid())
   );
 
