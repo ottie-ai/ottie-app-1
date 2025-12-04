@@ -454,8 +454,13 @@ export async function middleware(request: NextRequest) {
         const pathSegments = pathname.split('/').filter(Boolean)
         
         if (pathSegments.length === 0) {
-          // Root path on brand domain - redirect to ottie.com
-          const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
+          // Root path on brand domain - redirect to root domain of the brand domain
+          // For example: properties.ottie.ai -> ottie.ai
+          const domainParts = hostnameWithoutPort.split('.')
+          // Extract root domain (last 2 parts: domain.tld)
+          const brandRootDomain = domainParts.slice(-2).join('.')
+          const redirectUrl = new URL('/', `https://${brandRootDomain}`)
+          console.log('[Middleware] Root path on brand domain, redirecting to root domain:', brandRootDomain)
           return NextResponse.redirect(redirectUrl, 301)
         }
         

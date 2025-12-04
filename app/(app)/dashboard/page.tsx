@@ -36,6 +36,7 @@ function siteToCardData(site: Site): SiteCardData {
     views: site.views_count,
     lastEdited: formatDistanceToNow(new Date(site.updated_at), { addSuffix: true }),
     thumbnail: site.thumbnail_url,
+    domain: site.domain,
   }
 }
 

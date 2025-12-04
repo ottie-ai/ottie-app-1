@@ -247,16 +247,30 @@ export default async function SitePage({
   const siteData = await getSiteConfig(site, brandDomain, workspaceId)
   console.log('[SitePage] Site data result:', siteData ? 'Found' : 'Not found')
   
-  // If site doesn't exist or isn't published, redirect to ottie.com
+  // If site doesn't exist or isn't published, redirect appropriately
   if (!siteData) {
-    console.log('[SitePage] Site not found or not published, redirecting to ottie.com')
-    // Redirect to ottie.com (main domain)
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
-    const rootDomainWithoutPort = rootDomain.split(':')[0]
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
-    const redirectUrl = new URL(`${protocol}://${rootDomainWithoutPort}`)
-    redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
-    redirect(redirectUrl.toString())
+    console.log('[SitePage] Site not found or not published, redirecting')
+    
+    // If this is a brand domain, redirect to root domain of the brand domain
+    // For example: properties.ottie.ai -> ottie.ai
+    if (brandDomain) {
+      const domainParts = brandDomain.split('.')
+      // Extract root domain (last 2 parts: domain.tld)
+      const rootDomain = domainParts.slice(-2).join('.')
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+      const redirectUrl = new URL(`${protocol}://${rootDomain}`)
+      redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
+      console.log('[SitePage] Brand domain detected, redirecting to root domain:', rootDomain)
+      redirect(redirectUrl.toString())
+    } else {
+      // Default: redirect to ottie.com
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+      const rootDomainWithoutPort = rootDomain.split(':')[0]
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+      const redirectUrl = new URL(`${protocol}://${rootDomainWithoutPort}`)
+      redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
+      redirect(redirectUrl.toString())
+    }
   }
   
   const { site: siteRecord, config: siteConfig } = siteData
