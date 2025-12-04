@@ -26,7 +26,7 @@ interface BrandingConfig {
  * 1. Validates domain format
  * 2. Checks feature flag
  * 3. Generates verification token
- * 4. Adds domain to Vercel (automatic)
+ * 4. Adds domain (automatic)
  * 5. Saves to branding_config
  */
 export async function setBrandDomain(
@@ -99,13 +99,13 @@ export async function setBrandDomain(
     return { error: 'This domain is already in use by another workspace' }
   }
 
-  // 7. Add domain to Vercel (automatic)
+  // 7. Add domain (automatic)
   const vercelResult = await addVercelDomain(trimmedDomain)
-  if (!vercelResult.success) {
-    return { error: `Failed to add domain to Vercel: ${vercelResult.error}` }
+  if ('error' in vercelResult) {
+    return { error: 'Failed to add domain. Please try again later.' }
   }
 
-  // 8. Get Vercel DNS instructions
+  // 8. Get DNS instructions
   const vercelDomain = vercelResult.domain
   const vercelDNSInstructions = vercelDomain.verification || []
 
@@ -125,7 +125,7 @@ export async function setBrandDomain(
   })
 
   if (!updatedWorkspace) {
-    // Rollback: remove from Vercel if DB update fails
+    // Rollback: remove domain if DB update fails
     await removeVercelDomain(trimmedDomain)
     return { error: 'Failed to save domain configuration' }
   }
@@ -176,20 +176,20 @@ export async function verifyBrandDomain(
     return { error: 'Brand domain not set. Please set a domain first.' }
   }
 
-  // 3. Check Vercel domain verification status
+  // 3. Check domain verification status
   const vercelResult = await getVercelDomain(domain)
-  if (!vercelResult.success) {
-    return { error: 'Domain not found in Vercel. Please contact support.' }
+  if ('error' in vercelResult) {
+    return { error: 'Domain not found. Please contact support.' }
   }
 
-  // 4. Check if Vercel has verified the domain (DNS points to Vercel)
+  // 4. Check if domain has been verified (DNS configured correctly)
   if (!vercelResult.domain.verified) {
-    // Vercel verification failed - domain DNS not pointing to Vercel
+    // Domain verification failed - DNS not configured correctly
     const verificationErrors = vercelResult.domain.verification || []
     const errorMessages = verificationErrors.map(v => v.reason).join(', ')
     
     return { 
-      error: `Vercel domain verification failed. ${errorMessages || 'Please check your DNS settings. Make sure CNAME or A record points to Vercel.'}` 
+      error: `Domain verification failed. ${errorMessages || 'Please check your DNS settings and ensure the DNS records are configured correctly.'}` 
     }
   }
 
@@ -264,11 +264,11 @@ export async function removeBrandDomain(
     return { error: 'No brand domain set' }
   }
 
-  // 3. Remove domain from Vercel
+  // 3. Remove domain
   const vercelResult = await removeVercelDomain(domain)
-  if (!vercelResult.success) {
+  if ('error' in vercelResult) {
     // Log but continue - domain might already be removed
-    console.warn('[Brand Domain] Failed to remove from Vercel:', vercelResult.error)
+    console.warn('[Brand Domain] Failed to remove domain:', vercelResult.error)
   }
 
   // 4. Revert all sites in workspace to ottie.site

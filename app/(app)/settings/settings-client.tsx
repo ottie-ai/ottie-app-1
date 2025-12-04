@@ -36,7 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { RoleSelect } from '@/components/workspace/role-select'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, removeMembership, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
-import { setBrandDomain, verifyBrandDomain, removeBrandDomain } from './brand-domain-actions'
+import { setBrandDomain as setBrandDomainAction, verifyBrandDomain, removeBrandDomain } from './brand-domain-actions'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
@@ -1794,7 +1794,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               if (!workspace?.id || !user?.id) return
                               setIsSavingDomain(true)
                               try {
-                                const result = await setBrandDomain(workspace.id, user.id, brandDomain)
+                                const result = await setBrandDomainAction(workspace.id, user.id, brandDomain)
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {
@@ -1857,7 +1857,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 DNS Configuration Required
                               </p>
                               <p className="text-sm text-blue-800 dark:text-blue-200">
-                                Add this DNS record to point your domain to Vercel:
+                                Add this DNS record to configure your domain:
                               </p>
                               {vercelDNSInstructions.map((instruction, index) => (
                                 <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
@@ -1872,7 +1872,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </div>
                               ))}
                               <p className="text-xs text-blue-700 dark:text-blue-300">
-                                After adding the DNS record, wait a few minutes for DNS propagation. Vercel will automatically verify the domain. Click "Check Status" below to verify.
+                                After adding the DNS record, wait a few minutes for DNS propagation. The domain will be automatically verified. Click "Check Status" below to verify.
                               </p>
                               <Button
                                 size="sm"

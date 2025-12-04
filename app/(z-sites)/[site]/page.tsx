@@ -226,13 +226,13 @@ export default async function SitePage({
   }
   
   // Check if this is a brand domain request (from middleware headers)
-  // In Next.js, we can access headers via headers() function
+  // In Next.js 15+, headers() is async
   let brandDomain: string | undefined
   let workspaceId: string | undefined
   
   try {
     const { headers } = await import('next/headers')
-    const headersList = headers()
+    const headersList = await headers()
     brandDomain = headersList.get('x-brand-domain') || undefined
     workspaceId = headersList.get('x-workspace-id') || undefined
   } catch (error) {

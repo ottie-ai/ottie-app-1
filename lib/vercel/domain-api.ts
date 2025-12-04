@@ -122,7 +122,7 @@ export async function addVercelDomain(
       if (error.error?.code === 'domain_already_in_use' || error.error?.code === 'domain_already_added') {
         // Skús získať existujúcu doménu
         const existingDomain = await getVercelDomain(domain, finalProjectId)
-        if (existingDomain.success) {
+        if (!('error' in existingDomain)) {
           return { success: true, domain: existingDomain.domain }
         }
       }
