@@ -138,10 +138,29 @@ export async function setBrandDomain(
     }
   }
 
-  // Fallback to verification records if config is empty
-  const vercelDomain = vercelResult.domain
-  if (vercelDNSInstructions.length === 0 && vercelDomain.verification) {
-    vercelDNSInstructions = vercelDomain.verification
+  // Default DNS instructions based on Vercel documentation
+  // https://vercel.com/docs/domains/troubleshooting
+  if (vercelDNSInstructions.length === 0) {
+    // Check if apex domain (no subdomain) or subdomain
+    const isApexDomain = trimmedDomain.split('.').length === 2
+    
+    if (isApexDomain) {
+      // Apex domain (e.g., example.com) → A record
+      vercelDNSInstructions.push({
+        type: 'A',
+        domain: '@',
+        value: '76.76.21.21',
+        reason: 'Point your apex domain to Vercel'
+      })
+    } else {
+      // Subdomain (e.g., www.example.com) → CNAME record
+      vercelDNSInstructions.push({
+        type: 'CNAME',
+        domain: trimmedDomain.split('.')[0],
+        value: 'cname.vercel-dns.com',
+        reason: 'Point your subdomain to Vercel'
+      })
+    }
   }
 
   // 9. Update branding_config
@@ -213,20 +232,33 @@ export async function verifyBrandDomain(
     return { error: 'Brand domain not set. Please set a domain first.' }
   }
 
-  // 3. Check domain verification status
+  // 3. Check domain verification status via Vercel
   const vercelResult = await getVercelDomain(domain)
   if ('error' in vercelResult) {
     return { error: 'Domain not found. Please contact support.' }
   }
 
-  // 4. Check if domain has been verified (DNS configured correctly)
-  if (!vercelResult.domain.verified) {
+  // 4. Check domain config to see if DNS is configured correctly
+  const configResult = await getVercelDomainConfig(domain)
+  
+  // Domain is verified only if:
+  // - Vercel says it's verified (domain is linked)
+  // - AND domain config shows it's not misconfigured (DNS is correct)
+  const isVerified = vercelResult.domain.verified
+  const isMisconfigured = !('error' in configResult) && configResult.config.misconfigured
+
+  if (!isVerified || isMisconfigured) {
     // Domain verification failed - DNS not configured correctly
+    let errorMessage = 'Please check your DNS settings and ensure the DNS records are configured correctly.'
+    
+    // Get specific error messages from verification array
     const verificationErrors = vercelResult.domain.verification || []
-    const errorMessages = verificationErrors.map(v => v.reason).join(', ')
+    if (verificationErrors.length > 0) {
+      errorMessage = verificationErrors.map(v => v.reason).join(', ')
+    }
     
     return { 
-      error: `Domain verification failed. ${errorMessages || 'Please check your DNS settings and ensure the DNS records are configured correctly.'}` 
+      error: `Domain verification failed. ${errorMessage}` 
     }
   }
 
