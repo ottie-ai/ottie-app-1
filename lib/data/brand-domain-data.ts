@@ -47,55 +47,52 @@ export async function getWorkspaceByBrandDomain(
 
   console.log('[Brand Domain] Looking up domain:', domain)
   
-  // WORKAROUND: JSONB queries with -> operator don't work reliably in Supabase JS client
-  // Instead, fetch all workspaces and filter in JS
-  const { data: allWorkspaces, error: fetchError } = await supabase
-    .from('workspaces')
-    .select('*')
-    .is('deleted_at', null)
-  
-  if (fetchError) {
-    console.error('[Brand Domain] Error fetching workspaces:', fetchError)
-    return null
-  }
-  
-  if (!allWorkspaces || allWorkspaces.length === 0) {
-    console.log('[Brand Domain] No workspaces found in database')
-    return null
-  }
-  
-  console.log('[Brand Domain] Fetched', allWorkspaces.length, 'workspaces, filtering in JS...')
-  
-  // Filter in JS to find matching verified brand domain
-  const matchingWorkspaces = allWorkspaces.filter((w: any) => {
-    const config = w.branding_config as any
-    return config?.custom_brand_domain === domain && 
-           config?.custom_brand_domain_verified === true
-  })
-  
-  if (matchingWorkspaces.length === 0) {
-    console.log('[Brand Domain] No verified workspace found for domain:', domain)
+  // Use RPC function for secure and performant lookup
+  // Falls back to direct query if RPC doesn't exist
+  try {
+    const { data: rpcResult, error: rpcError } = await supabase
+      .rpc('get_workspace_by_brand_domain', { domain_name: domain })
     
-    // Debug: Check if domain exists but not verified
-    const unverifiedWorkspaces = allWorkspaces.filter((w: any) => {
-      const config = w.branding_config as any
-      return config?.custom_brand_domain === domain
-    })
-    
-    if (unverifiedWorkspaces.length > 0) {
-      console.log('[Brand Domain] Found workspace(s) with this domain but not verified:', 
-        unverifiedWorkspaces.map((w: any) => ({
-          id: w.id,
-          domain: (w.branding_config as any)?.custom_brand_domain,
-          verified: (w.branding_config as any)?.custom_brand_domain_verified,
-        }))
-      )
+    if (!rpcError && rpcResult && rpcResult.length > 0) {
+      const workspace = rpcResult[0] as Workspace
+      console.log('[Brand Domain] Found verified workspace via RPC:', workspace.id)
+      const brandingConfig = (workspace.branding_config || {}) as {
+        custom_brand_domain_verified?: boolean
+      }
+      return {
+        workspace,
+        verified: brandingConfig.custom_brand_domain_verified === true,
+      }
     }
     
+    if (rpcError) {
+      console.log('[Brand Domain] RPC function not available, using direct query:', rpcError.message)
+    }
+  } catch (error) {
+    console.log('[Brand Domain] RPC function not available, using direct query')
+  }
+  
+  // Fallback: Use direct query with correct JSONB syntax
+  // Note: ->> returns text, so we compare with string 'true'
+  const { data: workspaces, error } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('branding_config->>custom_brand_domain', domain)
+    .eq('branding_config->>custom_brand_domain_verified', 'true') // Compare with string 'true'
+    .is('deleted_at', null)
+    .limit(1)
+
+  if (error) {
+    console.error('[Brand Domain] Error fetching workspace:', error)
+    return null
+  }
+
+  if (!workspaces || workspaces.length === 0) {
+    console.log('[Brand Domain] No verified workspace found for domain:', domain)
     return null
   }
   
-  const workspace = matchingWorkspaces[0] as Workspace
+  const workspace = workspaces[0] as Workspace
   console.log('[Brand Domain] Found verified workspace:', workspace.id)
   const brandingConfig = (workspace.branding_config || {}) as {
     custom_brand_domain_verified?: boolean
