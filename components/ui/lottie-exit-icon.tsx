@@ -49,8 +49,9 @@ export function LottieExitIcon({ className = '', size = 18 }: LottieExitIconProp
     const handleMouseLeave = () => {
       setIsHovered(false)
       if (lottieRef.current) {
+        const totalFrames = exitAnimation?.op || 60
         lottieRef.current.setDirection(-1)
-        lottieRef.current.goToAndPlay(lottieRef.current.totalFrames - 1, true)
+        lottieRef.current.goToAndPlay(totalFrames - 1, true)
       }
     }
 
