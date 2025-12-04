@@ -105,6 +105,8 @@ export async function setBrandDomain(
   }
 
   // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
+  // IMPORTANT: Only use config endpoint, NOT verification array from domain response
+  // Verification array only indicates domain was added, not DNS configuration
   const configResult = await getVercelDomainConfig(trimmedDomain)
   let vercelDNSInstructions: Array<{
     type: string
@@ -115,66 +117,54 @@ export async function setBrandDomain(
 
   if ('error' in configResult) {
     console.error('[Brand Domain] Failed to get DNS config from Vercel:', configResult.error)
-  } else {
-    const { config } = configResult
-    console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
-    
-    // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
-    if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
-      config.recommendedIPv4.forEach(ip => {
-        vercelDNSInstructions.push({
-          type: 'A',
-          domain: '@',
-          value: ip,
-          reason: 'Point your apex domain to Vercel'
-        })
-      })
-    }
-    
-    // Also check aValues as fallback (older API format)
-    if (vercelDNSInstructions.length === 0 && config.aValues && config.aValues.length > 0) {
-      config.aValues.forEach(aValue => {
-        vercelDNSInstructions.push({
-          type: 'A',
-          domain: '@',
-          value: aValue,
-          reason: 'Point your apex domain to Vercel'
-        })
-      })
-    }
-    
-    // Convert CNAME records to instructions format
-    if (config.cnames && config.cnames.length > 0) {
-      config.cnames.forEach(cname => {
-        vercelDNSInstructions.push({
-          type: 'CNAME',
-          domain: trimmedDomain.split('.')[0] || '@',
-          value: cname,
-          reason: 'Point your subdomain to Vercel'
-        })
-      })
-    }
+    // Return error - we need DNS config to proceed
+    return { error: `Failed to get DNS configuration: ${configResult.error}` }
   }
 
-  // If still no instructions, try getting from domain verification array
-  if (vercelDNSInstructions.length === 0) {
-    const vercelDomain = vercelResult.domain
-    if (vercelDomain.verification && vercelDomain.verification.length > 0) {
-      console.log('[Brand Domain] Using verification array from domain response')
-      vercelDNSInstructions = vercelDomain.verification.map(v => ({
-        type: v.type,
-        domain: v.domain || '@',
-        value: v.value,
-        reason: v.reason || 'Point your domain to Vercel'
-      }))
-    }
+  const { config } = configResult
+  console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
+  
+  // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
+  if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
+    config.recommendedIPv4.forEach(ip => {
+      vercelDNSInstructions.push({
+        type: 'A',
+        domain: '@',
+        value: ip,
+        reason: 'Point your apex domain to Vercel'
+      })
+    })
+  }
+  
+  // Also check aValues as fallback (older API format)
+  if (vercelDNSInstructions.length === 0 && config.aValues && config.aValues.length > 0) {
+    config.aValues.forEach(aValue => {
+      vercelDNSInstructions.push({
+        type: 'A',
+        domain: '@',
+        value: aValue,
+        reason: 'Point your apex domain to Vercel'
+      })
+    })
+  }
+  
+  // Convert CNAME records to instructions format
+  if (config.cnames && config.cnames.length > 0) {
+    config.cnames.forEach(cname => {
+      vercelDNSInstructions.push({
+        type: 'CNAME',
+        domain: trimmedDomain.split('.')[0] || '@',
+        value: cname,
+        reason: 'Point your subdomain to Vercel'
+      })
+    })
   }
 
-  // If still no instructions, log error but don't fail
+  // If still no instructions, return error - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
     console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', trimmedDomain)
-    console.error('[Brand Domain] Config result:', configResult)
-    console.error('[Brand Domain] Domain result:', vercelResult)
+    console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
+    return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
   }
 
   // 9. Update branding_config
