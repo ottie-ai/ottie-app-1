@@ -65,7 +65,7 @@ export async function setBrandDomain(
   // 2.5. Validate that it's a subdomain (must have at least 3 parts: subdomain.domain.tld)
   const domainParts = trimmedDomain.split('.')
   if (domainParts.length < 3) {
-    return { error: 'Only subdomains are allowed. Please enter a subdomain like "properties.example.com" or "sites.yourdomain.com". Apex domains (example.com) are not supported.' }
+    return { error: 'Only subdomains are supported. Please enter an address like properties.yourdomain.com or sites.yourdomain.com.' }
   }
   
   // Extract apex domain from subdomain (e.g., properties.example.com -> example.com)
