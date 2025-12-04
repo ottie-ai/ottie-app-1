@@ -28,6 +28,7 @@ interface VercelDomainConfig {
   serviceType?: string
   cnames?: string[]
   aValues?: string[]
+  recommendedIPv4?: string[]
   conflicts?: Array<{
     name: string
     type: string

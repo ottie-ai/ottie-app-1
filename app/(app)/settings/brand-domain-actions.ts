@@ -104,7 +104,7 @@ export async function setBrandDomain(
     return { error: 'Failed to add domain. Please try again later.' }
   }
 
-  // 8. Get DNS configuration - recommended CNAME/A records
+  // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
   const configResult = await getVercelDomainConfig(trimmedDomain)
   let vercelDNSInstructions: Array<{
     type: string
@@ -116,51 +116,46 @@ export async function setBrandDomain(
   if (!('error' in configResult)) {
     const { config } = configResult
     
-    // Convert CNAME/A records to instructions format
-    if (config.cnames && config.cnames.length > 0) {
-      vercelDNSInstructions.push({
-        type: 'CNAME',
-        domain: trimmedDomain,
-        value: config.cnames[0],
-        reason: 'Point your domain to Vercel'
+    // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
+    if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
+      config.recommendedIPv4.forEach(ip => {
+        vercelDNSInstructions.push({
+          type: 'A',
+          domain: '@',
+          value: ip,
+          reason: 'Point your apex domain to Vercel'
+        })
       })
     }
     
-    if (config.aValues && config.aValues.length > 0) {
+    // Also check aValues as fallback (older API format)
+    if (vercelDNSInstructions.length === 0 && config.aValues && config.aValues.length > 0) {
       config.aValues.forEach(aValue => {
         vercelDNSInstructions.push({
           type: 'A',
-          domain: trimmedDomain,
+          domain: '@',
           value: aValue,
-          reason: 'Point your domain to Vercel'
+          reason: 'Point your apex domain to Vercel'
+        })
+      })
+    }
+    
+    // Convert CNAME records to instructions format
+    if (config.cnames && config.cnames.length > 0) {
+      config.cnames.forEach(cname => {
+        vercelDNSInstructions.push({
+          type: 'CNAME',
+          domain: trimmedDomain.split('.')[0] || '@',
+          value: cname,
+          reason: 'Point your subdomain to Vercel'
         })
       })
     }
   }
 
-  // Default DNS instructions based on Vercel documentation
-  // https://vercel.com/docs/domains/troubleshooting
+  // If still no instructions, log error but don't fail
   if (vercelDNSInstructions.length === 0) {
-    // Check if apex domain (no subdomain) or subdomain
-    const isApexDomain = trimmedDomain.split('.').length === 2
-    
-    if (isApexDomain) {
-      // Apex domain (e.g., example.com) → A record
-      vercelDNSInstructions.push({
-        type: 'A',
-        domain: '@',
-        value: '76.76.21.21',
-        reason: 'Point your apex domain to Vercel'
-      })
-    } else {
-      // Subdomain (e.g., www.example.com) → CNAME record
-      vercelDNSInstructions.push({
-        type: 'CNAME',
-        domain: trimmedDomain.split('.')[0],
-        value: 'cname.vercel-dns.com',
-        reason: 'Point your subdomain to Vercel'
-      })
-    }
+    console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', trimmedDomain)
   }
 
   // 9. Update branding_config
