@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { archiveSite, unarchiveSite, duplicateSite, deleteSite, updateSite } from '@/lib/data/site-data'
+import { archiveSite, unarchiveSite, duplicateSite, deleteSite, updateSite, publishSite, unpublishSite } from '@/lib/data/site-data'
 import bcrypt from 'bcryptjs'
 
 /**
@@ -290,5 +290,75 @@ export async function verifySitePassword(siteId: string, password: string) {
   }
   
   return { success: true }
+}
+
+/**
+ * Publish a site (sets status to published)
+ * Validates that site has assigned_agent_id before publishing
+ * Also ensures site uses correct domain (brand domain if verified)
+ * Note: We don't revalidate here - the client will refresh React Query cache
+ */
+export async function handlePublishSite(siteId: string) {
+  const supabase = await createClient()
+  
+  // Get site to check workspace and current domain
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('workspace_id, domain')
+    .eq('id', siteId)
+    .single()
+  
+  if (siteError || !site) {
+    return { error: 'Site not found' }
+  }
+  
+  // Check if workspace has verified brand domain
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('branding_config')
+    .eq('id', site.workspace_id)
+    .single()
+  
+  if (workspace?.branding_config) {
+    const brandingConfig = workspace.branding_config as {
+      custom_brand_domain?: string | null
+      custom_brand_domain_verified?: boolean
+    }
+    
+    // If brand domain is verified, ensure site uses it
+    if (brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain) {
+      if (site.domain !== brandingConfig.custom_brand_domain) {
+        // Update domain first
+        const domainUpdate = await updateSite(siteId, { domain: brandingConfig.custom_brand_domain })
+        if ('error' in domainUpdate) {
+          console.error('[Publish Site] Error updating domain:', domainUpdate.error)
+          // Continue anyway - publish can still succeed
+        }
+      }
+    }
+  }
+  
+  // Publish the site
+  const result = await publishSite(siteId)
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
+}
+
+/**
+ * Unpublish a site (sets status to draft)
+ * Note: We don't revalidate here - the client will refresh React Query cache
+ */
+export async function handleUnpublishSite(siteId: string) {
+  const result = await unpublishSite(siteId)
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
 }
 

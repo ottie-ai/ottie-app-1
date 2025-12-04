@@ -14,7 +14,17 @@ export function SitePreview({ site }: SitePreviewProps) {
   const [isCopied, setIsCopied] = useState(false)
   const [isUrlHovered, setIsUrlHovered] = useState(false)
 
-  // Use preview route instead of public URL to show draft/archived sites
+  // Get public URL for published sites, preview URL for drafts/archived
+  // For custom domains, slug is in the path: https://customdomain.com/slug
+  // For ottie.site, slug is in subdomain: https://slug.ottie.site
+  const getPublicUrl = () => {
+    if (site.domain && site.domain !== 'ottie.site') {
+      return `https://${site.domain}/${site.slug}`
+    }
+    return `https://${site.slug}.ottie.site`
+  }
+
+  // Use preview route for iframe to show draft/archived sites
   // This allows viewing unpublished sites (draft, archived) in the preview iframe
   // For localhost, we need to preserve the port number
   const getPreviewUrl = () => {
@@ -33,15 +43,18 @@ export function SitePreview({ site }: SitePreviewProps) {
   }
   
   const previewUrl = getPreviewUrl()
+  const publicUrl = getPublicUrl()
+  // Show public URL in address bar if published, preview URL for drafts/archived
+  const displayUrl = site.status === 'published' ? publicUrl : previewUrl
 
   const handleCopyUrl = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
     try {
-      await navigator.clipboard.writeText(previewUrl)
+      await navigator.clipboard.writeText(displayUrl)
       setIsCopied(true)
-      toastSuccess('Preview URL copied to clipboard')
+      toastSuccess(site.status === 'published' ? 'URL copied to clipboard' : 'Preview URL copied to clipboard')
       
       // Reset after 2 seconds
       setTimeout(() => {
@@ -74,7 +87,7 @@ export function SitePreview({ site }: SitePreviewProps) {
           )}
           <Globe className="size-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs text-muted-foreground truncate font-mono flex-1">
-            {previewUrl}
+            {displayUrl}
           </span>
           <button
             onClick={handleCopyUrl}
@@ -83,7 +96,7 @@ export function SitePreview({ site }: SitePreviewProps) {
                 ? 'opacity-100 translate-x-0 pointer-events-auto'
                 : 'opacity-0 -translate-x-2 pointer-events-none'
             } hover:bg-muted/80 active:scale-95`}
-            title="Copy preview URL"
+            title={site.status === 'published' ? 'Copy site URL' : 'Copy preview URL'}
           >
             <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
               {isCopied ? (

@@ -276,8 +276,10 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
   }
 
   const handleCopyUrl = async () => {
+    // For custom domains, slug is in the path: https://customdomain.com/slug
+    // For ottie.site, slug is in subdomain: https://slug.ottie.site
     const fullUrl = site.domain && site.domain !== 'ottie.site'
-      ? `https://${site.domain}`
+      ? `https://${site.domain}/${site.slug}`
       : `https://${site.slug}.ottie.site`
     
     try {

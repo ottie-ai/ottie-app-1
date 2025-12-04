@@ -4,6 +4,10 @@ import { useEffect, useRef } from 'react'
 import { Site } from '@/types/database'
 import { SitePreview } from './site-preview'
 import { SiteSettingsPanel } from './site-settings-panel'
+import { handlePublishSite, handleUnpublishSite } from '@/app/actions/site-actions'
+import { toast } from 'sonner'
+import { toastSuccess } from '@/lib/toast-helpers'
+import { useRouter } from 'next/navigation'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
@@ -38,6 +42,7 @@ interface SiteDetailClientProps {
 }
 
 export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
+  const router = useRouter()
   const sidebar = useSidebar()
   const hasInitializedRef = useRef(false)
   const { userName, userEmail, userAvatar } = useUserProfile()
@@ -192,7 +197,30 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
               </div>
             </PopoverContent>
           </Popover>
-          <Button size="sm">Publish</Button>
+          <Button 
+            size="sm"
+            onClick={async () => {
+              if (site.status === 'published') {
+                const result = await handleUnpublishSite(site.id)
+                if ('error' in result) {
+                  toast.error(result.error)
+                } else {
+                  toastSuccess('Site unpublished')
+                  router.refresh()
+                }
+              } else {
+                const result = await handlePublishSite(site.id)
+                if ('error' in result) {
+                  toast.error(result.error)
+                } else {
+                  toastSuccess('Site published successfully')
+                  router.refresh()
+                }
+              }
+            }}
+          >
+            {site.status === 'published' ? 'Unpublish' : 'Publish'}
+          </Button>
         </div>
       </header>
 

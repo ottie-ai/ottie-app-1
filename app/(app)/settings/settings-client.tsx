@@ -50,6 +50,7 @@ import { LottieExitIcon } from '@/components/ui/lottie-exit-icon'
 import { LottieStarIcon } from '@/components/ui/lottie-star-icon'
 import { LottieAvatarIcon } from '@/components/ui/lottie-avatar-icon'
 import { LottieLinkIconFocus } from '@/components/ui/lottie-link-icon-focus'
+import { LottieCopyIcon } from '@/components/ui/lottie-copy-icon'
 import {
   Dialog,
   DialogContent,
@@ -161,6 +162,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [isVerifying, setIsVerifying] = useState(false)
   const [isSavingDomain, setIsSavingDomain] = useState(false)
   const [isRemovingDomain, setIsRemovingDomain] = useState(false)
+  const [copiedValue, setCopiedValue] = useState<string | null>(null)
   
   // Sync workspace form state with context data when it changes
   useEffect(() => {
@@ -1769,31 +1771,31 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   </div>
                   <div className="space-y-4">
                     {/* Custom Brand Domain */}
-                    <div className="space-y-2">
-                      <div>
-                        <Label htmlFor="custom-domain">Brand Domain</Label>
-                        <p className="text-xs text-muted-foreground mt-1 max-w-[70%]">
-                          Connect a dedicated address for your Ottie sites, such as properties.yourdomain.com or listings.yourdomain.com. Main domains (yourdomain.com) are not supported. Contact support for primary website needs.
+                    <div className="flex flex-col gap-4">
+                      <div className="space-y-1 w-full sm:w-[70%]">
+                        <Label htmlFor="custom-domain" className="text-sm font-medium">Brand Domain</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Connect a dedicated address for your Ottie sites, such as <em>properties.yourdomain.com</em> or <em>listings.yourdomain.com</em>. For security reasons, main domains (like <em>yourdomain.com</em>) can only be set up manually – please contact support if you'd like Ottie to be your primary website.
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:flex-initial sm:w-80">
                           <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                           <Input
                             id="custom-domain"
                             placeholder="properties.yourdomain.com"
                             value={brandDomain}
                             onChange={(e) => setBrandDomain(e.target.value)}
-                            className="pl-9"
+                            className="pl-9 w-full"
                             disabled={
                               !hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') ||
                               isSavingDomain ||
                               isRemovingDomain ||
-                              brandingConfig.custom_brand_domain_verified
+                              !!brandingConfig.custom_brand_domain
                             }
                           />
                         </div>
-                        {brandDomain && !brandingConfig.custom_brand_domain_verified && (
+                        {!brandingConfig.custom_brand_domain && (
                           <Button
                             onClick={async () => {
                               if (!workspace?.id || !user?.id) return
@@ -1804,7 +1806,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                   toast.error(result.error)
                                 } else {
                                   setVercelDNSInstructions(result.vercelDNSInstructions || null)
-                                  toast.success('Domain added! Please configure DNS settings below and click "Check Status" to verify.')
+                                  toastSuccess('Domain added! Please configure DNS settings below and click "Check Status" to verify.')
                                   await refreshWorkspace()
                                 }
                               } catch (error) {
@@ -1813,14 +1815,14 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 setIsSavingDomain(false)
                               }
                             }}
-                            disabled={isSavingDomain || !brandDomain.trim()}
+                            disabled={isSavingDomain || !brandDomain.trim() || !hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain')}
+                            className="whitespace-nowrap min-w-[140px]"
                           >
-                            {isSavingDomain ? <LottieSpinner size={16} /> : 'Save'}
+                            {isSavingDomain ? <LottieSpinner size={16} /> : 'Connect Domain'}
                           </Button>
                         )}
                         {brandingConfig.custom_brand_domain && (
-                          <Button
-                            variant="destructive"
+                          <button
                             onClick={async () => {
                               if (!workspace?.id || !user?.id) return
                               if (!confirm('Are you sure you want to remove the brand domain? All sites will revert to ottie.site subdomains.')) return
@@ -1832,7 +1834,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 } else {
                                   setBrandDomain('')
                                   setVercelDNSInstructions(null)
-                                  toast.success('Brand domain removed')
+                                  toastSuccess('Brand domain removed')
                                   await refreshWorkspace()
                                 }
                               } catch (error) {
@@ -1842,14 +1844,16 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               }
                             }}
                             disabled={isRemovingDomain}
+                            className="text-sm text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {isRemovingDomain ? <LottieSpinner size={16} /> : <Trash2 size={16} />}
-                          </Button>
+                            {isRemovingDomain ? 'Disconnecting...' : 'Disconnect Domain'}
+                          </button>
                         )}
                       </div>
-                      
-                      {/* DNS Configuration Instructions */}
-                      {brandingConfig.custom_brand_domain && !brandingConfig.custom_brand_domain_verified && (
+                    </div>
+                    
+                    {/* DNS Configuration Instructions */}
+                    {brandingConfig.custom_brand_domain && !brandingConfig.custom_brand_domain_verified && (
                         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4 space-y-3">
                           <div className="flex items-start gap-3">
                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
@@ -1862,18 +1866,64 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                   <p className="text-sm text-blue-800 dark:text-blue-200">
                                     Add this DNS record to configure your domain:
                                   </p>
-                                  {vercelDNSInstructions.map((instruction, index) => (
-                                    <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
-                                      <div className="space-y-1">
-                                        <div><span className="text-muted-foreground">Type:</span> {instruction.type}</div>
-                                        <div><span className="text-muted-foreground">Name:</span> {instruction.domain}</div>
-                                        <div><span className="text-muted-foreground">Value:</span> {instruction.value}</div>
-                                        {instruction.reason && (
-                                          <div className="text-xs text-muted-foreground mt-2">{instruction.reason}</div>
-                                        )}
+                                  {vercelDNSInstructions.map((instruction, index) => {
+                                    const nameKey = `name-${index}`
+                                    const valueKey = `value-${index}`
+                                    const isNameCopied = copiedValue === nameKey
+                                    const isValueCopied = copiedValue === valueKey
+
+                                    const handleCopy = async (text: string, key: string) => {
+                                      try {
+                                        await navigator.clipboard.writeText(text)
+                                        setCopiedValue(key)
+                                        toastSuccess('Copied to clipboard')
+                                        setTimeout(() => setCopiedValue(null), 2000)
+                                      } catch (error) {
+                                        toast.error('Failed to copy')
+                                      }
+                                    }
+
+                                    return (
+                                      <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
+                                        <div className="space-y-1">
+                                          <div><span className="text-muted-foreground">Type:</span> {instruction.type}</div>
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-muted-foreground">Name:</span>
+                                            <span>{instruction.domain}</span>
+                                            <button
+                                              onClick={() => handleCopy(instruction.domain, nameKey)}
+                                              className="flex-shrink-0 p-1 rounded-md hover:bg-muted active:scale-95 transition-all w-7 h-7 flex items-center justify-center"
+                                              title="Copy name"
+                                            >
+                                              {isNameCopied ? (
+                                                <CheckIcon className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                              ) : (
+                                                <LottieCopyIcon className="size-3.5" />
+                                              )}
+                                            </button>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-muted-foreground">Value:</span>
+                                            <span className="break-all">{instruction.value}</span>
+                                            <button
+                                              onClick={() => handleCopy(instruction.value, valueKey)}
+                                              className="flex-shrink-0 p-1 rounded-md hover:bg-muted active:scale-95 transition-all w-7 h-7 flex items-center justify-center"
+                                              title="Copy value"
+                                            >
+                                              {isValueCopied ? (
+                                                <CheckIcon className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                              ) : (
+                                                <LottieCopyIcon className="size-3.5" />
+                                              )}
+                                            </button>
+                                          </div>
+                                          {instruction.reason && (
+                                            <div className="text-xs text-muted-foreground mt-2">{instruction.reason}</div>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    )
+                                  })}
                                 </>
                               ) : (
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -1894,7 +1944,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                     if ('error' in result) {
                                       toast.error(result.error)
                                     } else {
-                                      toast.success('Domain verified! All sites are now accessible on your brand domain.')
+                                      toastSuccess('Domain verified! All sites are now accessible on your brand domain.')
                                       await refreshWorkspace()
                                     }
                                   } catch (error) {
@@ -1921,9 +1971,9 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           </div>
                         </div>
                       )}
-                      
-                      {/* Verified Status */}
-                      {brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain && (
+                    
+                    {/* Verified Status */}
+                    {brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain && (
                         <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                           <div className="flex items-start gap-3">
                             <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
@@ -1938,7 +1988,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           </div>
                         </div>
                       )}
-                    </div>
                     
                     {!hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') && (
                       <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">

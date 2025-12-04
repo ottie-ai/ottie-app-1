@@ -155,8 +155,10 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
     e.stopPropagation()
     
     // Use domain - if it's not 'ottie.site', it's a custom domain
+    // For custom domains, slug is in the path: https://customdomain.com/slug
+    // For ottie.site, slug is in subdomain: https://slug.ottie.site
     const fullUrl = site.domain && site.domain !== 'ottie.site'
-      ? `https://${site.domain}`
+      ? `https://${site.domain}/${site.slug}`
       : `https://${site.slug}.ottie.site`
     
     try {

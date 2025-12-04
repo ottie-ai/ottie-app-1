@@ -196,6 +196,20 @@ export async function setBrandDomain(
     // Rollback: remove domain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing subdomain from Vercel')
     await removeVercelDomain(trimmedDomain)
+    // Rollback: clear domain from database if it was a new domain (not updating existing)
+    // Only clear if there was no previous domain (adding new domain, not changing existing)
+    if (!currentDomain || currentDomain === null) {
+      await updateWorkspace(workspaceId, {
+        branding_config: {
+          ...currentConfig,
+          custom_brand_domain: null,
+          custom_brand_domain_verified: false,
+          custom_brand_domain_verified_at: null,
+          custom_brand_domain_vercel_added: false,
+          custom_brand_domain_vercel_dns_instructions: undefined,
+        },
+      })
+    }
     return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The subdomain may need a few moments to be processed by Vercel. Please try again in a minute.` }
   }
 
@@ -279,6 +293,20 @@ export async function setBrandDomain(
     // Rollback: remove subdomain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing subdomain from Vercel (no DNS instructions)')
     await removeVercelDomain(trimmedDomain)
+    // Rollback: clear domain from database if it was a new domain (not updating existing)
+    // Only clear if there was no previous domain (adding new domain, not changing existing)
+    if (!currentDomain || currentDomain === null) {
+      await updateWorkspace(workspaceId, {
+        branding_config: {
+          ...currentConfig,
+          custom_brand_domain: null,
+          custom_brand_domain_verified: false,
+          custom_brand_domain_verified_at: null,
+          custom_brand_domain_vercel_added: false,
+          custom_brand_domain_vercel_dns_instructions: undefined,
+        },
+      })
+    }
     return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
   }
 
@@ -302,6 +330,20 @@ export async function setBrandDomain(
   if (!updatedWorkspace) {
     // Rollback: remove subdomain if DB update fails
     await removeVercelDomain(trimmedDomain)
+    // Rollback: clear domain from database if it was a new domain (not updating existing)
+    // Only clear if there was no previous domain (adding new domain, not changing existing)
+    if (!currentDomain || currentDomain === null) {
+      await updateWorkspace(workspaceId, {
+        branding_config: {
+          ...currentConfig,
+          custom_brand_domain: null,
+          custom_brand_domain_verified: false,
+          custom_brand_domain_verified_at: null,
+          custom_brand_domain_vercel_added: false,
+          custom_brand_domain_vercel_dns_instructions: undefined,
+        },
+      })
+    }
     return { error: 'Failed to save subdomain configuration' }
   }
 
@@ -368,7 +410,7 @@ export async function verifyBrandDomain(
 
   if (!isVerified || isMisconfigured) {
     // Domain verification failed - DNS not configured correctly
-    let errorMessage = 'Please check your DNS settings and ensure the DNS records are configured correctly.'
+    let errorMessage = 'This can take some time after updating DNS. Please wait a few minutes, then check that your DNS records are configured correctly and try again.'
     
     // Get specific error messages from verification array
     const verificationErrors = vercelResult.domain.verification || []
@@ -390,6 +432,7 @@ export async function verifyBrandDomain(
   }
 
   // 6. Update all sites in workspace to use brand domain
+  // This ensures all sites (including already published ones) use the brand domain
   const { error: sitesError } = await supabase
     .from('sites')
     .update({ domain })
@@ -399,6 +442,8 @@ export async function verifyBrandDomain(
   if (sitesError) {
     console.error('[Brand Domain] Error updating sites:', sitesError)
     // Continue anyway - domain verification can succeed even if sites update fails
+  } else {
+    console.log('[Brand Domain] Updated all sites in workspace to use brand domain:', domain)
   }
 
   // 7. Update workspace
