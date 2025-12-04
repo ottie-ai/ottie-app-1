@@ -28,7 +28,8 @@ interface VercelDomainConfig {
   serviceType?: string
   cnames?: string[]
   aValues?: string[]
-  recommendedIPv4?: string[]
+  recommendedIPv4?: string[] | Array<{ rank: number; value: string[] }>
+  recommendedCNAME?: string[] | Array<{ rank: number; value: string }>
   conflicts?: Array<{
     name: string
     type: string
@@ -256,16 +257,14 @@ export async function getVercelDomainConfig(
 ): Promise<{ success: true; config: VercelDomainConfig } | { error: string }> {
   try {
     const { token } = getVercelCredentials()
-    const finalProjectId = projectId || await getProjectId()
 
-    if (!finalProjectId) {
-      return { error: 'Vercel Project ID not found' }
-    }
-
+    // v6/domains/{domain}/config is a domain-level endpoint, doesn't require project ID
+    // But may require teamId if domain is part of a team
     const url = `https://api.vercel.com/v6/domains/${domain}/config`
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
     })
 
@@ -278,7 +277,11 @@ export async function getVercelDomainConfig(
       })
       
       if (response.status === 404) {
-        return { error: 'Domain configuration not found' }
+        return { error: 'Domain configuration not found. The domain may not be added to your Vercel account yet.' }
+      }
+      
+      if (response.status === 403) {
+        return { error: 'Access forbidden. Please check that your Vercel API token has domain management permissions and the domain is added to your account.' }
       }
       
       try {

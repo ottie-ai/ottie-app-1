@@ -125,16 +125,49 @@ export async function setBrandDomain(
   console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
   
   // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
-  if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
-    config.recommendedIPv4.forEach(ip => {
-      vercelDNSInstructions.push({
-        type: 'A',
-        domain: '@',
-        value: ip,
-        reason: 'Point your apex domain to Vercel'
+    // Can be array of strings or array of objects with rank and value
+    if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
+      config.recommendedIPv4.forEach((item: string | { rank: number; value: string[] }) => {
+        if (typeof item === 'string') {
+          vercelDNSInstructions.push({
+            type: 'A',
+            domain: '@',
+            value: item,
+            reason: 'Point your apex domain to Vercel'
+          })
+        } else if (item.value && Array.isArray(item.value)) {
+          item.value.forEach(ip => {
+            vercelDNSInstructions.push({
+              type: 'A',
+              domain: '@',
+              value: ip,
+              reason: 'Point your apex domain to Vercel'
+            })
+          })
+        }
       })
-    })
-  }
+    }
+    
+    // Also check recommendedCNAME
+    if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+      config.recommendedCNAME.forEach((item: string | { rank: number; value: string }) => {
+        if (typeof item === 'string') {
+          vercelDNSInstructions.push({
+            type: 'CNAME',
+            domain: trimmedDomain.split('.')[0] || '@',
+            value: item,
+            reason: 'Point your subdomain to Vercel'
+          })
+        } else if (item.value) {
+          vercelDNSInstructions.push({
+            type: 'CNAME',
+            domain: trimmedDomain.split('.')[0] || '@',
+            value: item.value,
+            reason: 'Point your subdomain to Vercel'
+          })
+        }
+      })
+    }
   
   // Also check aValues as fallback (older API format)
   if (vercelDNSInstructions.length === 0 && config.aValues && config.aValues.length > 0) {
