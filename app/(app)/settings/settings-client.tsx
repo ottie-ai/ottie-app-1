@@ -35,7 +35,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { RoleSelect } from '@/components/workspace/role-select'
-import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
+import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, removeMembership, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
@@ -44,7 +44,10 @@ import { signOut as signOutAuth } from '@/lib/supabase/auth'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { transformPlansToTiers } from '@/lib/pricing-data'
-import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, Crown } from 'lucide-react'
+import { Mail, Plus, AlertCircle, ArrowRight, Check as CheckIcon, ExternalLink, Clock, X, RotateCw, UserX } from 'lucide-react'
+import { LottieExitIcon } from '@/components/ui/lottie-exit-icon'
+import { LottieStarIcon } from '@/components/ui/lottie-star-icon'
+import { LottieAvatarIcon } from '@/components/ui/lottie-avatar-icon'
 import { LottieLinkIconFocus } from '@/components/ui/lottie-link-icon-focus'
 import {
   Dialog,
@@ -55,7 +58,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { UserRole } from '@/types/database'
 
 // Serializable user data passed from server component
@@ -93,14 +96,15 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   // Get data from context (already loaded in layout via AppProvider)
   const { profile: profileFromContext, userAvatar, userName, refresh: refreshUserProfile } = useUserProfile()
   const { workspace: workspaceFromContext, refresh: refreshWorkspace } = useWorkspace()
-  const { currentMembership, loading: appDataLoading, isMultiUserPlan, plans } = useAppData()
+  const { currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan, plans } = useAppData()
   
   // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
   const pricingTiers = transformPlansToTiers(plans)
   
   // Use data from context (preferred) or fallback to null
+  // Prefer currentWorkspace from AppData as it's more reliable
   const profile = profileFromContext
-  const workspace = workspaceFromContext
+  const workspace = currentWorkspace || workspaceFromContext
   const membership = currentMembership
   
   // Use client-side user if available (more reliable), otherwise fall back to server user
@@ -170,6 +174,14 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   
   // Role update loading state (track which membership is being updated)
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null)
+  const [removingMembershipId, setRemovingMembershipId] = useState<string | null>(null)
+  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false)
+  const [revokeMembershipId, setRevokeMembershipId] = useState<string | null>(null)
+  const [revokeMemberName, setRevokeMemberName] = useState<string>('')
+  const [downgradeRoleDialogOpen, setDowngradeRoleDialogOpen] = useState(false)
+  const [downgradeMembershipId, setDowngradeMembershipId] = useState<string | null>(null)
+  const [downgradeMemberName, setDowngradeMemberName] = useState<string>('')
+  const [pendingRoleChange, setPendingRoleChange] = useState<'admin' | 'agent' | null>(null)
   
   // Sync workspaceName when workspace changes
   useEffect(() => {
@@ -617,11 +629,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
           <h1 className="text-base font-semibold">Settings</h1>
-          <p className="text-xs text-muted-foreground">
-            {showWorkspaceSettings 
-              ? 'View and manage your workspace settings.' 
-              : 'View and manage your account settings.'}
-          </p>
         </div>
       </header>
 
@@ -1666,7 +1673,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 Upgrade to Growth to add your custom domain
                               </p>
                             </div>
-                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
                               <span
                                 className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
                               >
@@ -1695,7 +1706,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 This feature is available on our paid plans.
                               </p>
                             </div>
-                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
                               <span
                                 className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
                               >
@@ -1739,7 +1754,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               Upgrade to Growth to add your custom domain
                             </p>
                           </div>
-                          <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                          <PricingDialog 
+                            currentPlan={workspace?.plan} 
+                            stripeCustomerId={workspace?.stripe_customer_id}
+                            workspaceId={workspace?.id}
+                          >
                             <span
                               className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
                             >
@@ -1768,7 +1787,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               This feature is available on our paid plans.
                             </p>
                           </div>
-                          <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                          <PricingDialog 
+                            currentPlan={workspace?.plan} 
+                            stripeCustomerId={workspace?.stripe_customer_id}
+                            workspaceId={workspace?.id}
+                          >
                             <span
                               className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
                             >
@@ -1804,7 +1827,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         </a>
                       </CardDescription>
                       <CardAction>
-                        <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                        <PricingDialog 
+                          currentPlan={workspace?.plan} 
+                          stripeCustomerId={workspace?.stripe_customer_id}
+                          workspaceId={workspace?.id}
+                        >
                           <Button variant="ghost" size="sm" className="text-muted-foreground">
                             All plans <ArrowRight className="h-4 w-4 ml-1" />
                           </Button>
@@ -1840,12 +1867,20 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               </p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                              <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <PricingDialog 
+                                currentPlan={workspace?.plan} 
+                                stripeCustomerId={workspace?.stripe_customer_id}
+                                workspaceId={workspace?.id}
+                              >
                                 <Button variant="ghost" size="sm" className="text-muted-foreground">
                                   View all plans
                                 </Button>
                               </PricingDialog>
-                              <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                              <PricingDialog 
+                                currentPlan={workspace?.plan} 
+                                stripeCustomerId={workspace?.stripe_customer_id}
+                                workspaceId={workspace?.id}
+                              >
                                 <Button size="sm">Upgrade now</Button>
                               </PricingDialog>
                             </div>
@@ -1899,7 +1934,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           </a>
                         </p>
                       </div>
-                      <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                      <PricingDialog 
+                        currentPlan={workspace?.plan} 
+                        stripeCustomerId={workspace?.stripe_customer_id}
+                        workspaceId={workspace?.id}
+                      >
                         <Button variant="ghost" size="sm" className="text-muted-foreground">
                           All plans <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
@@ -1934,12 +1973,20 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
                               <Button variant="ghost" size="sm" className="text-muted-foreground">
                                 View all plans
                               </Button>
                 </PricingDialog>
-                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
                               <Button size="sm">Upgrade now</Button>
                             </PricingDialog>
                           </div>
@@ -2113,6 +2160,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           currentPlan={workspace?.plan} 
                           stripeCustomerId={workspace?.stripe_customer_id}
                           defaultSelectedTier="agency"
+                          workspaceId={workspace?.id}
                         >
                           <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
                             Upgrade Plan
@@ -2173,14 +2221,108 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </p>
                               </div>
                             </div>
-                            <Badge variant="secondary" className="capitalize">
-                              {membership.role}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                              {isOwnerOrAdmin && isMultiUser && membership.role !== 'owner' && membership.user_id !== user?.id ? (
+                                <Select
+                                  value={membership.role as 'admin' | 'agent'}
+                                  disabled={updatingRoleId === membership.id || removingMembershipId === membership.id}
+                                  onValueChange={async (value) => {
+                                    if (!workspace || !user?.id) return
+
+                                    // Handle revoke access
+                                    if (value === 'revoke') {
+                                      // Prevent self-revocation
+                                      if (membership.user_id === user.id) {
+                                        toast.error('Cannot revoke your own access')
+                                        return
+                                      }
+                                      setRevokeMembershipId(membership.id)
+                                      setRevokeMemberName(profile.full_name || profile.email || 'Unknown User')
+                                      setRevokeDialogOpen(true)
+                                      return
+                                    }
+
+                                    // Check if user is downgrading their own role from admin to agent
+                                    if (membership.user_id === user.id && membership.role === 'admin' && value === 'agent') {
+                                      setDowngradeMembershipId(membership.id)
+                                      setDowngradeMemberName(profile.full_name || profile.email || 'Unknown User')
+                                      setPendingRoleChange('agent')
+                                      setDowngradeRoleDialogOpen(true)
+                                      return
+                                    }
+
+                                    // Handle role change
+                                    setUpdatingRoleId(membership.id)
+                                    
+                                    const result = await updateMembershipRole(
+                                      membership.id,
+                                      workspace.id,
+                                      user.id,
+                                      value as 'admin' | 'agent'
+                                    )
+
+                                    if ('error' in result) {
+                                      toast.error(result.error)
+                                      setUpdatingRoleId(null)
+                                    } else {
+                                      toastSuccess('Role updated successfully')
+                                      // Invalidate queries to refresh data without page reload
+                                      await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                                      await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                                      setUpdatingRoleId(null)
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-[160px]">
+                                    <SelectValue>
+                                      <div className="flex items-center gap-2">
+                                        {membership.role === 'admin' && <LottieStarIcon size={18} />}
+                                        {membership.role === 'agent' && <LottieAvatarIcon size={18} />}
+                                        <span className="capitalize">{membership.role}</span>
+                                      </div>
+                                    </SelectValue>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin" className="items-start py-2">
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <LottieStarIcon size={18} />
+                                          <span className="font-medium">Admin</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground leading-tight">
+                                          Can manage team and settings
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                    <SelectItem value="agent" className="items-start py-2">
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <LottieAvatarIcon size={18} />
+                                          <span className="font-medium">Agent</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground leading-tight">
+                                          Can create and manage sites
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                    <SelectSeparator />
+                                    <SelectItem value="revoke" className="text-destructive focus:text-destructive py-2">
+                                      <div className="flex items-center gap-2">
+                                        <LottieExitIcon size={18} />
+                                        <span className="font-medium">Revoke access</span>
+                                      </div>
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="secondary" className="capitalize">
+                                  {membership.role}
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                 )}
 
                     {/* Pending Invitations */}
@@ -2383,6 +2525,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             currentPlan={workspace?.plan} 
                             stripeCustomerId={workspace?.stripe_customer_id}
                             defaultSelectedTier="agency"
+                            workspaceId={workspace?.id}
                           >
                             <Button size="sm" className="mt-2 bg-green-600 hover:bg-green-700 text-white">
                               Upgrade Plan
@@ -2454,37 +2597,101 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </td>
                                 <td className="p-4">
                                   <div className="flex items-center justify-end gap-2">
-                                    {isOwnerOrAdmin && isMultiUser && membership.role !== 'owner' && membership.user_id !== user?.id ? (
-                                      <RoleSelect
-                                        value={membership.role as 'admin' | 'agent'}
-                                        loading={updatingRoleId === membership.id}
-                                        onValueChange={async (value) => {
-                                          if (!workspace || !user?.id) return
+                              {isOwnerOrAdmin && isMultiUser && membership.role !== 'owner' ? (
+                                <Select
+                                  value={membership.role as 'admin' | 'agent'}
+                                  disabled={updatingRoleId === membership.id || removingMembershipId === membership.id}
+                                  onValueChange={async (value) => {
+                                    if (!workspace || !user?.id) return
 
-                                          setUpdatingRoleId(membership.id)
-                                          
-                                          const result = await updateMembershipRole(
-                                            membership.id,
-                                            workspace.id,
-                                            user.id,
-                                            value
-                                          )
+                                    // Handle revoke access
+                                    if (value === 'revoke') {
+                                      // Prevent self-revocation
+                                      if (membership.user_id === user.id) {
+                                        toast.error('Cannot revoke your own access')
+                                        return
+                                      }
+                                      setRevokeMembershipId(membership.id)
+                                      setRevokeMemberName(profile.full_name || profile.email || 'Unknown User')
+                                      setRevokeDialogOpen(true)
+                                      return
+                                    }
 
-                                          if ('error' in result) {
-                                            toast.error(result.error)
-                                            setUpdatingRoleId(null)
-                                          } else {
-                                            toastSuccess('Role updated successfully')
-                                            // Invalidate queries to refresh data without page reload
-                                            await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
-                                            await queryClient.invalidateQueries({ queryKey: ['appData'] })
-                                            setUpdatingRoleId(null)
-                                          }
-                                        }}
-                                      />
+                                    // Check if user is downgrading their own role from admin to agent
+                                    if (membership.user_id === user.id && membership.role === 'admin' && value === 'agent') {
+                                      setDowngradeMembershipId(membership.id)
+                                      setDowngradeMemberName(profile.full_name || profile.email || 'Unknown User')
+                                      setPendingRoleChange('agent')
+                                      setDowngradeRoleDialogOpen(true)
+                                      return
+                                    }
+
+                                    // Handle role change
+                                    setUpdatingRoleId(membership.id)
+                                    
+                                    const result = await updateMembershipRole(
+                                      membership.id,
+                                      workspace.id,
+                                      user.id,
+                                      value as 'admin' | 'agent'
+                                    )
+
+                                    if ('error' in result) {
+                                      toast.error(result.error)
+                                      setUpdatingRoleId(null)
+                                    } else {
+                                      toastSuccess('Role updated successfully')
+                                      // Invalidate queries to refresh data without page reload
+                                      await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                                      await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                                      setUpdatingRoleId(null)
+                                    }
+                                  }}
+                                      >
+                                        <SelectTrigger className="w-[160px]">
+                                          <SelectValue>
+                                            <div className="flex items-center gap-2">
+                                              {membership.role === 'admin' && <LottieStarIcon size={18} />}
+                                              {membership.role === 'agent' && <LottieAvatarIcon size={18} />}
+                                              <span className="capitalize">{membership.role}</span>
+                                            </div>
+                                          </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="admin" className="items-start py-2">
+                                            <div className="flex flex-col gap-0.5">
+                                              <div className="flex items-center gap-2">
+                                                <LottieStarIcon size={18} />
+                                                <span className="font-medium">Admin</span>
+                                              </div>
+                                              <span className="text-xs text-muted-foreground leading-tight">
+                                                Can manage team and settings
+                                              </span>
+                                            </div>
+                                          </SelectItem>
+                                          <SelectItem value="agent" className="items-start py-2">
+                                            <div className="flex flex-col gap-0.5">
+                                              <div className="flex items-center gap-2">
+                                                <LottieAvatarIcon size={18} />
+                                                <span className="font-medium">Agent</span>
+                                              </div>
+                                              <span className="text-xs text-muted-foreground leading-tight">
+                                                Can create and manage sites
+                                              </span>
+                                            </div>
+                                          </SelectItem>
+                                          <SelectSeparator />
+                                          <SelectItem value="revoke" className="text-destructive focus:text-destructive py-2">
+                                            <div className="flex items-center gap-2">
+                                              <LottieExitIcon size={18} />
+                                              <span className="font-medium">Revoke access</span>
+                                            </div>
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     ) : (
                                       <Badge variant="secondary" className="capitalize flex items-center gap-1.5">
-                                        {membership.role === 'admin' && <Crown className="size-3 text-amber-500" />}
+                                        {membership.role === 'admin' && <LottieStarIcon size={18} />}
                                         {membership.role}
                                       </Badge>
                                     )}
@@ -2643,12 +2850,74 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {/* Reset Workspace Section - Only visible to owners of multi-user workspaces */}
+                    {showWorkspaceSettings && membership?.role === 'owner' && isMultiUserPlan(workspace?.plan) && (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="space-y-1 w-full sm:w-1/2">
+                          <p className="text-sm font-medium">Reset Workspace</p>
+                          <p className="text-sm text-muted-foreground">
+                            Reset workspace will permanently delete all sites, integrations, leads and data in this workspace. Your account will stay active and a new empty workspace will be created automatically.
+                          </p>
+                        </div>
+                          <Button 
+                            variant="link" 
+                            size="sm"
+                            onClick={async () => {
+                              if (!workspace || !user?.id) return
+                              
+                              const confirmed = window.confirm(
+                                `Are you sure you want to reset "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                              )
+                              
+                              if (!confirmed) return
+                              
+                              setResetWorkspaceLoading(true)
+                              const result = await resetWorkspace(workspace.id, user.id)
+                              
+                              if ('error' in result) {
+                                toast.error(result.error)
+                              } else {
+                                toastSuccess('Workspace reset successfully')
+                                // Refresh workspace data - this will load the new workspace
+                                await refreshWorkspace()
+                                // Reset local state
+                                setWorkspaceLogoUrl('')
+                                setOriginalWorkspaceLogoUrl('')
+                                setWorkspaceLogoFile(null)
+                                setWorkspaceLogoPreview(null)
+                                if (workspaceLogoInputRef.current) {
+                                  workspaceLogoInputRef.current.value = ''
+                                }
+                                // Reload page to ensure all components use the new workspace
+                                window.location.reload()
+                              }
+                              
+                              setResetWorkspaceLoading(false)
+                            }}
+                            disabled={resetWorkspaceLoading || !user?.id}
+                            className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                          >
+                            {resetWorkspaceLoading ? (
+                              <>
+                                <LottieSpinner size={16} className="mr-2" />
+                                Resetting...
+                              </>
+                            ) : (
+                              'Reset workspace'
+                            )}
+                          </Button>
+                        </div>
+                    )}
+
                     {/* Delete Account Section */}
+                    {showWorkspaceSettings && membership?.role === 'owner' && isMultiUserPlan(workspace?.plan) && (
+                      <Separator className="my-6" />
+                    )}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="space-y-1">
+                      <div className="space-y-1 w-full sm:w-1/2">
                         <p className="text-sm font-medium">Delete Account</p>
-                        <p className="text-xs text-muted-foreground">
-                          Permanently delete your account and all data
+                        <p className="text-sm text-muted-foreground">
+                          Permanently delete your account, workspaces, and all data. This action cannot be undone.
                         </p>
                       </div>
                       <Button 
@@ -2678,67 +2947,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </Button>
                     </div>
 
-                    {/* Delete Workspace Section - Only visible to owners */}
-                    {showWorkspaceSettings && membership?.role === 'owner' && (
-                      <>
-                        <Separator className="my-6" />
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">Delete Workspace</p>
-                            <p className="text-xs text-muted-foreground">
-                              Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
-                            </p>
-                          </div>
-                          <Button 
-                            variant="link" 
-                            size="sm"
-                            onClick={async () => {
-                              if (!workspace || !user?.id) return
-                              
-                              const confirmed = window.confirm(
-                                `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                              )
-                              
-                              if (!confirmed) return
-                              
-                              setResetWorkspaceLoading(true)
-                              const result = await resetWorkspace(workspace.id, user.id)
-                              
-                              if ('error' in result) {
-                                toast.error(result.error)
-                              } else {
-                                toastSuccess('Workspace deleted and new workspace created successfully')
-                                // Refresh workspace data - this will load the new workspace
-                                await refreshWorkspace()
-                                // Reset local state
-                                setWorkspaceLogoUrl('')
-                                setOriginalWorkspaceLogoUrl('')
-                                setWorkspaceLogoFile(null)
-                                setWorkspaceLogoPreview(null)
-                                if (workspaceLogoInputRef.current) {
-                                  workspaceLogoInputRef.current.value = ''
-                                }
-                                // Reload page to ensure all components use the new workspace
-                                window.location.reload()
-                              }
-                              
-                              setResetWorkspaceLoading(false)
-                            }}
-                            disabled={resetWorkspaceLoading || !user?.id}
-                            className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
-                          >
-                            {resetWorkspaceLoading ? (
-                              <>
-                                <LottieSpinner size={16} className="mr-2" />
-                                Deleting...
-                              </>
-                            ) : (
-                              'Delete workspace'
-                            )}
-                          </Button>
-                        </div>
-                      </>
-                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -2750,12 +2958,74 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </p>
                   </div>
                   
+                  {/* Reset Workspace Section - Only visible to owners of multi-user workspaces */}
+                  {showWorkspaceSettings && membership?.role === 'owner' && isMultiUserPlan(workspace?.plan) && (
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="space-y-1 w-full sm:w-1/2">
+                        <p className="text-sm font-medium">Reset Workspace</p>
+                        <p className="text-sm text-muted-foreground">
+                          Reset workspace will permanently delete all sites, integrations, and logos in this workspace. Your account will stay active and a new empty workspace will be created automatically.
+                        </p>
+                      </div>
+                        <Button 
+                          variant="link" 
+                          size="sm"
+                          onClick={async () => {
+                            if (!workspace || !user?.id) return
+                            
+                            const confirmed = window.confirm(
+                              `Are you sure you want to reset "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
+                            )
+                            
+                            if (!confirmed) return
+                            
+                            setResetWorkspaceLoading(true)
+                            const result = await resetWorkspace(workspace.id, user.id)
+                            
+                            if ('error' in result) {
+                              toast.error(result.error)
+                            } else {
+                              toastSuccess('Workspace reset successfully')
+                              // Refresh workspace data - this will load the new workspace
+                              await refreshWorkspace()
+                              // Reset local state
+                              setWorkspaceLogoUrl('')
+                              setOriginalWorkspaceLogoUrl('')
+                              setWorkspaceLogoFile(null)
+                              setWorkspaceLogoPreview(null)
+                              if (workspaceLogoInputRef.current) {
+                                workspaceLogoInputRef.current.value = ''
+                              }
+                              // Reload page to ensure all components use the new workspace
+                              window.location.reload()
+                            }
+                            
+                            setResetWorkspaceLoading(false)
+                          }}
+                          disabled={resetWorkspaceLoading || !user?.id}
+                          className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
+                        >
+                          {resetWorkspaceLoading ? (
+                            <>
+                              <LottieSpinner size={16} className="mr-2" />
+                              Resetting...
+                            </>
+                          ) : (
+                            'Reset workspace'
+                          )}
+                        </Button>
+                      </div>
+                  )}
+
                   {/* Delete Account Section */}
+                  {showWorkspaceSettings && membership?.role === 'owner' && isMultiUserPlan(workspace?.plan) && (
+                    <Separator className="my-6" />
+                  )}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="space-y-1">
+                    <div className="space-y-1 w-full sm:w-1/2">
                       <p className="text-sm font-medium">Delete Account</p>
-                      <p className="text-xs text-muted-foreground">
-                        Permanently delete your account and all data
+                      <p className="text-sm text-muted-foreground">
+                        Permanently delete your account, workspaces, and all data. This action cannot be undone.
                       </p>
                     </div>
                     <Button 
@@ -2784,68 +3054,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       )}
                     </Button>
                   </div>
-
-                  {/* Delete Workspace Section - Only visible to owners */}
-                  {showWorkspaceSettings && membership?.role === 'owner' && (
-                    <>
-                      <Separator className="my-6" />
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">Delete Workspace</p>
-                          <p className="text-xs text-muted-foreground">
-                            Delete workspace will permanently delete all sites, integrations, and logo. A new workspace will be created automatically.
-                          </p>
-                        </div>
-                        <Button 
-                          variant="link" 
-                          size="sm"
-                          onClick={async () => {
-                            if (!workspace || !user?.id) return
-                            
-                            const confirmed = window.confirm(
-                              `Are you sure you want to delete "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                            )
-                            
-                            if (!confirmed) return
-                            
-                            setResetWorkspaceLoading(true)
-                            const result = await resetWorkspace(workspace.id, user.id)
-                            
-                            if ('error' in result) {
-                              toast.error(result.error)
-                            } else {
-                              toast('Workspace deleted and new workspace created successfully')
-                              // Refresh workspace data - this will load the new workspace
-                              await refreshWorkspace()
-                              // Reset local state
-                              setWorkspaceLogoUrl('')
-                              setOriginalWorkspaceLogoUrl('')
-                              setWorkspaceLogoFile(null)
-                              setWorkspaceLogoPreview(null)
-                              if (workspaceLogoInputRef.current) {
-                                workspaceLogoInputRef.current.value = ''
-                              }
-                              // Reload page to ensure all components use the new workspace
-                              window.location.reload()
-                            }
-                            
-                            setResetWorkspaceLoading(false)
-                          }}
-                          disabled={resetWorkspaceLoading || !user?.id}
-                          className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
-                        >
-                          {resetWorkspaceLoading ? (
-                            <>
-                              <LottieSpinner size={16} className="mr-2" />
-                              Deleting...
-                            </>
-                          ) : (
-                            'Delete workspace'
-                          )}
-                        </Button>
-                      </div>
-                    </>
-                  )}
                 </TabsContent>
               )}
 
@@ -3485,6 +3693,137 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                 </>
               ) : (
                 'Delete Account'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Downgrade Role Confirmation Dialog */}
+      <AlertDialog open={downgradeRoleDialogOpen} onOpenChange={setDowngradeRoleDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Downgrade Role</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to change your role from <strong>Admin</strong> to <strong>Agent</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Alert className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-foreground">
+              <strong>Warning:</strong> You will lose the ability to manage team members and workspace settings. You will only be able to create and manage sites.
+            </AlertDescription>
+          </Alert>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={updatingRoleId === downgradeMembershipId}
+              onClick={() => {
+                setDowngradeRoleDialogOpen(false)
+                setDowngradeMembershipId(null)
+                setDowngradeMemberName('')
+                setPendingRoleChange(null)
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!downgradeMembershipId || !pendingRoleChange || !workspace || !user?.id) return
+
+                setUpdatingRoleId(downgradeMembershipId)
+
+                const result = await updateMembershipRole(
+                  downgradeMembershipId,
+                  workspace.id,
+                  user.id,
+                  pendingRoleChange
+                )
+
+                if ('error' in result) {
+                  toast.error(result.error)
+                  setUpdatingRoleId(null)
+                } else {
+                  toastSuccess('Role updated successfully')
+                  // Invalidate queries to refresh data without page reload
+                  await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                  await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                  setUpdatingRoleId(null)
+                  setDowngradeRoleDialogOpen(false)
+                  setDowngradeMembershipId(null)
+                  setDowngradeMemberName('')
+                  setPendingRoleChange(null)
+                }
+              }}
+              disabled={updatingRoleId === downgradeMembershipId}
+            >
+              {updatingRoleId === downgradeMembershipId ? (
+                <>
+                  <LottieSpinner size={16} className="mr-2" />
+                  Updating...
+                </>
+              ) : (
+                'Confirm Downgrade'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke Access Confirmation Dialog */}
+      <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke Access</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{revokeMemberName}</strong> from this workspace?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Alert className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-foreground">
+              <strong>Warning:</strong> They will immediately lose access to all workspace resources, sites, and data. This action cannot be undone.
+            </AlertDescription>
+          </Alert>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removingMembershipId !== null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!revokeMembershipId || !workspace || !user?.id) return
+
+                setRemovingMembershipId(revokeMembershipId)
+
+                const result = await removeMembership(
+                  revokeMembershipId,
+                  workspace.id,
+                  user.id
+                )
+
+                if ('error' in result) {
+                  toast.error(result.error)
+                  setRemovingMembershipId(null)
+                } else {
+                  toastSuccess('Member removed from workspace')
+                  // Invalidate queries to refresh data without page reload
+                  await queryClient.invalidateQueries({ queryKey: ['workspaceMembers', workspace.id] })
+                  await queryClient.invalidateQueries({ queryKey: ['appData'] })
+                  setRemovingMembershipId(null)
+                  setRevokeDialogOpen(false)
+                  setRevokeMembershipId(null)
+                  setRevokeMemberName('')
+                }
+              }}
+              disabled={removingMembershipId !== null}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removingMembershipId ? (
+                <>
+                  <LottieSpinner size={16} className="mr-2" />
+                  Removing...
+                </>
+              ) : (
+                'Revoke Access'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -9,7 +9,12 @@ import { LottieCheckIcon } from '@/components/ui/lottie-check-icon'
 export function toastSuccess(message: string, options?: Parameters<typeof sonnerToast>[1]) {
   return sonnerToast(message, {
     ...options,
-    icon: <LottieCheckIcon size={20} autoPlay={true} />,
+    icon: (
+      <div className="flex items-center justify-center flex-shrink-0 self-center" style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <LottieCheckIcon size={20} autoPlay={true} />
+      </div>
+    ),
+    className: 'items-center',
   })
 }
 

@@ -327,7 +327,11 @@ export function DashboardSidebar() {
                             {plan} Plan
                       </span>
                           {currentMembership?.role === 'owner' && (
-                            <PricingDialog currentPlan={workspace?.plan} stripeCustomerId={workspace?.stripe_customer_id}>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
                               <Button
                                 variant="outline"
                                 size="sm"

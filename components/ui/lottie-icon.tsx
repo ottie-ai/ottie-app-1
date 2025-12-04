@@ -69,18 +69,33 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     setIsMounted(true)
   }, [])
 
-  // Detect hover on parent element (e.g., Link in sidebar, DropdownMenuItem)
+  // Detect hover on parent element (e.g., Link in sidebar, DropdownMenuItem, SelectItem)
   useEffect(() => {
     if (!containerRef.current || !isMounted) return
 
     const container = containerRef.current
-    // Look for interactive parent elements: links, buttons, dropdown menu items, or elements with .group class
-    const parent = container.closest('a, button, [role="button"], [data-slot="dropdown-menu-item"], .group')
+    // Look for interactive parent elements: links, buttons, dropdown menu items, select items, or elements with .group class
+    const parent = container.closest('a, button, [role="button"], [data-slot="dropdown-menu-item"], [data-slot="select-item"], .group')
     
     if (!parent) return
 
-    const handleMouseEnter = () => setIsHovered(true)
-    const handleMouseLeave = () => setIsHovered(false)
+    const handleMouseEnter = () => {
+      setIsHovered(true)
+      if (lottieRef.current && animationData) {
+        const totalFrames = animationData?.op || lottieRef.current.totalFrames || 60
+        lottieRef.current.setDirection(1)
+        lottieRef.current.goToAndPlay(0, true)
+      }
+    }
+    
+    const handleMouseLeave = () => {
+      setIsHovered(false)
+      if (lottieRef.current && animationData) {
+        const totalFrames = animationData?.op || lottieRef.current.totalFrames || 60
+        lottieRef.current.setDirection(-1)
+        lottieRef.current.goToAndPlay(totalFrames - 1, true)
+      }
+    }
 
     parent.addEventListener('mouseenter', handleMouseEnter)
     parent.addEventListener('mouseleave', handleMouseLeave)
@@ -89,7 +104,7 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
       parent.removeEventListener('mouseenter', handleMouseEnter)
       parent.removeEventListener('mouseleave', handleMouseLeave)
     }
-  }, [isMounted])
+  }, [isMounted, animationData])
 
   // Get the target color based on theme/gradient/invertTheme/destructive
   const targetColor = useMemo(() => {

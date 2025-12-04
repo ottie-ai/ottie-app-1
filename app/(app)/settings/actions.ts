@@ -1005,6 +1005,78 @@ export async function updateMembershipRole(
 }
 
 /**
+ * Remove a user from workspace (revoke access)
+ * Only allowed for workspace owners/admins
+ * Cannot remove owner or yourself
+ */
+export async function removeMembership(
+  membershipId: string,
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true } | { error: string }> {
+  if (!membershipId || !workspaceId || !userId) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner or admin of the workspace
+  const { data: currentUserMembership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !currentUserMembership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (currentUserMembership.role !== 'owner' && currentUserMembership.role !== 'admin') {
+    return { error: 'Only workspace owners and admins can remove members' }
+  }
+
+  // Get the membership being removed to check if it's owner or current user
+  const { data: targetMembership, error: targetError } = await supabase
+    .from('memberships')
+    .select('role, user_id')
+    .eq('id', membershipId)
+    .eq('workspace_id', workspaceId)
+    .single()
+
+  if (targetError || !targetMembership) {
+    return { error: 'Target membership not found' }
+  }
+
+  // Prevent removing owner
+  if (targetMembership.role === 'owner') {
+    return { error: 'Cannot remove workspace owner. Transfer ownership first.' }
+  }
+
+  // Prevent user from removing themselves
+  if (targetMembership.user_id === userId) {
+    return { error: 'Cannot remove yourself from the workspace' }
+  }
+
+  // Remove the membership
+  const { error: deleteError } = await supabase
+    .from('memberships')
+    .delete()
+    .eq('id', membershipId)
+    .eq('workspace_id', workspaceId)
+
+  if (deleteError) {
+    console.error('Error removing membership:', deleteError)
+    return { error: 'Failed to remove member from workspace' }
+  }
+
+  // Revalidate settings page
+  revalidatePath('/settings')
+
+  return { success: true }
+}
+
+/**
  * Send password reset email (server action)
  * 
  * Email Enumeration Prevention: Always returns success to prevent

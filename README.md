@@ -84,7 +84,7 @@ npx shadcn-ui@latest add dropdown-menu
 The application supports different subscription plans with different workspace capabilities:
 
 **Single-User Plans** (`max_users = 1`):
-- Only one user per workspace
+- Only one user per workspace (the owner)
 - User profile data is used instead of workspace data
 - No workspace settings tab in Settings page
 - User's name, avatar, and profile information is displayed everywhere workspace would normally appear
@@ -96,6 +96,12 @@ The application supports different subscription plans with different workspace c
 - Workspace settings tab is visible in Settings page
 - Workspace name, logo, and settings are displayed
 - Supports team collaboration features (invitations, members, roles, site assignment)
+
+**Important: Owner is Always Counted as a User**
+- The `max_users` value includes the owner
+- If `max_users = 5`, workspace can have 1 owner + 4 additional members = 5 total users
+- When counting users, always count all members (including owner)
+- When calculating available slots for additional members, use `max_users - 1` (owner takes 1 slot)
 
 ### Implementation
 
@@ -113,6 +119,30 @@ The application supports different subscription plans with different workspace c
 **IMPORTANT**: When adding new multi-user features, always gate them behind `isMultiUserPlan()` check.
 
 See [Multi-User Workspace Pattern Documentation](./docs/patterns/multi-user-workspace-pattern.md) for detailed implementation guidelines.
+
+## Language & Localization
+
+**CRITICAL**: This application is **English-only**. All user-facing text, error messages, UI labels, and comments must be in English.
+
+### Rules:
+- ✅ **Always use English** for:
+  - UI text (buttons, labels, messages, dialogs)
+  - Error messages and warnings
+  - User notifications and alerts
+  - Code comments
+  - Documentation
+- ❌ **Never use**:
+  - Slovak/Czech/other languages in UI
+  - Non-English text in user-facing components
+  - Mixed languages
+
+### Examples:
+- ✅ "Confirm Downgrade" 
+- ❌ "Potvrdiť downgrade"
+- ✅ "Other users will lose access"
+- ❌ "Ostatní používatelia stratia prístup"
+
+This ensures consistency and maintainability across the codebase.
 
 ## Learn More
 

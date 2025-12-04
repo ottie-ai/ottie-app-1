@@ -10,6 +10,28 @@ The check for multi-user functionality is based on the `max_users` column in the
 - **Multi-user workspace**: `max_users > 1`
 - **Single-user workspace**: `max_users = 1`
 
+### Important: Owner is Always Counted as a User
+
+**CRITICAL**: When counting users or members in a workspace, the owner is always included in the count. The `max_users` value includes the owner.
+
+- If `max_users = 5`, the workspace can have 1 owner + 4 additional members = 5 total users
+- If `max_users = 1`, the workspace can only have 1 owner = 1 total user
+- When checking if a workspace exceeds the user limit, count all members (including owner)
+- When calculating how many users will lose access during downgrade, count non-owner members vs `(targetMaxUsers - 1)`
+
+**Example:**
+```typescript
+// ✅ Correct: Count all members (owner is included)
+const totalMembers = members.length // Includes owner
+
+// ✅ Correct: Calculate non-owner slots
+const nonOwnerSlots = maxUsers - 1 // Owner takes 1 slot
+const nonOwnerMembers = members.filter(m => m.membership.role !== 'owner').length
+
+// ❌ Wrong: Don't exclude owner from count
+const userCount = members.filter(m => m.membership.role !== 'owner').length
+```
+
 ## Implementation Pattern
 
 ### Always Use `isMultiUserPlan()` from App Context

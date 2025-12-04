@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Check } from 'lucide-react'
+import { Check, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,6 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -24,17 +34,45 @@ import {
 } from '@/components/ui/carousel'
 import { transformPlansToTiers, type PricingTier } from '@/lib/pricing-data'
 import { useAppData } from '@/contexts/app-context'
+import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
+import { useSites } from '@/hooks/use-sites'
+import { useAuth } from '@/hooks/use-auth'
 
 interface PricingDialogProps {
   children: React.ReactNode
   currentPlan?: string | null // Current plan ID (e.g., 'free', 'starter', 'growth', 'agency', 'enterprise')
   stripeCustomerId?: string | null // Stripe customer ID - if exists, user has already used trial
   defaultSelectedTier?: string | null // Optional: override default selected tier (e.g., 'agency' for team upgrade)
+  workspaceId?: string | null // Workspace ID for checking members and sites
 }
 
-export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier }: PricingDialogProps) {
+export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier, workspaceId }: PricingDialogProps) {
   // Get plans from database via context
-  const { plans } = useAppData()
+  const { plans, isMultiUserPlan, getMaxUsers, getMaxSites } = useAppData()
+  
+  // Get current user to identify owner
+  const { user } = useAuth()
+  
+  // Get workspace members and sites for downgrade warnings
+  const { members, loading: membersLoading } = useWorkspaceMembers(workspaceId ?? null)
+  const { sites } = useSites(workspaceId ?? null)
+  
+  // Debug: Log members and sites for troubleshooting
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('PricingDialog - members:', members.length, 'loading:', membersLoading, 'sites:', sites.length, 'published:', sites.filter(s => s.status === 'published').length)
+      console.log('PricingDialog - user:', user?.id, 'workspaceId:', workspaceId)
+      console.log('PricingDialog - members data:', members.map(m => ({ 
+        userId: m.membership.user_id, 
+        role: m.membership.role,
+        email: m.profile.email 
+      })))
+    }
+  }, [members, membersLoading, sites, user?.id, workspaceId])
+  
+  // State for downgrade confirmation dialog
+  const [downgradeDialogOpen, setDowngradeDialogOpen] = useState(false)
+  const [selectedDowngradeTier, setSelectedDowngradeTier] = useState<string | null>(null)
   
   // Transform database plans to pricing tiers (with prices from database in cents -> dollars)
   const pricingTiers = useMemo(() => transformPlansToTiers(plans), [plans])
@@ -166,6 +204,104 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   const hasUsedTrial = !!stripeCustomerId
   
   const highlightedPlanId = getHighlightedPlan()
+  
+  // Calculate downgrade information for a target tier
+  const getDowngradeInfo = (targetTierId: string) => {
+    const warnings: string[] = []
+    const info: string[] = []
+    
+    if (!workspaceId) {
+      // Can't calculate warnings without workspace ID
+      if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+        console.log('getDowngradeInfo: No workspaceId')
+      }
+      return { warnings, info }
+    }
+    
+    // Check if downgrading to a plan with fewer users than current member count
+    // Note: max_users includes the owner, so we need to check if non-owner members exceed the limit
+    const currentMaxUsers = getMaxUsers(normalizedCurrentPlan)
+    const targetMaxUsers = getMaxUsers(targetTierId)
+    const totalMembers = members.length
+    
+    // Count non-owner members (owner is always included in max_users)
+    const nonOwnerMembers = members.filter(m => m.membership.user_id !== user?.id).length
+    // Target plan allows (targetMaxUsers - 1) non-owner members (since owner is always included)
+    const targetNonOwnerSlots = targetMaxUsers - 1
+    
+    // Debug logging
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('getDowngradeInfo:', {
+        targetTierId,
+        currentMaxUsers,
+        targetMaxUsers,
+        totalMembers,
+        nonOwnerMembers,
+        targetNonOwnerSlots,
+        userId: user?.id,
+        members: members.map(m => ({ id: m.membership.user_id, role: m.membership.role }))
+      })
+    }
+    
+    // Warn if we have more non-owner members than the target plan allows
+    if (nonOwnerMembers > targetNonOwnerSlots) {
+      const usersToLoseAccess = nonOwnerMembers - targetNonOwnerSlots
+      warnings.push(
+        `Other users (${usersToLoseAccess}) will lose access to the workspace.`
+      )
+    } else if (targetMaxUsers < currentMaxUsers) {
+      // Show info if plan supports fewer users, even if current count is within limit
+      info.push(
+        `Team seats will be reduced from ${currentMaxUsers === 999 ? 'Unlimited' : currentMaxUsers} to ${targetMaxUsers === 999 ? 'Unlimited' : targetMaxUsers}.`
+      )
+    }
+    
+    // Check if downgrading to a plan with fewer sites
+    const currentMaxSites = getMaxSites(normalizedCurrentPlan)
+    const targetMaxSites = getMaxSites(targetTierId)
+    const publishedSites = sites.filter(s => s.status === 'published')
+    const totalPublishedSites = publishedSites.length
+    
+    // Warn if we have published sites that exceed the target plan limit
+    if (totalPublishedSites > targetMaxSites) {
+      const sitesToUnpublish = totalPublishedSites - targetMaxSites
+      warnings.push(
+        `All sites above the plan limit (${sitesToUnpublish}) will be unpublished.`
+      )
+    } else if (targetMaxSites < currentMaxSites && totalPublishedSites > 0) {
+      // Show info if plan supports fewer sites, using actual published sites count
+      info.push(
+        `Active listings will be reduced from ${totalPublishedSites} to ${targetMaxSites >= 9999 ? '100+' : targetMaxSites}.`
+      )
+    }
+    
+    return { warnings, info }
+  }
+  
+  // Handle downgrade click
+  const handleDowngradeClick = (tierId: string) => {
+    const { warnings, info } = getDowngradeInfo(tierId)
+    
+    // Debug: Log warnings for troubleshooting
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('Downgrade info for', tierId, '- warnings:', warnings, 'info:', info)
+      console.log('Current plan:', normalizedCurrentPlan, 'maxUsers:', getMaxUsers(normalizedCurrentPlan), 'maxSites:', getMaxSites(normalizedCurrentPlan))
+      console.log('Target plan:', tierId, 'maxUsers:', getMaxUsers(tierId), 'maxSites:', getMaxSites(tierId))
+      console.log('Members:', members.length, 'Sites:', sites.length, 'Published:', sites.filter(s => s.status === 'published').length)
+      console.log('Workspace ID:', workspaceId)
+    }
+    
+    setSelectedDowngradeTier(tierId)
+    setDowngradeDialogOpen(true)
+  }
+  
+  // Handle downgrade confirmation
+  const handleDowngradeConfirm = () => {
+    // TODO: Implement actual downgrade logic (Stripe API call, etc.)
+    console.log('Downgrading to:', selectedDowngradeTier)
+    setDowngradeDialogOpen(false)
+    setSelectedDowngradeTier(null)
+  }
   
   // Dynamic height for header sections to align separators
   const [headerHeight, setHeaderHeight] = useState<number | null>(null)
@@ -424,9 +560,12 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                       </ul>
                       
                       {isDowngrade ? (
-                        <p className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors mt-auto">
+                        <button
+                          onClick={() => handleDowngradeClick(tier.id)}
+                          className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors mt-auto w-full"
+                        >
                           Downgrade
-                        </p>
+                        </button>
                       ) : (
                         <Button
                           variant={isHighlighted ? 'default' : 'outline'}
@@ -615,9 +754,12 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                 
                 <div className="mt-auto">
                   {isDowngrade ? (
-                    <p className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+                    <button
+                      onClick={() => handleDowngradeClick(tier.id)}
+                      className="text-sm text-center text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-full"
+                    >
                       Downgrade
-                    </p>
+                    </button>
                   ) : (
                     <Button
                       variant={isHighlighted ? 'default' : 'outline'}
@@ -642,6 +784,75 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
           })}
           </div>
         </div>
+        
+        {/* Downgrade Confirmation Dialog */}
+        <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm Downgrade
+              </AlertDialogTitle>
+              <div className="space-y-3 pt-2">
+                {selectedDowngradeTier && (() => {
+                  const { warnings, info } = getDowngradeInfo(selectedDowngradeTier)
+                  const targetTier = pricingTiers.find(t => t.id === selectedDowngradeTier)
+                  
+                  // Debug: Log warnings in development
+                  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                    console.log('Rendering downgrade dialog for tier:', selectedDowngradeTier, 'warnings:', warnings, 'info:', info)
+                  }
+                  
+                  return (
+                    <div className="space-y-3">
+                      <AlertDialogDescription>
+                        {warnings.length > 0 
+                          ? `Before downgrading to the ${targetTier?.name} plan, please review the following:`
+                          : `You are about to downgrade to the ${targetTier?.name} plan.`
+                        }
+                      </AlertDialogDescription>
+                      
+                      {/* Warnings (critical issues) */}
+                      {warnings.length > 0 && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-4">
+                          <ul className="list-disc list-inside space-y-2 text-left text-sm">
+                            {warnings.map((warning, index) => (
+                              <li key={index} className="text-red-700 dark:text-red-300 font-medium">
+                                {warning}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {/* Info (plan changes) */}
+                      {info.length > 0 && (
+                        <div className="rounded-lg border border-border bg-muted/50 p-4">
+                          <p className="text-sm font-medium mb-2">Plan changes:</p>
+                          <ul className="list-disc list-inside space-y-1 text-left text-sm text-muted-foreground">
+                            {info.map((infoItem, index) => (
+                              <li key={index}>
+                                {infoItem}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDowngradeConfirm}
+                variant="destructive"
+              >
+                Confirm Downgrade
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   )
