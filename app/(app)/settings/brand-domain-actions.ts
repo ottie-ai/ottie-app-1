@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { addVercelDomain, removeVercelDomain, getVercelDomain } from '@/lib/vercel/domain-api'
 import { updateWorkspace } from '@/lib/supabase/queries'
-import { loadPlans } from '@/lib/data/plans'
+import { loadPlansServer } from '@/lib/data/plans-server'
 import { hasFeature } from '@/lib/data/plans'
 import type { Workspace } from '@/types/database'
 import { revalidatePath } from 'next/cache'
@@ -81,7 +81,7 @@ export async function setBrandDomain(
   }
 
   // 5. Check feature flag
-  const plans = await loadPlans()
+  const plans = await loadPlansServer()
   if (!hasFeature(plans, workspace.plan, 'feature_custom_brand_domain')) {
     return { error: 'Brand domain feature is not available for your plan. Please upgrade to Growth or higher.' }
   }
