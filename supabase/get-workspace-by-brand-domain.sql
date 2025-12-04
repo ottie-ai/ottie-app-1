@@ -3,6 +3,9 @@
 -- Only returns workspace if domain is verified
 -- Returns all workspace columns to match Workspace type
 
+-- Drop existing function if it exists (in case return type changed)
+DROP FUNCTION IF EXISTS get_workspace_by_brand_domain(TEXT);
+
 CREATE OR REPLACE FUNCTION get_workspace_by_brand_domain(domain_name TEXT)
 RETURNS SETOF workspaces
 LANGUAGE plpgsql
