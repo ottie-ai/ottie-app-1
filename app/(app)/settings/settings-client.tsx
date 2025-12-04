@@ -1844,7 +1844,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </div>
                       
                       {/* DNS Configuration Instructions */}
-                      {vercelDNSInstructions && vercelDNSInstructions.length > 0 && (
+                      {brandingConfig.custom_brand_domain && !brandingConfig.custom_brand_domain_verified && (
                         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4 space-y-3">
                           <div className="flex items-start gap-3">
                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
@@ -1852,23 +1852,32 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
                                 DNS Configuration Required
                               </p>
-                              <p className="text-sm text-blue-800 dark:text-blue-200">
-                                Add this DNS record to configure your domain:
-                              </p>
-                              {vercelDNSInstructions.map((instruction, index) => (
-                                <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
-                                  <div className="space-y-1">
-                                    <div><span className="text-muted-foreground">Type:</span> {instruction.type}</div>
-                                    <div><span className="text-muted-foreground">Name:</span> {instruction.domain}</div>
-                                    <div><span className="text-muted-foreground">Value:</span> {instruction.value}</div>
-                                    {instruction.reason && (
-                                      <div className="text-xs text-muted-foreground mt-2">{instruction.reason}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                              {vercelDNSInstructions && vercelDNSInstructions.length > 0 ? (
+                                <>
+                                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    Add this DNS record to configure your domain:
+                                  </p>
+                                  {vercelDNSInstructions.map((instruction, index) => (
+                                    <div key={index} className="bg-white dark:bg-gray-900 rounded p-3 font-mono text-sm border border-blue-200 dark:border-blue-700">
+                                      <div className="space-y-1">
+                                        <div><span className="text-muted-foreground">Type:</span> {instruction.type}</div>
+                                        <div><span className="text-muted-foreground">Name:</span> {instruction.domain}</div>
+                                        <div><span className="text-muted-foreground">Value:</span> {instruction.value}</div>
+                                        {instruction.reason && (
+                                          <div className="text-xs text-muted-foreground mt-2">{instruction.reason}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </>
+                              ) : (
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                  Please configure your DNS settings to point your domain to Vercel. 
+                                  Contact support if you need assistance with DNS configuration.
+                                </p>
+                              )}
                               <p className="text-xs text-blue-700 dark:text-blue-300">
-                                After adding the DNS record, wait a few minutes for DNS propagation. The domain will be automatically verified. Click "Check Status" below to verify.
+                                After adding the DNS record, wait a few minutes for DNS propagation. Click "Check Status" below to verify.
                               </p>
                               <Button
                                 size="sm"
