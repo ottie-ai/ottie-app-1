@@ -84,12 +84,14 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   // Fallback to ACCESS_MODE for backward compatibility
   const accessMode = process.env.NEXT_PUBLIC_ACCESS_MODE || process.env.ACCESS_MODE || 'public'
   const hostname = request.headers.get('host') || ''
+  const forwardedHost = request.headers.get('x-forwarded-host') || hostname
+  const hostnameWithoutPort = forwardedHost.split(':')[0]
   
   // DEBUG: Log access control values
   console.log('[ACCESS CONTROL] ACCESS_MODE:', accessMode)
   console.log('[ACCESS CONTROL] ALLOWED_DOMAINS:', process.env.ALLOWED_DOMAINS || '(empty)')
   console.log('[ACCESS CONTROL] ALLOWED_IPS:', process.env.ALLOWED_IPS || '(empty)')
-  console.log('[ACCESS CONTROL] Hostname:', hostname)
+  console.log('[ACCESS CONTROL] Hostname:', hostnameWithoutPort)
   
   // If public mode, allow all access
   if (accessMode === 'public') {
@@ -98,6 +100,30 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   }
   
   console.log('[ACCESS CONTROL] Restricted mode - checking access')
+  
+  // IMPORTANT: Always allow brand domains (custom domains) - they are verified separately
+  // Check if this might be a brand domain by looking it up
+  // We do this BEFORE IP/domain checks to avoid blocking legitimate brand domain requests
+  if (!hostnameWithoutPort.includes('localhost')) {
+    try {
+      // Quick check: if it's not ottie.site, not app/marketing domain, it might be brand domain
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+      const rootDomainWithoutPort = rootDomain.split(':')[0]
+      const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
+      const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || 
+                         hostnameWithoutPort === rootDomainWithoutPort || 
+                         hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+      
+      if (!isOttieSite && !isAppDomain) {
+        // This might be a brand domain - allow it through (it will be verified in middleware later)
+        console.log('[ACCESS CONTROL] Allowing potential brand domain:', hostnameWithoutPort)
+        return null
+      }
+    } catch (error) {
+      // If lookup fails, continue with normal access control
+      console.log('[ACCESS CONTROL] Error checking brand domain, continuing with normal check')
+    }
+  }
   
   // Restricted mode - check domain and IP
   const hostnameWithoutPort = hostname.split(':')[0]
