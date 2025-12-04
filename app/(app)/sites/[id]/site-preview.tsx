@@ -1,35 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Site } from '@/types/database'
-import { Button } from '@/components/ui/button'
-import { Edit, Lock, Globe } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Lock, Globe } from 'lucide-react'
 
 interface SitePreviewProps {
   site: Site
 }
 
 export function SitePreview({ site }: SitePreviewProps) {
-  const router = useRouter()
-  const [isHovered, setIsHovered] = useState(false)
-
-  // Construct preview URL
-  const previewUrl = site.domain && site.domain !== 'ottie.site'
-    ? `https://${site.domain}`
-    : `https://${site.slug}.ottie.site`
-
-  const handleEditLayout = () => {
-    router.push(`/builder/${site.id}`)
-  }
+  // Use preview route instead of public URL to show draft/archived sites
+  // This allows viewing unpublished sites (draft, archived) in the preview iframe
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+  const rootDomainWithoutPort = rootDomain.split(':')[0]
+  const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https' : 'http'
+  const previewUrl = `${protocol}://${rootDomainWithoutPort}/preview/${site.id}`
 
   return (
-    <div
-      className="relative w-full h-full bg-muted flex flex-col"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div className="relative w-full h-full bg-muted flex flex-col">
       {/* Browser Chrome */}
       <div className="bg-background border-b flex items-center gap-2 px-3 py-2 shrink-0">
         {/* Browser Controls */}
@@ -58,20 +45,6 @@ export function SitePreview({ site }: SitePreviewProps) {
           className="w-full h-full border-0"
           title={`Preview of ${site.title}`}
         />
-
-        {/* Overlay with Edit Layout button */}
-        {isHovered && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity z-10">
-            <Button
-              size="lg"
-              onClick={handleEditLayout}
-              className="gap-2"
-            >
-              <Edit className="size-4" />
-              Edit Layout
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   )

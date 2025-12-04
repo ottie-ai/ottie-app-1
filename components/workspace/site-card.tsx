@@ -186,7 +186,7 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-accent dark:bg-[#1a1a1a]">
-              <LottiePhotoIcon className="text-muted-foreground" size={24} />
+                <LottiePhotoIcon className="text-muted-foreground" size={24} />
             </div>
           )}
           {/* Avatar in top left corner */}
@@ -237,12 +237,12 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
                 </Badge>
               )
             })()}
-            {site.views !== undefined && (
+          {site.views !== undefined && (
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50">
-                <Eye className="size-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-foreground">{site.views.toLocaleString()}</span>
-              </div>
-            )}
+              <Eye className="size-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground">{site.views.toLocaleString()}</span>
+            </div>
+          )}
           </div>
           
           {/* Menu Button - appears on hover */}
@@ -419,9 +419,9 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
                     }}
                     disabled={isArchiving}
                   >
-                    <LottieInboxIcon className="size-4 mr-2" />
-                    Archive
-                  </DropdownMenuItem>
+                  <LottieInboxIcon className="size-4 mr-2" />
+                  Archive
+                </DropdownMenuItem>
                 )}
                 <DropdownMenuItem 
                   variant="destructive"

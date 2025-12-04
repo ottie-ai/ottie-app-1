@@ -357,14 +357,19 @@ export async function middleware(request: NextRequest) {
     const authRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
     const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
     
+    // Preview routes - require authentication (handled in the route itself)
+    const isPreviewRoute = pathname.startsWith('/preview/')
+    
     // API routes are allowed
     const isApiRoute = pathname.startsWith('/api/')
     
-    // If it's a marketing, auth, or API route, allow it to continue
+    // If it's a marketing, auth, preview, or API route, allow it to continue
     // Marketing routes are handled by (marketing) route group and are always public
-    if (isMarketingRoute || isAuthRoute || isApiRoute) {
+    // Preview routes are handled by preview route group and require authentication
+    if (isMarketingRoute || isAuthRoute || isPreviewRoute || isApiRoute) {
       // Allow these routes - continue to route groups
       // Marketing will be handled by (marketing) route group
+      // Preview will be handled by preview route group
       console.log('[Middleware] Allowing route on root domain:', pathname)
     } else {
       // ANY other path on ottie.com is BLOCKED

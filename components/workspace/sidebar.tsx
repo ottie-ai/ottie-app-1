@@ -471,7 +471,7 @@ export function DashboardSidebar() {
                   tooltip="New Site"
                   className="bg-primary text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground active:!bg-primary/80"
                 >
-              <LottieAddCardIcon className="size-[18px]" />
+              <LottieAddCardIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                   <span>New Site</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -494,7 +494,7 @@ export function DashboardSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
-                      <item.icon className="size-[18px]" />
+                      <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
                         <Badge className="text-[10px] px-1.5 py-0 h-5 gradient-ottie hover:opacity-90 text-white border-0">
@@ -524,13 +524,13 @@ export function DashboardSidebar() {
                   >
                     {'external' in item && item.external ? (
                       <a href={item.url} target="_blank" rel="noopener noreferrer">
-                        <item.icon className="size-[18px]" />
+                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                         <span>{item.title}</span>
                         <ExternalLink className="!size-3 text-muted-foreground" />
                       </a>
                     ) : (
                       <Link href={item.url} onClick={handleLinkClick}>
-                        <item.icon className="size-[18px]" />
+                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                         <span>{item.title}</span>
                       </Link>
                     )}
@@ -547,7 +547,7 @@ export function DashboardSidebar() {
                       isActive={false}
                       tooltip="Help & Support"
                     >
-                      <LottieSupportIcon className="size-[18px]" />
+                      <LottieSupportIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                       <span>Help & Support</span>
                       <ChevronRight className="ml-auto size-4" />
                     </SidebarMenuButton>
@@ -586,7 +586,7 @@ export function DashboardSidebar() {
                   tooltip="Got Feedback?"
                   suppressHydrationWarning
                 >
-                  <LottieForumIcon className="size-[18px]" />
+                  <LottieForumIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
                   <span className="gradient-ottie-text">Got Feedback?</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -723,10 +723,10 @@ export default function SitesPage() {
                         variant="outline" 
                         size="sm" 
                         className={`gap-1.5 md:gap-2 transition-colors shrink-0 ${
-                          assignedToFilter.length > 0 && assignedToFilter.length < members.length
-                            ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
-                            : ''
-                        }`}
+                        assignedToFilter.length > 0 && assignedToFilter.length < members.length
+                          ? 'bg-[#7c3aed]/10 border-[#7c3aed]/30 hover:bg-[#7c3aed]/15 hover:border-[#7c3aed]/40' 
+                          : ''
+                      }`}
                       >
                         <LottieAvatarIcon size={18} className="shrink-0" />
                         <span className="whitespace-nowrap hidden md:inline">Assigned to</span>
@@ -762,26 +762,26 @@ export default function SitesPage() {
                                 const isSelected = assignedToFilter.includes(member.membership.user_id)
                                 return (
                                   <CommandItem
-                                    key={member.membership.user_id}
+                          key={member.membership.user_id}
                                     onSelect={() => {
                                       if (isSelected) {
-                                        setAssignedToFilter(assignedToFilter.filter(id => id !== member.membership.user_id))
+                              setAssignedToFilter(assignedToFilter.filter(id => id !== member.membership.user_id))
                                       } else {
                                         setAssignedToFilter([...assignedToFilter, member.membership.user_id])
-                                      }
-                                    }}
+                            }
+                          }}
                                     className="relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground focus:bg-accent focus:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-foreground"
-                                  >
+                        >
                                     <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
                                       {isSelected && <CheckIcon className="size-4" />}
                                     </span>
-                                    <Avatar className="size-6 shrink-0">
-                                      <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
-                                      <AvatarFallback className="text-xs">
-                                        {getUserInitials(member.profile.full_name, member.profile.email)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
+                          <Avatar className="size-6 shrink-0">
+                            <AvatarImage src={member.profile.avatar_url || undefined} alt={member.profile.full_name || member.profile.email || 'Unknown'} />
+                            <AvatarFallback className="text-xs">
+                              {getUserInitials(member.profile.full_name, member.profile.email)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate">{member.profile.full_name || member.profile.email || 'Unknown'}</span>
                                   </CommandItem>
                                 )
                               })}
