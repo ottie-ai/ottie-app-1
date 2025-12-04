@@ -262,26 +262,45 @@ export async function getVercelDomainConfig(
       return { error: 'Vercel Project ID not found' }
     }
 
-    const response = await fetch(
-      `https://api.vercel.com/v6/domains/${domain}/config`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    )
+    const url = `https://api.vercel.com/v6/domains/${domain}/config`
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
 
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`[Vercel API] Error getting domain config for ${domain}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      })
+      
       if (response.status === 404) {
         return { error: 'Domain configuration not found' }
       }
-      const data = await response.json() as VercelError
-      return { 
-        error: data.error?.message || `Failed to get domain config: ${response.statusText}` 
+      
+      try {
+        const data = await response.json() as VercelError
+        return { 
+          error: data.error?.message || `Failed to get domain config: ${response.statusText}` 
+        }
+      } catch {
+        return { 
+          error: `Failed to get domain config: ${response.statusText}` 
+        }
       }
     }
 
     const data = await response.json() as VercelDomainConfig
+    console.log(`[Vercel API] Domain config for ${domain}:`, {
+      recommendedIPv4: data.recommendedIPv4,
+      aValues: data.aValues,
+      cnames: data.cnames,
+      misconfigured: data.misconfigured,
+    })
+    
     return { success: true, config: data }
   } catch (error) {
     console.error('[Vercel API] Error getting domain config:', error)

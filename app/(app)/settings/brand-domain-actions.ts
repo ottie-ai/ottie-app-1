@@ -113,8 +113,11 @@ export async function setBrandDomain(
     reason: string
   }> = []
 
-  if (!('error' in configResult)) {
+  if ('error' in configResult) {
+    console.error('[Brand Domain] Failed to get DNS config from Vercel:', configResult.error)
+  } else {
     const { config } = configResult
+    console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
     
     // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
     if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
@@ -153,9 +156,25 @@ export async function setBrandDomain(
     }
   }
 
+  // If still no instructions, try getting from domain verification array
+  if (vercelDNSInstructions.length === 0) {
+    const vercelDomain = vercelResult.domain
+    if (vercelDomain.verification && vercelDomain.verification.length > 0) {
+      console.log('[Brand Domain] Using verification array from domain response')
+      vercelDNSInstructions = vercelDomain.verification.map(v => ({
+        type: v.type,
+        domain: v.domain || '@',
+        value: v.value,
+        reason: v.reason || 'Point your domain to Vercel'
+      }))
+    }
+  }
+
   // If still no instructions, log error but don't fail
   if (vercelDNSInstructions.length === 0) {
     console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', trimmedDomain)
+    console.error('[Brand Domain] Config result:', configResult)
+    console.error('[Brand Domain] Domain result:', vercelResult)
   }
 
   // 9. Update branding_config
