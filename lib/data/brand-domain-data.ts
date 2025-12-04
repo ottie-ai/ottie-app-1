@@ -73,13 +73,13 @@ export async function getWorkspaceByBrandDomain(
       .limit(10)
     
     if (caseInsensitive) {
-      const matching = caseInsensitive.filter(w => {
+      const matching = caseInsensitive.filter((w: any) => {
         const config = w.branding_config as any
         const storedDomain = config?.custom_brand_domain
         return storedDomain && storedDomain.toLowerCase() === domain.toLowerCase()
       })
       if (matching.length > 0) {
-        console.log('[Brand Domain] Found case-insensitive match:', matching.map(w => ({
+        console.log('[Brand Domain] Found case-insensitive match:', matching.map((w: any) => ({
           id: w.id,
           domain: (w.branding_config as any)?.custom_brand_domain,
           verified: (w.branding_config as any)?.custom_brand_domain_verified,
