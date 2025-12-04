@@ -14,6 +14,8 @@ import { handleSetSitePassword, handleRemoveSitePassword } from '@/app/actions/s
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { Lock, Eye, EyeOff } from 'lucide-react'
+import { useAppData } from '@/contexts/app-context'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface SitePasswordSettingsProps {
   siteId: string
@@ -26,6 +28,11 @@ export function SitePasswordSettings({
   passwordProtected: initialPasswordProtected,
   onUpdate 
 }: SitePasswordSettingsProps) {
+  const { currentWorkspace, hasPlanFeature } = useAppData()
+  const hasPasswordFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_password_protection')
+    : false
+  
   const [passwordProtected, setPasswordProtected] = useState(initialPasswordProtected)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -88,6 +95,21 @@ export function SitePasswordSettings({
       setPassword('')
       onUpdate?.()
     }
+  }
+
+  // If feature is not available, show upgrade message
+  if (!hasPasswordFeature) {
+    return (
+      <FieldGroup className="gap-5">
+        <FieldSeparator />
+        <Alert>
+          <Lock className="size-4" />
+          <AlertDescription>
+            Password protection is not available on your current plan. Please upgrade to access this feature.
+          </AlertDescription>
+        </Alert>
+      </FieldGroup>
+    )
   }
 
   return (

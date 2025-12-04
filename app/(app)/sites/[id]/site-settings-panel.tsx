@@ -106,8 +106,11 @@ function getUserInitials(fullName: string | null, email: string | null): string 
 export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
   const router = useRouter()
   const { user } = useAuth()
-  const { currentWorkspace, isMultiUserPlan } = useAppData()
+  const { currentWorkspace, isMultiUserPlan, hasPlanFeature } = useAppData()
   const isMultiUser = currentWorkspace ? isMultiUserPlan(currentWorkspace.plan) : false
+  const hasPasswordFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_password_protection')
+    : false
   const [isSaving, setIsSaving] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
@@ -503,24 +506,26 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
         )}
 
         {/* Password Protection */}
-        <div className="space-y-2">
-          <Label>Password Protection</Label>
-          <div className="flex items-center gap-2">
-            {site.password_protected && (
-              <Lock className="size-4 text-muted-foreground" />
-            )}
-            <Button
-              variant="outline"
-              className="flex-1 justify-start"
-              onClick={() => {
-                setPasswordValue('')
-                setIsPasswordDialogOpen(true)
-              }}
-            >
-              {site.password_protected ? 'Change Password' : 'Set Password'}
-            </Button>
+        {hasPasswordFeature && (
+          <div className="space-y-2">
+            <Label>Password Protection</Label>
+            <div className="flex items-center gap-2">
+              {site.password_protected && (
+                <Lock className="size-4 text-muted-foreground" />
+              )}
+              <Button
+                variant="outline"
+                className="flex-1 justify-start"
+                onClick={() => {
+                  setPasswordValue('')
+                  setIsPasswordDialogOpen(true)
+                }}
+              >
+                {site.password_protected ? 'Change Password' : 'Set Password'}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         <Separator />
 

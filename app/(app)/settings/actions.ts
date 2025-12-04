@@ -925,6 +925,126 @@ export async function updateWorkspaceAction(
 }
 
 /**
+ * Downgrade workspace plan
+ * - Updates workspace plan to target plan
+ * - Removes password protection from all sites if target plan doesn't have password protection feature
+ * Only allowed for workspace owners
+ */
+export async function handleDowngradeWorkspacePlan(
+  workspaceId: string,
+  userId: string,
+  targetPlan: string
+): Promise<{ success: true; workspace: Workspace; passwordRemovedCount?: number } | { error: string }> {
+  if (!workspaceId || !userId || !targetPlan) {
+    return { error: 'Missing required fields' }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is owner of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner') {
+    return { error: 'Only workspace owners can downgrade plan' }
+  }
+
+  // Get current workspace plan
+  const { data: currentWorkspace, error: workspaceError } = await supabase
+    .from('workspaces')
+    .select('plan')
+    .eq('id', workspaceId)
+    .single()
+
+  if (workspaceError || !currentWorkspace) {
+    return { error: 'Workspace not found' }
+  }
+
+  // Get current and target plan features
+  const currentPlanName = currentWorkspace.plan || 'free'
+  const { data: currentPlan } = await supabase
+    .from('plans')
+    .select('feature_password_protection')
+    .eq('name', currentPlanName)
+    .single()
+
+  const { data: targetPlanData } = await supabase
+    .from('plans')
+    .select('feature_password_protection')
+    .eq('name', targetPlan)
+    .single()
+
+  if (!targetPlanData) {
+    return { error: 'Target plan not found' }
+  }
+
+  // Check if we're losing password protection feature
+  const currentHasPasswordFeature = currentPlan?.feature_password_protection ?? false
+  const targetHasPasswordFeature = targetPlanData.feature_password_protection ?? false
+
+  let passwordRemovedCount = 0
+
+  // If losing password protection feature, remove it from all sites
+  if (currentHasPasswordFeature && !targetHasPasswordFeature) {
+    // Get all password protected sites for this workspace
+    const { data: passwordProtectedSites, error: sitesError } = await supabase
+      .from('sites')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('password_protected', true)
+      .is('deleted_at', null)
+
+    if (sitesError) {
+      return { error: 'Failed to fetch sites' }
+    }
+
+    // Remove password protection from all sites
+    if (passwordProtectedSites && passwordProtectedSites.length > 0) {
+      const { error: updateError } = await supabase
+        .from('sites')
+        .update({
+          password_protected: false,
+          password_hash: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('workspace_id', workspaceId)
+        .eq('password_protected', true)
+
+      if (updateError) {
+        return { error: 'Failed to remove password protection from sites' }
+      }
+
+      passwordRemovedCount = passwordProtectedSites.length
+    }
+  }
+
+  // Update workspace plan
+  const updatedWorkspace = await updateWorkspace(workspaceId, { plan: targetPlan as any })
+
+  if (!updatedWorkspace) {
+    return { error: 'Failed to update workspace plan' }
+  }
+
+  // Revalidate settings page and app data
+  revalidatePath('/settings')
+  revalidatePath('/overview')
+
+  return { 
+    success: true, 
+    workspace: updatedWorkspace,
+    ...(passwordRemovedCount > 0 && { passwordRemovedCount })
+  }
+}
+
+/**
  * Update membership role
  * Only allowed for workspace owners/admins
  * Owner role cannot be changed

@@ -37,6 +37,9 @@ import { useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useSites } from '@/hooks/use-sites'
 import { useAuth } from '@/hooks/use-auth'
+import { handleDowngradeWorkspacePlan } from '@/app/(app)/settings/actions'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 interface PricingDialogProps {
   children: React.ReactNode
@@ -44,18 +47,45 @@ interface PricingDialogProps {
   stripeCustomerId?: string | null // Stripe customer ID - if exists, user has already used trial
   defaultSelectedTier?: string | null // Optional: override default selected tier (e.g., 'agency' for team upgrade)
   workspaceId?: string | null // Workspace ID for checking members and sites
+  forceOpen?: boolean // If true, dialog is forced open and cannot be closed (for locked workspaces)
+  onOpenChange?: (open: boolean) => void // Callback when dialog open state changes
 }
 
-export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier, workspaceId }: PricingDialogProps) {
+export function PricingDialog({ children, currentPlan, stripeCustomerId, defaultSelectedTier, workspaceId, forceOpen, onOpenChange }: PricingDialogProps) {
   // Get plans from database via context
-  const { plans, isMultiUserPlan, getMaxUsers, getMaxSites } = useAppData()
+  const { plans, isMultiUserPlan, getMaxUsers, getMaxSites, hasPlanFeature } = useAppData()
   
   // Get current user to identify owner
   const { user } = useAuth()
+  const router = useRouter()
   
   // Get workspace members and sites for downgrade warnings
   const { members, loading: membersLoading } = useWorkspaceMembers(workspaceId ?? null)
   const { sites } = useSites(workspaceId ?? null)
+  
+  // State for dialog open/close
+  const [open, setOpen] = useState(forceOpen || false)
+  const [isDowngrading, setIsDowngrading] = useState(false)
+  
+  // Update open state when forceOpen changes
+  useEffect(() => {
+    if (forceOpen !== undefined) {
+      setOpen(forceOpen)
+    }
+  }, [forceOpen])
+  
+  // Handle open change
+  const handleOpenChange = (newOpen: boolean) => {
+    // If forced open, prevent closing
+    if (forceOpen && !newOpen) {
+      return // Don't allow closing when forced open
+    }
+    
+    setOpen(newOpen)
+    if (onOpenChange) {
+      onOpenChange(newOpen)
+    }
+  }
   
   // Debug: Log members and sites for troubleshooting
   useEffect(() => {
@@ -257,21 +287,30 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     }
     
     // Check if downgrading to a plan with fewer sites
-    const currentMaxSites = getMaxSites(normalizedCurrentPlan)
     const targetMaxSites = getMaxSites(targetTierId)
     const publishedSites = sites.filter(s => s.status === 'published')
     const totalPublishedSites = publishedSites.length
     
-    // Warn if we have published sites that exceed the target plan limit
+    // Warn ONLY if we have more published sites than the target plan limit
     if (totalPublishedSites > targetMaxSites) {
       const sitesToUnpublish = totalPublishedSites - targetMaxSites
       warnings.push(
-        `All sites above the plan limit (${sitesToUnpublish}) will be unpublished.`
+        `Published sites above the plan limit (${sitesToUnpublish}) will be unpublished.`
       )
-    } else if (targetMaxSites < currentMaxSites && totalPublishedSites > 0) {
-      // Show info if plan supports fewer sites, using actual published sites count
-      info.push(
-        `Active listings will be reduced from ${totalPublishedSites} to ${targetMaxSites >= 9999 ? '100+' : targetMaxSites}.`
+    }
+    
+    // Check if downgrading to a plan without password protection feature
+    const currentHasPasswordFeature = hasPlanFeature(normalizedCurrentPlan, 'feature_password_protection')
+    const targetHasPasswordFeature = hasPlanFeature(targetTierId, 'feature_password_protection')
+    
+    // Check if workspace has password protected sites
+    const passwordProtectedSites = sites.filter(s => s.password_protected)
+    const passwordProtectedCount = passwordProtectedSites.length
+    
+    // Warn if losing password protection feature and have password protected sites
+    if (currentHasPasswordFeature && !targetHasPasswordFeature && passwordProtectedCount > 0) {
+      warnings.push(
+        `Password protection will be removed from ${passwordProtectedCount} site${passwordProtectedCount > 1 ? 's' : ''}. All sites will become publicly accessible.`
       )
     }
     
@@ -296,11 +335,49 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   }
   
   // Handle downgrade confirmation
-  const handleDowngradeConfirm = () => {
-    // TODO: Implement actual downgrade logic (Stripe API call, etc.)
-    console.log('Downgrading to:', selectedDowngradeTier)
-    setDowngradeDialogOpen(false)
-    setSelectedDowngradeTier(null)
+  const handleDowngradeConfirm = async () => {
+    if (!selectedDowngradeTier || !workspaceId || !user?.id) {
+      toast.error('Missing required information')
+      return
+    }
+
+    setIsDowngrading(true)
+    
+    try {
+      const result = await handleDowngradeWorkspacePlan(
+        workspaceId,
+        user.id,
+        selectedDowngradeTier
+      )
+
+      if ('error' in result) {
+        toast.error(result.error)
+      } else {
+        if (result.passwordRemovedCount && result.passwordRemovedCount > 0) {
+          toast.success(
+            `Plan downgraded successfully. Password protection removed from ${result.passwordRemovedCount} site${result.passwordRemovedCount > 1 ? 's' : ''}.`
+          )
+        } else {
+          toast.success('Plan downgraded successfully')
+        }
+        
+        // Refresh app data and close dialog
+        router.refresh()
+        setDowngradeDialogOpen(false)
+        setSelectedDowngradeTier(null)
+        
+        // Close pricing dialog if open
+        if (onOpenChange) {
+          onOpenChange(false)
+        }
+        setOpen(false)
+      }
+    } catch (error) {
+      console.error('Error downgrading plan:', error)
+      toast.error('An error occurred while downgrading the plan')
+    } finally {
+      setIsDowngrading(false)
+    }
   }
   
   // Dynamic height for header sections to align separators
@@ -421,11 +498,27 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   }, [pricingTiers, isAnnual])
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="!max-w-[90vw] w-[90vw] max-h-[95vh] flex flex-col overflow-hidden p-0">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {!forceOpen && (
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+      )}
+      <DialogContent 
+        className="!max-w-[90vw] w-[90vw] max-h-[95vh] flex flex-col overflow-hidden p-0"
+        onInteractOutside={(e) => {
+          // Prevent closing when forced open
+          if (forceOpen) {
+            e.preventDefault()
+          }
+        }}
+        onEscapeKeyDown={(e) => {
+          // Prevent closing when forced open
+          if (forceOpen) {
+            e.preventDefault()
+          }
+        }}
+      >
         <div className="px-6 pt-6 pb-2 shrink-0">
           <DialogHeader>
             <DialogTitle>Upgrade your plan</DialogTitle>
@@ -788,67 +881,66 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
         {/* Downgrade Confirmation Dialog */}
         <AlertDialog open={downgradeDialogOpen} onOpenChange={setDowngradeDialogOpen}>
           <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Confirm Downgrade
-              </AlertDialogTitle>
-              <div className="space-y-3 pt-2">
-                {selectedDowngradeTier && (() => {
-                  const { warnings, info } = getDowngradeInfo(selectedDowngradeTier)
-                  const targetTier = pricingTiers.find(t => t.id === selectedDowngradeTier)
+            {selectedDowngradeTier && (() => {
+              const { warnings, info } = getDowngradeInfo(selectedDowngradeTier)
+              const targetTier = pricingTiers.find(t => t.id === selectedDowngradeTier)
+              
+              // Debug: Log warnings in development
+              if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+                console.log('Rendering downgrade dialog for tier:', selectedDowngradeTier, 'warnings:', warnings, 'info:', info)
+              }
+              
+              return (
+                <>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Confirm Downgrade
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {warnings.length > 0 
+                        ? `Before downgrading to the ${targetTier?.name} plan, please review the following:`
+                        : `You are about to downgrade to the ${targetTier?.name} plan.`
+                      }
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
                   
-                  // Debug: Log warnings in development
-                  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-                    console.log('Rendering downgrade dialog for tier:', selectedDowngradeTier, 'warnings:', warnings, 'info:', info)
-                  }
-                  
-                  return (
-                    <div className="space-y-3">
-                      <AlertDialogDescription>
-                        {warnings.length > 0 
-                          ? `Before downgrading to the ${targetTier?.name} plan, please review the following:`
-                          : `You are about to downgrade to the ${targetTier?.name} plan.`
-                        }
-                      </AlertDialogDescription>
-                      
-                      {/* Warnings (critical issues) */}
-                      {warnings.length > 0 && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-4">
-                          <ul className="list-disc list-inside space-y-2 text-left text-sm">
-                            {warnings.map((warning, index) => (
-                              <li key={index} className="text-red-700 dark:text-red-300 font-medium">
-                                {warning}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {/* Info (plan changes) */}
-                      {info.length > 0 && (
-                        <div className="rounded-lg border border-border bg-muted/50 p-4">
-                          <p className="text-sm font-medium mb-2">Plan changes:</p>
-                          <ul className="list-disc list-inside space-y-1 text-left text-sm text-muted-foreground">
-                            {info.map((infoItem, index) => (
-                              <li key={index}>
-                                {infoItem}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                  {/* Warnings (critical issues) */}
+                  {warnings.length > 0 && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 p-4">
+                      <ul className="list-disc list-inside space-y-2 text-left text-sm">
+                        {warnings.map((warning, index) => (
+                          <li key={index} className="text-red-700 dark:text-red-300 font-medium">
+                            {warning}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  )
-                })()}
-              </div>
-            </AlertDialogHeader>
+                  )}
+                  
+                  {/* Info (plan changes) */}
+                  {info.length > 0 && (
+                    <div className="rounded-lg border border-border bg-muted/50 p-4">
+                      <p className="text-sm font-medium mb-2">Plan changes:</p>
+                      <ul className="list-disc list-inside space-y-1 text-left text-sm text-muted-foreground">
+                        {info.map((infoItem, index) => (
+                          <li key={index}>
+                            {infoItem}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDowngrading}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDowngradeConfirm}
                 variant="destructive"
+                disabled={isDowngrading}
               >
-                Confirm Downgrade
+                {isDowngrading ? 'Downgrading...' : 'Confirm Downgrade'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

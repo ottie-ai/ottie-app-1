@@ -140,7 +140,8 @@ export function hasFeature(
     'feature_priority_support' | 
     'feature_3d_tours' | 
     'feature_pdf_flyers' | 
-    'feature_crm_sync'
+    'feature_crm_sync' |
+    'feature_password_protection'
   >
 ): boolean {
   const plan = getPlanByName(plans, planName)

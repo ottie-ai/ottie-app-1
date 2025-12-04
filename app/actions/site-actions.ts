@@ -150,6 +150,29 @@ export async function handleSetSitePassword(siteId: string, password: string) {
     return { error: 'Unauthorized' }
   }
   
+  // Check if workspace plan has password protection feature
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('plan')
+    .eq('id', site.workspace_id)
+    .single()
+  
+  if (!workspace) {
+    return { error: 'Workspace not found' }
+  }
+  
+  // Get plan to check feature
+  const planName = workspace.plan || 'free'
+  const { data: plan } = await supabase
+    .from('plans')
+    .select('feature_password_protection')
+    .eq('name', planName)
+    .single()
+  
+  if (!plan || !plan.feature_password_protection) {
+    return { error: 'Password protection is not available on your current plan. Please upgrade to access this feature.' }
+  }
+  
   // Hash password with bcrypt (10 rounds)
   const passwordHash = await bcrypt.hash(password, 10)
   
@@ -199,6 +222,29 @@ export async function handleRemoveSitePassword(siteId: string) {
   
   if (!membership) {
     return { error: 'Unauthorized' }
+  }
+  
+  // Check if workspace plan has password protection feature
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('plan')
+    .eq('id', site.workspace_id)
+    .single()
+  
+  if (!workspace) {
+    return { error: 'Workspace not found' }
+  }
+  
+  // Get plan to check feature
+  const planName = workspace.plan || 'free'
+  const { data: plan } = await supabase
+    .from('plans')
+    .select('feature_password_protection')
+    .eq('name', planName)
+    .single()
+  
+  if (!plan || !plan.feature_password_protection) {
+    return { error: 'Password protection is not available on your current plan. Please upgrade to access this feature.' }
   }
   
   // Remove password protection

@@ -62,7 +62,6 @@ const planFeatures: Record<string, {
       { name: 'Visitor Analytics / Detailed' },
       { name: 'White label' },
       { name: 'Custom domain' },
-      { name: 'Password protected site' },
       { name: 'Advanced templates' },
       { name: 'Lead sync (HubSpot, Pipedrive)' },
       { name: 'Visitor Check-in App' },
@@ -123,12 +122,37 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
   // Include all plans we have UI definitions for (free, starter, growth, agency, enterprise)
   const displayPlans = ['free', 'starter', 'growth', 'agency', 'enterprise']
   
+  // Find the first plan with password protection feature
+  // Order matters: free, starter, growth, agency, enterprise
+  const planOrder = ['free', 'starter', 'growth', 'agency', 'enterprise']
+  let firstPasswordProtectionPlan: string | null = null
+  
+  for (const planName of planOrder) {
+    const plan = plans.find(p => p.name === planName)
+    if (plan?.feature_password_protection) {
+      firstPasswordProtectionPlan = planName
+      break
+    }
+  }
+  
   return plans
     .filter(plan => displayPlans.includes(plan.name))
     .map(plan => {
       const featureConfig = planFeatures[plan.name] || {
         features: [],
         cta: 'Get Started',
+      }
+      
+      // Add password protection feature only to the first plan that has it
+      let features = [...featureConfig.features]
+      if (plan.name === firstPasswordProtectionPlan && plan.feature_password_protection) {
+        // Insert password protection feature after "Custom domain" if it exists, otherwise at the beginning
+        const customDomainIndex = features.findIndex(f => f.name.toLowerCase().includes('custom domain'))
+        if (customDomainIndex >= 0) {
+          features.splice(customDomainIndex + 1, 0, { name: 'Password protected site' })
+        } else {
+          features.unshift({ name: 'Password protected site' })
+        }
       }
       
       // Convert cents to dollars
@@ -167,7 +191,7 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
         teamSeats, // From database (max_users)
         description: plan.description || '', // From database
         includesFrom: featureConfig.includesFrom,
-        features: featureConfig.features,
+        features, // Now includes password protection dynamically
         cta: featureConfig.cta,
         popular: featureConfig.popular,
         trial: featureConfig.trial,
@@ -241,7 +265,6 @@ export const pricingTiers: PricingTier[] = [
       { name: 'Visitor Analytics / Detailed' },
       { name: 'White label' },
       { name: 'Custom domain' },
-      { name: 'Password protected site' },
       { name: 'Advanced templates' },
       { name: 'Lead sync (HubSpot, Pipedrive)' },
       { name: 'Visitor Check-in App' },

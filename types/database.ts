@@ -13,6 +13,8 @@ export type SubPlan = 'free' | 'starter' | 'growth' | 'agency' | 'enterprise'
 export type SiteStatus = 'draft' | 'published' | 'archived'
 export type InviteStatus = 'pending' | 'accepted' | 'expired'
 export type AvailabilityStatus = 'available' | 'under_offer' | 'reserved' | 'sold' | 'off_market'
+export type MembershipStatus = 'active' | 'inactive' | 'suspended'
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'unpaid' | 'grace_period'
 
 // ==========================================
 // TABLES
@@ -35,6 +37,11 @@ export interface Workspace {
   logo_url: string | null
   plan: SubPlan | null // null/empty plan is treated as 'free'
   stripe_customer_id: string | null
+  subscription_status: SubscriptionStatus // Subscription status tracking
+  seats_limit: number // Maximum number of active users allowed (from plan)
+  seats_used: number // Current number of active users
+  grace_period_ends_at: string | null // When grace period ends (14 days after payment failure)
+  subscription_locked_at: string | null // When workspace was locked due to subscription issues
   branding_config: Record<string, any> // jsonb
   usage_stats: {
     sites_created?: number
@@ -51,6 +58,7 @@ export interface Membership {
   workspace_id: string // uuid
   user_id: string // uuid
   role: UserRole
+  status: MembershipStatus // Membership status: active (can access), inactive (lost access due to plan), suspended (temporarily disabled)
   last_active_at: string // timestamp
   created_at: string // timestamp
 }
@@ -113,6 +121,7 @@ export interface Plan {
   feature_3d_tours: boolean
   feature_pdf_flyers: boolean
   feature_crm_sync: boolean
+  feature_password_protection: boolean
   price_cents: number // Monthly price in cents
   annual_price_cents: number // Monthly price in cents when paid annually (with 15% discount)
   created_at: string // timestamp
