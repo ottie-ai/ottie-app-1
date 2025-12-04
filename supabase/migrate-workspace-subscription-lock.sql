@@ -7,12 +7,14 @@
 
 -- Step 1: Initialize seats_limit from plan
 -- Set seats_limit based on current plan (default to 1 for free plan)
+-- Note: w.plan is sub_plan enum, so we need to cast it to text for comparison
+-- Update ALL workspaces to ensure correct seats_limit (not just NULL/0 values)
 UPDATE public.workspaces w
 SET seats_limit = COALESCE(
-  (SELECT max_users FROM public.plans WHERE name = COALESCE(w.plan, 'free')),
+  (SELECT max_users FROM public.plans WHERE name = COALESCE(w.plan::text, 'free')),
   1
 )
-WHERE seats_limit IS NULL OR seats_limit = 0;
+WHERE w.deleted_at IS NULL;
 
 -- Step 2: Initialize seats_used from active memberships
 -- Count all memberships (treating all existing as active for migration)
