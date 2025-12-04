@@ -103,41 +103,31 @@ export async function setBrandDomain(
     return { error: 'Brand domain feature is not available for your plan. Please upgrade to Growth or higher.' }
   }
 
-  // 6. Check if domain (or www version) is already used by another workspace
-  // Check both apex and www versions to prevent conflicts
+  // 6. Check if subdomain is already used by another workspace
+  // Since we only allow subdomains, check exact match
   const { data: existingWorkspaces } = await supabase
     .from('workspaces')
     .select('id')
     .neq('id', workspaceId)
     .not('branding_config->custom_brand_domain', 'is', null)
-    .or(`branding_config->>custom_brand_domain.eq.${apexDomain},branding_config->>custom_brand_domain.eq.${wwwDomain}`)
+    .eq('branding_config->>custom_brand_domain', trimmedDomain)
     .is('deleted_at', null)
 
   if (existingWorkspaces && existingWorkspaces.length > 0) {
-    return { error: 'This domain (or its www version) is already in use by another workspace' }
+    return { error: 'This subdomain is already in use by another workspace' }
   }
 
-  // 6.5. Check if domain (or www version) already exists in Vercel project
+  // 6.5. Check if subdomain already exists in Vercel project
   // This prevents exposing domains that belong to other projects/accounts
-  // Check both apex and www versions
-  const existingDomainCheck = await getVercelDomain(apexDomain)
-  const existingWwwDomainCheck = await getVercelDomain(wwwDomain)
+  const existingDomainCheck = await getVercelDomain(trimmedDomain)
   
   const currentDomain = currentConfig.custom_brand_domain
   
-  // Check apex domain
+  // Check if subdomain exists in Vercel
   if (!('error' in existingDomainCheck)) {
     // Domain already exists in Vercel - check if it belongs to this workspace
-    if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
-      return { error: 'This domain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
-    }
-  }
-  
-  // Check www domain
-  if (!('error' in existingWwwDomainCheck)) {
-    // www domain already exists in Vercel - check if it belongs to this workspace
-    if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
-      return { error: 'The www version of this domain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+    if (currentDomain !== trimmedDomain) {
+      return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
     }
   }
 
