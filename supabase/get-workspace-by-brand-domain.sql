@@ -1,35 +1,22 @@
 -- RPC function to get workspace by brand domain
 -- This is more secure and performant than fetching all workspaces
 -- Only returns workspace if domain is verified
+-- Returns all workspace columns to match Workspace type
 
 CREATE OR REPLACE FUNCTION get_workspace_by_brand_domain(domain_name TEXT)
-RETURNS TABLE (
-  id UUID,
-  name TEXT,
-  slug TEXT,
-  plan TEXT,
-  branding_config JSONB,
-  created_at TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ
-) 
+RETURNS SETOF workspaces
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
-    w.id,
-    w.name,
-    w.slug,
-    w.plan,
-    w.branding_config,
-    w.created_at,
-    w.deleted_at
+  SELECT w.*
   FROM workspaces w
   WHERE 
     w.deleted_at IS NULL
     AND (w.branding_config->>'custom_brand_domain') = domain_name
-    AND (w.branding_config->>'custom_brand_domain_verified') = 'true';
+    AND (w.branding_config->>'custom_brand_domain_verified') = 'true'
+  LIMIT 1;
 END;
 $$;
 

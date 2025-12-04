@@ -263,25 +263,34 @@ export default async function SitePage({
     workspaceId = headersList.get('x-workspace-id') || undefined
     
     // If headers not available, try to get hostname from request
+    // But skip Vercel preview URLs and localhost
     if (!brandDomain) {
       const hostname = headersList.get('host') || headersList.get('x-forwarded-host')
       if (hostname) {
         const hostnameWithoutPort = hostname.split(':')[0]
-        // Check if this is a brand domain (not ottie.site, not app/marketing domain)
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
-        const rootDomainWithoutPort = rootDomain.split(':')[0]
-        const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
-        const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || hostnameWithoutPort === rootDomainWithoutPort || hostnameWithoutPort === `www.${rootDomainWithoutPort}`
         
-        if (!isOttieSite && !isAppDomain && !hostnameWithoutPort.includes('localhost')) {
-          // This might be a brand domain - try to look it up
-          console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
-          const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
-          const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
-          if (brandDomainResult && brandDomainResult.verified) {
-            brandDomain = hostnameWithoutPort
-            workspaceId = brandDomainResult.workspace.id
-            console.log('[SitePage] Found brand domain via direct lookup:', { brandDomain, workspaceId })
+        // Skip Vercel preview URLs and localhost
+        if (hostnameWithoutPort.includes('vercel.app') || hostnameWithoutPort.includes('localhost')) {
+          console.log('[SitePage] Skipping brand domain lookup for preview/localhost:', hostnameWithoutPort)
+        } else {
+          // Check if this is a brand domain (not ottie.site, not app/marketing domain)
+          const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+          const rootDomainWithoutPort = rootDomain.split(':')[0]
+          const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
+          const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || 
+                             hostnameWithoutPort === rootDomainWithoutPort || 
+                             hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+          
+          if (!isOttieSite && !isAppDomain) {
+            // This might be a brand domain - try to look it up
+            console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
+            const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
+            const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
+            if (brandDomainResult && brandDomainResult.verified) {
+              brandDomain = hostnameWithoutPort
+              workspaceId = brandDomainResult.workspace.id
+              console.log('[SitePage] Found brand domain via direct lookup:', { brandDomain, workspaceId })
+            }
           }
         }
       }
