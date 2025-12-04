@@ -688,7 +688,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   {showBillingTab && (
                   <TabsTrigger value="plan">Billing</TabsTrigger>
                   )}
-                  <TabsTrigger value="domain">Domain</TabsTrigger>
+                  <TabsTrigger value="domain">Branding</TabsTrigger>
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
                 </TabsList>
@@ -1762,7 +1762,10 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
               ) : (
                 <TabsContent value="domain" forceMount className="mt-0 sm:mt-6 space-y-6">
                   <div>
-                    <h2 className="text-lg font-semibold">Domain</h2>
+                    <h2 className="text-lg font-semibold">Branding</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Customize your workspace branding and connect a dedicated subdomain for your Ottie sites.
+                    </p>
                   </div>
                   <div className="space-y-4">
                     {/* Custom Brand Domain */}
