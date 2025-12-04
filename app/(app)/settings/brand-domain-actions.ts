@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { addVercelDomain, removeVercelDomain, getVercelDomain } from '@/lib/vercel/domain-api'
+import { addVercelDomain, removeVercelDomain, getVercelDomain, getVercelDomainConfig } from '@/lib/vercel/domain-api'
 import { updateWorkspace } from '@/lib/supabase/queries'
 import { loadPlansServer, hasFeature } from '@/lib/data/plans-server'
 import type { Workspace } from '@/types/database'
@@ -104,9 +104,45 @@ export async function setBrandDomain(
     return { error: 'Failed to add domain. Please try again later.' }
   }
 
-  // 8. Get DNS instructions
+  // 8. Get DNS configuration - recommended CNAME/A records
+  const configResult = await getVercelDomainConfig(trimmedDomain)
+  let vercelDNSInstructions: Array<{
+    type: string
+    domain: string
+    value: string
+    reason: string
+  }> = []
+
+  if (!('error' in configResult)) {
+    const { config } = configResult
+    
+    // Convert CNAME/A records to instructions format
+    if (config.cnames && config.cnames.length > 0) {
+      vercelDNSInstructions.push({
+        type: 'CNAME',
+        domain: trimmedDomain,
+        value: config.cnames[0],
+        reason: 'Point your domain to Vercel'
+      })
+    }
+    
+    if (config.aValues && config.aValues.length > 0) {
+      config.aValues.forEach(aValue => {
+        vercelDNSInstructions.push({
+          type: 'A',
+          domain: trimmedDomain,
+          value: aValue,
+          reason: 'Point your domain to Vercel'
+        })
+      })
+    }
+  }
+
+  // Fallback to verification records if config is empty
   const vercelDomain = vercelResult.domain
-  const vercelDNSInstructions = vercelDomain.verification || []
+  if (vercelDNSInstructions.length === 0 && vercelDomain.verification) {
+    vercelDNSInstructions = vercelDomain.verification
+  }
 
   // 9. Update branding_config
   // IMPORTANT: Always set verified to false initially, even if Vercel says verified

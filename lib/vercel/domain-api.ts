@@ -21,6 +21,20 @@ interface VercelDomainResponse {
   }>
 }
 
+interface VercelDomainConfig {
+  configuredBy?: string | null
+  acceptedChallenges?: string[]
+  misconfigured: boolean
+  serviceType?: string
+  cnames?: string[]
+  aValues?: string[]
+  conflicts?: Array<{
+    name: string
+    type: string
+    value: string
+  }>
+}
+
 interface VercelError {
   error: {
     code: string
