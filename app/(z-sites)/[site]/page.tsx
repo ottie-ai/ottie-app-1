@@ -132,11 +132,15 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
     // and filter by that domain, not ottie.site
     if (workspaceId) {
       // Get workspace to find brand domain
-      const { data: workspace } = await supabase
+      const { data: workspace, error: workspaceError } = await supabase
         .from('workspaces')
         .select('branding_config')
         .eq('id', workspaceId)
         .single()
+      
+      if (workspaceError) {
+        console.error('[getSiteConfig] Error fetching workspace:', workspaceError)
+      }
       
       if (workspace?.branding_config) {
         const brandingConfig = workspace.branding_config as {
@@ -144,21 +148,29 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
           custom_brand_domain_verified?: boolean
         }
         
+        console.log('[getSiteConfig] Workspace branding config:', {
+          domain: brandingConfig.custom_brand_domain,
+          verified: brandingConfig.custom_brand_domain_verified,
+        })
+        
         // If brand domain is verified, use it for filtering
         if (brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain) {
           query = query.eq('domain', brandingConfig.custom_brand_domain)
           console.log('[getSiteConfig] Using brand domain from workspace:', brandingConfig.custom_brand_domain)
         } else {
           // Brand domain not verified, but workspaceId provided - this shouldn't happen, but fallback to ottie.site
+          console.log('[getSiteConfig] Brand domain not verified, falling back to ottie.site')
           query = query.eq('domain', 'ottie.site')
         }
       } else {
         // No branding config, fallback to ottie.site
+        console.log('[getSiteConfig] No branding config found, falling back to ottie.site')
         query = query.eq('domain', 'ottie.site')
       }
       
       // Also filter by workspace_id for additional security
       query = query.eq('workspace_id', workspaceId)
+      console.log('[getSiteConfig] Query filters: slug=', slug, ', domain=', workspace?.branding_config ? (workspace.branding_config as any)?.custom_brand_domain : 'ottie.site', ', workspace_id=', workspaceId)
     } else if (domain) {
       // Domain provided directly (e.g., from ottie.site subdomain)
       query = query.eq('domain', domain)
@@ -169,7 +181,13 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
     
     const { data: site, error } = await query.single()
     
-    console.log('[getSiteConfig] Site result (any status):', { site, error })
+    console.log('[getSiteConfig] Site result:', { 
+      found: !!site, 
+      error: error ? { code: error.code, message: error.message } : null,
+      slug,
+      domain: workspaceId ? 'from workspace' : domain || 'ottie.site',
+      workspaceId,
+    })
     
     if (error) {
       console.error('[getSiteConfig] Error fetching site:', error)

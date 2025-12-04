@@ -101,31 +101,8 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   
   console.log('[ACCESS CONTROL] Restricted mode - checking access')
   
-  // IMPORTANT: Always allow brand domains (custom domains) - they are verified separately
-  // Check if this might be a brand domain by looking it up
-  // We do this BEFORE IP/domain checks to avoid blocking legitimate brand domain requests
-  if (!hostnameWithoutPort.includes('localhost')) {
-    try {
-      // Quick check: if it's not ottie.site, not app/marketing domain, it might be brand domain
-      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
-      const rootDomainWithoutPort = rootDomain.split(':')[0]
-      const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
-      const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || 
-                         hostnameWithoutPort === rootDomainWithoutPort || 
-                         hostnameWithoutPort === `www.${rootDomainWithoutPort}`
-      
-      if (!isOttieSite && !isAppDomain) {
-        // This might be a brand domain - allow it through (it will be verified in middleware later)
-        console.log('[ACCESS CONTROL] Allowing potential brand domain:', hostnameWithoutPort)
-        return null
-      }
-    } catch (error) {
-      // If lookup fails, continue with normal access control
-      console.log('[ACCESS CONTROL] Error checking brand domain, continuing with normal check')
-    }
-  }
-  
   // Restricted mode - check domain and IP
+  // Brand domains follow the same access control rules as main domain
   
   // Extract client IP from headers (Next.js 15+ removed request.ip)
   // Priority: x-forwarded-for (first IP in chain) > x-real-ip > cf-connecting-ip > unknown
