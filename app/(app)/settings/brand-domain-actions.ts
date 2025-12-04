@@ -131,24 +131,25 @@ export async function setBrandDomain(
     }
   }
 
-  // 7. Add domain (automatic)
+  // 7. Add domain (automatic) - use the subdomain as entered by user
+  // We store the subdomain (e.g., properties.example.com), not the apex domain
   const vercelResult = await addVercelDomain(trimmedDomain)
   if ('error' in vercelResult) {
     // If domain already exists error, check if it's ours
     if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
       // Try to get the domain to verify it exists
-      const domainCheck = await getVercelDomain(domainToAdd)
+      const domainCheck = await getVercelDomain(trimmedDomain)
       if (!('error' in domainCheck)) {
         // Domain exists - check if it's ours
-        if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
-          return { error: 'This domain is already configured in Vercel. It may belong to another project or account.' }
+        if (currentDomain !== trimmedDomain) {
+          return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account.' }
         }
         // It's our domain, continue with existing domain
       } else {
-        return { error: 'Domain already exists but cannot be accessed. Please contact support.' }
+        return { error: 'Subdomain already exists but cannot be accessed. Please contact support.' }
       }
     } else {
-      return { error: 'Failed to add domain. Please try again later.' }
+      return { error: 'Failed to add subdomain. Please try again later.' }
     }
   }
 
@@ -164,7 +165,7 @@ export async function setBrandDomain(
   const retryDelay = 2000 // 2 seconds
 
   while (retryCount < maxRetries) {
-    configResult = await getVercelDomainConfig(domainToAdd)
+    configResult = await getVercelDomainConfig(trimmedDomain)
     
     if (!('error' in configResult)) {
       // Success - DNS config is available
@@ -193,9 +194,9 @@ export async function setBrandDomain(
   if (!configResult || 'error' in configResult) {
     console.error('[Brand Domain] Failed to get DNS config from Vercel after retries:', configResult?.error)
     // Rollback: remove domain from Vercel since we can't get DNS config
-    console.log('[Brand Domain] Rolling back: removing domain from Vercel')
-    await removeVercelDomain(domainToAdd)
-    return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The domain may need a few moments to be processed by Vercel. Please try again in a minute.` }
+    console.log('[Brand Domain] Rolling back: removing subdomain from Vercel')
+    await removeVercelDomain(trimmedDomain)
+    return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The subdomain may need a few moments to be processed by Vercel. Please try again in a minute.` }
   }
 
   const { config } = configResult
@@ -273,11 +274,11 @@ export async function setBrandDomain(
 
   // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
-    console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', domainToAdd)
+    console.error('[Brand Domain] No DNS instructions from Vercel API for subdomain:', trimmedDomain)
     console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
-    // Rollback: remove domain from Vercel since we can't get DNS config
-    console.log('[Brand Domain] Rolling back: removing domain from Vercel (no DNS instructions)')
-    await removeVercelDomain(domainToAdd)
+    // Rollback: remove subdomain from Vercel since we can't get DNS config
+    console.log('[Brand Domain] Rolling back: removing subdomain from Vercel (no DNS instructions)')
+    await removeVercelDomain(trimmedDomain)
     return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
   }
 
@@ -299,9 +300,9 @@ export async function setBrandDomain(
   })
 
   if (!updatedWorkspace) {
-    // Rollback: remove domain if DB update fails
-    await removeVercelDomain(domainToAdd)
-    return { error: 'Failed to save domain configuration' }
+    // Rollback: remove subdomain if DB update fails
+    await removeVercelDomain(trimmedDomain)
+    return { error: 'Failed to save subdomain configuration' }
   }
 
   revalidatePath('/settings')
