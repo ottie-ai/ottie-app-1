@@ -104,6 +104,9 @@ export async function setBrandDomain(
     return { error: 'Workspace not found' }
   }
 
+  // Get current config once - will be used multiple times
+  const currentConfig = (workspace.branding_config || {}) as BrandingConfig
+
   // 5. Check feature flag
   const plans = await loadPlansServer()
   if (!hasFeature(plans, workspace.plan, 'feature_custom_brand_domain')) {
@@ -130,7 +133,6 @@ export async function setBrandDomain(
   const existingDomainCheck = await getVercelDomain(apexDomain)
   const existingWwwDomainCheck = await getVercelDomain(wwwDomain)
   
-  const currentConfig = (workspace.branding_config || {}) as BrandingConfig
   const currentDomain = currentConfig.custom_brand_domain
   
   // Check apex domain
@@ -155,11 +157,10 @@ export async function setBrandDomain(
     // If domain already exists error, check if it's ours
     if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
       // Try to get the domain to verify it exists
-      const domainCheck = await getVercelDomain(trimmedDomain)
+      const domainCheck = await getVercelDomain(domainToAdd)
       if (!('error' in domainCheck)) {
         // Domain exists - check if it's ours
-        const currentConfig = (workspace.branding_config || {}) as BrandingConfig
-        if (currentConfig.custom_brand_domain !== trimmedDomain) {
+        if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
           return { error: 'This domain is already configured in Vercel. It may belong to another project or account.' }
         }
         // It's our domain, continue with existing domain
@@ -213,7 +214,7 @@ export async function setBrandDomain(
     console.error('[Brand Domain] Failed to get DNS config from Vercel after retries:', configResult?.error)
     // Rollback: remove domain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing domain from Vercel')
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(domainToAdd)
     return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The domain may need a few moments to be processed by Vercel. Please try again in a minute.` }
   }
 
@@ -265,18 +266,17 @@ export async function setBrandDomain(
 
   // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
-    console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', trimmedDomain)
+    console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', domainToAdd)
     console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
     // Rollback: remove domain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing domain from Vercel (no DNS instructions)')
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(domainToAdd)
     return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
   }
 
   // 9. Update branding_config
   // IMPORTANT: Always set verified to false initially, even if Vercel says verified
   // User must configure DNS first, then verify manually via "Check Status" button
-  const currentConfig = (workspace.branding_config || {}) as BrandingConfig
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
     // Always store apex domain (not www version)
@@ -294,7 +294,7 @@ export async function setBrandDomain(
 
   if (!updatedWorkspace) {
     // Rollback: remove domain if DB update fails
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(domainToAdd)
     return { error: 'Failed to save domain configuration' }
   }
 
