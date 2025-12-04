@@ -82,18 +82,40 @@ export async function fetchUserWorkspaces(
 ): Promise<Array<{ workspace: Workspace; membership: Membership }>> {
   const supabase = createClient()
 
+  // First check if user has any memberships at all
+  const { data: membershipCheck, error: checkError } = await supabase
+    .from('memberships')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+
+  if (checkError) {
+    console.error('Error checking memberships:', checkError)
+    return []
+  }
+
+  // If no memberships, return empty array (not an error)
+  if (!membershipCheck || membershipCheck.length === 0) {
+    return []
+  }
+
+  // Now fetch with workspace join
   const { data: memberships, error } = await supabase
     .from('memberships')
-    .select('*, workspace:workspaces!inner(*)')
+    .select('*, workspace:workspaces(*)')
     .eq('user_id', userId)
     .is('workspace.deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error) {
-    // Only log if error has meaningful content
-    if (error.message || error.code || error.details) {
-      console.error('Error fetching user workspaces:', error)
-    }
+    // Log error with full details for debugging
+    console.error('Error fetching user workspaces:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      fullError: JSON.stringify(error, null, 2)
+    })
     return []
   }
 
@@ -102,7 +124,7 @@ export async function fetchUserWorkspaces(
   }
 
   return memberships
-    .filter(m => m.workspace)
+    .filter(m => m.workspace && !Array.isArray(m.workspace))
     .map(m => ({
       workspace: m.workspace as Workspace,
       membership: {
