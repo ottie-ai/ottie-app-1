@@ -82,7 +82,7 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     const handleMouseEnter = () => {
       setIsHovered(true)
       if (lottieRef.current && animationData) {
-        const totalFrames = animationData?.op || lottieRef.current.totalFrames || 60
+        const totalFrames = animationData?.op || 60
         lottieRef.current.setDirection(1)
         lottieRef.current.goToAndPlay(0, true)
       }
@@ -91,7 +91,7 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     const handleMouseLeave = () => {
       setIsHovered(false)
       if (lottieRef.current && animationData) {
-        const totalFrames = animationData?.op || lottieRef.current.totalFrames || 60
+        const totalFrames = animationData?.op || 60
         lottieRef.current.setDirection(-1)
         lottieRef.current.goToAndPlay(totalFrames - 1, true)
       }
