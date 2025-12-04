@@ -98,10 +98,40 @@ export async function setBrandDomain(
     return { error: 'This domain is already in use by another workspace' }
   }
 
+  // 6.5. Check if domain already exists in Vercel project
+  // This prevents exposing domains that belong to other projects/accounts
+  const existingDomainCheck = await getVercelDomain(trimmedDomain)
+  if (!('error' in existingDomainCheck)) {
+    // Domain already exists in Vercel - check if it belongs to this workspace
+    const currentConfig = (workspace.branding_config || {}) as BrandingConfig
+    const currentDomain = currentConfig.custom_brand_domain
+    
+    // If this workspace already has this domain, it's OK (updating existing)
+    if (currentDomain !== trimmedDomain) {
+      return { error: 'This domain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+    }
+  }
+
   // 7. Add domain (automatic)
   const vercelResult = await addVercelDomain(trimmedDomain)
   if ('error' in vercelResult) {
-    return { error: 'Failed to add domain. Please try again later.' }
+    // If domain already exists error, check if it's ours
+    if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
+      // Try to get the domain to verify it exists
+      const domainCheck = await getVercelDomain(trimmedDomain)
+      if (!('error' in domainCheck)) {
+        // Domain exists - check if it's ours
+        const currentConfig = (workspace.branding_config || {}) as BrandingConfig
+        if (currentConfig.custom_brand_domain !== trimmedDomain) {
+          return { error: 'This domain is already configured in Vercel. It may belong to another project or account.' }
+        }
+        // It's our domain, continue with existing domain
+      } else {
+        return { error: 'Domain already exists but cannot be accessed. Please contact support.' }
+      }
+    } else {
+      return { error: 'Failed to add domain. Please try again later.' }
+    }
   }
 
   // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
