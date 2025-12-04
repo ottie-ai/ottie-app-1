@@ -152,53 +152,34 @@ export async function setBrandDomain(
   const { config } = configResult
   console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
   
+  // Priority order: recommendedIPv4 > aValues > cnames
   // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
-    // Can be array of strings or array of objects with rank and value
-    if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
-      config.recommendedIPv4.forEach((item: string | { rank: number; value: string[] }) => {
-        if (typeof item === 'string') {
-          vercelDNSInstructions.push({
-            type: 'A',
-            domain: '@',
-            value: item,
-            reason: 'Point your apex domain to Vercel'
-          })
-        } else if (item.value && Array.isArray(item.value)) {
-          item.value.forEach(ip => {
-            vercelDNSInstructions.push({
-              type: 'A',
-              domain: '@',
-              value: ip,
-              reason: 'Point your apex domain to Vercel'
-            })
-          })
-        }
-      })
-    }
+  // Can be array of strings or array of objects with rank and value
+  if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
+    // Get the first item (highest rank) - Vercel returns ranked recommendations
+    const firstItem = config.recommendedIPv4[0]
     
-    // Also check recommendedCNAME
-    if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
-      config.recommendedCNAME.forEach((item: string | { rank: number; value: string }) => {
-        if (typeof item === 'string') {
-          vercelDNSInstructions.push({
-            type: 'CNAME',
-            domain: trimmedDomain.split('.')[0] || '@',
-            value: item,
-            reason: 'Point your subdomain to Vercel'
-          })
-        } else if (item.value) {
-          vercelDNSInstructions.push({
-            type: 'CNAME',
-            domain: trimmedDomain.split('.')[0] || '@',
-            value: item.value,
-            reason: 'Point your subdomain to Vercel'
-          })
-        }
+    if (typeof firstItem === 'string') {
+      // Simple string format
+      vercelDNSInstructions.push({
+        type: 'A',
+        domain: '@',
+        value: firstItem,
+        reason: 'Point your apex domain to Vercel'
+      })
+    } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem && Array.isArray(firstItem.value)) {
+      // Object format with rank and value array - use all IPs from the highest ranked item
+      firstItem.value.forEach(ip => {
+        vercelDNSInstructions.push({
+          type: 'A',
+          domain: '@',
+          value: ip,
+          reason: 'Point your apex domain to Vercel'
+        })
       })
     }
-  
-  // Also check aValues as fallback (older API format)
-  if (vercelDNSInstructions.length === 0 && config.aValues && config.aValues.length > 0) {
+  } else if (config.aValues && config.aValues.length > 0) {
+    // Fallback to aValues (older API format) - use all values
     config.aValues.forEach(aValue => {
       vercelDNSInstructions.push({
         type: 'A',
@@ -209,15 +190,33 @@ export async function setBrandDomain(
     })
   }
   
-  // Convert CNAME records to instructions format
-  if (config.cnames && config.cnames.length > 0) {
-    config.cnames.forEach(cname => {
+  // For CNAME - use recommendedCNAME first, then cnames as fallback
+  if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+    // Get the first item (highest rank)
+    const firstItem = config.recommendedCNAME[0]
+    
+    if (typeof firstItem === 'string') {
       vercelDNSInstructions.push({
         type: 'CNAME',
         domain: trimmedDomain.split('.')[0] || '@',
-        value: cname,
+        value: firstItem,
         reason: 'Point your subdomain to Vercel'
       })
+    } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem) {
+      vercelDNSInstructions.push({
+        type: 'CNAME',
+        domain: trimmedDomain.split('.')[0] || '@',
+        value: firstItem.value,
+        reason: 'Point your subdomain to Vercel'
+      })
+    }
+  } else if (config.cnames && config.cnames.length > 0) {
+    // Fallback to cnames - use first one only
+    vercelDNSInstructions.push({
+      type: 'CNAME',
+      domain: trimmedDomain.split('.')[0] || '@',
+      value: config.cnames[0],
+      reason: 'Point your subdomain to Vercel'
     })
   }
 
