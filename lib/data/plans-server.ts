@@ -66,3 +66,31 @@ export function hasFeature(
   return plan?.[feature] ?? false
 }
 
+/**
+ * Find the first plan that has a specific feature enabled
+ * Plans are ordered by price_cents ascending, so this returns the cheapest plan with the feature
+ * 
+ * @param plans - Array of plans
+ * @param feature - Feature name to check
+ * @returns Plan object or null if no plan has this feature
+ */
+export function getFirstPlanWithFeature(
+  plans: Plan[],
+  feature: keyof Pick<Plan, 
+    'feature_lead_generation' | 
+    'feature_custom_brand_domain' | 
+    'feature_custom_property_domain' | 
+    'feature_analytics' | 
+    'feature_api_access' | 
+    'feature_priority_support' | 
+    'feature_3d_tours' | 
+    'feature_pdf_flyers' | 
+    'feature_crm_sync' |
+    'feature_password_protection'
+  >
+): Plan | null {
+  // Plans should already be ordered by price_cents ascending
+  // Find the first plan that has this feature enabled
+  return plans.find(plan => plan[feature] === true) || null
+}
+

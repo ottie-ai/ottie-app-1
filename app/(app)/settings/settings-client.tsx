@@ -43,6 +43,7 @@ import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
 import { useWorkspaceInvitations } from '@/hooks/use-workspace-invitations'
 import { normalizePlan, cn } from '@/lib/utils'
 import { signOut as signOutAuth } from '@/lib/supabase/auth'
+import { getFirstPlanWithFeature } from '@/lib/data/plans'
 import type { Profile, Workspace, Membership, Invitation } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { transformPlansToTiers } from '@/lib/pricing-data'
@@ -1771,6 +1772,36 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </p>
                   </div>
                   <div className="space-y-4">
+                    {/* Upgrade Banner - Show before input if feature not available */}
+                    {!hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') && (() => {
+                      const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_brand_domain')
+                      const planName = firstPlanWithFeature ? firstPlanWithFeature.name.charAt(0).toUpperCase() + firstPlanWithFeature.name.slice(1) : 'a higher tier'
+                      
+                      return (
+                        <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                              <p className="text-sm text-green-900 dark:text-green-100">
+                                Brand domain is available on <strong>{planName}</strong> plan and higher. Upgrade to enable this feature.
+                              </p>
+                            </div>
+                            <PricingDialog 
+                              currentPlan={workspace?.plan} 
+                              stripeCustomerId={workspace?.stripe_customer_id}
+                              workspaceId={workspace?.id}
+                            >
+                              <span
+                                className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
+                              >
+                                Upgrade
+                              </span>
+                            </PricingDialog>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                    
                     {/* Custom Brand Domain */}
                     <div className="flex flex-col gap-4">
                       <div className="space-y-1 w-full sm:w-[70%]">
@@ -1989,30 +2020,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           </div>
                         </div>
                       )}
-                    
-                    {!hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') && (
-                      <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 flex-1">
-                            <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                            <p className="text-sm text-green-900 dark:text-green-100">
-                              Brand domain is available on Growth plan and higher
-                            </p>
-                          </div>
-                          <PricingDialog 
-                            currentPlan={workspace?.plan} 
-                            stripeCustomerId={workspace?.stripe_customer_id}
-                            workspaceId={workspace?.id}
-                          >
-                            <span
-                              className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline shrink-0 cursor-pointer"
-                            >
-                              Upgrade
-                            </span>
-                          </PricingDialog>
-                        </div>
-                      </div>
-                    )}
 
                     <Separator />
 
