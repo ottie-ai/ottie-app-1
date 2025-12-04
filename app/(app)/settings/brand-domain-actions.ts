@@ -195,10 +195,13 @@ export async function setBrandDomain(
     })
   }
 
-  // If still no instructions, return error - we cannot proceed without DNS config
+  // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
     console.error('[Brand Domain] No DNS instructions from Vercel API for domain:', trimmedDomain)
     console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
+    // Rollback: remove domain from Vercel since we can't get DNS config
+    console.log('[Brand Domain] Rolling back: removing domain from Vercel (no DNS instructions)')
+    await removeVercelDomain(trimmedDomain)
     return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
   }
 
