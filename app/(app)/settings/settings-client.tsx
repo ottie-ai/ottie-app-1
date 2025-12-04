@@ -1770,13 +1770,18 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <div className="space-y-4">
                     {/* Custom Brand Domain */}
                     <div className="space-y-2">
-                      <Label htmlFor="custom-domain">Brand Domain</Label>
+                      <div>
+                        <Label htmlFor="custom-domain">Brand Domain</Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Enter a subdomain (e.g., properties.yourdomain.com, sites.yourdomain.com). Apex domains (yourdomain.com) are not supported.
+                        </p>
+                      </div>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <LottieLinkIconFocus className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
                           <Input
                             id="custom-domain"
-                            placeholder="yourdomain.com"
+                            placeholder="properties.yourdomain.com"
                             value={brandDomain}
                             onChange={(e) => setBrandDomain(e.target.value)}
                             className="pl-9"

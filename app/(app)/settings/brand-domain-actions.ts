@@ -55,34 +55,24 @@ export async function setBrandDomain(
     return { error: 'Only workspace owners and admins can set brand domain' }
   }
 
-  // 2. Validate domain format
+  // 2. Validate domain format - ONLY subdomains are allowed
   const trimmedDomain = domain.trim().toLowerCase()
   const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i
   if (!domainRegex.test(trimmedDomain)) {
-    return { error: 'Invalid domain format. Please enter a valid domain (e.g., example.com)' }
+    return { error: 'Invalid domain format. Please enter a valid subdomain (e.g., properties.example.com)' }
   }
 
-  // 2.5. Determine apex domain and www version
-  // For apex domains (example.com), we'll also check www.example.com
-  // For www domains (www.example.com), we'll extract apex (example.com)
+  // 2.5. Validate that it's a subdomain (must have at least 3 parts: subdomain.domain.tld)
   const domainParts = trimmedDomain.split('.')
-  const isApexDomain = domainParts.length === 2
-  const isWwwDomain = domainParts[0] === 'www' && domainParts.length === 3
-  
-  let apexDomain: string
-  let wwwDomain: string
-  
-  if (isApexDomain) {
-    apexDomain = trimmedDomain
-    wwwDomain = `www.${trimmedDomain}`
-  } else if (isWwwDomain) {
-    apexDomain = domainParts.slice(1).join('.')
-    wwwDomain = trimmedDomain
-  } else {
-    // Subdomain (not www) - use as-is, no www version
-    apexDomain = trimmedDomain
-    wwwDomain = trimmedDomain
+  if (domainParts.length < 3) {
+    return { error: 'Only subdomains are allowed. Please enter a subdomain like "properties.example.com" or "sites.yourdomain.com". Apex domains (example.com) are not supported.' }
   }
+  
+  // Extract apex domain from subdomain (e.g., properties.example.com -> example.com)
+  const apexDomain = domainParts.slice(1).join('.')
+  
+  // For subdomains, we don't need www version check
+  const wwwDomain = `www.${apexDomain}`
 
   // 3. Check reserved domains (check both apex and www versions)
   const reservedDomains = ['ottie.com', 'ottie.site', 'app.ottie.com', 'www.ottie.com', 'www.ottie.site']
