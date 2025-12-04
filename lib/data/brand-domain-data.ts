@@ -89,11 +89,13 @@ export async function getWorkspaceByBrandDomain(
   }
   
   // Query workspaces with verified brand domain
+  // Note: custom_brand_domain_verified is a boolean, not a string
+  // We need to use -> instead of ->> to get JSON value, then cast to boolean
   const { data: workspaces, error } = await supabase
     .from('workspaces')
     .select('*')
     .eq('branding_config->>custom_brand_domain', domain)
-    .eq('branding_config->>custom_brand_domain_verified', 'true')
+    .eq('branding_config->custom_brand_domain_verified', true) // Use -> for boolean comparison
     .is('deleted_at', null)
     .limit(1)
 
