@@ -152,7 +152,7 @@ export async function setBrandDomain(
   const { config } = configResult
   console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
   
-  // Priority order: recommendedIPv4 > aValues > cnames
+  // Priority order: recommendedIPv4 > aValues
   // Use recommendedIPv4 from API (this is the correct field per Vercel docs)
   // Can be array of strings or array of objects with rank and value
   if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
@@ -160,7 +160,7 @@ export async function setBrandDomain(
     const firstItem = config.recommendedIPv4[0]
     
     if (typeof firstItem === 'string') {
-      // Simple string format
+      // Simple string format - use only this one
       vercelDNSInstructions.push({
         type: 'A',
         domain: '@',
@@ -168,30 +168,30 @@ export async function setBrandDomain(
         reason: 'Point your apex domain to Vercel'
       })
     } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem && Array.isArray(firstItem.value)) {
-      // Object format with rank and value array - use all IPs from the highest ranked item
-      firstItem.value.forEach(ip => {
+      // Object format with rank and value array - use ONLY the first IP from the highest ranked item
+      if (firstItem.value.length > 0) {
         vercelDNSInstructions.push({
           type: 'A',
           domain: '@',
-          value: ip,
+          value: firstItem.value[0],
           reason: 'Point your apex domain to Vercel'
         })
-      })
+      }
     }
   } else if (config.aValues && config.aValues.length > 0) {
-    // Fallback to aValues (older API format) - use all values
-    config.aValues.forEach(aValue => {
-      vercelDNSInstructions.push({
-        type: 'A',
-        domain: '@',
-        value: aValue,
-        reason: 'Point your apex domain to Vercel'
-      })
+    // Fallback to aValues (older API format) - use only first value
+    vercelDNSInstructions.push({
+      type: 'A',
+      domain: '@',
+      value: config.aValues[0],
+      reason: 'Point your apex domain to Vercel'
     })
   }
   
-  // For CNAME - use recommendedCNAME first, then cnames as fallback
-  if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+  // For CNAME - only add if it's a subdomain (not apex)
+  // Apex domains should use A records, not CNAME
+  const isApexDomain = trimmedDomain.split('.').length === 2
+  if (!isApexDomain && config.recommendedCNAME && config.recommendedCNAME.length > 0) {
     // Get the first item (highest rank)
     const firstItem = config.recommendedCNAME[0]
     
@@ -210,7 +210,7 @@ export async function setBrandDomain(
         reason: 'Point your subdomain to Vercel'
       })
     }
-  } else if (config.cnames && config.cnames.length > 0) {
+  } else if (!isApexDomain && config.cnames && config.cnames.length > 0) {
     // Fallback to cnames - use first one only
     vercelDNSInstructions.push({
       type: 'CNAME',
