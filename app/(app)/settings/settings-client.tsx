@@ -1764,7 +1764,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <div>
                     <h2 className="text-lg font-semibold">Domain</h2>
                     <p className="text-sm text-muted-foreground">
-                      Configure your custom brand domain. All your sites will be accessible at yourdomain.com/site-slug
+                      Connect a dedicated address for your Ottie sites, such as properties.yourdomain.com or listings.yourdomain.com. Your main domain (for example yourdomain.com) is not supported here. If you'd like Ottie to power your primary website, please contact support.
                     </p>
                   </div>
                   <div className="space-y-4">
