@@ -188,23 +188,57 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       query = query.eq('domain', 'ottie.site')
     }
     
-    const { data: site, error } = await query.single()
+    // Use maybeSingle() instead of single() to avoid error when no rows found
+    const { data: site, error } = await query.maybeSingle()
     
     console.log('[getSiteConfig] Site result:', { 
       found: !!site, 
       error: error ? { code: error.code, message: error.message } : null,
       slug,
-      domain: workspaceId ? 'from workspace' : domain || 'ottie.site',
+      domain: workspaceId && domain ? domain : (workspaceId ? 'from workspace' : domain || 'ottie.site'),
       workspaceId,
+      queryFilters: {
+        slug,
+        domain: workspaceId && domain ? domain : 'ottie.site',
+        status: 'published',
+      }
     })
     
     if (error) {
       console.error('[getSiteConfig] Error fetching site:', error)
+      // Try without domain filter to see if site exists at all
+      const { data: siteWithoutDomain } = await supabase
+        .from('sites')
+        .select('id, slug, title, status, domain, workspace_id')
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .is('deleted_at', null)
+        .maybeSingle()
+      
+      if (siteWithoutDomain) {
+        console.log('[getSiteConfig] Site exists but with different domain:', siteWithoutDomain.domain)
+      }
       return null
     }
     
     if (!site) {
-      console.log('[getSiteConfig] No site found with slug:', slug)
+      console.log('[getSiteConfig] No site found with slug:', slug, 'and domain:', workspaceId && domain ? domain : 'ottie.site')
+      // Debug: Check if site exists with different domain
+      const { data: allSites } = await supabase
+        .from('sites')
+        .select('id, slug, title, status, domain, workspace_id')
+        .eq('slug', slug)
+        .eq('status', 'published')
+        .is('deleted_at', null)
+        .limit(5)
+      
+      if (allSites && allSites.length > 0) {
+        console.log('[getSiteConfig] Found sites with this slug but different domain:', allSites.map(s => ({
+          id: s.id,
+          domain: s.domain,
+          workspace_id: s.workspace_id,
+        })))
+      }
       return null
     }
   
