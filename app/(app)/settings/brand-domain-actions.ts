@@ -3,8 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { addVercelDomain, removeVercelDomain, getVercelDomain } from '@/lib/vercel/domain-api'
 import { updateWorkspace } from '@/lib/supabase/queries'
-import { loadPlansServer } from '@/lib/data/plans-server'
-import { hasFeature } from '@/lib/data/plans'
+import { loadPlansServer, hasFeature } from '@/lib/data/plans-server'
 import type { Workspace } from '@/types/database'
 import { revalidatePath } from 'next/cache'
 

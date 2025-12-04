@@ -25,3 +25,46 @@ export async function loadPlansServer(): Promise<Plan[]> {
   return plans || []
 }
 
+/**
+ * Get a plan by name
+ * 
+ * @param plans - Array of plans
+ * @param planName - Plan name to look up
+ * @returns Plan object or null if not found
+ */
+export function getPlanByName(plans: Plan[], planName: string | null | undefined): Plan | null {
+  if (!planName) {
+    // Default to 'free' if no plan specified
+    return plans.find(p => p.name === 'free') || null
+  }
+  return plans.find(p => p.name === planName) || null
+}
+
+/**
+ * Check if a feature is available for a plan
+ * 
+ * @param plans - Array of plans
+ * @param planName - Plan name to check
+ * @param feature - Feature name (e.g., 'feature_custom_brand_domain')
+ * @returns true if feature is enabled for this plan
+ */
+export function hasFeature(
+  plans: Plan[], 
+  planName: string | null | undefined, 
+  feature: keyof Pick<Plan, 
+    'feature_lead_generation' | 
+    'feature_custom_brand_domain' | 
+    'feature_custom_property_domain' | 
+    'feature_analytics' | 
+    'feature_api_access' | 
+    'feature_priority_support' | 
+    'feature_3d_tours' | 
+    'feature_pdf_flyers' | 
+    'feature_crm_sync' |
+    'feature_password_protection'
+  >
+): boolean {
+  const plan = getPlanByName(plans, planName)
+  return plan?.[feature] ?? false
+}
+
