@@ -62,9 +62,34 @@ export async function setBrandDomain(
     return { error: 'Invalid domain format. Please enter a valid domain (e.g., example.com)' }
   }
 
-  // 3. Check reserved domains
+  // 2.5. Determine apex domain and www version
+  // For apex domains (example.com), we'll also check www.example.com
+  // For www domains (www.example.com), we'll extract apex (example.com)
+  const domainParts = trimmedDomain.split('.')
+  const isApexDomain = domainParts.length === 2
+  const isWwwDomain = domainParts[0] === 'www' && domainParts.length === 3
+  
+  let apexDomain: string
+  let wwwDomain: string
+  
+  if (isApexDomain) {
+    apexDomain = trimmedDomain
+    wwwDomain = `www.${trimmedDomain}`
+  } else if (isWwwDomain) {
+    apexDomain = domainParts.slice(1).join('.')
+    wwwDomain = trimmedDomain
+  } else {
+    // Subdomain (not www) - use as-is, no www version
+    apexDomain = trimmedDomain
+    wwwDomain = trimmedDomain
+  }
+
+  // 3. Check reserved domains (check both apex and www versions)
   const reservedDomains = ['ottie.com', 'ottie.site', 'app.ottie.com', 'www.ottie.com', 'www.ottie.site']
   if (reservedDomains.some(reserved => trimmedDomain === reserved || trimmedDomain.endsWith(`.${reserved}`))) {
+    return { error: 'This domain is reserved and cannot be used' }
+  }
+  if (reservedDomains.some(reserved => wwwDomain === reserved || wwwDomain.endsWith(`.${reserved}`))) {
     return { error: 'This domain is reserved and cannot be used' }
   }
 
@@ -85,30 +110,42 @@ export async function setBrandDomain(
     return { error: 'Brand domain feature is not available for your plan. Please upgrade to Growth or higher.' }
   }
 
-  // 6. Check if domain is already used by another workspace
+  // 6. Check if domain (or www version) is already used by another workspace
+  // Check both apex and www versions to prevent conflicts
   const { data: existingWorkspaces } = await supabase
     .from('workspaces')
     .select('id')
     .neq('id', workspaceId)
     .not('branding_config->custom_brand_domain', 'is', null)
-    .eq('branding_config->>custom_brand_domain', trimmedDomain)
+    .or(`branding_config->>custom_brand_domain.eq.${apexDomain},branding_config->>custom_brand_domain.eq.${wwwDomain}`)
     .is('deleted_at', null)
 
   if (existingWorkspaces && existingWorkspaces.length > 0) {
-    return { error: 'This domain is already in use by another workspace' }
+    return { error: 'This domain (or its www version) is already in use by another workspace' }
   }
 
-  // 6.5. Check if domain already exists in Vercel project
+  // 6.5. Check if domain (or www version) already exists in Vercel project
   // This prevents exposing domains that belong to other projects/accounts
-  const existingDomainCheck = await getVercelDomain(trimmedDomain)
+  // Check both apex and www versions
+  const existingDomainCheck = await getVercelDomain(apexDomain)
+  const existingWwwDomainCheck = await getVercelDomain(wwwDomain)
+  
+  const currentConfig = (workspace.branding_config || {}) as BrandingConfig
+  const currentDomain = currentConfig.custom_brand_domain
+  
+  // Check apex domain
   if (!('error' in existingDomainCheck)) {
     // Domain already exists in Vercel - check if it belongs to this workspace
-    const currentConfig = (workspace.branding_config || {}) as BrandingConfig
-    const currentDomain = currentConfig.custom_brand_domain
-    
-    // If this workspace already has this domain, it's OK (updating existing)
-    if (currentDomain !== trimmedDomain) {
+    if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
       return { error: 'This domain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+    }
+  }
+  
+  // Check www domain
+  if (!('error' in existingWwwDomainCheck)) {
+    // www domain already exists in Vercel - check if it belongs to this workspace
+    if (currentDomain !== apexDomain && currentDomain !== wwwDomain) {
+      return { error: 'The www version of this domain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
     }
   }
 
@@ -139,13 +176,14 @@ export async function setBrandDomain(
   // Verification array only indicates domain was added, not DNS configuration
   // Note: There may be a delay after adding domain before DNS config is available
   // Retry up to 3 times with 2 second delay between attempts
+  // Use apex domain for DNS config (not www version)
   let configResult: Awaited<ReturnType<typeof getVercelDomainConfig>> | null = null
   let retryCount = 0
   const maxRetries = 3
   const retryDelay = 2000 // 2 seconds
 
   while (retryCount < maxRetries) {
-    configResult = await getVercelDomainConfig(trimmedDomain)
+    configResult = await getVercelDomainConfig(domainToAdd)
     
     if (!('error' in configResult)) {
       // Success - DNS config is available
@@ -241,7 +279,9 @@ export async function setBrandDomain(
   const currentConfig = (workspace.branding_config || {}) as BrandingConfig
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
-    custom_brand_domain: trimmedDomain,
+    // Always store apex domain (not www version)
+    // Vercel will automatically handle www redirects
+    custom_brand_domain: apexDomain,
     custom_brand_domain_verified: false, // Always false initially - user must verify after DNS setup
     custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: true,
