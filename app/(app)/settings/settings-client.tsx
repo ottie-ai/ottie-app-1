@@ -610,11 +610,11 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   return (
     <div className="flex flex-col h-full">
       {/* Header - fixed at top */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">Settings</h1>
+          <h1 className="text-base font-semibold">Settings</h1>
           <p className="text-xs text-muted-foreground">
             {showWorkspaceSettings 
               ? 'View and manage your workspace settings.' 

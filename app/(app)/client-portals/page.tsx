@@ -59,11 +59,11 @@ export default function ClientPortalsPage() {
         description="Manage client portals and team collaboration."
       />
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold">Client Portals</h1>
+          <h1 className="text-base font-semibold">Client Portals</h1>
           <Badge className="gradient-ottie hover:opacity-90 text-white border-0">Coming Soon</Badge>
         </div>
       </header>

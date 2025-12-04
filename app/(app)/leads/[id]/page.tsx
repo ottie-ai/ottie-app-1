@@ -83,11 +83,11 @@ export default function LeadDetailPage({
           title="Lead Not Found" 
           description="The requested lead could not be found."
         />
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex-1">
-            <h1 className="text-lg font-semibold">Lead Not Found</h1>
+            <h1 className="text-base font-semibold">Lead Not Found</h1>
           </div>
         </header>
         <main className="flex-1 p-6">
@@ -107,7 +107,7 @@ export default function LeadDetailPage({
         description="View and manage lead information."
       />
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Button
@@ -121,7 +121,7 @@ export default function LeadDetailPage({
         </Button>
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">{lead.name}</h1>
+          <h1 className="text-base font-semibold">{lead.name}</h1>
         </div>
       </header>
 

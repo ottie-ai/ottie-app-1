@@ -611,7 +611,7 @@ export default function SitesPage() {
         description="Manage your real estate sites, create new listings, and track performance."
       />
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumbs
@@ -621,7 +621,7 @@ export default function SitesPage() {
         />
         <div className="flex-1" />
         <Button size="sm" className="gap-2" onClick={() => setIsCreateModalOpen(true)}>
-          <LottieAddCardIcon className="size-[18px]" />
+          <LottieAddCardIcon className="size-4" />
           New Site
         </Button>
       </header>

@@ -143,15 +143,15 @@ export default function DashboardPage() {
         description="View your real estate sites, analytics, and manage your portfolio."
       />
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1 flex items-center gap-2">
-          <LottieViewIcon className="size-[18px]" />
-          <h1 className="text-lg font-semibold">Dashboard</h1>
+          <LottieViewIcon className="size-4" />
+          <h1 className="text-base font-semibold">Dashboard</h1>
         </div>
         <Button size="sm" className="gap-2">
-          <LottieAddCardIcon className="size-[18px]" />
+          <LottieAddCardIcon className="size-4" />
           New Site
         </Button>
       </header>

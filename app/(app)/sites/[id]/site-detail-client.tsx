@@ -85,7 +85,7 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header with Breadcrumbs */}
-      <header className="relative flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="relative flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumbs
@@ -160,11 +160,11 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             variant="outline"
             size="sm"
             onClick={() => {
-              // Use root domain for preview (ottie.com/preview/[id])
-              const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
-              const rootDomainWithoutPort = rootDomain.split(':')[0]
-              const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https' : 'http'
-              const previewUrl = `${protocol}://${rootDomainWithoutPort}/preview/${site.id}`
+              // Always use current origin to ensure cookies/session are shared
+              // For localhost, preserve the port number
+              const { protocol, hostname, port } = window.location
+              const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
+              const previewUrl = `${baseUrl}/preview/${site.id}`
               window.open(previewUrl, '_blank', 'noopener,noreferrer')
             }}
           >

@@ -467,6 +467,9 @@ export async function middleware(request: NextRequest) {
       const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
                          pathname.startsWith('/builder/')
       
+      // Preview routes are allowed on root localhost (they require auth)
+      const isPreviewRoute = pathname.startsWith('/preview/')
+      
       if (isAppRoute) {
         // Redirect app routes to app.localhost subdomain
         const port = hostname.split(':')[1] || '3000'
@@ -475,6 +478,9 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(appUrl)
       } else if (pathname === '/' || pathname.startsWith('/privacy') || pathname.startsWith('/terms')) {
         // Marketing routes - no rewrite needed
+        response = NextResponse.next()
+      } else if (isPreviewRoute) {
+        // Preview routes - allow on root localhost
         response = NextResponse.next()
       } else {
         // Other paths -> treat as site route (z-sites)

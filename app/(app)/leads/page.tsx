@@ -207,11 +207,11 @@ export default function LeadsPage() {
         description="View and manage all leads from your property sites."
       />
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 bg-background">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">Leads</h1>
+          <h1 className="text-base font-semibold">Leads</h1>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="size-4" />
