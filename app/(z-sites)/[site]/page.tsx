@@ -128,10 +128,16 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       .eq('status', 'published') // Only published sites are accessible
       .is('deleted_at', null)
     
-    // If workspaceId is provided (from brand domain), we need to get the brand domain from workspace
-    // and filter by that domain, not ottie.site
-    if (workspaceId) {
-      // Get workspace to find brand domain
+    // If workspaceId and brand domain are provided (from middleware headers), use brand domain directly
+    // This avoids RLS issues when fetching workspace
+    if (workspaceId && domain) {
+      // Use brand domain directly from headers (middleware already verified it)
+      query = query.eq('domain', domain)
+      query = query.eq('workspace_id', workspaceId)
+      console.log('[getSiteConfig] Using brand domain from headers:', { slug, domain, workspaceId })
+    } else if (workspaceId) {
+      // WorkspaceId provided but no domain - try to get brand domain from workspace
+      // This is fallback if headers weren't passed correctly
       const { data: workspace, error: workspaceError } = await supabase
         .from('workspaces')
         .select('branding_config')
