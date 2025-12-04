@@ -269,9 +269,8 @@ export async function setBrandDomain(
   // User must configure DNS first, then verify manually via "Check Status" button
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
-    // Always store apex domain (not www version)
-    // Vercel will automatically handle www redirects
-    custom_brand_domain: apexDomain,
+    // Store the subdomain as entered by user (e.g., properties.example.com)
+    custom_brand_domain: trimmedDomain,
     custom_brand_domain_verified: false, // Always false initially - user must verify after DNS setup
     custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: true,
