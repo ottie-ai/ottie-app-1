@@ -93,6 +93,10 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   console.log('[ACCESS CONTROL] ALLOWED_IPS:', process.env.ALLOWED_IPS || '(empty)')
   console.log('[ACCESS CONTROL] Hostname:', hostnameWithoutPort)
   
+  // Use x-forwarded-host for Vercel (more reliable than host header)
+  const forwardedHost = request.headers.get('x-forwarded-host') || hostname
+  const hostnameWithoutPort = forwardedHost.split(':')[0]
+  
   // If public mode, allow all access
   if (accessMode === 'public') {
     console.log('[ACCESS CONTROL] Allowing access - public mode')
@@ -126,7 +130,6 @@ function checkAccessControl(request: NextRequest): NextResponse | null {
   }
   
   // Restricted mode - check domain and IP
-  const hostnameWithoutPort = hostname.split(':')[0]
   
   // Extract client IP from headers (Next.js 15+ removed request.ip)
   // Priority: x-forwarded-for (first IP in chain) > x-real-ip > cf-connecting-ip > unknown
