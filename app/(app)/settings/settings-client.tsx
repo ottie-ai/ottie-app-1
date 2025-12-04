@@ -1772,8 +1772,8 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     <div className="space-y-2">
                       <div>
                         <Label htmlFor="custom-domain">Brand Domain</Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Connect a dedicated address for your Ottie sites, such as properties.yourdomain.com or listings.yourdomain.com. Your main domain (for example yourdomain.com) is not supported here. If you'd like Ottie to power your primary website, please contact support.
+                        <p className="text-xs text-muted-foreground mt-1 max-w-[70%]">
+                          Connect a dedicated address for your Ottie sites, such as properties.yourdomain.com or listings.yourdomain.com. Main domains (yourdomain.com) are not supported. Contact support for primary website needs.
                         </p>
                       </div>
                       <div className="flex gap-2">
