@@ -50,12 +50,13 @@ interface VercelError {
 function getVercelCredentials() {
   const token = process.env.VERCEL_API_TOKEN
   const projectId = process.env.VERCEL_PROJECT_ID || process.env.VERCEL_PROJECT_ID_OVERRIDE
+  const teamId = process.env.VERCEL_TEAM_ID
 
   if (!token) {
     throw new Error('VERCEL_API_TOKEN is not set. Add it to Vercel environment variables.')
   }
 
-  return { token, projectId }
+  return { token, projectId, teamId }
 }
 
 /**
@@ -256,11 +257,15 @@ export async function getVercelDomainConfig(
   projectId?: string
 ): Promise<{ success: true; config: VercelDomainConfig } | { error: string }> {
   try {
-    const { token } = getVercelCredentials()
+    const { token, teamId } = getVercelCredentials()
 
     // v6/domains/{domain}/config is a domain-level endpoint, doesn't require project ID
     // But may require teamId if domain is part of a team
-    const url = `https://api.vercel.com/v6/domains/${domain}/config`
+    let url = `https://api.vercel.com/v6/domains/${domain}/config`
+    if (teamId) {
+      url += `?teamId=${teamId}`
+    }
+    
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${token}`,
