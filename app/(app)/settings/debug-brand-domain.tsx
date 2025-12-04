@@ -30,6 +30,18 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
       
       const brandingConfig = workspace?.branding_config as any
       
+      // Also check if domain exists in ANY workspace (for debugging)
+      const { data: allWorkspaces, error: allWorkspacesError } = await supabase
+        .from('workspaces')
+        .select('id, branding_config')
+        .is('deleted_at', null)
+        .limit(100)
+      
+      const workspacesWithDomain = allWorkspaces?.filter(w => {
+        const config = w.branding_config as any
+        return config?.custom_brand_domain === 'properties.ottie.ai'
+      }) || []
+      
       // Get all sites in workspace
       const { data: sites, error: sitesError } = await supabase
         .from('sites')
@@ -46,6 +58,12 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
       const info = {
         brandDomain: brandingConfig?.custom_brand_domain || 'Not set',
         brandDomainVerified: brandingConfig?.custom_brand_domain_verified || false,
+        brandingConfigRaw: brandingConfig,
+        workspacesWithDomain: workspacesWithDomain.map(w => ({
+          id: w.id,
+          domain: (w.branding_config as any)?.custom_brand_domain,
+          verified: (w.branding_config as any)?.custom_brand_domain_verified,
+        })),
         sites: sites?.map(s => ({
           id: s.id,
           slug: s.slug,
@@ -88,6 +106,22 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
               <div><strong>Total Sites:</strong> {debugInfo.totalSites}</div>
               <div><strong>Published Sites:</strong> {debugInfo.publishedSites}</div>
               <div><strong>Sites with Correct Domain:</strong> {debugInfo.sitesWithCorrectDomain}</div>
+              {debugInfo.workspacesWithDomain && debugInfo.workspacesWithDomain.length > 0 && (
+                <div className="mt-2 pt-2 border-t">
+                  <div><strong>Workspaces with properties.ottie.ai:</strong></div>
+                  {debugInfo.workspacesWithDomain.map((w: any) => (
+                    <div key={w.id} className="text-sm">
+                      Workspace {w.id}: domain={w.domain}, verified={w.verified ? 'Yes' : 'No'}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm">Raw Branding Config</summary>
+                <pre className="text-xs mt-2 p-2 bg-background rounded overflow-auto">
+                  {JSON.stringify(debugInfo.brandingConfigRaw, null, 2)}
+                </pre>
+              </details>
             </div>
             
             <div className="space-y-2">
