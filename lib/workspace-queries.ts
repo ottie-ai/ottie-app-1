@@ -90,7 +90,10 @@ export async function fetchUserWorkspaces(
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching user workspaces:', error)
+    // Only log if error has meaningful content
+    if (error.message || error.code || error.details) {
+      console.error('Error fetching user workspaces:', error)
+    }
     return []
   }
 
