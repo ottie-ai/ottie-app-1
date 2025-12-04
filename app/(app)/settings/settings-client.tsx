@@ -1799,11 +1799,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                   toast.error(result.error)
                                 } else {
                                   setVercelDNSInstructions(result.vercelDNSInstructions || null)
-                                  if (result.vercelVerified) {
-                                    toast.success('Domain verified and ready to use!')
-                                  } else {
-                                    toast.success('Domain added! Please configure DNS settings below.')
-                                  }
+                                  toast.success('Domain added! Please configure DNS settings below and click "Check Status" to verify.')
                                   await refreshWorkspace()
                                 }
                               } catch (error) {
@@ -1848,7 +1844,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </div>
                       
                       {/* DNS Configuration Instructions */}
-                      {vercelDNSInstructions && vercelDNSInstructions.length > 0 && !brandingConfig.custom_brand_domain_verified && (
+                      {vercelDNSInstructions && vercelDNSInstructions.length > 0 && (
                         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4 space-y-3">
                           <div className="flex items-start gap-3">
                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />

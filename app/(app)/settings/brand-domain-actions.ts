@@ -109,12 +109,14 @@ export async function setBrandDomain(
   const vercelDNSInstructions = vercelDomain.verification || []
 
   // 9. Update branding_config
+  // IMPORTANT: Always set verified to false initially, even if Vercel says verified
+  // User must configure DNS first, then verify manually via "Check Status" button
   const currentConfig = (workspace.branding_config || {}) as BrandingConfig
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
     custom_brand_domain: trimmedDomain,
-    custom_brand_domain_verified: vercelDomain.verified || false,
-    custom_brand_domain_verified_at: vercelDomain.verified ? new Date().toISOString() : null,
+    custom_brand_domain_verified: false, // Always false initially - user must verify after DNS setup
+    custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: true,
     custom_brand_domain_vercel_dns_instructions: vercelDNSInstructions,
   }
@@ -133,7 +135,7 @@ export async function setBrandDomain(
   return { 
     success: true, 
     vercelDNSInstructions: vercelDNSInstructions,
-    vercelVerified: vercelDomain.verified || false
+    vercelVerified: false // Always return false - verification happens via verifyBrandDomain
   }
 }
 
