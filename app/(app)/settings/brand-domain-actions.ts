@@ -117,7 +117,9 @@ export async function setBrandDomain(
 
   if ('error' in configResult) {
     console.error('[Brand Domain] Failed to get DNS config from Vercel:', configResult.error)
-    // Return error - we need DNS config to proceed
+    // Rollback: remove domain from Vercel since we can't get DNS config
+    console.log('[Brand Domain] Rolling back: removing domain from Vercel')
+    await removeVercelDomain(trimmedDomain)
     return { error: `Failed to get DNS configuration: ${configResult.error}` }
   }
 
