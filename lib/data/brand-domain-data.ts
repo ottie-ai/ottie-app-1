@@ -57,7 +57,7 @@ export async function getWorkspaceByBrandDomain(
   
   if (allWorkspaces && allWorkspaces.length > 0) {
     console.log('[Brand Domain] Found workspace(s) with this domain (may not be verified):', 
-      allWorkspaces.map(w => ({
+      allWorkspaces.map((w: any) => ({
         id: w.id,
         domain: (w.branding_config as any)?.custom_brand_domain,
         verified: (w.branding_config as any)?.custom_brand_domain_verified,
