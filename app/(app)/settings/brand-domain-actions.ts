@@ -107,7 +107,33 @@ export async function setBrandDomain(
   // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
   // IMPORTANT: Only use config endpoint, NOT verification array from domain response
   // Verification array only indicates domain was added, not DNS configuration
-  const configResult = await getVercelDomainConfig(trimmedDomain)
+  // Note: There may be a delay after adding domain before DNS config is available
+  // Retry up to 3 times with 2 second delay between attempts
+  let configResult: Awaited<ReturnType<typeof getVercelDomainConfig>> | null = null
+  let retryCount = 0
+  const maxRetries = 3
+  const retryDelay = 2000 // 2 seconds
+
+  while (retryCount < maxRetries) {
+    configResult = await getVercelDomainConfig(trimmedDomain)
+    
+    if (!('error' in configResult)) {
+      // Success - DNS config is available
+      break
+    }
+    
+    // If 404 or 403, don't retry (these are permanent errors)
+    if (configResult.error.includes('not found') || configResult.error.includes('forbidden')) {
+      break
+    }
+    
+    retryCount++
+    if (retryCount < maxRetries) {
+      console.log(`[Brand Domain] DNS config not available yet, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`)
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
+    }
+  }
+
   let vercelDNSInstructions: Array<{
     type: string
     domain: string
@@ -115,12 +141,12 @@ export async function setBrandDomain(
     reason: string
   }> = []
 
-  if ('error' in configResult) {
-    console.error('[Brand Domain] Failed to get DNS config from Vercel:', configResult.error)
+  if (!configResult || 'error' in configResult) {
+    console.error('[Brand Domain] Failed to get DNS config from Vercel after retries:', configResult?.error)
     // Rollback: remove domain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing domain from Vercel')
     await removeVercelDomain(trimmedDomain)
-    return { error: `Failed to get DNS configuration: ${configResult.error}` }
+    return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The domain may need a few moments to be processed by Vercel. Please try again in a minute.` }
   }
 
   const { config } = configResult
