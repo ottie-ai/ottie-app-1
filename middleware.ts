@@ -315,14 +315,16 @@ export async function middleware(request: NextRequest) {
   const appDomain = `app.${rootDomainWithoutPort}` // Remove port for domain comparison
   const sitesDomain = 'ottie.site' // Domain for published sites
   
-  // Extract subdomain (remove port for localhost)
-  const hostnameWithoutPort = hostname.split(':')[0]
+  // Use x-forwarded-host for Vercel (more reliable than host header)
+  const forwardedHost = request.headers.get('x-forwarded-host') || hostname
+  const hostnameWithoutPort = forwardedHost.split(':')[0]
   const isLocalhost = hostnameWithoutPort.includes('localhost')
   
   // Check if this is ottie.site domain (for published sites)
   const isOttieSiteDomain = hostnameWithoutPort === sitesDomain || hostnameWithoutPort.endsWith(`.${sitesDomain}`)
   
   console.log('[Middleware] Hostname:', hostnameWithoutPort)
+  console.log('[Middleware] Forwarded host:', forwardedHost)
   console.log('[Middleware] Is ottie.site domain:', isOttieSiteDomain)
   console.log('[Middleware] Sites domain:', sitesDomain)
   
@@ -480,13 +482,31 @@ export async function middleware(request: NextRequest) {
         console.log('[Middleware] Site slug:', siteSlug)
         console.log('[Middleware] Rewriting to:', rewritePath)
         
-        // Add workspace_id to headers for site lookup
+        // Create new request headers with brand domain info
+        const requestHeaders = new Headers(request.headers)
+        requestHeaders.set('x-workspace-id', brandDomainResult.workspace.id)
+        requestHeaders.set('x-brand-domain', hostnameWithoutPort)
+        
+        // Rewrite URL and pass headers
         url.pathname = rewritePath
-        response = NextResponse.rewrite(url)
-        response.headers.set('x-workspace-id', brandDomainResult.workspace.id)
-        response.headers.set('x-brand-domain', hostnameWithoutPort)
+        response = NextResponse.rewrite(url, {
+          request: {
+            headers: requestHeaders,
+          },
+        })
       } else {
-        // Other subdomains (not ottie.site, not app/marketing, not brand domain) - redirect to ottie.com
+        // Other subdomains (not ottie.site, not app/marketing, not brand domain)
+        // If brand domain exists but not verified, redirect to root domain
+        if (brandDomainResult && !brandDomainResult.verified) {
+          const domainParts = hostnameWithoutPort.split('.')
+          const brandRootDomain = domainParts.slice(-2).join('.')
+          const redirectUrl = new URL(pathname, `https://${brandRootDomain}`)
+          redirectUrl.search = request.nextUrl.search
+          console.log('[Middleware] Brand domain not verified, redirecting to root domain:', brandRootDomain)
+          return NextResponse.redirect(redirectUrl, 301)
+        }
+        
+        // Unknown domain - redirect to ottie.com
         const redirectUrl = new URL(pathname, `https://${rootDomainWithoutPort}`)
         redirectUrl.search = request.nextUrl.search
         return NextResponse.redirect(redirectUrl, 301)

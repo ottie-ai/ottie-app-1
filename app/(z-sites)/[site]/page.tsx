@@ -251,7 +251,7 @@ export default async function SitePage({
     notFound()
   }
   
-  // Check if this is a brand domain request (from middleware headers)
+  // Check if this is a brand domain request (from middleware headers or direct lookup)
   // In Next.js 15+, headers() is async
   let brandDomain: string | undefined
   let workspaceId: string | undefined
@@ -261,6 +261,31 @@ export default async function SitePage({
     const headersList = await headers()
     brandDomain = headersList.get('x-brand-domain') || undefined
     workspaceId = headersList.get('x-workspace-id') || undefined
+    
+    // If headers not available, try to get hostname from request
+    if (!brandDomain) {
+      const hostname = headersList.get('host') || headersList.get('x-forwarded-host')
+      if (hostname) {
+        const hostnameWithoutPort = hostname.split(':')[0]
+        // Check if this is a brand domain (not ottie.site, not app/marketing domain)
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
+        const rootDomainWithoutPort = rootDomain.split(':')[0]
+        const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
+        const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || hostnameWithoutPort === rootDomainWithoutPort || hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+        
+        if (!isOttieSite && !isAppDomain && !hostnameWithoutPort.includes('localhost')) {
+          // This might be a brand domain - try to look it up
+          console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
+          const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
+          const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
+          if (brandDomainResult && brandDomainResult.verified) {
+            brandDomain = hostnameWithoutPort
+            workspaceId = brandDomainResult.workspace.id
+            console.log('[SitePage] Found brand domain via direct lookup:', { brandDomain, workspaceId })
+          }
+        }
+      }
+    }
   } catch (error) {
     // Headers might not be available in all contexts
     console.log('[SitePage] Could not access headers:', error)
