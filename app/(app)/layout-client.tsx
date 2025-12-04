@@ -17,6 +17,8 @@ import { useEffect, useState } from 'react'
 import Intercom from '@intercom/messenger-js-sdk'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import Head from 'next/head'
+import { WorkspaceLockBanner } from '@/components/workspace/workspace-lock-banner'
+import { ForcedPricingDialog } from '@/components/workspace/forced-pricing-dialog'
 
 /**
  * App Root Layout (Client Component - SPA style)
@@ -119,6 +121,34 @@ function AppContent({
     )
   }
 
+  // Check if workspace is locked (matches server-side logic in workspace-data.ts)
+  const isWorkspaceLocked = currentWorkspace && (() => {
+    if (!currentWorkspace) return false
+    
+    // Check if over seats limit
+    if (currentWorkspace.seats_used > currentWorkspace.seats_limit) {
+      return true
+    }
+    
+    // Check subscription status
+    if (currentWorkspace.subscription_status === 'unpaid' || currentWorkspace.subscription_status === 'canceled') {
+      // Check if grace period expired
+      if (currentWorkspace.grace_period_ends_at) {
+        const graceEnds = new Date(currentWorkspace.grace_period_ends_at)
+        return graceEnds < new Date()
+      }
+      return true
+    }
+    
+    // If in grace period, check if it's expired
+    if (currentWorkspace.subscription_status === 'grace_period' && currentWorkspace.grace_period_ends_at) {
+      const graceEnds = new Date(currentWorkspace.grace_period_ends_at)
+      return graceEnds < new Date()
+    }
+    
+    return false
+  })()
+  
   return (
     <>
       <UserJotWithProfile />
@@ -127,6 +157,12 @@ function AppContent({
         <SidebarProvider>
           <DashboardSidebar />
           <SidebarInset className="h-screen overflow-hidden">
+            {isWorkspaceLocked && currentWorkspace && (
+              <>
+                <WorkspaceLockBanner workspaceId={currentWorkspace.id} />
+                <ForcedPricingDialog workspaceId={currentWorkspace.id} />
+              </>
+            )}
             {children}
           </SidebarInset>
         </SidebarProvider>

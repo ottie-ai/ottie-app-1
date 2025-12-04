@@ -64,6 +64,7 @@ export function useWorkspaceMembers(
             workspace_id: m.workspace_id,
             user_id: m.user_id,
             role: m.role,
+            status: (m.status || 'active') as Membership['status'],
             last_active_at: m.last_active_at,
             created_at: m.created_at,
           } as Membership,

@@ -62,6 +62,7 @@ export async function getCurrentUserWorkspace(
       workspace_id: data.workspace_id,
       user_id: data.user_id,
       role: data.role,
+      status: (data.status || 'active') as Membership['status'],
       last_active_at: data.last_active_at,
       created_at: data.created_at,
     } as Membership,
@@ -101,5 +102,91 @@ export async function getAllUserWorkspaces(
       workspace: m.workspace as unknown as Workspace,
       role: m.role,
     }))
+}
+
+/**
+ * Check if workspace is locked due to subscription issues
+ * 
+ * @param workspaceId - Workspace ID
+ * @returns true if workspace is locked, false otherwise
+ */
+export async function isWorkspaceLocked(workspaceId: string): Promise<boolean> {
+  const supabase = await createClient()
+  
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('subscription_status, seats_limit, seats_used, grace_period_ends_at')
+    .eq('id', workspaceId)
+    .single()
+  
+  if (!workspace) return false
+  
+  // Check if over seats limit
+  if (workspace.seats_used > workspace.seats_limit) {
+    return true
+  }
+  
+  // Check subscription status
+  if (workspace.subscription_status === 'unpaid' || workspace.subscription_status === 'canceled') {
+    // Check if grace period expired
+    if (workspace.grace_period_ends_at) {
+      const graceEnds = new Date(workspace.grace_period_ends_at)
+      return graceEnds < new Date()
+    }
+    return true
+  }
+  
+  // If in grace period, check if it's expired
+  if (workspace.subscription_status === 'grace_period' && workspace.grace_period_ends_at) {
+    const graceEnds = new Date(workspace.grace_period_ends_at)
+    return graceEnds < new Date()
+  }
+  
+  return false
+}
+
+/**
+ * Check if user has access to workspace (considering subscription status)
+ * 
+ * @param userId - User ID
+ * @param workspaceId - Workspace ID
+ * @returns Object with hasAccess, isOwner, and optional reason
+ */
+export async function canUserAccessWorkspace(
+  userId: string,
+  workspaceId: string
+): Promise<{ hasAccess: boolean; isOwner: boolean; reason?: string }> {
+  const supabase = await createClient()
+  
+  // Get user's membership
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role, status')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+  
+  if (!membership) {
+    return { hasAccess: false, isOwner: false, reason: 'Not a member' }
+  }
+  
+  const isOwner = membership.role === 'owner'
+  
+  // Owner always has access
+  if (isOwner) {
+    return { hasAccess: true, isOwner: true }
+  }
+  
+  // Non-owners need active status and workspace must not be locked
+  if (membership.status !== 'active') {
+    return { hasAccess: false, isOwner: false, reason: 'Membership inactive' }
+  }
+  
+  const isLocked = await isWorkspaceLocked(workspaceId)
+  if (isLocked) {
+    return { hasAccess: false, isOwner: false, reason: 'Workspace locked' }
+  }
+  
+  return { hasAccess: true, isOwner: false }
 }
 

@@ -363,8 +363,8 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
         
         // Refresh app data and close dialog
         router.refresh()
-        setDowngradeDialogOpen(false)
-        setSelectedDowngradeTier(null)
+    setDowngradeDialogOpen(false)
+    setSelectedDowngradeTier(null)
         
         // Close pricing dialog if open
         if (onOpenChange) {

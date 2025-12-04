@@ -507,24 +507,24 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
 
         {/* Password Protection */}
         {hasPasswordFeature && (
-          <div className="space-y-2">
-            <Label>Password Protection</Label>
-            <div className="flex items-center gap-2">
-              {site.password_protected && (
-                <Lock className="size-4 text-muted-foreground" />
-              )}
-              <Button
-                variant="outline"
-                className="flex-1 justify-start"
-                onClick={() => {
-                  setPasswordValue('')
-                  setIsPasswordDialogOpen(true)
-                }}
-              >
-                {site.password_protected ? 'Change Password' : 'Set Password'}
-              </Button>
-            </div>
+        <div className="space-y-2">
+          <Label>Password Protection</Label>
+          <div className="flex items-center gap-2">
+            {site.password_protected && (
+              <Lock className="size-4 text-muted-foreground" />
+            )}
+            <Button
+              variant="outline"
+              className="flex-1 justify-start"
+              onClick={() => {
+                setPasswordValue('')
+                setIsPasswordDialogOpen(true)
+              }}
+            >
+              {site.password_protected ? 'Change Password' : 'Set Password'}
+            </Button>
           </div>
+        </div>
         )}
 
         <Separator />
