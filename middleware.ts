@@ -75,6 +75,12 @@ function isValidHostname(hostname: string): boolean {
     return true
   }
 
+  // Allow .localhost hostnames for local development (e.g., app.localhost)
+  // This must be checked BEFORE the rejection of .localhost TLDs below
+  if (hostnameWithoutPort.endsWith('.localhost')) {
+    return true
+  }
+
   // Reject IPv4 addresses (except localhost)
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostnameWithoutPort)) {
     return false
@@ -90,17 +96,15 @@ function isValidHostname(hostname: string): boolean {
     return false
   }
 
-  // Reject .local, .localhost, .test, .example, .invalid TLDs
-  if (/\.(local|localhost|test|example|invalid)$/i.test(hostnameWithoutPort)) {
+  // Reject .local, .test, .example, .invalid TLDs
+  // Note: .localhost is already allowed above, so we exclude it from this check
+  if (/\.(local|test|example|invalid)$/i.test(hostnameWithoutPort)) {
     return false
   }
 
   // Must match valid domain format (basic check)
   if (!/^([a-z0-9]+(-[a-z0-9]+)*\.)*[a-z0-9]+(-[a-z0-9]+)*\.[a-z]{2,}$/i.test(hostnameWithoutPort)) {
-    // Allow .localhost for local development (e.g., app.localhost)
-    if (!hostnameWithoutPort.endsWith('.localhost')) {
-      return false
-    }
+    return false
   }
 
   // Max length check (DNS spec)
