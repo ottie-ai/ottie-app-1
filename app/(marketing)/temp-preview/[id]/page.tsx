@@ -128,17 +128,6 @@ function PreviewContent() {
     }
   }
 
-  const handleCopyJson = () => {
-    if (scrapedData) {
-      navigator.clipboard.writeText(JSON.stringify(scrapedData, null, 2))
-      setCopiedSection('json')
-      setCopied(true)
-      setTimeout(() => {
-        setCopied(false)
-        setCopiedSection(null)
-      }, 2000)
-    }
-  }
 
   if (loading) {
     return (
@@ -177,7 +166,7 @@ function PreviewContent() {
     )
   }
 
-  const scrapedData = preview.scraped_data
+  // scrapedData removed - not parsing yet, only showing raw and cleaned HTML
 
   return (
     <div className="dark bg-[#08000d] min-h-screen">
@@ -312,89 +301,26 @@ function PreviewContent() {
             </div>
           )}
 
-          {/* Cheerio Parsed Data Result */}
-          {scrapedData && (
-            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-white/60" />
-                  <Typography variant="small" className="text-white/80 font-medium">
-                    Cheerio Parsed Data Result
-                  </Typography>
-                </div>
-                <Button
-                  onClick={handleCopyJson}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copied && copiedSection === 'json' ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy JSON
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="p-4 max-h-[600px] overflow-auto">
-                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {JSON.stringify(scrapedData, null, 2)}
-                </pre>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Info Footer */}
       <div className="border-t border-white/10 bg-white/[0.02] py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <Typography variant="h4" className="text-white mb-2 border-none">
-                Source
-              </Typography>
-              <a 
-                href={preview.source_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-white/60 hover:text-white inline-flex items-center gap-2"
-              >
-                {preview.source_url}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            
-            {scrapedData && (
-              <div>
-                <Typography variant="h4" className="text-white mb-2 border-none">
-                  Extracted Data
-                </Typography>
-                <div className="space-y-1 text-sm text-white/60">
-                  {scrapedData.title && (
-                    <div><strong className="text-white/80">Title:</strong> {scrapedData.title}</div>
-                  )}
-                  {scrapedData.price && (
-                    <div><strong className="text-white/80">Price:</strong> ${scrapedData.price.toLocaleString()}</div>
-                  )}
-                  {(scrapedData.bedrooms || scrapedData.bathrooms) && (
-                    <div>
-                      <strong className="text-white/80">Details:</strong>{' '}
-                      {scrapedData.bedrooms && `${scrapedData.bedrooms} bed`}
-                      {scrapedData.bedrooms && scrapedData.bathrooms && ', '}
-                      {scrapedData.bathrooms && `${scrapedData.bathrooms} bath`}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          <div>
+            <Typography variant="h4" className="text-white mb-2 border-none">
+              Source
+            </Typography>
+            <a 
+              href={preview.source_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-white/60 hover:text-white inline-flex items-center gap-2"
+            >
+              {preview.source_url}
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
-
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { parsePropertyData, cleanHtml } from '@/lib/scraper/html-parser'
+import { cleanHtml } from '@/lib/scraper/html-parser'
 
 /**
  * Scrape a URL using ScraperAPI and create anonymous preview
@@ -61,21 +61,17 @@ export async function generatePreview(url: string) {
     console.log('🔵 [generatePreview] Cleaning HTML...')
     const cleanedHtml = cleanHtml(html)
     
-    // Parse property data from HTML
-    console.log('🔵 [generatePreview] Parsing property data...')
-    const parsedData = parsePropertyData(html, url)
-    
-    // Save to temp_previews (including raw HTML and cleaned HTML for debugging)
-    // For now, just store raw data - no generated config yet
+    // Save to temp_previews (only raw HTML and cleaned HTML for now)
+    // No parsing or config generation yet - just scraping
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
       .insert({
         source_url: url,
-        raw_html: html, // Store raw HTML for inspection
+        raw_html: html, // Store raw HTML from ScraperAPI
         cleaned_html: cleanedHtml, // Store cleaned HTML from cheerio
-        scraped_data: parsedData,
-        generated_config: {}, // Empty for now - will be generated later
+        scraped_data: {}, // Empty for now - no parsing yet
+        generated_config: {}, // Empty for now - no config generation yet
       })
       .select('id')
       .single()
