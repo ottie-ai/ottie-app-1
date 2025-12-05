@@ -2,6 +2,8 @@
 
 A modern fullstack Next.js 14 application built with TypeScript, TailwindCSS, and Shadcn/UI.
 
+<!-- Last updated: 2025-12-05 -->
+
 ## Tech Stack
 
 - **Next.js 14** - React framework with App Router
