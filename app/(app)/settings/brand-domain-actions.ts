@@ -854,7 +854,7 @@ export async function removeBrandDomainInternal(
     custom_brand_domain_verified: false,
     custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: false,
-    custom_brand_domain_vercel_dns_instructions: null, // Use null instead of undefined for proper JSONB update
+    custom_brand_domain_vercel_dns_instructions: undefined, // Use undefined to match type definition
   }
 
   // Use updateWorkspace function which handles the update properly
@@ -898,7 +898,7 @@ export async function removeBrandDomainInternal(
             custom_brand_domain_verified: false,
             custom_brand_domain_verified_at: null,
             custom_brand_domain_vercel_added: false,
-            custom_brand_domain_vercel_dns_instructions: null,
+            custom_brand_domain_vercel_dns_instructions: undefined,
           }
         })
         .eq('id', workspaceId)
