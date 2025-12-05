@@ -340,6 +340,18 @@ export async function setBrandDomain(
       await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'API error')
       return { error: errorMsg }
     }
+  } else {
+    // www domain was just created - wait a moment and verify it exists before adding redirect
+    console.log('[Brand Domain] www domain created, waiting for propagation before adding non-www redirect...')
+    await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds
+    
+    // Verify www domain is accessible
+    const wwwVerifyCheck = await getVercelDomain(wwwDomain)
+    if ('error' in wwwVerifyCheck) {
+      console.warn('[Brand Domain] Warning: www domain not immediately accessible after creation, continuing anyway...')
+    } else {
+      console.log('[Brand Domain] www domain verified, proceeding with non-www redirect')
+    }
   }
   
   // Add non-www version WITH redirect to www (redirect is set during creation)
