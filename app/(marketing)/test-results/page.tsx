@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Copy, Check } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { cn } from '@/lib/utils'
 
-export default function TestResultsPage() {
+function TestResultsContent() {
   const searchParams = useSearchParams()
   const url = searchParams.get('url')
   const scrapedAt = searchParams.get('scrapedAt')
@@ -224,5 +224,28 @@ export default function TestResultsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function TestResultsPage() {
+  return (
+    <Suspense fallback={
+      <div className="dark bg-[#08000d] min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 py-20">
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
+          <Typography variant="h1" className="mb-4 text-white">
+            Loading Results...
+          </Typography>
+        </div>
+      </div>
+    }>
+      <TestResultsContent />
+    </Suspense>
   )
 }
