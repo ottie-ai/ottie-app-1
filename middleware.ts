@@ -808,7 +808,6 @@ async function handleSupabaseSession(
   return response
 }
 
-// Export config must be at the end of the file
 export const config = {
   matcher: [
     /*
