@@ -28,7 +28,9 @@ export async function generatePreview(url: string) {
     }
 
     // Call ScraperAPI with the URL
-    const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}`
+    // Using max_cost=1 to ensure we only use 1 credit per request
+    // This will return 403 if the request would cost more than 1 credit
+    const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}&max_cost=1`
     
     console.log('🔵 [generatePreview] Scraping URL:', url)
     
