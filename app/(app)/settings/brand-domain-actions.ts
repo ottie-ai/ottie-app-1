@@ -126,16 +126,15 @@ export async function setBrandDomain(
     return { error: 'This subdomain is already in use by another workspace' }
   }
 
-  // 6.5. Check if subdomain already exists in Vercel project (check both normal and wildcard versions)
+  // 6.5. Check if subdomain already exists in Vercel project (check both www and non-www versions)
   // This prevents exposing domains that belong to other projects/accounts
-  // Create wildcard version for Vercel: *.properties.ottie.ai
-  const wildcardDomain = `*.${normalizedDomain}`
+  const wwwDomain = `www.${normalizedDomain}`
   const existingDomainCheck = await getVercelDomain(normalizedDomain)
-  const existingWildcardCheck = await getVercelDomain(wildcardDomain)
+  const existingWwwCheck = await getVercelDomain(wwwDomain)
   
   const currentDomain = currentConfig.custom_brand_domain
   
-  // Check if subdomain exists in Vercel (either normal or wildcard)
+  // Check if non-www domain exists in Vercel
   if (!('error' in existingDomainCheck)) {
     // Domain already exists in Vercel - check if it belongs to this workspace
     if (currentDomain !== normalizedDomain) {
@@ -143,36 +142,65 @@ export async function setBrandDomain(
     }
   }
   
-  // Check if wildcard version exists
-  if (!('error' in existingWildcardCheck)) {
-    // Wildcard domain already exists - check if it belongs to this workspace
+  // Check if www version exists
+  if (!('error' in existingWwwCheck)) {
+    // www domain already exists - check if it belongs to this workspace
     if (currentDomain !== normalizedDomain) {
-      return { error: 'This subdomain (wildcard) is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+      return { error: 'This subdomain (www) is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
     }
   }
 
-  // 7. Add wildcard domain to Vercel (automatic) - use wildcard version to support www and non-www
-  // Wildcard domain (*.properties.ottie.ai) covers both properties.ottie.ai and www.properties.ottie.ai
-  // We store the normalized subdomain (e.g., properties.example.com) in database, not the wildcard
-  console.log('[Brand Domain] Adding wildcard domain to Vercel:', wildcardDomain)
-  const vercelResult = await addVercelDomain(wildcardDomain)
+  // 7. Add both www and non-www domains to Vercel (automatic)
+  // We add both versions to support both www.properties.ottie.ai and properties.ottie.ai
+  // We store the normalized subdomain (e.g., properties.example.com) in database
+  console.log('[Brand Domain] Adding non-www domain to Vercel:', normalizedDomain)
+  const vercelResult = await addVercelDomain(normalizedDomain)
   if ('error' in vercelResult) {
     // If domain already exists error, check if it's ours
     if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
-      // Try to get the wildcard domain to verify it exists
-      const domainCheck = await getVercelDomain(wildcardDomain)
+      // Try to get the domain to verify it exists
+      const domainCheck = await getVercelDomain(normalizedDomain)
       if (!('error' in domainCheck)) {
-        // Wildcard domain exists - check if it's ours
+        // Domain exists - check if it's ours
         if (currentDomain !== normalizedDomain) {
-          return { error: 'This subdomain (wildcard) is already configured in Vercel. It may belong to another project or account.' }
+          return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account.' }
         }
-        // It's our domain, continue with existing wildcard domain
-        console.log('[Brand Domain] Wildcard domain already exists in Vercel, continuing with existing domain')
+        // It's our domain, continue with existing domain
+        console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
       } else {
-        return { error: 'Wildcard subdomain already exists but cannot be accessed. Please contact support.' }
+        return { error: 'Subdomain already exists but cannot be accessed. Please contact support.' }
       }
     } else {
-      return { error: `Failed to add wildcard subdomain: ${vercelResult.error}. Please try again later.` }
+      return { error: `Failed to add subdomain: ${vercelResult.error}. Please try again later.` }
+    }
+  }
+  
+  // Add www version as well
+  console.log('[Brand Domain] Adding www domain to Vercel:', wwwDomain)
+  const vercelWwwResult = await addVercelDomain(wwwDomain)
+  if ('error' in vercelWwwResult) {
+    // If www domain already exists error, check if it's ours
+    if (vercelWwwResult.error.includes('already') || vercelWwwResult.error.includes('in use')) {
+      // Try to get the www domain to verify it exists
+      const wwwDomainCheck = await getVercelDomain(wwwDomain)
+      if (!('error' in wwwDomainCheck)) {
+        // www domain exists - check if it's ours
+        if (currentDomain !== normalizedDomain) {
+          // Rollback: remove non-www domain if www belongs to someone else
+          await removeVercelDomain(normalizedDomain)
+          return { error: 'This subdomain (www) is already configured in Vercel. It may belong to another project or account.' }
+        }
+        // It's our domain, continue with existing www domain
+        console.log('[Brand Domain] www domain already exists in Vercel, continuing with existing domain')
+      } else {
+        // Rollback: remove non-www domain if we can't verify www
+        await removeVercelDomain(normalizedDomain)
+        return { error: 'www subdomain already exists but cannot be accessed. Please contact support.' }
+      }
+    } else {
+      // Rollback: remove non-www domain if www addition fails
+      await removeVercelDomain(normalizedDomain)
+      return { error: `Failed to add www subdomain: ${vercelWwwResult.error}. Please try again later.` }
     }
   }
 
@@ -181,15 +209,15 @@ export async function setBrandDomain(
   // Verification array only indicates domain was added, not DNS configuration
   // Note: There may be a delay after adding domain before DNS config is available
   // Retry up to 3 times with 2 second delay between attempts
-  // Use wildcard domain for DNS config to get instructions for wildcard setup
+  // Use non-www domain for DNS config (both www and non-www should have same config)
   let configResult: Awaited<ReturnType<typeof getVercelDomainConfig>> | null = null
   let retryCount = 0
   const maxRetries = 3
   const retryDelay = 2000 // 2 seconds
 
   while (retryCount < maxRetries) {
-    // Get DNS config for wildcard domain
-    configResult = await getVercelDomainConfig(wildcardDomain)
+    // Get DNS config for non-www domain
+    configResult = await getVercelDomainConfig(normalizedDomain)
     
     if (!('error' in configResult)) {
       // Success - DNS config is available
@@ -217,9 +245,10 @@ export async function setBrandDomain(
 
   if (!configResult || 'error' in configResult) {
     console.error('[Brand Domain] Failed to get DNS config from Vercel after retries:', configResult?.error)
-    // Rollback: remove wildcard domain from Vercel since we can't get DNS config
-    console.log('[Brand Domain] Rolling back: removing wildcard subdomain from Vercel')
-    await removeVercelDomain(wildcardDomain)
+    // Rollback: remove both www and non-www domains from Vercel since we can't get DNS config
+    console.log('[Brand Domain] Rolling back: removing both www and non-www subdomains from Vercel')
+    await removeVercelDomain(normalizedDomain)
+    await removeVercelDomain(wwwDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -240,121 +269,114 @@ export async function setBrandDomain(
   const { config } = configResult
   console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
   
-  // CRITICAL: For wildcard domains (*.domain.com), Vercel ALWAYS requires nameservers, not CNAME records
-  // This is because Vercel needs to manage DNS records to generate wildcard SSL certificates
-  // Check if this is a wildcard domain (we added *.domain to Vercel)
-  // OR if Vercel config indicates nameservers are required (configuredBy === 'dns' or nameservers provided)
-  const isWildcardDomain = wildcardDomain.startsWith('*.')
-  const requiresNameservers = isWildcardDomain || 
-                              config.configuredBy === 'dns' || 
-                              (config.nameservers && config.nameservers.length > 0) ||
-                              (!config.recommendedCNAME && !config.cnames && !config.recommendedIPv4 && !config.aValues)
-  
+  // For subdomains, we need CNAME records, not A records
+  // Subdomains use CNAME to point to Vercel
+  // We'll provide DNS instructions for both www and non-www versions
   const subdomainName = domainParts[0] // e.g., "properties" from "properties.example.com"
   // Note: apexDomain is already defined earlier in the function (line 79)
   
-  // If Vercel requires nameservers (always true for wildcard domains), provide nameserver instructions
-  if (requiresNameservers) {
-    // Vercel nameservers for wildcard domains
-    // Use nameservers from API if available, otherwise use default Vercel nameservers
-    const vercelNameservers = config.nameservers || ['ns1.vercel-dns.com', 'ns2.vercel-dns.com']
-    
-    vercelNameservers.forEach((nameserver, index) => {
-      vercelDNSInstructions.push({
-        type: 'NS',
-        domain: apexDomain, // Use apex domain (e.g., ottie.ai) for nameservers
-        value: nameserver,
-        reason: index === 0 
-          ? 'Update your domain nameservers to enable Vercel DNS (required for wildcard domains)'
-          : 'Additional nameserver'
-      })
-    })
-    
-    console.log('[Brand Domain] Wildcard domain requires nameservers:', {
-      isWildcardDomain,
-      configuredBy: config.configuredBy,
-      nameservers: vercelNameservers,
-      apexDomain
-    })
-  } else if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+  if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
     // Get the first item (highest rank)
     const firstItem = config.recommendedCNAME[0]
     
-    if (typeof firstItem === 'string') {
-      vercelDNSInstructions.push({
-        type: 'CNAME',
-        domain: `*.${subdomainName}`, // Wildcard: *.properties
-        value: firstItem,
-        reason: 'Point your wildcard subdomain to Vercel'
-      })
-    } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem) {
-      vercelDNSInstructions.push({
-        type: 'CNAME',
-        domain: `*.${subdomainName}`, // Wildcard: *.properties
-        value: firstItem.value,
-        reason: 'Point your wildcard subdomain to Vercel'
-      })
-    }
-  } else if (config.cnames && config.cnames.length > 0) {
-    // Fallback to cnames - use first one only
+    const cnameValue = typeof firstItem === 'string' ? firstItem : firstItem.value
+    
+    // Add CNAME for non-www version
     vercelDNSInstructions.push({
       type: 'CNAME',
-      domain: `*.${subdomainName}`, // Wildcard: *.properties
-      value: config.cnames[0],
-      reason: 'Point your wildcard subdomain to Vercel'
+      domain: subdomainName, // e.g., "properties"
+      value: cnameValue,
+      reason: 'Point your subdomain to Vercel'
+    })
+    
+    // Add CNAME for www version
+    vercelDNSInstructions.push({
+      type: 'CNAME',
+      domain: `www.${subdomainName}`, // e.g., "www.properties"
+      value: cnameValue,
+      reason: 'Point your www subdomain to Vercel'
+    })
+  } else if (config.cnames && config.cnames.length > 0) {
+    // Fallback to cnames - use first one only
+    const cnameValue = config.cnames[0]
+    
+    // Add CNAME for non-www version
+    vercelDNSInstructions.push({
+      type: 'CNAME',
+      domain: subdomainName, // e.g., "properties"
+      value: cnameValue,
+      reason: 'Point your subdomain to Vercel'
+    })
+    
+    // Add CNAME for www version
+    vercelDNSInstructions.push({
+      type: 'CNAME',
+      domain: `www.${subdomainName}`, // e.g., "www.properties"
+      value: cnameValue,
+      reason: 'Point your www subdomain to Vercel'
     })
   } else if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
     // Fallback: if no CNAME, try A records (shouldn't happen for subdomains, but just in case)
     const firstItem = config.recommendedIPv4[0]
+    const aValue = typeof firstItem === 'string' ? firstItem : (firstItem.value && Array.isArray(firstItem.value) ? firstItem.value[0] : null)
     
-    if (typeof firstItem === 'string') {
+    if (aValue) {
+      // Add A record for non-www version
       vercelDNSInstructions.push({
         type: 'A',
-        domain: `*.${subdomainName}`, // Wildcard: *.properties
-        value: firstItem,
-        reason: 'Point your wildcard subdomain to Vercel'
+        domain: subdomainName, // e.g., "properties"
+        value: aValue,
+        reason: 'Point your subdomain to Vercel'
       })
-    } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem && Array.isArray(firstItem.value)) {
-      if (firstItem.value.length > 0) {
-        vercelDNSInstructions.push({
-          type: 'A',
-          domain: `*.${subdomainName}`, // Wildcard: *.properties
-          value: firstItem.value[0],
-          reason: 'Point your wildcard subdomain to Vercel'
-        })
-      }
+      
+      // Add A record for www version
+      vercelDNSInstructions.push({
+        type: 'A',
+        domain: `www.${subdomainName}`, // e.g., "www.properties"
+        value: aValue,
+        reason: 'Point your www subdomain to Vercel'
+      })
     }
   } else if (config.aValues && config.aValues.length > 0) {
     // Fallback to aValues (older API format) - use only first value
+    const aValue = config.aValues[0]
+    
+    // Add A record for non-www version
     vercelDNSInstructions.push({
       type: 'A',
-      domain: `*.${subdomainName}`, // Wildcard: *.properties
-      value: config.aValues[0],
-      reason: 'Point your wildcard subdomain to Vercel'
+      domain: subdomainName, // e.g., "properties"
+      value: aValue,
+      reason: 'Point your subdomain to Vercel'
+    })
+    
+    // Add A record for www version
+    vercelDNSInstructions.push({
+      type: 'A',
+      domain: `www.${subdomainName}`, // e.g., "www.properties"
+      value: aValue,
+      reason: 'Point your www subdomain to Vercel'
     })
   }
   
   // Log what we're doing for debugging
   console.log('[Brand Domain] DNS instructions from API:', {
     normalizedDomain: normalizedDomain,
-    wildcardDomain: wildcardDomain,
-    configuredBy: config.configuredBy,
-    requiresNameservers: requiresNameservers,
+    wwwDomain: wwwDomain,
     hasRecommendedIPv4: !!config.recommendedIPv4,
     hasAValues: !!config.aValues,
     hasRecommendedCNAME: !!config.recommendedCNAME,
     hasCnames: !!config.cnames,
-    nameservers: config.nameservers,
     instructionsCount: vercelDNSInstructions.length,
   })
 
   // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
-    console.error('[Brand Domain] No DNS instructions from Vercel API for wildcard subdomain:', wildcardDomain)
+    console.error('[Brand Domain] No DNS instructions from Vercel API for subdomain:', normalizedDomain)
     console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
-    // Rollback: remove wildcard subdomain from Vercel since we can't get DNS config
-    console.log('[Brand Domain] Rolling back: removing wildcard subdomain from Vercel (no DNS instructions)')
-    await removeVercelDomain(wildcardDomain)
+    // Rollback: remove both www and non-www subdomains from Vercel since we can't get DNS config
+    console.log('[Brand Domain] Rolling back: removing both www and non-www subdomains from Vercel (no DNS instructions)')
+    await removeVercelDomain(normalizedDomain)
+    await removeVercelDomain(wwwDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -375,11 +397,11 @@ export async function setBrandDomain(
   // 9. Update branding_config
   // IMPORTANT: Always set verified to false initially, even if Vercel says verified
   // User must configure DNS first, then verify manually via "Check Status" button
-  // Store normalized domain (without www, without wildcard) in database
-  // Wildcard domain (*.properties.ottie.ai) is stored in Vercel, but we store normalized version (properties.ottie.ai) in DB
+  // Store normalized domain (without www) in database
+  // Both www and non-www versions are stored in Vercel, but we store normalized version (properties.ottie.ai) in DB
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
-    // Store the normalized subdomain without www prefix and without wildcard (e.g., properties.example.com)
+    // Store the normalized subdomain without www prefix (e.g., properties.example.com)
     // This allows lookup to work for both www and non-www variants via SQL function normalization
     custom_brand_domain: normalizedDomain,
     custom_brand_domain_verified: false, // Always false initially - user must verify after DNS setup
@@ -393,8 +415,9 @@ export async function setBrandDomain(
   })
 
   if (!updatedWorkspace) {
-    // Rollback: remove wildcard subdomain if DB update fails
-    await removeVercelDomain(wildcardDomain)
+    // Rollback: remove both www and non-www subdomains if DB update fails
+    await removeVercelDomain(normalizedDomain)
+    await removeVercelDomain(wwwDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -459,16 +482,15 @@ export async function verifyBrandDomain(
   }
 
   // 3. Check domain verification status via Vercel
-  // Use wildcard domain for verification since that's what we added to Vercel
-  const wildcardDomain = `*.${domain}`
-  const vercelResult = await getVercelDomain(wildcardDomain)
+  // Check non-www domain (both www and non-www should be verified)
+  const vercelResult = await getVercelDomain(domain)
   if ('error' in vercelResult) {
     return { error: 'Domain not found. Please contact support.' }
   }
 
   // 4. Check domain config to see if DNS is configured correctly
-  // Use wildcard domain for config check since that's what we added to Vercel
-  const configResult = await getVercelDomainConfig(wildcardDomain)
+  // Check non-www domain config (both www and non-www should have same config)
+  const configResult = await getVercelDomainConfig(domain)
   
   // Domain is verified only if:
   // - Vercel says it's verified (domain is linked)
@@ -556,34 +578,34 @@ export async function removeBrandDomainInternal(
     return { success: true }
   }
 
-  // 2. Remove wildcard domain from Vercel
-  // We added wildcard domain (*.domain), so we need to remove wildcard version
-  const wildcardDomain = `*.${domain}`
-  console.log('[Brand Domain] Removing wildcard domain from Vercel:', wildcardDomain)
-  let vercelResult = await removeVercelDomain(wildcardDomain)
+  // 2. Remove both www and non-www domains from Vercel
+  // We added both versions, so we need to remove both
+  const wwwDomain = `www.${domain}`
+  console.log('[Brand Domain] Removing non-www domain from Vercel:', domain)
+  const vercelResult = await removeVercelDomain(domain)
   
-  // If wildcard removal fails, try removing normal domain as fallback (in case it was added without wildcard)
-  if ('error' in vercelResult && !vercelResult.error.includes('not found') && !vercelResult.error.includes('404')) {
-    console.log('[Brand Domain] Wildcard removal failed, trying normal domain as fallback:', domain)
-    const normalDomainResult = await removeVercelDomain(domain)
-    if (!('error' in normalDomainResult)) {
-      console.log('[Brand Domain] Successfully removed normal domain from Vercel (fallback):', domain)
-      vercelResult = normalDomainResult
-    }
-  }
+  console.log('[Brand Domain] Removing www domain from Vercel:', wwwDomain)
+  const vercelWwwResult = await removeVercelDomain(wwwDomain)
   
+  // Log results but continue even if removal fails (domains might already be removed)
   if ('error' in vercelResult) {
-    // If it's a 404, domain doesn't exist - that's OK, continue
     if (vercelResult.error.includes('not found') || vercelResult.error.includes('404')) {
-      console.log('[Brand Domain] Domain not found in Vercel (may have been already removed):', wildcardDomain)
+      console.log('[Brand Domain] Non-www domain not found in Vercel (may have been already removed):', domain)
     } else {
-      // For other errors, log warning but continue with database cleanup
-      // We don't want to fail the entire operation if Vercel removal fails
-      console.warn('[Brand Domain] Failed to remove domain from Vercel:', vercelResult.error)
-      console.warn('[Brand Domain] Continuing with database cleanup anyway')
+      console.warn('[Brand Domain] Failed to remove non-www domain from Vercel:', vercelResult.error)
     }
   } else {
-    console.log('[Brand Domain] Successfully removed domain from Vercel:', wildcardDomain)
+    console.log('[Brand Domain] Successfully removed non-www domain from Vercel:', domain)
+  }
+  
+  if ('error' in vercelWwwResult) {
+    if (vercelWwwResult.error.includes('not found') || vercelWwwResult.error.includes('404')) {
+      console.log('[Brand Domain] www domain not found in Vercel (may have been already removed):', wwwDomain)
+    } else {
+      console.warn('[Brand Domain] Failed to remove www domain from Vercel:', vercelWwwResult.error)
+    }
+  } else {
+    console.log('[Brand Domain] Successfully removed www domain from Vercel:', wwwDomain)
   }
 
   // 3. Revert all sites in workspace to ottie.site
