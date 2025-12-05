@@ -23,12 +23,29 @@ interface BrandingConfig {
 /**
  * Check rate limit for domain operations
  * Returns error message if rate limit exceeded, null if allowed
+ * Workspace owners bypass rate limits
  */
 async function checkDomainOperationRateLimit(
   workspaceId: string,
-  operationType: 'set' | 'verify' | 'remove'
+  operationType: 'set' | 'verify' | 'remove',
+  userId?: string
 ): Promise<string | null> {
   const supabase = await createClient()
+  
+  // Check if user is workspace owner - owners bypass rate limits
+  if (userId) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .single()
+    
+    if (membership?.role === 'owner') {
+      console.log('[Rate Limit] Workspace owner detected, bypassing rate limit')
+      return null
+    }
+  }
   
   const { data, error } = await supabase.rpc('check_domain_operation_rate_limit', {
     p_workspace_id: workspaceId,
@@ -137,8 +154,8 @@ export async function setBrandDomain(
   }>
   vercelVerified: boolean
 } | { error: string }> {
-  // 0. Check rate limit (5 attempts per hour)
-  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'set')
+  // 0. Check rate limit (5 attempts per hour) - owners bypass
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'set', userId)
   if (rateLimitError) {
     return { error: rateLimitError }
   }
@@ -648,8 +665,8 @@ export async function verifyBrandDomain(
   workspaceId: string,
   userId: string
 ): Promise<{ success: true } | { error: string }> {
-  // 0. Check rate limit (10 attempts per hour)
-  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'verify')
+  // 0. Check rate limit (10 attempts per hour) - owners bypass
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'verify', userId)
   if (rateLimitError) {
     return { error: rateLimitError }
   }
@@ -922,8 +939,8 @@ export async function removeBrandDomain(
   workspaceId: string,
   userId: string
 ): Promise<{ success: true } | { error: string }> {
-  // 0. Check rate limit (3 attempts per day)
-  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'remove')
+  // 0. Check rate limit (3 attempts per day) - owners bypass
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'remove', userId)
   if (rateLimitError) {
     return { error: rateLimitError }
   }
