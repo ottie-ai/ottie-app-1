@@ -311,7 +311,7 @@ export default function Home() {
       const totalDuration = totalEndTime - totalStartTime
 
       // Navigate to preview page
-      router.push(`/preview/${result.previewId}?totalTime=${totalDuration}`)
+      router.push(`/temp-preview/${result.previewId}?totalTime=${totalDuration}`)
     } catch (err) {
       console.error('Error generating preview:', err)
       setError('An unexpected error occurred. Please try again.')
