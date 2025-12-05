@@ -365,19 +365,25 @@ export async function setBrandDomain(
           return { error: errorMsg }
         }
         // It's our domain, continue with existing domain
-        console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
+        console.log('[Brand Domain] Non-www domain already exists in Vercel, checking redirect status...')
         
-        // Try to update redirect if domain exists but redirect is not set
-        // Note: redirect parameter must be full URL with protocol (https://)
-        const redirectResult = await updateVercelDomainRedirect(
-          normalizedDomain,
-          `https://${wwwDomain}`,  // Full URL with protocol as per Vercel API docs
-          307
-        )
-        if ('error' in redirectResult) {
-          console.warn('[Brand Domain] Failed to update redirect on existing domain:', redirectResult.error)
+        // Check if redirect is already set
+        const existingDomain = domainCheck.domain
+        if (!existingDomain.redirect || existingDomain.redirect !== `https://${wwwDomain}`) {
+          // Redirect is not set or points to wrong target - update it
+          console.log('[Brand Domain] Redirect not set or incorrect, updating redirect...')
+          const redirectResult = await updateVercelDomainRedirect(
+            normalizedDomain,
+            `https://${wwwDomain}`,  // Full URL with protocol as per Vercel API docs
+            307
+          )
+          if ('error' in redirectResult) {
+            console.warn('[Brand Domain] Failed to update redirect on existing domain:', redirectResult.error)
+          } else {
+            console.log('[Brand Domain] Successfully updated redirect on existing domain')
+          }
         } else {
-          console.log('[Brand Domain] Successfully updated redirect on existing domain')
+          console.log('[Brand Domain] Redirect already correctly set on existing domain')
         }
       } else {
         // Rollback: remove www domain if we can't verify non-www
