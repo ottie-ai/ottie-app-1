@@ -76,9 +76,36 @@ export function cleanHtml(rawHtml: string): string {
 
 /**
  * Remove script, style, noscript, iframe, svg, and canvas elements
+ * BUT preserve script tags that contain image links (e.g., JSON-LD with image URLs)
  */
 function removeScriptsAndStyles($: CheerioAPI): void {
-  $('script, style, noscript, iframe, svg, canvas').remove()
+  // Remove style, noscript, iframe, svg, and canvas unconditionally
+  $('style, noscript, iframe, svg, canvas').remove()
+  
+  // For script tags, check if they contain image URLs before removing
+  $('script').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html() || $el.text() || ''
+    
+    // Check for image URLs in the script content
+    // Look for common image extensions and image-related patterns
+    const imagePatterns = [
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)(\?|"|'|\s|,|})/i,
+      /"image":\s*"https?:\/\//i,
+      /"imageUrl":\s*"https?:\/\//i,
+      /"url":\s*"https?:\/\/[^"]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+      /photos\./i,
+      /images?\./i,
+      /img[^"]*\.(jpg|jpeg|png|gif|webp)/i,
+    ]
+    
+    const hasImageLinks = imagePatterns.some(pattern => pattern.test(content))
+    
+    // Only remove if it doesn't contain image links
+    if (!hasImageLinks) {
+      $el.remove()
+    }
+  })
 }
 
 /**
