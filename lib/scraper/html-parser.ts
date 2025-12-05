@@ -164,7 +164,8 @@ function removeEmptyElements($: CheerioAPI): void {
     }
     
     // Remove if truly empty (but preserve structure elements that might be styled)
-    const tagName = el.tagName?.toLowerCase()
+    // Check if element has a name property (Element, not TextElement)
+    const tagName = 'name' in el && el.name ? el.name.toLowerCase() : null
     if (tagName && !['br', 'hr', 'img', 'input', 'meta', 'link'].includes(tagName)) {
       // Only remove if it's a leaf node (no children with content)
       let hasChildrenWithContent = false
