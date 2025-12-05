@@ -65,12 +65,13 @@ export async function generatePreview(url: string) {
     console.log('🔵 [generatePreview] Generating page config...')
     const generatedConfig = generatePageConfig(parsedData)
     
-    // Save to temp_previews
+    // Save to temp_previews (including raw HTML for debugging)
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
       .insert({
         source_url: url,
+        raw_html: html, // Store raw HTML for inspection
         scraped_data: parsedData,
         generated_config: generatedConfig,
       })

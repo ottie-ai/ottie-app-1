@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Save, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { getPreview, claimPreview } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 import type { PageConfig } from '@/types/database'
@@ -24,6 +24,8 @@ function PreviewContent() {
   const [claiming, setClaiming] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [workspace, setWorkspace] = useState<any>(null)
+  const [showRawHtml, setShowRawHtml] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -101,6 +103,14 @@ function PreviewContent() {
     } catch (err) {
       setError('Failed to claim preview')
       setClaiming(false)
+    }
+  }
+
+  const handleCopyRawHtml = () => {
+    if (preview?.raw_html) {
+      navigator.clipboard.writeText(preview.raw_html)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
 
@@ -213,7 +223,7 @@ function PreviewContent() {
       {/* Info Footer */}
       <div className="border-t border-white/10 bg-white/[0.02] py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <Typography variant="h4" className="text-white mb-2 border-none">
                 Source
@@ -253,6 +263,63 @@ function PreviewContent() {
               </div>
             )}
           </div>
+
+          {/* Raw HTML Section */}
+          {preview?.raw_html && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <button
+                onClick={() => setShowRawHtml(!showRawHtml)}
+                className="w-full flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Raw HTML from ScraperAPI
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.raw_html.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {showRawHtml ? (
+                    <ChevronUp className="h-4 w-4 text-white/60" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-white/60" />
+                  )}
+                </div>
+              </button>
+              
+              {showRawHtml && (
+                <div className="relative">
+                  <div className="absolute top-2 right-2 z-10">
+                    <Button
+                      onClick={handleCopyRawHtml}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy HTML
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="p-4 max-h-[600px] overflow-auto">
+                    <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                      {preview.raw_html}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
