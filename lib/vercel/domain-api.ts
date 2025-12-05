@@ -30,6 +30,7 @@ interface VercelDomainConfig {
   aValues?: string[]
   recommendedIPv4?: string[] | Array<{ rank: number; value: string[] }>
   recommendedCNAME?: string[] | Array<{ rank: number; value: string }>
+  nameservers?: string[]
   conflicts?: Array<{
     name: string
     type: string
@@ -305,10 +306,13 @@ export async function getVercelDomainConfig(
 
     const data = await response.json() as VercelDomainConfig
     console.log(`[Vercel API] Domain config for ${domain}:`, {
+      configuredBy: data.configuredBy,
       recommendedIPv4: data.recommendedIPv4,
       aValues: data.aValues,
       cnames: data.cnames,
+      nameservers: data.nameservers,
       misconfigured: data.misconfigured,
+      fullConfig: JSON.stringify(data, null, 2),
     })
     
     return { success: true, config: data }

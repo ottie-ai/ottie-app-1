@@ -240,13 +240,43 @@ export async function setBrandDomain(
   const { config } = configResult
   console.log('[Brand Domain] Vercel config response:', JSON.stringify(config, null, 2))
   
-  // For wildcard subdomains, we need CNAME records, not A records
-  // Wildcard subdomains use CNAME to point to Vercel
-  // For wildcard domain *.properties.ottie.ai, we need to create CNAME for "*" subdomain
+  // CRITICAL: For wildcard domains (*.domain.com), Vercel ALWAYS requires nameservers, not CNAME records
+  // This is because Vercel needs to manage DNS records to generate wildcard SSL certificates
+  // Check if this is a wildcard domain (we added *.domain to Vercel)
+  // OR if Vercel config indicates nameservers are required (configuredBy === 'dns' or nameservers provided)
+  const isWildcardDomain = wildcardDomain.startsWith('*.')
+  const requiresNameservers = isWildcardDomain || 
+                              config.configuredBy === 'dns' || 
+                              (config.nameservers && config.nameservers.length > 0) ||
+                              (!config.recommendedCNAME && !config.cnames && !config.recommendedIPv4 && !config.aValues)
+  
   const subdomainName = domainParts[0] // e.g., "properties" from "properties.example.com"
   // Note: apexDomain is already defined earlier in the function (line 79)
   
-  if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
+  // If Vercel requires nameservers (always true for wildcard domains), provide nameserver instructions
+  if (requiresNameservers) {
+    // Vercel nameservers for wildcard domains
+    // Use nameservers from API if available, otherwise use default Vercel nameservers
+    const vercelNameservers = config.nameservers || ['ns1.vercel-dns.com', 'ns2.vercel-dns.com']
+    
+    vercelNameservers.forEach((nameserver, index) => {
+      vercelDNSInstructions.push({
+        type: 'NS',
+        domain: apexDomain, // Use apex domain (e.g., ottie.ai) for nameservers
+        value: nameserver,
+        reason: index === 0 
+          ? 'Update your domain nameservers to enable Vercel DNS (required for wildcard domains)'
+          : 'Additional nameserver'
+      })
+    })
+    
+    console.log('[Brand Domain] Wildcard domain requires nameservers:', {
+      isWildcardDomain,
+      configuredBy: config.configuredBy,
+      nameservers: vercelNameservers,
+      apexDomain
+    })
+  } else if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
     // Get the first item (highest rank)
     const firstItem = config.recommendedCNAME[0]
     
@@ -308,8 +338,13 @@ export async function setBrandDomain(
   console.log('[Brand Domain] DNS instructions from API:', {
     normalizedDomain: normalizedDomain,
     wildcardDomain: wildcardDomain,
+    configuredBy: config.configuredBy,
+    requiresNameservers: requiresNameservers,
     hasRecommendedIPv4: !!config.recommendedIPv4,
     hasAValues: !!config.aValues,
+    hasRecommendedCNAME: !!config.recommendedCNAME,
+    hasCnames: !!config.cnames,
+    nameservers: config.nameservers,
     instructionsCount: vercelDNSInstructions.length,
   })
 
