@@ -322,6 +322,23 @@ export async function middleware(request: NextRequest) {
   const hostnameWithoutPort = forwardedHost.split(':')[0]
   const isLocalhost = hostnameWithoutPort.includes('localhost')
   
+  // CRITICAL: Redirect www to non-www for brand domains FIRST, before any other checks
+  // This must happen early to ensure canonical domain is used
+  // Only redirect if it's NOT the root domain (www.ottie.com) and NOT app domain (www.app.*)
+  if (!isLocalhost && 
+      hostnameWithoutPort.startsWith('www.') && 
+      hostnameWithoutPort !== `www.${rootDomainWithoutPort}` &&
+      !hostnameWithoutPort.startsWith('www.app.') &&
+      hostnameWithoutPort !== `www.${sitesDomain}` &&
+      !hostnameWithoutPort.endsWith(`.${sitesDomain}`)) {
+    // This is likely a brand domain with www prefix - redirect to non-www
+    const nonWwwDomain = hostnameWithoutPort.substring(4)
+    const redirectUrl = new URL(pathname, `https://${nonWwwDomain}`)
+    redirectUrl.search = request.nextUrl.search
+    console.log('[Middleware] EARLY redirect: www to non-www for brand domain:', hostnameWithoutPort, '->', nonWwwDomain)
+    return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
+  }
+  
   // Check if this is ottie.site domain (for published sites)
   const isOttieSiteDomain = hostnameWithoutPort === sitesDomain || hostnameWithoutPort.endsWith(`.${sitesDomain}`)
   
@@ -435,16 +452,7 @@ export async function middleware(request: NextRequest) {
     } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {
       // Check if this is a brand domain (custom domain for workspace)
       // Brand domains are ONLY for sites, not for app routes
-      
-      // Normalize domain: redirect www to non-www for consistency
-      // This ensures we always use the canonical (non-www) version
-      if (hostnameWithoutPort.startsWith('www.')) {
-        const nonWwwDomain = hostnameWithoutPort.substring(4)
-        const redirectUrl = new URL(pathname, `https://${nonWwwDomain}`)
-        redirectUrl.search = request.nextUrl.search
-        console.log('[Middleware] Redirecting www to non-www:', hostnameWithoutPort, '->', nonWwwDomain)
-        return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
-      }
+      // Note: www redirect is already handled earlier in the middleware
       
       // First, check if this is an app route - if so, redirect to app.ottie.com
       const appRoutes = ['/dashboard', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
@@ -460,7 +468,13 @@ export async function middleware(request: NextRequest) {
       
       // Import dynamically to avoid issues with server-only modules in middleware
       const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
-      const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, request)
+      // Domain should already be normalized (www removed) by earlier redirect, but use normalized version for lookup just in case
+      const domainForLookup = hostnameWithoutPort.startsWith('www.') && 
+                              hostnameWithoutPort !== `www.${rootDomainWithoutPort}` &&
+                              !hostnameWithoutPort.startsWith('www.app.')
+        ? hostnameWithoutPort.substring(4)
+        : hostnameWithoutPort
+      const brandDomainResult = await getWorkspaceByBrandDomain(domainForLookup, request)
       
       console.log('[Middleware] Brand domain lookup result:', {
         hostname: hostnameWithoutPort,
