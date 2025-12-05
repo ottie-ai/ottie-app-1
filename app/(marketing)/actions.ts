@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { parsePropertyData, generatePageConfig } from '@/lib/scraper/html-parser'
+import { parsePropertyData } from '@/lib/scraper/html-parser'
 
 /**
  * Scrape a URL using ScraperAPI and create anonymous preview

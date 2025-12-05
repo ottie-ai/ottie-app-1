@@ -116,19 +116,18 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
   }
 
   // Extract title
-  result.title =
-    $('h1').first().text().trim() ||
-    $('[class*="title"]').first().text().trim() ||
-    $('[class*="heading"]').first().text().trim() ||
-    $('title').text().trim() ||
-    null
+  const h1Text = $('h1').first().text().trim()
+  const titleClassText = $('[class*="title"]').first().text().trim()
+  const headingClassText = $('[class*="heading"]').first().text().trim()
+  const titleTagText = $('title').text().trim()
+  
+  result.title = h1Text || titleClassText || headingClassText || titleTagText || null
 
   // Extract price (look for $, €, £ symbols and numbers)
-  const priceText =
-    $('[class*="price"]').first().text() ||
-    $('[id*="price"]').first().text() ||
-    $('[data-price]').first().attr('data-price') ||
-    null
+  const priceClassText = $('[class*="price"]').first().text()
+  const priceIdText = $('[id*="price"]').first().text()
+  const priceDataAttr = $('[data-price]').first().attr('data-price')
+  const priceText = priceClassText || priceIdText || priceDataAttr || null
 
   if (priceText) {
     const priceMatch = priceText.match(/[\$€£]?\s*([\d,]+)/)
