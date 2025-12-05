@@ -271,7 +271,7 @@ export async function setBrandDomain(
       type: 'CNAME',
       domain: `*.${subdomainName}`, // Wildcard: *.properties
       value: config.cnames[0],
-      reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+      reason: 'Point your wildcard subdomain to Vercel'
     })
   } else if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
     // Fallback: if no CNAME, try A records (shouldn't happen for subdomains, but just in case)
@@ -300,7 +300,7 @@ export async function setBrandDomain(
       type: 'A',
       domain: `*.${subdomainName}`, // Wildcard: *.properties
       value: config.aValues[0],
-      reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+      reason: 'Point your wildcard subdomain to Vercel'
     })
   }
   
