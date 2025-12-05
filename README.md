@@ -24,12 +24,39 @@ A modern fullstack Next.js 14 application built with TypeScript, TailwindCSS, an
 npm install
 ```
 
-2. Run the development server:
+2. Set up environment variables:
+   - Copy `.env.example` to `.env.local`
+   - Fill in the required values (see Environment Variables section below)
+
+3. Run the development server:
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+### Required Variables
+
+```bash
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+### Optional Variables
+
+```bash
+# ScraperAPI Configuration (for URL scraping feature)
+# Get your API key from: https://www.scraperapi.com/
+SCRAPERAPI_KEY=your_scraperapi_key_here
+```
+
+**Note**: The ScraperAPI key is required for the "Generate Free Site" feature on the marketing homepage. If not configured, users will receive an error when trying to scrape URLs.
 
 ## Project Structure
 

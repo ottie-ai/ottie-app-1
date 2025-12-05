@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
@@ -17,6 +18,7 @@ import Navbar from '@/components/marketing/navbar'
 import { transformPlansToTiers } from '@/lib/pricing-data'
 import { createClient } from '@/lib/supabase/client'
 import type { Plan } from '@/types/database'
+import { scrapeUrl } from './actions'
 import '../sphere.css'
 
 const realEstateLinks = [
@@ -37,6 +39,7 @@ const loadingMessages = [
 ]
 
 export default function Home() {
+  const router = useRouter()
   const [link, setLink] = useState('')
   const [placeholder, setPlaceholder] = useState('')
   const [currentLinkIndex, setCurrentLinkIndex] = useState(0)
@@ -48,6 +51,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
+  const [error, setError] = useState<string | null>(null)
   
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
@@ -266,7 +270,16 @@ export default function Home() {
     }
   }, [isLoading])
   
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    // Clear any previous error
+    setError(null)
+    
+    // Validate URL input
+    if (!link.trim()) {
+      setError('Please enter a URL to scrape')
+      return
+    }
+
     if (sphereRef.current) {
       // Stop any current animation
       sphereRef.current.style.animation = 'none'
@@ -276,9 +289,42 @@ export default function Home() {
       loadingStartRotationRef.current = 126
     }
     
+    // Start total generation timer
+    const totalStartTime = Date.now()
+    
     setIsLoading(true)
     setLoadingMessageIndex(0)
     setLoadingPhase('waiting')
+
+    try {
+      // Call the scraper API
+      const result = await scrapeUrl(link)
+      
+      if ('error' in result) {
+        setError(result.error)
+        setIsLoading(false)
+        return
+      }
+
+      // Calculate total generation time
+      const totalEndTime = Date.now()
+      const totalDuration = totalEndTime - totalStartTime
+
+      // Navigate to results page with the scraped data and timing info
+      const params = new URLSearchParams({
+        url: result.url,
+        scrapedAt: result.scrapedAt,
+        html: result.html,
+        scrapeCallTime: result.timing?.scrapeCall?.toString() || '0',
+        totalTime: totalDuration.toString(),
+      })
+      
+      router.push(`/test-results?${params.toString()}`)
+    } catch (err) {
+      console.error('Error scraping URL:', err)
+      setError('An unexpected error occurred. Please try again.')
+      setIsLoading(false)
+    }
   }
 
   const currentLoadingMessage = loadingMessages[loadingMessageIndex]
@@ -367,8 +413,20 @@ export default function Home() {
                 type="url"
                 placeholder=""
                 value={link}
-                onChange={(e) => setLink(e.target.value)}
-                className="w-full bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                onChange={(e) => {
+                  setLink(e.target.value)
+                  setError(null) // Clear error when user types
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoading) {
+                    handleGenerate()
+                  }
+                }}
+                disabled={isLoading}
+                className={cn(
+                  "w-full bg-white/10 border-white/20 text-white placeholder:text-white/40",
+                  error && "border-red-500/50"
+                )}
               />
               {!link && (
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-white/40 text-sm">
@@ -378,13 +436,21 @@ export default function Home() {
               )}
             </div>
             
+            {/* Error Message */}
+            {error && (
+              <p className="text-sm text-red-400 animate-fade-in">
+                {error}
+              </p>
+            )}
+            
             <MagneticButton 
-              className="w-full bg-white text-black hover:bg-white/90" 
+              className="w-full bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed" 
               magneticDistance={120} 
               magneticStrength={0.4}
               onClick={handleGenerate}
+              disabled={isLoading}
             >
-              Generate Free Site
+              {isLoading ? 'Generating...' : 'Generate Free Site'}
             </MagneticButton>
             
             {/* Manual Start Link */}
