@@ -23,6 +23,7 @@ function PreviewContent() {
   const [user, setUser] = useState<any>(null)
   const [workspace, setWorkspace] = useState<any>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedSection, setCopiedSection] = useState<string | null>(null) // Track which section was copied
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -106,8 +107,36 @@ function PreviewContent() {
   const handleCopyRawHtml = () => {
     if (preview?.raw_html) {
       navigator.clipboard.writeText(preview.raw_html)
+      setCopiedSection('raw')
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(() => {
+        setCopied(false)
+        setCopiedSection(null)
+      }, 2000)
+    }
+  }
+
+  const handleCopyCleanedHtml = () => {
+    if (preview?.cleaned_html) {
+      navigator.clipboard.writeText(preview.cleaned_html)
+      setCopiedSection('cleaned')
+      setCopied(true)
+      setTimeout(() => {
+        setCopied(false)
+        setCopiedSection(null)
+      }, 2000)
+    }
+  }
+
+  const handleCopyJson = () => {
+    if (scrapedData) {
+      navigator.clipboard.writeText(JSON.stringify(scrapedData, null, 2))
+      setCopiedSection('json')
+      setCopied(true)
+      setTimeout(() => {
+        setCopied(false)
+        setCopiedSection(null)
+      }, 2000)
     }
   }
 
@@ -222,7 +251,7 @@ function PreviewContent() {
                   size="sm"
                   className="text-white/60 hover:text-white hover:bg-white/10"
                 >
-                  {copied ? (
+                  {copied && copiedSection === 'raw' ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
                       Copied!
@@ -243,6 +272,46 @@ function PreviewContent() {
             </div>
           )}
 
+          {/* Cheerio Cleaned HTML Result */}
+          {preview?.cleaned_html && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Cheerio Cleaned HTML Result
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.cleaned_html.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  onClick={handleCopyCleanedHtml}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'cleaned' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy HTML
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.cleaned_html}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {/* Cheerio Parsed Data Result */}
           {scrapedData && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
@@ -254,16 +323,12 @@ function PreviewContent() {
                   </Typography>
                 </div>
                 <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(scrapedData, null, 2))
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
+                  onClick={handleCopyJson}
                   variant="ghost"
                   size="sm"
                   className="text-white/60 hover:text-white hover:bg-white/10"
                 >
-                  {copied ? (
+                  {copied && copiedSection === 'json' ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
                       Copied!

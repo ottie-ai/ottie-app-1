@@ -62,16 +62,33 @@ export function cleanHtml(html: string): string {
     }
   })
 
-  // Extract main content
-  const mainContent =
-    $('main').first() ||
-    $('[role="main"]').first() ||
-    $('.main-content').first() ||
-    $('#main-content').first() ||
-    $('article').first() ||
-    $('body')
+  // Extract main content (try to find main content area, fallback to body)
+  const mainEl = $('main').first()
+  const roleMainEl = $('[role="main"]').first()
+  const mainContentEl = $('.main-content').first()
+  const mainContentIdEl = $('#main-content').first()
+  const articleEl = $('article').first()
+  const bodyEl = $('body')
 
-  return mainContent.html() || ''
+  // Return first non-empty content found
+  if (mainEl.length > 0 && mainEl.html()) {
+    return mainEl.html() || ''
+  }
+  if (roleMainEl.length > 0 && roleMainEl.html()) {
+    return roleMainEl.html() || ''
+  }
+  if (mainContentEl.length > 0 && mainContentEl.html()) {
+    return mainContentEl.html() || ''
+  }
+  if (mainContentIdEl.length > 0 && mainContentIdEl.html()) {
+    return mainContentIdEl.html() || ''
+  }
+  if (articleEl.length > 0 && articleEl.html()) {
+    return articleEl.html() || ''
+  }
+  
+  // Fallback to body
+  return bodyEl.html() || ''
 }
 
 /**
