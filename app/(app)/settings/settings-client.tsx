@@ -36,7 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 import { RoleSelect } from '@/components/workspace/role-select'
 import { updateUserProfile, getCurrentUserProfile, removeAvatar, checkWorkspacesForDeletion, deleteUserAccount, updateWorkspaceName, uploadWorkspaceLogo, removeWorkspaceLogo, updateWorkspaceAction, updateMembershipRole, removeMembership, resetWorkspace, sendPasswordResetEmail, createInvitation, cancelInvitation, resendInvitation } from './actions'
-import { setBrandDomain as setBrandDomainAction, verifyBrandDomain, removeBrandDomain } from './brand-domain-actions'
+import { setBrandDomain as setBrandDomainAction, verifyBrandDomain, removeBrandDomain, resetDomainOperationRateLimit } from './brand-domain-actions'
 import { DebugBrandDomain } from './debug-brand-domain'
 import { useUserProfile, useWorkspace, useAppData } from '@/contexts/app-context'
 import { useWorkspaceMembers } from '@/hooks/use-workspace-members'
@@ -1860,7 +1860,22 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                               if (!confirm('Are you sure you want to remove the brand domain? All sites will revert to ottie.site subdomains.')) return
                               setIsRemovingDomain(true)
                               try {
-                                const result = await removeBrandDomain(workspace.id, user.id)
+                                let result = await removeBrandDomain(workspace.id, user.id)
+                                
+                                // If rate limit error, try to reset and retry once
+                                if ('error' in result && result.error.includes('Rate limit exceeded')) {
+                                  toast.info('Rate limit exceeded. Attempting to reset...')
+                                  const resetResult = await resetDomainOperationRateLimit(workspace.id, user.id, 'remove')
+                                  
+                                  if ('error' in resetResult) {
+                                    toast.error(result.error)
+                                  } else {
+                                    toast.success('Rate limit reset. Retrying...')
+                                    // Retry the removal
+                                    result = await removeBrandDomain(workspace.id, user.id)
+                                  }
+                                }
+                                
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {

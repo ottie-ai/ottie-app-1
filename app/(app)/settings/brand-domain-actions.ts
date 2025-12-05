@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { addVercelDomain, removeVercelDomain, getVercelDomain, getVercelDomainConfig } from '@/lib/vercel/domain-api'
+import { addVercelDomain, removeVercelDomain, getVercelDomain, getVercelDomainConfig, updateVercelDomainRedirect } from '@/lib/vercel/domain-api'
 import { updateWorkspace } from '@/lib/supabase/queries'
 import { loadPlansServer, hasFeature, getFirstPlanWithFeature } from '@/lib/data/plans-server'
 import type { Workspace } from '@/types/database'
@@ -49,6 +49,42 @@ async function checkDomainOperationRateLimit(
   }
   
   return null
+}
+
+/**
+ * Reset rate limit for domain operations
+ * Removes failed operations from the log to allow retry
+ */
+export async function resetDomainOperationRateLimit(
+  workspaceId: string,
+  userId: string,
+  operationType: 'set' | 'verify' | 'remove'
+): Promise<{ success: true; message: string } | { error: string }> {
+  const supabase = await createClient()
+  
+  // Verify user is owner or admin
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    return { error: 'Only workspace owners and admins can reset rate limit' }
+  }
+
+  const { data, error } = await supabase.rpc('reset_domain_operation_rate_limit', {
+    p_workspace_id: workspaceId,
+    p_operation_type: operationType,
+  })
+  
+  if (error) {
+    console.error('[Rate Limit] Error resetting rate limit:', error)
+    return { error: 'Failed to reset rate limit. Please try again or contact support.' }
+  }
+  
+  return { success: true, message: data.message || 'Rate limit reset successfully' }
 }
 
 /**
@@ -273,41 +309,10 @@ export async function setBrandDomain(
     }
   }
 
-  // 7. Add both www and non-www domains to Vercel (automatic)
-  // We add both versions to support both www.properties.ottie.ai and properties.ottie.ai
-  // We store the normalized subdomain (e.g., properties.example.com) in database
-  console.log('[Brand Domain] Adding non-www domain to Vercel:', normalizedDomain)
-  const vercelResult = await addVercelDomain(normalizedDomain)
-  if ('error' in vercelResult) {
-    // If domain already exists error, check if it's ours
-    if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
-      // Try to get the domain to verify it exists
-      const domainCheck = await getVercelDomain(normalizedDomain)
-      if (!('error' in domainCheck)) {
-        // Domain exists - check if it's ours
-        if (currentDomain !== normalizedDomain) {
-          const errorMsg = 'This subdomain is already configured. It may belong to another project or account.'
-          await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Domain conflict in Vercel')
-          return { error: errorMsg }
-        }
-        // It's our domain, continue with existing domain
-        console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
-      } else {
-        const errorMsg = 'Subdomain already exists but cannot be accessed. Please contact support.'
-        await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
-        return { error: errorMsg }
-      }
-    } else {
-      // Sanitize error message to remove any platform-specific references
-      const sanitizedError = vercelResult.error.replace(/Vercel/gi, 'the platform').trim()
-      const errorMsg = `Failed to add subdomain: ${sanitizedError}. Please try again later.`
-      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'API error')
-      return { error: errorMsg }
-    }
-  }
-  
-  // Add www version as well
-  console.log('[Brand Domain] Adding www domain to Vercel:', wwwDomain)
+  // 7. Add www domain first (as primary, without redirect)
+  // Then add non-www domain WITH redirect to www
+  // This matches Vercel's automatic behavior when adding domains manually
+  console.log('[Brand Domain] Adding www domain to Vercel (primary):', wwwDomain)
   const vercelWwwResult = await addVercelDomain(wwwDomain)
   if ('error' in vercelWwwResult) {
     // If www domain already exists error, check if it's ours
@@ -317,24 +322,79 @@ export async function setBrandDomain(
       if (!('error' in wwwDomainCheck)) {
         // www domain exists - check if it's ours
         if (currentDomain !== normalizedDomain) {
-          // Rollback: remove non-www domain if www belongs to someone else
-          await removeVercelDomain(normalizedDomain)
-          return { error: 'This subdomain (www) is already configured. It may belong to another project or account.' }
+          const errorMsg = 'This subdomain (www) is already configured. It may belong to another project or account.'
+          await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'WWW domain conflict in Vercel')
+          return { error: errorMsg }
         }
         // It's our domain, continue with existing www domain
         console.log('[Brand Domain] www domain already exists in Vercel, continuing with existing domain')
       } else {
-        // Rollback: remove non-www domain if we can't verify www
-        await removeVercelDomain(normalizedDomain)
-        return { error: 'www subdomain already exists but cannot be accessed. Please contact support.' }
+        const errorMsg = 'www subdomain already exists but cannot be accessed. Please contact support.'
+        await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+        return { error: errorMsg }
       }
     } else {
-      // Rollback: remove non-www domain if www addition fails
-      await removeVercelDomain(normalizedDomain)
       // Sanitize error message to remove any platform-specific references
       const sanitizedError = vercelWwwResult.error.replace(/Vercel/gi, 'the platform').trim()
-      return { error: `Failed to add www subdomain: ${sanitizedError}. Please try again later.` }
+      const errorMsg = `Failed to add www subdomain: ${sanitizedError}. Please try again later.`
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'API error')
+      return { error: errorMsg }
     }
+  }
+  
+  // Add non-www version WITH redirect to www (redirect is set during creation)
+  console.log('[Brand Domain] Adding non-www domain to Vercel WITH 307 redirect to www:', normalizedDomain, '->', wwwDomain)
+  const vercelResult = await addVercelDomain(normalizedDomain, undefined, {
+    redirect: `https://${wwwDomain}`,
+    redirectStatusCode: 307,
+  })
+  
+  if ('error' in vercelResult) {
+    // If domain already exists error, check if it's ours
+    if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
+      // Try to get the domain to verify it exists
+      const domainCheck = await getVercelDomain(normalizedDomain)
+      if (!('error' in domainCheck)) {
+        // Domain exists - check if it's ours
+        if (currentDomain !== normalizedDomain) {
+          // Rollback: remove www domain if non-www belongs to someone else
+          await removeVercelDomain(wwwDomain)
+          const errorMsg = 'This subdomain is already configured. It may belong to another project or account.'
+          await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Domain conflict in Vercel')
+          return { error: errorMsg }
+        }
+        // It's our domain, continue with existing domain
+        console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
+        
+        // Try to update redirect if domain exists but redirect is not set
+        const redirectResult = await updateVercelDomainRedirect(
+          normalizedDomain,
+          `https://${wwwDomain}`,
+          307
+        )
+        if ('error' in redirectResult) {
+          console.warn('[Brand Domain] Failed to update redirect on existing domain:', redirectResult.error)
+        } else {
+          console.log('[Brand Domain] Successfully updated redirect on existing domain')
+        }
+      } else {
+        // Rollback: remove www domain if we can't verify non-www
+        await removeVercelDomain(wwwDomain)
+        const errorMsg = 'Subdomain already exists but cannot be accessed. Please contact support.'
+        await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+        return { error: errorMsg }
+      }
+    } else {
+      // Rollback: remove www domain if non-www addition fails
+      await removeVercelDomain(wwwDomain)
+      // Sanitize error message to remove any platform-specific references
+      const sanitizedError = vercelResult.error.replace(/Vercel/gi, 'the platform').trim()
+      const errorMsg = `Failed to add subdomain: ${sanitizedError}. Please try again later.`
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'API error')
+      return { error: errorMsg }
+    }
+  } else {
+    console.log('[Brand Domain] Successfully added non-www domain with 307 redirect to www')
   }
 
   // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
@@ -773,22 +833,79 @@ export async function removeBrandDomainInternal(
     // Continue anyway
   }
 
-  // 4. Clear branding_config
+  // 4. Clear branding_config domain fields
+  // Create new config object - preserve other fields but explicitly set domain fields to null
+  // Using destructuring to remove domain fields and then explicitly setting them to null
+  // This ensures Supabase properly updates the JSONB field
+  const { 
+    custom_brand_domain, 
+    custom_brand_domain_verified, 
+    custom_brand_domain_verified_at, 
+    custom_brand_domain_vercel_added, 
+    custom_brand_domain_vercel_dns_instructions, 
+    ...otherConfig 
+  } = config
+  
   const updatedConfig: BrandingConfig = {
-    ...config,
+    ...otherConfig,
     custom_brand_domain: null,
     custom_brand_domain_verified: false,
     custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: false,
-    custom_brand_domain_vercel_dns_instructions: undefined,
+    custom_brand_domain_vercel_dns_instructions: null, // Use null instead of undefined for proper JSONB update
   }
 
+  // Use updateWorkspace function which handles the update properly
   const updatedWorkspace = await updateWorkspace(workspaceId, {
     branding_config: updatedConfig,
   })
 
   if (!updatedWorkspace) {
-    return { error: 'Failed to update workspace configuration' }
+    console.error('[Brand Domain] Failed to update workspace configuration via updateWorkspace')
+    // Try direct update as fallback
+    const { data: directUpdate, error: directError } = await supabase
+      .from('workspaces')
+      .update({ branding_config: updatedConfig })
+      .eq('id', workspaceId)
+      .select('branding_config')
+      .single()
+
+    if (directError || !directUpdate) {
+      console.error('[Brand Domain] Direct update also failed:', directError)
+      return { error: 'Failed to update workspace configuration' }
+    }
+
+    // Verify the domain was actually removed
+    const finalConfig = (directUpdate.branding_config || {}) as BrandingConfig
+    if (finalConfig.custom_brand_domain !== null && finalConfig.custom_brand_domain !== undefined) {
+      console.warn('[Brand Domain] Domain still present after removal')
+      return { error: 'Domain was not completely removed from configuration. Please try again or contact support.' }
+    }
+  } else {
+    // Verify the domain was actually removed
+    const finalConfig = (updatedWorkspace.branding_config || {}) as BrandingConfig
+    if (finalConfig.custom_brand_domain !== null && finalConfig.custom_brand_domain !== undefined) {
+      console.warn('[Brand Domain] Domain still present after removal, retrying update...')
+      // Retry with explicit null values using direct update
+      const { error: retryError } = await supabase
+        .from('workspaces')
+        .update({ 
+          branding_config: {
+            ...finalConfig,
+            custom_brand_domain: null,
+            custom_brand_domain_verified: false,
+            custom_brand_domain_verified_at: null,
+            custom_brand_domain_vercel_added: false,
+            custom_brand_domain_vercel_dns_instructions: null,
+          }
+        })
+        .eq('id', workspaceId)
+
+      if (retryError) {
+        console.error('[Brand Domain] Retry update also failed:', retryError)
+        return { error: 'Failed to completely remove domain from configuration' }
+      }
+    }
   }
 
   revalidatePath('/settings')
@@ -837,9 +954,18 @@ export async function removeBrandDomain(
   const result = await removeBrandDomainInternal(workspaceId)
   
   // Log operation result
+  // Only log successful operations for rate limiting purposes
+  // Failed operations due to errors (not rate limits) should not count against the limit
   if ('error' in result) {
-    await logDomainOperation(workspaceId, userId, 'remove', domain, false, result.error)
+    // Only log if it's a rate limit error - other errors shouldn't count against limit
+    if (result.error.includes('Rate limit exceeded')) {
+      await logDomainOperation(workspaceId, userId, 'remove', domain, false, result.error)
+    } else {
+      // Don't log other errors to rate limit - they're system/configuration errors
+      console.log('[Brand Domain] Operation failed but not counting against rate limit:', result.error)
+    }
   } else {
+    // Log successful operations for rate limiting
     await logDomainOperation(workspaceId, userId, 'remove', domain, true)
   }
   

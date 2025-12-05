@@ -114,10 +114,15 @@ async function getProjectId(): Promise<string | null> {
 
 /**
  * Add domain to Vercel project
+ * Can optionally add domain with redirect configuration
  */
 export async function addVercelDomain(
   domain: string,
-  projectId?: string
+  projectId?: string,
+  options?: {
+    redirect?: string
+    redirectStatusCode?: number
+  }
 ): Promise<{ success: true; domain: VercelDomainResponse } | { error: string }> {
   try {
     const { token } = getVercelCredentials()
@@ -125,6 +130,26 @@ export async function addVercelDomain(
 
     if (!finalProjectId) {
       return { error: 'Project ID not found. Please contact support.' }
+    }
+
+    // Prepare request body
+    const requestBody: {
+      name: string
+      redirect?: string
+      redirectStatusCode?: number
+    } = {
+      name: domain,
+    }
+
+    // Add redirect configuration if provided
+    if (options?.redirect) {
+      requestBody.redirect = options.redirect
+      requestBody.redirectStatusCode = options.redirectStatusCode || 307
+      console.log('[Vercel API] Adding domain with redirect:', {
+        domain,
+        redirect: options.redirect,
+        redirectStatusCode: requestBody.redirectStatusCode,
+      })
     }
 
     // Add domain to Vercel project
@@ -136,9 +161,7 @@ export async function addVercelDomain(
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: domain,
-        }),
+        body: JSON.stringify(requestBody),
       }
     )
 
@@ -337,6 +360,88 @@ export async function getVercelDomainConfig(
   } catch (error) {
     console.error('[Vercel API] Error getting domain config:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error getting domain config'
+    return { 
+      error: sanitizeErrorMessage(errorMessage)
+    }
+  }
+}
+
+/**
+ * Update domain redirect configuration
+ * Sets a domain to redirect to another domain with specified status code
+ */
+export async function updateVercelDomainRedirect(
+  domain: string,
+  redirectTo: string,
+  redirectStatusCode: number = 307,
+  projectId?: string
+): Promise<{ success: true; domain: VercelDomainResponse } | { error: string }> {
+  try {
+    const { token } = getVercelCredentials()
+    const finalProjectId = projectId || await getProjectId()
+
+    if (!finalProjectId) {
+      return { error: 'Project ID not found. Please contact support.' }
+    }
+
+    // URL encode the domain name to handle special characters
+    const encodedDomain = encodeURIComponent(domain)
+    
+    // Use v9 API endpoint as per Vercel documentation
+    // https://vercel.com/docs/rest-api/reference/endpoints/projects/update-a-project-domain
+    const response = await fetch(
+      `https://api.vercel.com/v9/projects/${finalProjectId}/domains/${encodedDomain}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          redirect: redirectTo,
+          redirectStatusCode: redirectStatusCode,
+        }),
+      }
+    )
+
+    // Check response status before parsing JSON
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorMessage = `Failed to update domain redirect: ${response.statusText}`
+      
+      try {
+        const errorData = JSON.parse(errorText) as VercelError
+        errorMessage = errorData.error?.message || errorMessage
+      } catch {
+        // If JSON parsing fails, use the error text
+        errorMessage = errorText || errorMessage
+      }
+      
+      console.error('[Vercel API] Redirect update failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorMessage,
+        domain,
+        redirectTo,
+      })
+      
+      return { 
+        error: sanitizeErrorMessage(errorMessage)
+      }
+    }
+
+    const data = await response.json() as VercelDomainResponse
+    console.log('[Vercel API] Successfully set redirect:', {
+      domain,
+      redirectTo,
+      redirectStatusCode,
+      domainResponse: data,
+    })
+
+    return { success: true, domain: data }
+  } catch (error) {
+    console.error('[Vercel API] Error updating domain redirect:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error updating domain redirect'
     return { 
       error: sanitizeErrorMessage(errorMessage)
     }
