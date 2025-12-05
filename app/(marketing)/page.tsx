@@ -301,7 +301,7 @@ export default function Home() {
       const result = await scrapeUrl(link)
       
       if ('error' in result) {
-        setError(result.error)
+        setError(result.error || 'An error occurred while scraping the URL')
         setIsLoading(false)
         return
       }
