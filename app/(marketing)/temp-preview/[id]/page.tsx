@@ -93,7 +93,7 @@ function PreviewContent() {
       const result = await claimPreview(previewId, workspace.id, user.id)
       
       if ('error' in result) {
-        setError(result.error)
+        setError(result.error || 'Failed to claim preview')
         setClaiming(false)
         return
       }
