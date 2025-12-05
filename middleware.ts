@@ -721,6 +721,24 @@ export async function middleware(request: NextRequest) {
   }
 }
 
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/ (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder files (images, etc.)
+     * 
+     * Note: Public routes (/, /privacy, /terms, /login, /signup, /auth) are handled in middleware
+     * and don't require session refresh, but still go through middleware.
+     * Protected routes: /dashboard, /sites, /settings, /client-portals, /builder/* require authentication.
+     */
+    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
+
 /**
  * Handle Supabase session refresh
  * 
@@ -806,22 +824,4 @@ async function handleSupabaseSession(
   }
 
   return response
-}
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/ (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files (images, etc.)
-     * 
-     * Note: Public routes (/, /privacy, /terms, /login, /signup, /auth) are handled in middleware
-     * and don't require session refresh, but still go through middleware.
-     * Protected routes: /dashboard, /sites, /settings, /client-portals, /builder/* require authentication.
-     */
-    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
 }
