@@ -61,11 +61,8 @@ export async function generatePreview(url: string) {
     console.log('🔵 [generatePreview] Parsing property data...')
     const parsedData = parsePropertyData(html, url)
     
-    // Generate PageConfig
-    console.log('🔵 [generatePreview] Generating page config...')
-    const generatedConfig = generatePageConfig(parsedData)
-    
     // Save to temp_previews (including raw HTML for debugging)
+    // For now, just store raw data - no generated config yet
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
@@ -73,7 +70,7 @@ export async function generatePreview(url: string) {
         source_url: url,
         raw_html: html, // Store raw HTML for inspection
         scraped_data: parsedData,
-        generated_config: generatedConfig,
+        generated_config: {}, // Empty for now - will be generated later
       })
       .select('id')
       .single()
