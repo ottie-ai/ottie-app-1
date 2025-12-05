@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cleanHtml } from '@/lib/scraper/html-parser'
+import { htmlToMarkdown } from '@/lib/htmlToMarkdown'
 
 /**
  * Scrape a URL using ScraperAPI and create anonymous preview
@@ -269,6 +270,64 @@ export async function reprocessHtml(previewId: string) {
     console.error('🔴 [reprocessHtml] Error:', error)
     return { 
       error: error instanceof Error ? error.message : 'Failed to reprocess HTML' 
+    }
+  }
+}
+
+/**
+ * Convert cleaned HTML to markdown
+ * Updates markdown in temp_previews table
+ * Uses admin client to bypass RLS (no UPDATE policy needed)
+ * This markdown is intended as LLM-ready content for property description generation
+ */
+export async function convertToMarkdown(previewId: string) {
+  try {
+    // Use admin client to bypass RLS (no UPDATE policy needed)
+    const supabase = createAdminClient()
+    
+    // Get preview with cleaned_html
+    const { data: preview, error: previewError } = await supabase
+      .from('temp_previews')
+      .select('cleaned_html')
+      .eq('id', previewId)
+      .gt('expires_at', new Date().toISOString())
+      .single()
+    
+    if (previewError || !preview) {
+      return { error: 'Preview not found or expired' }
+    }
+    
+    if (!preview.cleaned_html) {
+      return { error: 'No cleaned HTML available to convert. Please process with Cheerio first.' }
+    }
+    
+    // Convert cleaned HTML to markdown
+    console.log('🔵 [convertToMarkdown] Converting HTML to markdown for preview:', previewId)
+    const markdown = htmlToMarkdown(preview.cleaned_html)
+    
+    // Update markdown in database (admin client bypasses RLS)
+    const { data: updatedPreview, error: updateError } = await supabase
+      .from('temp_previews')
+      .update({ markdown: markdown })
+      .eq('id', previewId)
+      .select('markdown')
+      .single()
+    
+    if (updateError || !updatedPreview) {
+      console.error('🔴 [convertToMarkdown] Failed to update preview:', updateError)
+      return { error: 'Failed to update preview. Please try again.' }
+    }
+    
+    console.log('✅ [convertToMarkdown] Successfully converted HTML to markdown')
+    
+    return { 
+      success: true,
+      markdown: updatedPreview.markdown,
+    }
+  } catch (error) {
+    console.error('🔴 [convertToMarkdown] Error:', error)
+    return { 
+      error: error instanceof Error ? error.message : 'Failed to convert to markdown' 
     }
   }
 }
