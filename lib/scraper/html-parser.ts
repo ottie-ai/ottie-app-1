@@ -30,15 +30,49 @@ export interface ParsedPropertyData {
 
 /**
  * Clean HTML by removing unwanted elements
+ * 
+ * IMPORTANT: First extracts main content, THEN removes unwanted elements
+ * This prevents losing important information that might be in body/main/article
  */
 export function cleanHtml(html: string): string {
   const $ = load(html)
 
-  // Remove unwanted elements
+  // STEP 1: Extract main content FIRST (without modification)
+  // This preserves all important information (price, address, details, images)
+  let mainContentHtml: string | null = null
+  
+  const mainEl = $('main').first()
+  const roleMainEl = $('[role="main"]').first()
+  const mainContentEl = $('.main-content').first()
+  const mainContentIdEl = $('#main-content').first()
+  const articleEl = $('article').first()
+  const bodyEl = $('body')
+
+  // Get first non-empty content found
+  if (mainEl.length > 0 && mainEl.html()) {
+    mainContentHtml = mainEl.html() || null
+  } else if (roleMainEl.length > 0 && roleMainEl.html()) {
+    mainContentHtml = roleMainEl.html() || null
+  } else if (mainContentEl.length > 0 && mainContentEl.html()) {
+    mainContentHtml = mainContentEl.html() || null
+  } else if (mainContentIdEl.length > 0 && mainContentIdEl.html()) {
+    mainContentHtml = mainContentIdEl.html() || null
+  } else if (articleEl.length > 0 && articleEl.html()) {
+    mainContentHtml = articleEl.html() || null
+  } else {
+    // Fallback to body
+    mainContentHtml = bodyEl.html() || null
+  }
+
+  if (!mainContentHtml) {
+    return ''
+  }
+
+  // STEP 2: Load extracted content into new cheerio instance
+  const $content = load(mainContentHtml)
+
+  // STEP 3: Remove unwanted elements ONLY from extracted content
   const selectorsToRemove = [
-    'header',
-    'footer',
-    'nav',
     'script',
     'style',
     '[class*="ad"]',
@@ -52,43 +86,57 @@ export function cleanHtml(html: string): string {
     'iframe[src*="ads"]',
     'iframe[src*="tracking"]',
     'iframe[src*="analytics"]',
+    // Also remove header/footer/nav if they exist inside main content
+    'header',
+    'footer',
+    'nav',
   ]
 
   selectorsToRemove.forEach(selector => {
     try {
-      $(selector).remove()
+      $content(selector).remove()
     } catch (e) {
       // Ignore invalid selectors
     }
   })
 
-  // Extract main content (try to find main content area, fallback to body)
-  const mainEl = $('main').first()
-  const roleMainEl = $('[role="main"]').first()
-  const mainContentEl = $('.main-content').first()
-  const mainContentIdEl = $('#main-content').first()
-  const articleEl = $('article').first()
-  const bodyEl = $('body')
+  // STEP 4: Convert lazy-loading attributes to regular src attributes
+  // This ensures images are visible even if JavaScript is disabled
+  $content('img[data-src]').each((_, img) => {
+    const $img = $content(img)
+    const dataSrc = $img.attr('data-src')
+    if (dataSrc && !$img.attr('src')) {
+      $img.attr('src', dataSrc)
+    }
+  })
 
-  // Return first non-empty content found
-  if (mainEl.length > 0 && mainEl.html()) {
-    return mainEl.html() || ''
-  }
-  if (roleMainEl.length > 0 && roleMainEl.html()) {
-    return roleMainEl.html() || ''
-  }
-  if (mainContentEl.length > 0 && mainContentEl.html()) {
-    return mainContentEl.html() || ''
-  }
-  if (mainContentIdEl.length > 0 && mainContentIdEl.html()) {
-    return mainContentIdEl.html() || ''
-  }
-  if (articleEl.length > 0 && articleEl.html()) {
-    return articleEl.html() || ''
-  }
-  
-  // Fallback to body
-  return bodyEl.html() || ''
+  $content('img[data-lazy]').each((_, img) => {
+    const $img = $content(img)
+    const dataLazy = $img.attr('data-lazy')
+    if (dataLazy && !$img.attr('src')) {
+      $img.attr('src', dataLazy)
+    }
+  })
+
+  // Convert data-srcset to srcset for responsive images
+  $content('img[data-srcset]').each((_, img) => {
+    const $img = $content(img)
+    const dataSrcset = $img.attr('data-srcset')
+    if (dataSrcset && !$img.attr('srcset')) {
+      $img.attr('srcset', dataSrcset)
+    }
+  })
+
+  // Convert picture source data-srcset
+  $content('source[data-srcset]').each((_, source) => {
+    const $source = $content(source)
+    const dataSrcset = $source.attr('data-srcset')
+    if (dataSrcset && !$source.attr('srcset')) {
+      $source.attr('srcset', dataSrcset)
+    }
+  })
+
+  return $content.html() || ''
 }
 
 /**
