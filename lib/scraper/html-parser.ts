@@ -1,7 +1,10 @@
 /**
  * HTML Parser for Real Estate Listings
  * Extracts structured property data from HTML content
+ * Uses cheerio for server-side HTML parsing
  */
+
+import { load } from 'cheerio'
 
 export interface ParsedPropertyData {
   title: string | null
@@ -29,8 +32,7 @@ export interface ParsedPropertyData {
  * Clean HTML by removing unwanted elements
  */
 export function cleanHtml(html: string): string {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
+  const $ = load(html)
 
   // Remove unwanted elements
   const selectorsToRemove = [
@@ -54,7 +56,7 @@ export function cleanHtml(html: string): string {
 
   selectorsToRemove.forEach(selector => {
     try {
-      doc.querySelectorAll(selector).forEach(el => el.remove())
+      $(selector).remove()
     } catch (e) {
       // Ignore invalid selectors
     }
@@ -62,27 +64,26 @@ export function cleanHtml(html: string): string {
 
   // Extract main content
   const mainContent =
-    doc.querySelector('main') ||
-    doc.querySelector('[role="main"]') ||
-    doc.querySelector('.main-content') ||
-    doc.querySelector('#main-content') ||
-    doc.querySelector('article') ||
-    doc.body
+    $('main').first() ||
+    $('[role="main"]').first() ||
+    $('.main-content').first() ||
+    $('#main-content').first() ||
+    $('article').first() ||
+    $('body')
 
-  return mainContent?.innerHTML || ''
+  return mainContent.html() || ''
 }
 
 /**
  * Extract text content from HTML
  */
 export function extractText(html: string): string {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
+  const $ = load(html)
 
   // Remove script and style tags
-  doc.querySelectorAll('script, style').forEach(el => el.remove())
+  $('script, style').remove()
 
-  return doc.body.textContent || doc.body.innerText || ''
+  return $('body').text() || ''
 }
 
 /**
@@ -90,8 +91,7 @@ export function extractText(html: string): string {
  * Uses heuristics and common patterns for real estate sites
  */
 export function parsePropertyData(html: string, sourceUrl: string): ParsedPropertyData {
-  const parser = new DOMParser()
-  const doc = parser.parseFromString(html, 'text/html')
+  const $ = load(html)
 
   const result: ParsedPropertyData = {
     title: null,
@@ -117,17 +117,17 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
 
   // Extract title
   result.title =
-    doc.querySelector('h1')?.textContent?.trim() ||
-    doc.querySelector('[class*="title"]')?.textContent?.trim() ||
-    doc.querySelector('[class*="heading"]')?.textContent?.trim() ||
-    doc.title ||
+    $('h1').first().text().trim() ||
+    $('[class*="title"]').first().text().trim() ||
+    $('[class*="heading"]').first().text().trim() ||
+    $('title').text().trim() ||
     null
 
   // Extract price (look for $, €, £ symbols and numbers)
   const priceText =
-    doc.querySelector('[class*="price"]')?.textContent ||
-    doc.querySelector('[id*="price"]')?.textContent ||
-    doc.querySelector('[data-price]')?.getAttribute('data-price') ||
+    $('[class*="price"]').first().text() ||
+    $('[id*="price"]').first().text() ||
+    $('[data-price]').first().attr('data-price') ||
     null
 
   if (priceText) {
@@ -146,17 +146,17 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
   ]
 
   for (const selector of addressSelectors) {
-    const element = doc.querySelector(selector)
-    if (element) {
-      result.address = element.textContent?.trim() || null
+    const element = $(selector).first()
+    if (element.length > 0) {
+      result.address = element.text().trim() || null
       break
     }
   }
 
   // Extract bedrooms
   const bedText =
-    doc.querySelector('[class*="bed"]')?.textContent ||
-    doc.querySelector('[class*="bedroom"]')?.textContent ||
+    $('[class*="bed"]').first().text() ||
+    $('[class*="bedroom"]').first().text() ||
     null
 
   if (bedText) {
@@ -168,8 +168,8 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
 
   // Extract bathrooms
   const bathText =
-    doc.querySelector('[class*="bath"]')?.textContent ||
-    doc.querySelector('[class*="bathroom"]')?.textContent ||
+    $('[class*="bath"]').first().text() ||
+    $('[class*="bathroom"]').first().text() ||
     null
 
   if (bathText) {
@@ -181,9 +181,9 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
 
   // Extract square footage
   const sqftText =
-    doc.querySelector('[class*="sqft"]')?.textContent ||
-    doc.querySelector('[class*="square"]')?.textContent ||
-    doc.querySelector('[class*="area"]')?.textContent ||
+    $('[class*="sqft"]').first().text() ||
+    $('[class*="square"]').first().text() ||
+    $('[class*="area"]').first().text() ||
     null
 
   if (sqftText) {
@@ -194,12 +194,12 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
   }
 
   // Extract images
-  const imageElements = doc.querySelectorAll('img[src], img[data-src], img[data-lazy]')
-  imageElements.forEach(img => {
+  $('img[src], img[data-src], img[data-lazy]').each((_, img) => {
+    const $img = $(img)
     const src =
-      img.getAttribute('src') ||
-      img.getAttribute('data-src') ||
-      img.getAttribute('data-lazy') ||
+      $img.attr('src') ||
+      $img.attr('data-src') ||
+      $img.attr('data-lazy') ||
       null
 
     if (src && !src.includes('placeholder') && !src.includes('logo') && !src.includes('icon')) {
@@ -226,19 +226,17 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
   ]
 
   for (const selector of descriptionSelectors) {
-    const element = doc.querySelector(selector)
-    if (element && element.textContent && element.textContent.length > 50) {
-      result.description = element.textContent.trim()
+    const element = $(selector).first()
+    const text = element.text().trim()
+    if (text && text.length > 50) {
+      result.description = text
       break
     }
   }
 
   // Extract features/amenities
-  const featureElements = doc.querySelectorAll(
-    '[class*="feature"], [class*="amenity"], [class*="amenities"], li[class*="feature"]'
-  )
-  featureElements.forEach(el => {
-    const text = el.textContent?.trim()
+  $('[class*="feature"], [class*="amenity"], [class*="amenities"], li[class*="feature"]').each((_, el) => {
+    const text = $(el).text().trim()
     if (text && text.length < 100) {
       result.features.push(text)
     }
