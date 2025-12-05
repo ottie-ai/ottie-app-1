@@ -53,11 +53,13 @@ export function htmlToMarkdown(cleanHtml: string): string {
     
     // Check attributes on all descendant elements recursively
     $el.find('*').each((_, childEl) => {
-      const $child = $(childEl)
-      const childAttrs = childEl.attribs || {}
-      for (const attrValue of Object.values(childAttrs)) {
-        if (typeof attrValue === 'string' && attrValue.toLowerCase().includes('agent')) {
-          return true
+      // Only check elements (not text nodes)
+      if ('attribs' in childEl && childEl.attribs) {
+        const childAttrs = childEl.attribs
+        for (const attrValue of Object.values(childAttrs)) {
+          if (typeof attrValue === 'string' && attrValue.toLowerCase().includes('agent')) {
+            return true
+          }
         }
       }
     })
