@@ -253,21 +253,28 @@ export function parsePropertyData(html: string, sourceUrl: string): ParsedProper
  */
 export function generatePageConfig(data: ParsedPropertyData): any {
   const sections: any[] = []
+  let sectionIndex = 0
+
+  // Helper to generate unique section ID
+  const generateId = (type: string) => `${type}-${sectionIndex++}`
 
   // Hero section
   if (data.images.length > 0 || data.title) {
     sections.push({
+      id: generateId('hero'),
       type: 'hero',
+      variant: 'full', // Use 'full' variant for hero
       data: {
-        title: data.title || 'Property Listing',
-        subtitle: data.address || '',
-        image: data.images[0] || null,
-        backgroundImage: data.images[0] || null,
+        headline: data.title || 'Property Listing',
+        subheadline: data.address || '',
+        price: data.price ? `$${data.price.toLocaleString()}` : '',
+        address: data.address || '',
+        propertyImage: data.images[0] || null,
       },
     })
   }
 
-  // Features section
+  // Features section (Property Details)
   if (data.bedrooms || data.bathrooms || data.squareFootage) {
     const features: any[] = []
 
@@ -289,7 +296,7 @@ export function generatePageConfig(data: ParsedPropertyData): any {
 
     if (data.squareFootage) {
       features.push({
-        icon: 'area',
+        icon: 'ruler',
         label: 'Square Feet',
         value: data.squareFootage.toLocaleString(),
       })
@@ -297,33 +304,33 @@ export function generatePageConfig(data: ParsedPropertyData): any {
 
     if (features.length > 0) {
       sections.push({
+        id: generateId('features'),
         type: 'features',
+        variant: 'grid', // Use 'grid' variant for features
         data: {
           title: 'Property Details',
-          items: features,
+          features: features,
         },
       })
     }
   }
 
-  // Description section
-  if (data.description) {
-    sections.push({
-      type: 'text',
-      data: {
-        title: 'Description',
-        content: data.description,
-      },
-    })
-  }
+  // Description section - skip for now (text type not in registry)
+  // We'll add it later if needed
 
   // Gallery section
   if (data.images.length > 1) {
     sections.push({
+      id: generateId('gallery'),
       type: 'gallery',
+      variant: 'grid', // Use 'grid' variant for gallery
       data: {
         title: 'Property Images',
-        images: data.images.slice(1, 10), // Skip first (used in hero)
+        images: data.images.slice(1, 10).map((src: string) => ({
+          src,
+          alt: 'Property image',
+        })),
+        layout: 'grid',
       },
     })
   }
@@ -331,10 +338,12 @@ export function generatePageConfig(data: ParsedPropertyData): any {
   // Amenities section
   if (data.features.length > 0) {
     sections.push({
+      id: generateId('features'),
       type: 'features',
+      variant: 'list', // Use 'list' variant for amenities
       data: {
         title: 'Features & Amenities',
-        items: data.features.map(f => ({
+        features: data.features.map(f => ({
           label: f,
         })),
       },
