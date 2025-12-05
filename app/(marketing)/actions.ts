@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { cleanHtml } from '@/lib/scraper/html-parser'
 
 /**
@@ -218,10 +219,12 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
 /**
  * Reprocess raw HTML through Cheerio cleaning
  * Updates cleaned_html in temp_previews table
+ * Uses admin client to bypass RLS (no UPDATE policy needed)
  */
 export async function reprocessHtml(previewId: string) {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS (no UPDATE policy needed)
+    const supabase = createAdminClient()
     
     // Get preview with raw_html
     const { data: preview, error: previewError } = await supabase
@@ -243,7 +246,7 @@ export async function reprocessHtml(previewId: string) {
     console.log('🔵 [reprocessHtml] Reprocessing HTML for preview:', previewId)
     const cleanedHtml = cleanHtml(preview.raw_html)
     
-    // Update cleaned_html in database
+    // Update cleaned_html in database (admin client bypasses RLS)
     const { data: updatedPreview, error: updateError } = await supabase
       .from('temp_previews')
       .update({ cleaned_html: cleanedHtml })
