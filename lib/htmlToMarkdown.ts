@@ -27,7 +27,38 @@ export function htmlToMarkdown(cleanHtml: string): string {
   // Light cleanup with Cheerio - remove only obvious noise
   const $ = load(cleanHtml)
   
-  // Remove obvious noise tags
+  // Extract image URLs from scripts before removing them
+  const imageUrlsFromScripts: string[] = []
+  
+  // Check script tags for image URLs (like cleanHtml does)
+  $('script').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html() || $el.text() || ''
+    
+    // Check for image URLs in the script content
+    const imagePatterns = [
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)(\?|"|'|\s|,|})/i,
+      /"image":\s*"https?:\/\//i,
+      /"imageUrl":\s*"https?:\/\//i,
+      /"url":\s*"https?:\/\/[^"]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+      /photos\./i,
+      /images?\./i,
+      /img[^"]*\.(jpg|jpeg|png|gif|webp)/i,
+    ]
+    
+    const hasImageLinks = imagePatterns.some(pattern => pattern.test(content))
+    
+    if (hasImageLinks) {
+      // Extract image URLs from the script content
+      const urlPattern = /https?:\/\/[^\s"',}]+\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)(\?[^\s"',}]*)?/gi
+      const matches = content.match(urlPattern)
+      if (matches) {
+        imageUrlsFromScripts.push(...matches)
+      }
+    }
+  })
+  
+  // Remove obvious noise tags (but scripts with images are already processed)
   $('script, style, noscript, iframe, svg, canvas').remove()
   
   let contentToConvert: string
@@ -86,7 +117,15 @@ export function htmlToMarkdown(cleanHtml: string): string {
   })
   
   // Convert to markdown
-  const markdown = turndownService.turndown(contentToConvert)
+  let markdown = turndownService.turndown(contentToConvert)
+  
+  // Add image URLs from scripts to the markdown
+  // Remove duplicates and add them as image links at the end
+  const uniqueImageUrls = [...new Set(imageUrlsFromScripts)]
+  if (uniqueImageUrls.length > 0) {
+    const imageLinks = uniqueImageUrls.map(url => `![Image](${url})`).join('\n')
+    markdown = markdown + (markdown.trim() ? '\n\n' : '') + imageLinks
+  }
   
   return markdown
 }
