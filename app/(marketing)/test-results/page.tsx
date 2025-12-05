@@ -10,13 +10,16 @@ import { cn } from '@/lib/utils'
 
 function TestResultsContent() {
   const searchParams = useSearchParams()
-  const url = searchParams.get('url')
-  const scrapedAt = searchParams.get('scrapedAt')
-  const htmlContent = searchParams.get('html')
-  const scrapeCallTime = searchParams.get('scrapeCallTime')
-  const totalTime = searchParams.get('totalTime')
+  const storageKey = searchParams.get('key')
   
   const [copied, setCopied] = useState(false)
+  const [data, setData] = useState<{
+    html: string
+    url: string
+    scrapedAt: string
+    scrapeCallTime: number
+    totalTime: number
+  } | null>(null)
   const [stats, setStats] = useState({
     length: 0,
     lines: 0,
@@ -32,28 +35,58 @@ function TestResultsContent() {
     return `${(ms / 1000).toFixed(2)}s`
   }
 
+  // Load data from sessionStorage
   useEffect(() => {
-    if (htmlContent) {
+    if (storageKey && typeof window !== 'undefined') {
+      try {
+        const stored = sessionStorage.getItem(storageKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          setData(parsed)
+          
+          // Clean up old storage keys (keep only last 5)
+          const keys = Object.keys(sessionStorage)
+            .filter(k => k.startsWith('scrape_result_'))
+            .sort()
+            .reverse()
+            .slice(5)
+          keys.forEach(k => sessionStorage.removeItem(k))
+        }
+      } catch (error) {
+        console.error('Error loading scrape data from sessionStorage:', error)
+      }
+    }
+  }, [storageKey])
+
+  useEffect(() => {
+    if (data?.html) {
       // Calculate basic stats
       const parser = new DOMParser()
-      const doc = parser.parseFromString(htmlContent, 'text/html')
+      const doc = parser.parseFromString(data.html, 'text/html')
       
       setStats({
-        length: htmlContent.length,
-        lines: htmlContent.split('\n').length,
+        length: data.html.length,
+        lines: data.html.split('\n').length,
         images: doc.querySelectorAll('img').length,
         links: doc.querySelectorAll('a').length,
       })
     }
-  }, [htmlContent])
+  }, [data])
 
   const handleCopy = () => {
-    if (htmlContent) {
-      navigator.clipboard.writeText(htmlContent)
+    if (data?.html) {
+      navigator.clipboard.writeText(data.html)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
   }
+
+  // Extract values for easier access
+  const url = data?.url
+  const scrapedAt = data?.scrapedAt
+  const htmlContent = data?.html
+  const scrapeCallTime = data?.scrapeCallTime
+  const totalTime = data?.totalTime
 
   return (
     <div className="dark bg-[#08000d] min-h-screen">
@@ -81,7 +114,7 @@ function TestResultsContent() {
                   Scrape API Call
                 </Typography>
                 <Typography variant="h2" className="text-white border-none">
-                  {scrapeCallTime ? formatTime(parseInt(scrapeCallTime)) : 'N/A'}
+                  {scrapeCallTime ? formatTime(scrapeCallTime) : 'N/A'}
                 </Typography>
               </div>
               <div className="border border-white/20 rounded-lg p-4 bg-gradient-to-br from-white/[0.05] to-white/[0.02]">
@@ -89,7 +122,7 @@ function TestResultsContent() {
                   Total Generation Time
                 </Typography>
                 <Typography variant="h2" className="text-white border-none">
-                  {totalTime ? formatTime(parseInt(totalTime)) : 'N/A'}
+                  {totalTime ? formatTime(totalTime) : 'N/A'}
                 </Typography>
               </div>
             </div>

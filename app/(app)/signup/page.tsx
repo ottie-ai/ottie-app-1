@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { signUp, signInWithOAuth, normalizeAuthError } from '@/lib/supabase/auth'
 import { useAuth } from '@/hooks/use-auth'
 import { acceptInvitation, getInvitationByToken } from '@/app/(app)/settings/actions'
+import { claimPreview } from '@/app/(marketing)/actions'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { AlertCircle } from 'lucide-react'
@@ -32,6 +34,7 @@ function RegisterForm() {
   const prefillEmail = searchParams.get('email')
   const rateLimitExceeded = searchParams.get('rateLimit') === 'true'
   const retryAfterMinutes = searchParams.get('retryAfter')
+  const previewId = searchParams.get('preview') // Preview ID to claim after signup
   
   // Pre-fill email if provided in query params (from invite flow)
   useEffect(() => {
@@ -137,6 +140,32 @@ function RegisterForm() {
                 localStorage.setItem('current_workspace_id', acceptResult.workspaceId)
               }
             }
+          }
+        }
+        
+        // If there's a preview to claim, claim it after signup
+        if (previewId && data.user) {
+          try {
+            const supabase = createClient()
+            // Get user's workspace
+            const { data: workspace } = await supabase
+              .from('workspaces')
+              .select('id')
+              .eq('owner_id', data.user.id)
+              .single()
+            
+            if (workspace) {
+              const claimResult = await claimPreview(previewId, workspace.id, data.user.id)
+              if ('success' in claimResult && claimResult.success) {
+                // Navigate to builder with the claimed site
+                router.push(`/builder/${claimResult.siteId}`)
+                router.refresh()
+                return
+              }
+            }
+          } catch (err) {
+            console.error('Failed to claim preview:', err)
+            // Continue to dashboard if claim fails
           }
         }
         

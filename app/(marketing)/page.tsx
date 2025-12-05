@@ -18,7 +18,7 @@ import Navbar from '@/components/marketing/navbar'
 import { transformPlansToTiers } from '@/lib/pricing-data'
 import { createClient } from '@/lib/supabase/client'
 import type { Plan } from '@/types/database'
-import { scrapeUrl } from './actions'
+import { generatePreview } from './actions'
 import '../sphere.css'
 
 const realEstateLinks = [
@@ -297,11 +297,11 @@ export default function Home() {
     setLoadingPhase('waiting')
 
     try {
-      // Call the scraper API
-      const result = await scrapeUrl(link)
+      // Generate preview (scrape + parse + save to temp_previews)
+      const result = await generatePreview(link)
       
       if ('error' in result) {
-        setError(result.error || 'An error occurred while scraping the URL')
+        setError(result.error || 'An error occurred while generating preview')
         setIsLoading(false)
         return
       }
@@ -310,18 +310,10 @@ export default function Home() {
       const totalEndTime = Date.now()
       const totalDuration = totalEndTime - totalStartTime
 
-      // Navigate to results page with the scraped data and timing info
-      const params = new URLSearchParams({
-        url: result.url,
-        scrapedAt: result.scrapedAt,
-        html: result.html,
-        scrapeCallTime: result.timing?.scrapeCall?.toString() || '0',
-        totalTime: totalDuration.toString(),
-      })
-      
-      router.push(`/test-results?${params.toString()}`)
+      // Navigate to preview page
+      router.push(`/preview/${result.previewId}?totalTime=${totalDuration}`)
     } catch (err) {
-      console.error('Error scraping URL:', err)
+      console.error('Error generating preview:', err)
       setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
