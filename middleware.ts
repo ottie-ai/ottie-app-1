@@ -320,62 +320,72 @@ export async function middleware(request: NextRequest) {
   const isAuthEndpoint = authEndpoints.some(endpoint => pathname === endpoint || pathname.startsWith(endpoint + '/'))
 
   if (isAuthEndpoint) {
-    const clientIp = getClientIp(request)
+    // Check if rate limit error is already in URL (prevents redirect loop)
+    const hasRateLimitParam = url.searchParams.get('rateLimit') === 'true'
     
-    // Different rate limits for different endpoints
-    let limit: number
-    let windowMs: number
-
-    if (pathname === '/login' || pathname.startsWith('/login')) {
-      // Login: 15 attempts per 15 minutes (allows for typos and password issues)
-      limit = 15
-      windowMs = 15 * 60 * 1000
-    } else if (pathname === '/signup' || pathname.startsWith('/signup')) {
-      // Signup: 5 attempts per 15 minutes (allows for form validation errors)
-      limit = 5
-      windowMs = 15 * 60 * 1000
-    } else if (pathname === '/forgot-password' || pathname.startsWith('/forgot-password')) {
-      // Password reset: 5 attempts per hour (prevents abuse but allows legitimate use)
-      limit = 5
-      windowMs = 60 * 60 * 1000
-    } else if (pathname === '/reset-password' || pathname.startsWith('/reset-password')) {
-      // Reset password (form submission): 10 attempts per hour
-      limit = 10
-      windowMs = 60 * 60 * 1000
-    } else {
-      // Default: 20 requests per 15 minutes
-      limit = 20
-      windowMs = 15 * 60 * 1000
-    }
-
-    if (!checkRateLimit(clientIp, limit, windowMs)) {
-      // Get the reset time from the rate limit record
-      const record = rateLimit.get(clientIp)
-      const retryAfterMs = record ? Math.max(0, record.resetTime - Date.now()) : windowMs
-      const retryAfterMinutes = Math.ceil(retryAfterMs / (60 * 1000))
+    // Only check rate limit if we're not already showing the rate limit error
+    if (!hasRateLimitParam) {
+      const clientIp = getClientIp(request)
       
-      // For login/signup pages, redirect with query parameter instead of returning error
+      // Different rate limits for different endpoints
+      let limit: number
+      let windowMs: number
+
       if (pathname === '/login' || pathname.startsWith('/login')) {
-        const redirectUrl = new URL('/login', request.url)
-        redirectUrl.searchParams.set('rateLimit', 'true')
-        redirectUrl.searchParams.set('retryAfter', String(retryAfterMinutes))
-        // Preserve existing redirect parameter if present
-        const existingRedirect = url.searchParams.get('redirect')
-        if (existingRedirect) {
-          redirectUrl.searchParams.set('redirect', existingRedirect)
-        }
-        return NextResponse.redirect(redirectUrl)
+        // Login: 15 attempts per 15 minutes (allows for typos and password issues)
+        limit = 15
+        windowMs = 15 * 60 * 1000
       } else if (pathname === '/signup' || pathname.startsWith('/signup')) {
-        const redirectUrl = new URL('/signup', request.url)
-        redirectUrl.searchParams.set('rateLimit', 'true')
-        redirectUrl.searchParams.set('retryAfter', String(retryAfterMinutes))
-        // Preserve existing redirect parameter if present
-        const existingRedirect = url.searchParams.get('redirect')
-        if (existingRedirect) {
-          redirectUrl.searchParams.set('redirect', existingRedirect)
-        }
-        return NextResponse.redirect(redirectUrl)
+        // Signup: 5 attempts per 15 minutes (allows for form validation errors)
+        limit = 5
+        windowMs = 15 * 60 * 1000
+      } else if (pathname === '/forgot-password' || pathname.startsWith('/forgot-password')) {
+        // Password reset: 5 attempts per hour (prevents abuse but allows legitimate use)
+        limit = 5
+        windowMs = 60 * 60 * 1000
+      } else if (pathname === '/reset-password' || pathname.startsWith('/reset-password')) {
+        // Reset password (form submission): 10 attempts per hour
+        limit = 10
+        windowMs = 60 * 60 * 1000
+      } else {
+        // Default: 20 requests per 15 minutes
+        limit = 20
+        windowMs = 15 * 60 * 1000
       }
+
+      if (!checkRateLimit(clientIp, limit, windowMs)) {
+        // Get the reset time from the rate limit record
+        const record = rateLimit.get(clientIp)
+        const retryAfterMs = record ? Math.max(0, record.resetTime - Date.now()) : windowMs
+        const retryAfterMinutes = Math.ceil(retryAfterMs / (60 * 1000))
+        
+        // For login/signup pages, redirect with query parameter instead of returning error
+        if (pathname === '/login' || pathname.startsWith('/login')) {
+          const redirectUrl = new URL('/login', request.url)
+          redirectUrl.searchParams.set('rateLimit', 'true')
+          redirectUrl.searchParams.set('retryAfter', String(retryAfterMinutes))
+          // Preserve existing redirect parameter if present
+          const existingRedirect = url.searchParams.get('redirect')
+          if (existingRedirect) {
+            redirectUrl.searchParams.set('redirect', existingRedirect)
+          }
+          return NextResponse.redirect(redirectUrl)
+        } else if (pathname === '/signup' || pathname.startsWith('/signup')) {
+          const redirectUrl = new URL('/signup', request.url)
+          redirectUrl.searchParams.set('rateLimit', 'true')
+          redirectUrl.searchParams.set('retryAfter', String(retryAfterMinutes))
+          // Preserve existing redirect parameter if present
+          const existingRedirect = url.searchParams.get('redirect')
+          if (existingRedirect) {
+            redirectUrl.searchParams.set('redirect', existingRedirect)
+          }
+          // Preserve preview parameter if present
+          const existingPreview = url.searchParams.get('preview')
+          if (existingPreview) {
+            redirectUrl.searchParams.set('preview', existingPreview)
+          }
+          return NextResponse.redirect(redirectUrl)
+        }
       
       // For other endpoints, return 429 error
       return new NextResponse(
