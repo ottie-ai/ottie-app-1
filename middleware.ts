@@ -487,15 +487,15 @@ export async function middleware(request: NextRequest) {
     const authRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
     const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
     
-    // Preview routes - require authentication (handled in the route itself)
-    const isPreviewRoute = pathname.startsWith('/preview/')
+    // Preview routes - temp-preview is for anonymous scrape results, preview is for authenticated
+    const isPreviewRoute = pathname.startsWith('/preview/') || pathname.startsWith('/temp-preview/')
     
     // API routes are allowed
     const isApiRoute = pathname.startsWith('/api/')
     
     // If it's a marketing, auth, preview, or API route, allow it to continue
     // Marketing routes are handled by (marketing) route group and are always public
-    // Preview routes are handled by preview route group and require authentication
+    // Preview routes are handled by preview route group (temp-preview is anonymous, preview requires auth)
     if (isMarketingRoute || isAuthRoute || isPreviewRoute || isApiRoute) {
       // Allow these routes - continue to route groups
       // Marketing will be handled by (marketing) route group
@@ -683,8 +683,8 @@ export async function middleware(request: NextRequest) {
       const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
                          pathname.startsWith('/builder/')
       
-      // Preview routes are allowed on root localhost (they require auth)
-      const isPreviewRoute = pathname.startsWith('/preview/')
+      // Preview routes are allowed on root localhost (temp-preview is anonymous, preview requires auth)
+      const isPreviewRoute = pathname.startsWith('/preview/') || pathname.startsWith('/temp-preview/')
       
       if (isAppRoute) {
         // Redirect app routes to app.localhost subdomain
