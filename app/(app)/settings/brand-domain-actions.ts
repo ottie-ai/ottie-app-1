@@ -255,14 +255,14 @@ export async function setBrandDomain(
         type: 'CNAME',
         domain: `*.${subdomainName}`, // Wildcard: *.properties
         value: firstItem,
-        reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+        reason: 'Point your wildcard subdomain to Vercel'
       })
     } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem) {
       vercelDNSInstructions.push({
         type: 'CNAME',
         domain: `*.${subdomainName}`, // Wildcard: *.properties
         value: firstItem.value,
-        reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+        reason: 'Point your wildcard subdomain to Vercel'
       })
     }
   } else if (config.cnames && config.cnames.length > 0) {
@@ -282,7 +282,7 @@ export async function setBrandDomain(
         type: 'A',
         domain: `*.${subdomainName}`, // Wildcard: *.properties
         value: firstItem,
-        reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+        reason: 'Point your wildcard subdomain to Vercel'
       })
     } else if (firstItem && typeof firstItem === 'object' && 'value' in firstItem && Array.isArray(firstItem.value)) {
       if (firstItem.value.length > 0) {
@@ -290,7 +290,7 @@ export async function setBrandDomain(
           type: 'A',
           domain: `*.${subdomainName}`, // Wildcard: *.properties
           value: firstItem.value[0],
-          reason: 'Point your wildcard subdomain to Vercel (covers both www and non-www)'
+          reason: 'Point your wildcard subdomain to Vercel'
         })
       }
     }
