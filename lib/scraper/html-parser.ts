@@ -4,7 +4,9 @@
  * Uses cheerio for server-side HTML parsing
  */
 
-import { load, type CheerioAPI } from 'cheerio'
+import { load } from 'cheerio'
+
+type CheerioAPI = ReturnType<typeof load>
 
 export interface ParsedPropertyData {
   title: string | null
