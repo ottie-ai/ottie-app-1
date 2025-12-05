@@ -56,7 +56,10 @@ export async function getWorkspaceByBrandDomain(
     supabase = await createClient()
   }
 
-  console.log('[Brand Domain] Looking up domain:', domain)
+  // Only log in development - avoid exposing domain lookup info in production
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Brand Domain] Looking up domain:', domain)
+  }
   
   // Use RPC function for secure and performant lookup
   // RPC function handles normalization internally
@@ -67,7 +70,10 @@ export async function getWorkspaceByBrandDomain(
     
     if (!rpcError && rpcResult && rpcResult.length > 0) {
       const workspace = rpcResult[0] as Workspace
-      console.log('[Brand Domain] Found verified workspace via RPC:', workspace.id)
+      // Only log in development - avoid exposing workspace IDs in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Brand Domain] Found verified workspace via RPC:', workspace.id)
+      }
       const brandingConfig = (workspace.branding_config || {}) as {
         custom_brand_domain_verified?: boolean
       }
@@ -78,16 +84,25 @@ export async function getWorkspaceByBrandDomain(
     }
     
     if (rpcError) {
-      console.log('[Brand Domain] RPC function not available, using direct query:', rpcError.message)
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Brand Domain] RPC function not available, using direct query:', rpcError.message)
+      }
     }
   } catch (error) {
-    console.log('[Brand Domain] RPC function not available, using direct query')
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Brand Domain] RPC function not available, using direct query')
+    }
   }
   
   // Fallback: Use direct query with correct JSONB syntax
   // Normalize domain for fallback query (remove www prefix)
   const normalizedDomain = normalizeDomain(domain)
-  console.log('[Brand Domain] Using normalized domain for fallback query:', normalizedDomain)
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Brand Domain] Using normalized domain for fallback query:', normalizedDomain)
+  }
   
   // Note: ->> returns text, so we compare with string 'true'
   const { data: workspaces, error } = await supabase
@@ -104,12 +119,18 @@ export async function getWorkspaceByBrandDomain(
   }
 
   if (!workspaces || workspaces.length === 0) {
-    console.log('[Brand Domain] No verified workspace found for domain:', normalizedDomain)
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Brand Domain] No verified workspace found for domain:', normalizedDomain)
+    }
     return null
   }
   
   const workspace = workspaces[0] as Workspace
-  console.log('[Brand Domain] Found verified workspace:', workspace.id)
+  // Only log in development - avoid exposing workspace IDs in production
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Brand Domain] Found verified workspace:', workspace.id)
+  }
   const brandingConfig = (workspace.branding_config || {}) as {
     custom_brand_domain_verified?: boolean
   }

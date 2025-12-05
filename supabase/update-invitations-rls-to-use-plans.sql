@@ -27,3 +27,4 @@ CREATE POLICY "Admins manage invitations" ON invitations
 -- Verify the policy was created
 -- SELECT * FROM pg_policies WHERE tablename = 'invitations';
 
+

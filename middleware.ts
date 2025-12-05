@@ -54,6 +54,69 @@ function getClientIp(request: NextRequest): string {
 }
 
 /**
+ * Validate hostname to prevent DNS rebinding and host header injection attacks
+ * Returns true if hostname is valid, false otherwise
+ */
+function isValidHostname(hostname: string): boolean {
+  if (!hostname || hostname.length === 0) {
+    return false
+  }
+
+  // Remove port if present
+  const hostnameWithoutPort = hostname.split(':')[0].toLowerCase()
+
+  // Reject if empty after port removal
+  if (!hostnameWithoutPort || hostnameWithoutPort.length === 0) {
+    return false
+  }
+
+  // Allow localhost for development
+  if (hostnameWithoutPort === 'localhost' || hostnameWithoutPort === '127.0.0.1') {
+    return true
+  }
+
+  // Reject IPv4 addresses (except localhost)
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostnameWithoutPort)) {
+    return false
+  }
+
+  // Reject IPv6 addresses (basic check for colons)
+  if (hostnameWithoutPort.includes(':')) {
+    return false
+  }
+
+  // Reject internal/private IP ranges
+  if (/^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|127\.|169\.254\.)/.test(hostnameWithoutPort)) {
+    return false
+  }
+
+  // Reject .local, .localhost, .test, .example, .invalid TLDs
+  if (/\.(local|localhost|test|example|invalid)$/i.test(hostnameWithoutPort)) {
+    return false
+  }
+
+  // Must match valid domain format (basic check)
+  if (!/^([a-z0-9]+(-[a-z0-9]+)*\.)*[a-z0-9]+(-[a-z0-9]+)*\.[a-z]{2,}$/i.test(hostnameWithoutPort)) {
+    // Allow .localhost for local development (e.g., app.localhost)
+    if (!hostnameWithoutPort.endsWith('.localhost')) {
+      return false
+    }
+  }
+
+  // Max length check (DNS spec)
+  if (hostnameWithoutPort.length > 253) {
+    return false
+  }
+
+  // Reject Vercel preview URLs in production (only allow in development)
+  if (process.env.NODE_ENV === 'production' && hostnameWithoutPort.includes('vercel.app')) {
+    return false
+  }
+
+  return true
+}
+
+/**
  * Middleware for Subdomain Routing & Supabase Session Refresh
  * 
  * This middleware handles:
@@ -223,6 +286,23 @@ export async function middleware(request: NextRequest) {
   if (isStaticAsset || isApiRoute || isNextAsset) {
     // For static assets, skip all middleware processing
     return NextResponse.next()
+  }
+
+  // Validate hostname to prevent DNS rebinding and host header injection
+  if (!isValidHostname(hostname)) {
+    console.error('[Middleware] Invalid hostname detected:', hostname)
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Invalid hostname',
+        message: 'The requested hostname is not valid.',
+      }),
+      { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+        }
+      }
+    )
   }
 
   // Check access control (after static asset check)
@@ -490,12 +570,15 @@ export async function middleware(request: NextRequest) {
         : hostnameWithoutPort
       const brandDomainResult = await getWorkspaceByBrandDomain(domainForLookup, request)
       
-      console.log('[Middleware] Brand domain lookup result:', {
-        hostname: hostnameWithoutPort,
-        found: !!brandDomainResult,
-        verified: brandDomainResult?.verified,
-        workspaceId: brandDomainResult?.workspace?.id,
-      })
+      // Only log in development - avoid exposing workspace IDs in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Middleware] Brand domain lookup result:', {
+          hostname: hostnameWithoutPort,
+          found: !!brandDomainResult,
+          verified: brandDomainResult?.verified,
+          // Don't log workspace ID even in dev for security
+        })
+      }
       
       if (brandDomainResult && brandDomainResult.verified) {
         // Brand domain detected - route to site based on path

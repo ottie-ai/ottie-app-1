@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { updateWorkspace } from '@/lib/supabase/queries'
 import type { Profile, Workspace, Invitation } from '@/types/database'
 import { sendInviteEmail } from '@/lib/email'
+import { removeBrandDomainInternal } from './brand-domain-actions'
 
 /**
  * Server Actions for Settings Page
@@ -928,6 +929,7 @@ export async function updateWorkspaceAction(
  * Downgrade workspace plan
  * - Updates workspace plan to target plan
  * - Removes password protection from all sites if target plan doesn't have password protection feature
+ * - Removes custom brand domain from workspace and Vercel if target plan doesn't have custom brand domain feature
  * Only allowed for workspace owners
  */
 export async function handleDowngradeWorkspacePlan(
@@ -972,13 +974,13 @@ export async function handleDowngradeWorkspacePlan(
   const currentPlanName = currentWorkspace.plan || 'free'
   const { data: currentPlan } = await supabase
     .from('plans')
-    .select('feature_password_protection')
+    .select('feature_password_protection, feature_custom_brand_domain')
     .eq('name', currentPlanName)
     .single()
 
   const { data: targetPlanData } = await supabase
     .from('plans')
-    .select('feature_password_protection')
+    .select('feature_password_protection, feature_custom_brand_domain')
     .eq('name', targetPlan)
     .single()
 
@@ -1023,6 +1025,21 @@ export async function handleDowngradeWorkspacePlan(
       }
 
       passwordRemovedCount = passwordProtectedSites.length
+    }
+  }
+
+  // Check if we're losing custom brand domain feature
+  const currentHasBrandDomainFeature = currentPlan?.feature_custom_brand_domain ?? false
+  const targetHasBrandDomainFeature = targetPlanData.feature_custom_brand_domain ?? false
+
+  // If losing custom brand domain feature, remove brand domain from workspace and Vercel
+  if (currentHasBrandDomainFeature && !targetHasBrandDomainFeature) {
+    const brandDomainResult = await removeBrandDomainInternal(workspaceId)
+    if ('error' in brandDomainResult) {
+      // Log error but continue with plan downgrade - don't fail the entire operation
+      console.error('[Plan Downgrade] Failed to remove brand domain:', brandDomainResult.error)
+    } else {
+      console.log('[Plan Downgrade] Successfully removed brand domain due to plan downgrade')
     }
   }
 

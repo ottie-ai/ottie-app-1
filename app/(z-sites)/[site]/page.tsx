@@ -137,7 +137,10 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       query = query.eq('domain', domain)
       // Don't filter by workspace_id - RLS policy for brand domains allows public access
       // Filtering by workspace_id would require authenticated user, which we don't have for public sites
-      console.log('[getSiteConfig] Using brand domain from headers:', { slug, domain, workspaceId })
+      // Only log in development - avoid exposing IDs in production
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getSiteConfig] Using brand domain from headers:', { slug, domain })
+      }
     } else if (workspaceId) {
       // WorkspaceId provided but no domain - try to get brand domain from workspace
       // This is fallback if headers weren't passed correctly
@@ -148,7 +151,10 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
         .single()
       
       if (workspaceError) {
-        console.error('[getSiteConfig] Error fetching workspace:', workspaceError)
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[getSiteConfig] Error fetching workspace:', workspaceError)
+        }
       }
       
       if (workspace?.branding_config) {
@@ -157,29 +163,27 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
           custom_brand_domain_verified?: boolean
         }
         
-        console.log('[getSiteConfig] Workspace branding config:', {
-          domain: brandingConfig.custom_brand_domain,
-          verified: brandingConfig.custom_brand_domain_verified,
-        })
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[getSiteConfig] Workspace branding config:', {
+            verified: brandingConfig.custom_brand_domain_verified,
+          })
+        }
         
         // If brand domain is verified, use it for filtering
         if (brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain) {
           query = query.eq('domain', brandingConfig.custom_brand_domain)
-          console.log('[getSiteConfig] Using brand domain from workspace:', brandingConfig.custom_brand_domain)
         } else {
           // Brand domain not verified, but workspaceId provided - this shouldn't happen, but fallback to ottie.site
-          console.log('[getSiteConfig] Brand domain not verified, falling back to ottie.site')
           query = query.eq('domain', 'ottie.site')
         }
       } else {
         // No branding config, fallback to ottie.site
-        console.log('[getSiteConfig] No branding config found, falling back to ottie.site')
         query = query.eq('domain', 'ottie.site')
       }
       
       // Also filter by workspace_id for additional security
       query = query.eq('workspace_id', workspaceId)
-      console.log('[getSiteConfig] Query filters: slug=', slug, ', domain=', workspace?.branding_config ? (workspace.branding_config as any)?.custom_brand_domain : 'ottie.site', ', workspace_id=', workspaceId)
     } else if (domain) {
       // Domain provided directly (e.g., from ottie.site subdomain)
       query = query.eq('domain', domain)
@@ -191,54 +195,25 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
     // Use maybeSingle() instead of single() to avoid error when no rows found
     const { data: site, error } = await query.maybeSingle()
     
-    console.log('[getSiteConfig] Site result:', { 
-      found: !!site, 
-      error: error ? { code: error.code, message: error.message } : null,
-      slug,
-      domain: workspaceId && domain ? domain : (workspaceId ? 'from workspace' : domain || 'ottie.site'),
-      workspaceId,
-      queryFilters: {
+    // Only log in development - avoid exposing query details in production
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[getSiteConfig] Site result:', { 
+        found: !!site, 
+        error: error ? { code: error.code, message: error.message } : null,
         slug,
-        domain: workspaceId && domain ? domain : 'ottie.site',
-        status: 'published',
-      }
-    })
+      })
+    }
     
     if (error) {
-      console.error('[getSiteConfig] Error fetching site:', error)
-      // Try without domain filter to see if site exists at all
-      const { data: siteWithoutDomain } = await supabase
-        .from('sites')
-        .select('id, slug, title, status, domain, workspace_id')
-        .eq('slug', slug)
-        .eq('status', 'published')
-        .is('deleted_at', null)
-        .maybeSingle()
-      
-      if (siteWithoutDomain) {
-        console.log('[getSiteConfig] Site exists but with different domain:', siteWithoutDomain.domain)
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[getSiteConfig] Error fetching site:', error)
       }
       return null
     }
     
     if (!site) {
-      console.log('[getSiteConfig] No site found with slug:', slug, 'and domain:', workspaceId && domain ? domain : 'ottie.site')
-      // Debug: Check if site exists with different domain
-      const { data: allSites } = await supabase
-        .from('sites')
-        .select('id, slug, title, status, domain, workspace_id')
-        .eq('slug', slug)
-        .eq('status', 'published')
-        .is('deleted_at', null)
-        .limit(5)
-      
-      if (allSites && allSites.length > 0) {
-        console.log('[getSiteConfig] Found sites with this slug but different domain:', allSites.map(s => ({
-          id: s.id,
-          domain: s.domain,
-          workspace_id: s.workspace_id,
-        })))
-      }
+      // Site not found - return null without logging sensitive info
       return null
     }
   
@@ -248,7 +223,10 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
   // In dev mode, allow sites without config - just check if slug exists
   // Return site even if config is null (we'll show default site)
   if (!config) {
-    console.log('[getSiteConfig] Site found but config is null - returning site without config for dev mode')
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[getSiteConfig] Site found but config is null - returning site without config for dev mode')
+    }
     // Return site with empty config - will show default site
     return { 
       site, 
@@ -298,7 +276,10 @@ export default async function SitePage({
   // In Next.js 15+, params is a Promise
   const { site } = await params
   
-  console.log('[SitePage] Received slug:', site)
+  // Only log in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[SitePage] Received slug:', site)
+  }
   
   // IMPORTANT: Exclude workspace/builder routes - these should be handled by (app) route group
   // If this route matches a workspace/builder path, it means Next.js couldn't find
@@ -308,7 +289,6 @@ export default async function SitePage({
   if (workspaceRoutes.includes(site) || site.startsWith('builder-')) {
     // This should never happen if routes are set up correctly
     // Return 404 so Next.js tries the next matching route (which should be (app) route group)
-    console.log('[SitePage] Workspace route detected, returning 404')
     notFound()
   }
   
@@ -332,7 +312,10 @@ export default async function SitePage({
         
         // Skip Vercel preview URLs and localhost
         if (hostnameWithoutPort.includes('vercel.app') || hostnameWithoutPort.includes('localhost')) {
-          console.log('[SitePage] Skipping brand domain lookup for preview/localhost:', hostnameWithoutPort)
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[SitePage] Skipping brand domain lookup for preview/localhost:', hostnameWithoutPort)
+          }
         } else {
           // Check if this is a brand domain (not ottie.site, not app/marketing domain)
           const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
@@ -344,34 +327,33 @@ export default async function SitePage({
           
           if (!isOttieSite && !isAppDomain) {
             // This might be a brand domain - try to look it up
-            console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
+            // Only log in development
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
+            }
             const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
             const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
             if (brandDomainResult && brandDomainResult.verified) {
               brandDomain = hostnameWithoutPort
               workspaceId = brandDomainResult.workspace.id
-              console.log('[SitePage] Found brand domain via direct lookup:', { brandDomain, workspaceId })
+              // Only log in development - don't expose workspace IDs in production
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[SitePage] Found brand domain via direct lookup')
+              }
             }
           }
         }
       }
     }
   } catch (error) {
-    // Headers might not be available in all contexts
-    console.log('[SitePage] Could not access headers:', error)
+    // Headers might not be available in all contexts - silently continue
   }
   
   // Fetch site configuration from database
-  console.log('[SitePage] Fetching site config for slug:', site)
-  console.log('[SitePage] Brand domain:', brandDomain || 'none')
-  console.log('[SitePage] Workspace ID:', workspaceId || 'none')
   const siteData = await getSiteConfig(site, brandDomain, workspaceId)
-  console.log('[SitePage] Site data result:', siteData ? 'Found' : 'Not found')
   
   // If site doesn't exist or isn't published, redirect appropriately
   if (!siteData) {
-    console.log('[SitePage] Site not found or not published, redirecting')
-    
     // If this is a brand domain, redirect to root domain of the brand domain
     // For example: properties.ottie.ai -> ottie.ai
     if (brandDomain) {
@@ -380,8 +362,7 @@ export default async function SitePage({
       const rootDomain = domainParts.slice(-2).join('.')
       const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
       const redirectUrl = new URL(`${protocol}://${rootDomain}`)
-      redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
-      console.log('[SitePage] Brand domain detected, redirecting to root domain:', rootDomain)
+      // Don't pass site slug in URL - could be used for enumeration
       redirect(redirectUrl.toString())
     } else {
       // Default: redirect to ottie.com
@@ -389,7 +370,7 @@ export default async function SitePage({
       const rootDomainWithoutPort = rootDomain.split(':')[0]
       const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
       const redirectUrl = new URL(`${protocol}://${rootDomainWithoutPort}`)
-      redirectUrl.searchParams.set('site', site) // Optional: pass site slug for analytics
+      // Don't pass site slug in URL - could be used for enumeration
       redirect(redirectUrl.toString())
     }
   }
