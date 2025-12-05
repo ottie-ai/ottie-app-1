@@ -4,7 +4,7 @@
  * Uses cheerio for server-side HTML parsing
  */
 
-import { load } from 'cheerio'
+import { load, type CheerioAPI } from 'cheerio'
 
 export interface ParsedPropertyData {
   title: string | null
@@ -29,89 +29,273 @@ export interface ParsedPropertyData {
 }
 
 /**
- * Clean HTML by removing unwanted elements
+ * Conservative HTML cleaning function for real estate listings
  * 
- * IMPORTANT: First extracts main content, THEN removes unwanted elements
- * This prevents losing important information that might be in body/main/article
+ * This cleaner is intentionally conservative - it removes only obvious "noise" elements
+ * (scripts, styles, ads, cookies, tracking) while preserving all meaningful content
+ * including property facts, descriptions, and headings with substantial text.
+ * 
+ * The cleaned HTML will be passed to AI and used for extracting structured data,
+ * so we prioritize keeping content over aggressive filtering.
+ * 
+ * To extend: Add new selectors to the helper functions below. Always test against
+ * scrape_example.html to ensure property facts and descriptions are preserved.
+ * 
+ * Compare scrape_example.html and cheerio_example.html to ensure the new cleaner
+ * preserves all descriptive text and property facts visible in scrape_example.html.
  */
-export function cleanHtml(html: string): string {
-  const $ = load(html)
+export function cleanHtml(rawHtml: string): string {
+  const $ = load(rawHtml)
 
-  // STEP 1: Extract main content FIRST (without modification)
-  // This preserves all important information (price, address, details, images)
-  let mainContentHtml: string | null = null
-  
-  const mainEl = $('main').first()
-  const roleMainEl = $('[role="main"]').first()
-  const mainContentEl = $('.main-content').first()
-  const mainContentIdEl = $('#main-content').first()
-  const articleEl = $('article').first()
-  const bodyEl = $('body')
-
-  // Get first non-empty content found
-  if (mainEl.length > 0 && mainEl.html()) {
-    mainContentHtml = mainEl.html() || null
-  } else if (roleMainEl.length > 0 && roleMainEl.html()) {
-    mainContentHtml = roleMainEl.html() || null
-  } else if (mainContentEl.length > 0 && mainContentEl.html()) {
-    mainContentHtml = mainContentEl.html() || null
-  } else if (mainContentIdEl.length > 0 && mainContentIdEl.html()) {
-    mainContentHtml = mainContentIdEl.html() || null
-  } else if (articleEl.length > 0 && articleEl.html()) {
-    mainContentHtml = articleEl.html() || null
-  } else {
-    // Fallback to body
-    mainContentHtml = bodyEl.html() || null
-  }
-
-  if (!mainContentHtml) {
+  // Work on the full body content (or main if available, but don't restrict to just that)
+  // This ensures we don't lose content that might be outside semantic containers
+  const bodyContent = $('body').html() || ''
+  if (!bodyContent) {
     return ''
   }
 
-  // STEP 2: Load extracted content into new cheerio instance
-  const $content = load(mainContentHtml)
+  const $content = load(bodyContent)
 
-  // STEP 3: Remove unwanted elements ONLY from extracted content
-  const selectorsToRemove = [
-    'script',
-    'style',
-    '[class*="ad"]',
-    '[class*="advertisement"]',
-    '[id*="ad"]',
-    '[class*="cookie"]',
-    '[class*="banner"]',
-    '[class*="popup"]',
-    '[class*="modal"]',
-    'noscript',
-    'iframe[src*="ads"]',
-    'iframe[src*="tracking"]',
-    'iframe[src*="analytics"]',
-    // Also remove header/footer/nav if they exist inside main content
-    'header',
-    'footer',
-    'nav',
-  ]
+  // Run removals in clear, small steps
+  removeScriptsAndStyles($content)
+  removeTrackingAndAds($content)
+  removeCookieBanners($content)
+  removeBanners($content)
+  removeEmptyElements($content)
+  removeSocialShareButtons($content)
+  removeNavigationAndFooters($content)
+  
+  // Convert lazy-loading attributes to regular src attributes
+  // This ensures images are visible even if JavaScript is disabled
+  convertLazyImages($content)
 
-  selectorsToRemove.forEach(selector => {
-    try {
-      $content(selector).remove()
-    } catch (e) {
-      // Ignore invalid selectors
+  return $content.html() || ''
+}
+
+/**
+ * Remove script, style, noscript, iframe, svg, and canvas elements
+ */
+function removeScriptsAndStyles($: CheerioAPI): void {
+  $('script, style, noscript, iframe, svg, canvas').remove()
+}
+
+/**
+ * Remove elements with obvious tracking/ads classes or IDs
+ */
+function removeTrackingAndAds($: CheerioAPI): void {
+  // Remove ads by class/id patterns
+  $('[class*="ads"]').remove()
+  $('[id*="ads"]').remove()
+  $('[class*="ad-"]').remove()
+  $('[class*="advertisement"]').remove()
+  
+  // Remove tracking elements
+  $('[class*="tracking"]').remove()
+  $('[id*="tracking"]').remove()
+  $('[class*="analytics"]').remove()
+  $('[id*="analytics"]').remove()
+}
+
+/**
+ * Remove cookie consent banners and popups
+ */
+function removeCookieBanners($: CheerioAPI): void {
+  $('[class*="cookie"]').remove()
+  $('[id*="cookie"]').remove()
+  $('[class*="consent"]').remove()
+  $('[id*="consent"]').remove()
+  
+  // Remove popups and modals (but be conservative - only obvious ones)
+  $('[class*="popup"]').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().toLowerCase()
+    // Only remove if it's clearly a popup/modal (not content that happens to have "popup" in class)
+    if (text.includes('cookie') || text.includes('consent') || text.length < 50) {
+      $el.remove()
     }
   })
+  
+  $('[class*="modal"]').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().toLowerCase()
+    if (text.includes('cookie') || text.includes('consent') || text.length < 50) {
+      $el.remove()
+    }
+  })
+}
 
-  // STEP 4: Convert lazy-loading attributes to regular src attributes
-  // This ensures images are visible even if JavaScript is disabled
-  $content('img[data-src]').each((_, img) => {
-    const $img = $content(img)
+/**
+ * Remove banners that don't contain property-related content
+ */
+function removeBanners($: CheerioAPI): void {
+  $('[class*="banner"]').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().toLowerCase()
+    
+    // Keep banners that contain property facts
+    const propertyKeywords = ['bed', 'bath', 'price', 'sqft', 'bedroom', 'bathroom', 'square', 'address']
+    const hasPropertyContent = propertyKeywords.some(keyword => text.includes(keyword))
+    
+    // Only remove if it doesn't have property content and is likely a UI banner
+    if (!hasPropertyContent && text.length < 100) {
+      $el.remove()
+    }
+  })
+}
+
+/**
+ * Remove elements whose textContent is empty or only whitespace
+ */
+function removeEmptyElements($: CheerioAPI): void {
+  $('*').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().trim()
+    
+    // Skip if element has meaningful content
+    if (text.length > 0) {
+      return
+    }
+    
+    // Skip if element has images or other meaningful attributes
+    if ($el.find('img').length > 0 || $el.attr('src') || $el.attr('href')) {
+      return
+    }
+    
+    // Remove if truly empty (but preserve structure elements that might be styled)
+    const tagName = el.tagName?.toLowerCase()
+    if (tagName && !['br', 'hr', 'img', 'input', 'meta', 'link'].includes(tagName)) {
+      // Only remove if it's a leaf node (no children with content)
+      let hasChildrenWithContent = false
+      $el.children().each((_, child) => {
+        const $child = $(child)
+        if ($child.text().trim().length > 0 || $child.find('img').length > 0) {
+          hasChildrenWithContent = true
+          return false // break
+        }
+      })
+      
+      if (!hasChildrenWithContent) {
+        $el.remove()
+      }
+    }
+  })
+}
+
+/**
+ * Remove elements that contain only social/share buttons
+ */
+function removeSocialShareButtons($: CheerioAPI): void {
+  $('[class*="share"], [class*="social"], [class*="facebook"], [class*="twitter"], [class*="instagram"], [class*="linkedin"]').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().trim().toLowerCase()
+    
+    // Check if this is likely just a social/share button container
+    const socialKeywords = ['share', 'facebook', 'twitter', 'instagram', 'linkedin', 'pinterest', 'tweet', 'like']
+    const hasOnlySocialContent = socialKeywords.some(keyword => text.includes(keyword)) && text.length < 100
+    
+    // Also check if it's mostly links
+    const linkCount = $el.find('a').length
+    const textLength = text.length
+    
+    if (hasOnlySocialContent || (linkCount > 2 && textLength < 50)) {
+      $el.remove()
+    }
+  })
+}
+
+/**
+ * Remove nav bars and footers where innerText is mostly links
+ * But keep them if they contain property facts or substantial text
+ */
+function removeNavigationAndFooters($: CheerioAPI): void {
+  // Check nav elements
+  $('nav').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().trim()
+    const linkCount = $el.find('a').length
+    const textLength = text.length
+    
+    // Keep if it has substantial text (likely contains property info)
+    if (textLength > 100) {
+      return
+    }
+    
+    // Keep if it contains property keywords
+    const propertyKeywords = ['bed', 'bath', 'price', 'sqft', 'bedroom', 'bathroom', 'square', 'address']
+    const hasPropertyContent = propertyKeywords.some(keyword => text.toLowerCase().includes(keyword))
+    if (hasPropertyContent) {
+      return
+    }
+    
+    // Remove if it's mostly links (likely navigation)
+    if (linkCount > textLength / 10) {
+      $el.remove()
+    }
+  })
+  
+  // Check footer elements
+  $('footer').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().trim()
+    const linkCount = $el.find('a').length
+    const textLength = text.length
+    
+    // Keep if it has substantial text
+    if (textLength > 100) {
+      return
+    }
+    
+    // Keep if it contains property keywords
+    const propertyKeywords = ['bed', 'bath', 'price', 'sqft', 'bedroom', 'bathroom', 'square', 'address']
+    const hasPropertyContent = propertyKeywords.some(keyword => text.toLowerCase().includes(keyword))
+    if (hasPropertyContent) {
+      return
+    }
+    
+    // Remove if it's mostly links (likely footer navigation)
+    if (linkCount > textLength / 10) {
+      $el.remove()
+    }
+  })
+  
+  // Also check header elements (but be more conservative)
+  $('header').each((_, el) => {
+    const $el = $(el)
+    const text = $el.text().trim()
+    const linkCount = $el.find('a').length
+    const textLength = text.length
+    
+    // Keep if it has substantial text or property content
+    const propertyKeywords = ['bed', 'bath', 'price', 'sqft', 'bedroom', 'bathroom', 'square', 'address']
+    const hasPropertyContent = propertyKeywords.some(keyword => text.toLowerCase().includes(keyword))
+    
+    if (textLength > 100 || hasPropertyContent) {
+      return
+    }
+    
+    // Remove if it's mostly links and short (likely site header)
+    if (linkCount > textLength / 10 && textLength < 50) {
+      $el.remove()
+    }
+  })
+}
+
+/**
+ * Convert lazy-loading image attributes to regular src attributes
+ */
+function convertLazyImages($: CheerioAPI): void {
+  // Convert data-src to src
+  $('img[data-src]').each((_, img) => {
+    const $img = $(img)
     const dataSrc = $img.attr('data-src')
     if (dataSrc && !$img.attr('src')) {
       $img.attr('src', dataSrc)
     }
   })
 
-  $content('img[data-lazy]').each((_, img) => {
-    const $img = $content(img)
+  // Convert data-lazy to src
+  $('img[data-lazy]').each((_, img) => {
+    const $img = $(img)
     const dataLazy = $img.attr('data-lazy')
     if (dataLazy && !$img.attr('src')) {
       $img.attr('src', dataLazy)
@@ -119,8 +303,8 @@ export function cleanHtml(html: string): string {
   })
 
   // Convert data-srcset to srcset for responsive images
-  $content('img[data-srcset]').each((_, img) => {
-    const $img = $content(img)
+  $('img[data-srcset]').each((_, img) => {
+    const $img = $(img)
     const dataSrcset = $img.attr('data-srcset')
     if (dataSrcset && !$img.attr('srcset')) {
       $img.attr('srcset', dataSrcset)
@@ -128,15 +312,13 @@ export function cleanHtml(html: string): string {
   })
 
   // Convert picture source data-srcset
-  $content('source[data-srcset]').each((_, source) => {
-    const $source = $content(source)
+  $('source[data-srcset]').each((_, source) => {
+    const $source = $(source)
     const dataSrcset = $source.attr('data-srcset')
     if (dataSrcset && !$source.attr('srcset')) {
       $source.attr('srcset', dataSrcset)
     }
   })
-
-  return $content.html() || ''
 }
 
 /**
