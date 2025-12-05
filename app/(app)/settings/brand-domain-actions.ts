@@ -78,15 +78,15 @@ export async function setBrandDomain(
   // Extract apex domain from subdomain (e.g., properties.example.com -> example.com)
   const apexDomain = domainParts.slice(1).join('.')
   
-  // For subdomains, we don't need www version check
-  const wwwDomain = `www.${apexDomain}`
+  // Check www version of the subdomain for reserved domain check
+  const wwwSubdomain = `www.${normalizedDomain}`
 
-  // 3. Check reserved domains (check both apex and www versions)
+  // 3. Check reserved domains (check both normalized and www versions)
   const reservedDomains = ['ottie.com', 'ottie.site', 'app.ottie.com', 'www.ottie.com', 'www.ottie.site']
   if (reservedDomains.some(reserved => normalizedDomain === reserved || normalizedDomain.endsWith(`.${reserved}`))) {
     return { error: 'This domain is reserved and cannot be used' }
   }
-  if (reservedDomains.some(reserved => wwwDomain === reserved || wwwDomain.endsWith(`.${reserved}`))) {
+  if (reservedDomains.some(reserved => wwwSubdomain === reserved || wwwSubdomain.endsWith(`.${reserved}`))) {
     return { error: 'This domain is reserved and cannot be used' }
   }
 
