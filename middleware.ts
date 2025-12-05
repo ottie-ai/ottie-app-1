@@ -385,22 +385,23 @@ export async function middleware(request: NextRequest) {
             redirectUrl.searchParams.set('preview', existingPreview)
           }
           return NextResponse.redirect(redirectUrl)
+        } else {
+          // For other auth endpoints (forgot-password, reset-password), return 429 error
+          return new NextResponse(
+            JSON.stringify({
+              error: 'Too many requests',
+              message: 'Rate limit exceeded. Please try again later.',
+            }),
+            {
+              status: 429,
+              headers: {
+                'Content-Type': 'application/json',
+                'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
+              },
+            }
+          )
         }
-      
-      // For other endpoints, return 429 error
-      return new NextResponse(
-        JSON.stringify({
-          error: 'Too many requests',
-          message: 'Rate limit exceeded. Please try again later.',
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': String(Math.ceil(retryAfterMs / 1000)),
-          },
-        }
-      )
+      }
     }
   }
 
