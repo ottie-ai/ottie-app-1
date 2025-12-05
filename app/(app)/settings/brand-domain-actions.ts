@@ -342,13 +342,9 @@ export async function setBrandDomain(
     }
   }
   
-  // Add non-www version WITH redirect to www (redirect is set during creation)
-  // Note: redirect parameter must be full URL with protocol (https://)
-  console.log('[Brand Domain] Adding non-www domain to Vercel WITH 307 redirect to www:', normalizedDomain, '->', wwwDomain)
-  const vercelResult = await addVercelDomain(normalizedDomain, undefined, {
-    redirect: `https://${wwwDomain}`,  // Full URL with protocol as per Vercel API docs
-    redirectStatusCode: 307,
-  })
+  // Add non-www version first (without redirect)
+  console.log('[Brand Domain] Adding non-www domain to Vercel:', normalizedDomain)
+  const vercelResult = await addVercelDomain(normalizedDomain)
   
   if ('error' in vercelResult) {
     // If domain already exists error, check if it's ours
@@ -384,7 +380,24 @@ export async function setBrandDomain(
       return { error: errorMsg }
     }
   } else {
-    console.log('[Brand Domain] Successfully added non-www domain with 307 redirect to www')
+    console.log('[Brand Domain] Successfully added non-www domain')
+  }
+
+  // Now set up 307 redirect from non-www to www via PATCH
+  // This is done as a separate step after domain creation
+  console.log('[Brand Domain] Setting up 307 redirect from non-www to www:', normalizedDomain, '->', wwwDomain)
+  const redirectResult = await updateVercelDomainRedirect(
+    normalizedDomain,
+    `https://${wwwDomain}`,
+    307
+  )
+  
+  if ('error' in redirectResult) {
+    // Log warning but don't fail - domain is added, redirect is optional
+    console.warn('[Brand Domain] Failed to set up redirect (non-critical):', redirectResult.error)
+    // Continue anyway - both domains are added and will work independently
+  } else {
+    console.log('[Brand Domain] Successfully set up 307 redirect from non-www to www')
   }
 
   // 8. Get DNS configuration - recommended CNAME/A records from Vercel API
