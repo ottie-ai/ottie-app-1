@@ -713,7 +713,7 @@ export async function middleware(request: NextRequest) {
   
   // Handle Supabase session refresh for protected routes
   try {
-  return await handleSupabaseSession(request, response, pathname)
+    return await handleSupabaseSession(request, response, pathname)
   } catch (error) {
     // Log error but don't break the request
     console.error('Middleware error:', error)
