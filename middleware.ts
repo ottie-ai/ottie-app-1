@@ -325,6 +325,20 @@ export async function middleware(request: NextRequest) {
   // CRITICAL: Redirect www to non-www for brand domains FIRST, before any other checks
   // This must happen early to ensure canonical domain is used
   // Only redirect if it's NOT the root domain (www.ottie.com) and NOT app domain (www.app.*)
+  console.log('[Middleware] WWW Redirect Check:', {
+    hostname: hostnameWithoutPort,
+    startsWithWww: hostnameWithoutPort.startsWith('www.'),
+    isRootDomain: hostnameWithoutPort === `www.${rootDomainWithoutPort}`,
+    isAppDomain: hostnameWithoutPort.startsWith('www.app.'),
+    isSitesDomain: hostnameWithoutPort === `www.${sitesDomain}` || hostnameWithoutPort.endsWith(`.${sitesDomain}`),
+    shouldRedirect: !isLocalhost && 
+                     hostnameWithoutPort.startsWith('www.') && 
+                     hostnameWithoutPort !== `www.${rootDomainWithoutPort}` &&
+                     !hostnameWithoutPort.startsWith('www.app.') &&
+                     hostnameWithoutPort !== `www.${sitesDomain}` &&
+                     !hostnameWithoutPort.endsWith(`.${sitesDomain}`)
+  })
+  
   if (!isLocalhost && 
       hostnameWithoutPort.startsWith('www.') && 
       hostnameWithoutPort !== `www.${rootDomainWithoutPort}` &&
@@ -335,7 +349,7 @@ export async function middleware(request: NextRequest) {
     const nonWwwDomain = hostnameWithoutPort.substring(4)
     const redirectUrl = new URL(pathname, `https://${nonWwwDomain}`)
     redirectUrl.search = request.nextUrl.search
-    console.log('[Middleware] EARLY redirect: www to non-www for brand domain:', hostnameWithoutPort, '->', nonWwwDomain)
+    console.log('[Middleware] ✅ EARLY redirect: www to non-www for brand domain:', hostnameWithoutPort, '->', nonWwwDomain)
     return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
   }
   
