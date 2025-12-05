@@ -524,10 +524,31 @@ export async function removeBrandDomainInternal(
   // 2. Remove wildcard domain from Vercel
   // We added wildcard domain (*.domain), so we need to remove wildcard version
   const wildcardDomain = `*.${domain}`
-  const vercelResult = await removeVercelDomain(wildcardDomain)
+  console.log('[Brand Domain] Removing wildcard domain from Vercel:', wildcardDomain)
+  let vercelResult = await removeVercelDomain(wildcardDomain)
+  
+  // If wildcard removal fails, try removing normal domain as fallback (in case it was added without wildcard)
+  if ('error' in vercelResult && !vercelResult.error.includes('not found') && !vercelResult.error.includes('404')) {
+    console.log('[Brand Domain] Wildcard removal failed, trying normal domain as fallback:', domain)
+    const normalDomainResult = await removeVercelDomain(domain)
+    if (!('error' in normalDomainResult)) {
+      console.log('[Brand Domain] Successfully removed normal domain from Vercel (fallback):', domain)
+      vercelResult = normalDomainResult
+    }
+  }
+  
   if ('error' in vercelResult) {
-    // Log but continue - domain might already be removed
-    console.warn('[Brand Domain] Failed to remove domain from Vercel:', vercelResult.error)
+    // If it's a 404, domain doesn't exist - that's OK, continue
+    if (vercelResult.error.includes('not found') || vercelResult.error.includes('404')) {
+      console.log('[Brand Domain] Domain not found in Vercel (may have been already removed):', wildcardDomain)
+    } else {
+      // For other errors, log warning but continue with database cleanup
+      // We don't want to fail the entire operation if Vercel removal fails
+      console.warn('[Brand Domain] Failed to remove domain from Vercel:', vercelResult.error)
+      console.warn('[Brand Domain] Continuing with database cleanup anyway')
+    }
+  } else {
+    console.log('[Brand Domain] Successfully removed domain from Vercel:', wildcardDomain)
   }
 
   // 3. Revert all sites in workspace to ottie.site

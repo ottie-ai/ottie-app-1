@@ -173,8 +173,10 @@ export async function removeVercelDomain(
       return { error: 'Vercel Project ID not found' }
     }
 
+    // URL encode the domain name to handle special characters like * in wildcard domains
+    const encodedDomain = encodeURIComponent(domain)
     const response = await fetch(
-      `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${domain}`,
+      `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${encodedDomain}`,
       {
         method: 'DELETE',
         headers: {
