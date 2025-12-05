@@ -57,13 +57,20 @@ export async function setBrandDomain(
 
   // 2. Validate domain format - ONLY subdomains are allowed
   const trimmedDomain = domain.trim().toLowerCase()
+  
+  // Normalize: remove www. prefix if present
+  // Domains are stored without www prefix for consistency
+  const normalizedDomain = trimmedDomain.startsWith('www.') 
+    ? trimmedDomain.substring(4) 
+    : trimmedDomain
+  
   const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i
-  if (!domainRegex.test(trimmedDomain)) {
+  if (!domainRegex.test(normalizedDomain)) {
     return { error: 'Invalid domain format. Please enter a valid subdomain (e.g., properties.example.com)' }
   }
 
   // 2.5. Validate that it's a subdomain (must have at least 3 parts: subdomain.domain.tld)
-  const domainParts = trimmedDomain.split('.')
+  const domainParts = normalizedDomain.split('.')
   if (domainParts.length < 3) {
     return { error: 'Only subdomains are supported. Please enter an address like properties.yourdomain.com or sites.yourdomain.com.' }
   }
@@ -76,7 +83,7 @@ export async function setBrandDomain(
 
   // 3. Check reserved domains (check both apex and www versions)
   const reservedDomains = ['ottie.com', 'ottie.site', 'app.ottie.com', 'www.ottie.com', 'www.ottie.site']
-  if (reservedDomains.some(reserved => trimmedDomain === reserved || trimmedDomain.endsWith(`.${reserved}`))) {
+  if (reservedDomains.some(reserved => normalizedDomain === reserved || normalizedDomain.endsWith(`.${reserved}`))) {
     return { error: 'This domain is reserved and cannot be used' }
   }
   if (reservedDomains.some(reserved => wwwDomain === reserved || wwwDomain.endsWith(`.${reserved}`))) {
@@ -112,7 +119,7 @@ export async function setBrandDomain(
     .select('id')
     .neq('id', workspaceId)
     .not('branding_config->custom_brand_domain', 'is', null)
-    .eq('branding_config->>custom_brand_domain', trimmedDomain)
+    .eq('branding_config->>custom_brand_domain', normalizedDomain)
     .is('deleted_at', null)
 
   if (existingWorkspaces && existingWorkspaces.length > 0) {
@@ -121,29 +128,29 @@ export async function setBrandDomain(
 
   // 6.5. Check if subdomain already exists in Vercel project
   // This prevents exposing domains that belong to other projects/accounts
-  const existingDomainCheck = await getVercelDomain(trimmedDomain)
+  const existingDomainCheck = await getVercelDomain(normalizedDomain)
   
   const currentDomain = currentConfig.custom_brand_domain
   
   // Check if subdomain exists in Vercel
   if (!('error' in existingDomainCheck)) {
     // Domain already exists in Vercel - check if it belongs to this workspace
-    if (currentDomain !== trimmedDomain) {
+    if (currentDomain !== normalizedDomain) {
       return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
     }
   }
 
-  // 7. Add domain (automatic) - use the subdomain as entered by user
+  // 7. Add domain (automatic) - use the normalized subdomain (without www)
   // We store the subdomain (e.g., properties.example.com), not the apex domain
-  const vercelResult = await addVercelDomain(trimmedDomain)
+  const vercelResult = await addVercelDomain(normalizedDomain)
   if ('error' in vercelResult) {
     // If domain already exists error, check if it's ours
     if (vercelResult.error.includes('already') || vercelResult.error.includes('in use')) {
       // Try to get the domain to verify it exists
-      const domainCheck = await getVercelDomain(trimmedDomain)
+      const domainCheck = await getVercelDomain(normalizedDomain)
       if (!('error' in domainCheck)) {
         // Domain exists - check if it's ours
-        if (currentDomain !== trimmedDomain) {
+        if (currentDomain !== normalizedDomain) {
           return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account.' }
         }
         // It's our domain, continue with existing domain
@@ -167,7 +174,7 @@ export async function setBrandDomain(
   const retryDelay = 2000 // 2 seconds
 
   while (retryCount < maxRetries) {
-    configResult = await getVercelDomainConfig(trimmedDomain)
+    configResult = await getVercelDomainConfig(normalizedDomain)
     
     if (!('error' in configResult)) {
       // Success - DNS config is available
@@ -197,7 +204,7 @@ export async function setBrandDomain(
     console.error('[Brand Domain] Failed to get DNS config from Vercel after retries:', configResult?.error)
     // Rollback: remove domain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing subdomain from Vercel')
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(normalizedDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -282,7 +289,7 @@ export async function setBrandDomain(
   
   // Log what we're doing for debugging
   console.log('[Brand Domain] DNS instructions from API:', {
-    domain: trimmedDomain,
+    domain: normalizedDomain,
     hasRecommendedIPv4: !!config.recommendedIPv4,
     hasAValues: !!config.aValues,
     instructionsCount: vercelDNSInstructions.length,
@@ -290,11 +297,11 @@ export async function setBrandDomain(
 
   // If still no instructions, return error and rollback - we cannot proceed without DNS config
   if (vercelDNSInstructions.length === 0) {
-    console.error('[Brand Domain] No DNS instructions from Vercel API for subdomain:', trimmedDomain)
+    console.error('[Brand Domain] No DNS instructions from Vercel API for subdomain:', normalizedDomain)
     console.error('[Brand Domain] Config response:', JSON.stringify(config, null, 2))
     // Rollback: remove subdomain from Vercel since we can't get DNS config
     console.log('[Brand Domain] Rolling back: removing subdomain from Vercel (no DNS instructions)')
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(normalizedDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -317,8 +324,8 @@ export async function setBrandDomain(
   // User must configure DNS first, then verify manually via "Check Status" button
   const updatedConfig: BrandingConfig = {
     ...currentConfig,
-    // Store the subdomain as entered by user (e.g., properties.example.com)
-    custom_brand_domain: trimmedDomain,
+    // Store the normalized subdomain without www prefix (e.g., properties.example.com)
+    custom_brand_domain: normalizedDomain,
     custom_brand_domain_verified: false, // Always false initially - user must verify after DNS setup
     custom_brand_domain_verified_at: null,
     custom_brand_domain_vercel_added: true,
@@ -331,7 +338,7 @@ export async function setBrandDomain(
 
   if (!updatedWorkspace) {
     // Rollback: remove subdomain if DB update fails
-    await removeVercelDomain(trimmedDomain)
+    await removeVercelDomain(normalizedDomain)
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -462,26 +469,16 @@ export async function verifyBrandDomain(
 }
 
 /**
- * Remove brand domain from workspace
+ * Remove brand domain from workspace (internal function)
+ * This function contains the core removal logic without permission checks.
+ * Used by both the public removeBrandDomain function and during plan downgrades.
  */
-export async function removeBrandDomain(
-  workspaceId: string,
-  userId: string
+export async function removeBrandDomainInternal(
+  workspaceId: string
 ): Promise<{ success: true } | { error: string }> {
-  // 1. Validate permissions
   const supabase = await createClient()
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('role')
-    .eq('workspace_id', workspaceId)
-    .eq('user_id', userId)
-    .single()
 
-  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
-    return { error: 'Only workspace owners and admins can remove brand domain' }
-  }
-
-  // 2. Get workspace with branding_config
+  // 1. Get workspace with branding_config
   const { data: workspace } = await supabase
     .from('workspaces')
     .select('branding_config')
@@ -496,17 +493,18 @@ export async function removeBrandDomain(
   const domain = config.custom_brand_domain
 
   if (!domain) {
-    return { error: 'No brand domain set' }
+    // No domain set - nothing to remove, but return success
+    return { success: true }
   }
 
-  // 3. Remove domain
+  // 2. Remove domain from Vercel
   const vercelResult = await removeVercelDomain(domain)
   if ('error' in vercelResult) {
     // Log but continue - domain might already be removed
-    console.warn('[Brand Domain] Failed to remove domain:', vercelResult.error)
+    console.warn('[Brand Domain] Failed to remove domain from Vercel:', vercelResult.error)
   }
 
-  // 4. Revert all sites in workspace to ottie.site
+  // 3. Revert all sites in workspace to ottie.site
   const { error: sitesError } = await supabase
     .from('sites')
     .update({ domain: 'ottie.site' })
@@ -518,7 +516,7 @@ export async function removeBrandDomain(
     // Continue anyway
   }
 
-  // 5. Clear branding_config
+  // 4. Clear branding_config
   const updatedConfig: BrandingConfig = {
     ...config,
     custom_brand_domain: null,
@@ -538,5 +536,30 @@ export async function removeBrandDomain(
 
   revalidatePath('/settings')
   return { success: true }
+}
+
+/**
+ * Remove brand domain from workspace
+ * Public function with permission checks
+ */
+export async function removeBrandDomain(
+  workspaceId: string,
+  userId: string
+): Promise<{ success: true } | { error: string }> {
+  // 1. Validate permissions
+  const supabase = await createClient()
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    return { error: 'Only workspace owners and admins can remove brand domain' }
+  }
+
+  // 2. Call internal function to perform the removal
+  return await removeBrandDomainInternal(workspaceId)
 }
 

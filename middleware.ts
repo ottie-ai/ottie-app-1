@@ -436,6 +436,16 @@ export async function middleware(request: NextRequest) {
       // Check if this is a brand domain (custom domain for workspace)
       // Brand domains are ONLY for sites, not for app routes
       
+      // Normalize domain: redirect www to non-www for consistency
+      // This ensures we always use the canonical (non-www) version
+      if (hostnameWithoutPort.startsWith('www.')) {
+        const nonWwwDomain = hostnameWithoutPort.substring(4)
+        const redirectUrl = new URL(pathname, `https://${nonWwwDomain}`)
+        redirectUrl.search = request.nextUrl.search
+        console.log('[Middleware] Redirecting www to non-www:', hostnameWithoutPort, '->', nonWwwDomain)
+        return NextResponse.redirect(redirectUrl, 301) // Permanent redirect
+      }
+      
       // First, check if this is an app route - if so, redirect to app.ottie.com
       const appRoutes = ['/dashboard', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
       const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 

@@ -3,8 +3,19 @@ import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 /**
+ * Normalize domain by removing www. prefix
+ * Domains are stored without www prefix
+ */
+function normalizeDomain(domain: string): string {
+  return domain.toLowerCase().startsWith('www.') 
+    ? domain.substring(4) 
+    : domain.toLowerCase()
+}
+
+/**
  * Get workspace by brand domain (edge-compatible for middleware)
  * This version works in middleware by using request cookies directly
+ * Supports both www and non-www variants
  */
 export async function getWorkspaceByBrandDomain(
   domain: string,
@@ -48,6 +59,7 @@ export async function getWorkspaceByBrandDomain(
   console.log('[Brand Domain] Looking up domain:', domain)
   
   // Use RPC function for secure and performant lookup
+  // RPC function handles normalization internally
   // Falls back to direct query if RPC doesn't exist
   try {
     const { data: rpcResult, error: rpcError } = await supabase
@@ -73,11 +85,15 @@ export async function getWorkspaceByBrandDomain(
   }
   
   // Fallback: Use direct query with correct JSONB syntax
+  // Normalize domain for fallback query (remove www prefix)
+  const normalizedDomain = normalizeDomain(domain)
+  console.log('[Brand Domain] Using normalized domain for fallback query:', normalizedDomain)
+  
   // Note: ->> returns text, so we compare with string 'true'
   const { data: workspaces, error } = await supabase
     .from('workspaces')
     .select('*')
-    .eq('branding_config->>custom_brand_domain', domain)
+    .eq('branding_config->>custom_brand_domain', normalizedDomain)
     .eq('branding_config->>custom_brand_domain_verified', 'true') // Compare with string 'true'
     .is('deleted_at', null)
     .limit(1)
@@ -88,7 +104,7 @@ export async function getWorkspaceByBrandDomain(
   }
 
   if (!workspaces || workspaces.length === 0) {
-    console.log('[Brand Domain] No verified workspace found for domain:', domain)
+    console.log('[Brand Domain] No verified workspace found for domain:', normalizedDomain)
     return null
   }
   
