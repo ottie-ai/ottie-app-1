@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { getPreview, claimPreview } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
-import type { PageConfig } from '@/types/database'
+import type { PageConfig } from '@/types/builder'
 import { PageRenderer } from '@/components/templates/SectionRenderer'
 
 function PreviewContent() {
