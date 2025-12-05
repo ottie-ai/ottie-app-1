@@ -29,8 +29,8 @@ export async function generatePreview(url: string) {
       }
     }
 
-    // Call ScraperAPI with the URL and request structured JSON
-    const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}&autoparse=true`
+    // Call ScraperAPI with the URL
+    const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}`
     
     console.log('🔵 [generatePreview] Scraping URL:', url)
     
@@ -51,31 +51,7 @@ export async function generatePreview(url: string) {
       }
     }
 
-    // Check if response is JSON (structured data) or HTML
-    const contentType = response.headers.get('content-type') || ''
-    let html: string
-    let structuredData: any = null
-
-    if (contentType.includes('application/json')) {
-      // Response is structured JSON
-      const jsonData = await response.json()
-      structuredData = jsonData
-      
-      // Extract HTML from JSON if available, otherwise use the JSON as string
-      if (jsonData.html) {
-        html = jsonData.html
-      } else if (jsonData.body) {
-        html = jsonData.body
-      } else {
-        // If no HTML field, convert JSON to string for processing
-        html = JSON.stringify(jsonData)
-      }
-      
-      console.log('✅ [generatePreview] Received structured JSON from ScraperAPI')
-    } else {
-      // Response is HTML (fallback)
-      html = await response.text()
-    }
+    const html = await response.text()
     
     // Calculate call duration
     const callEndTime = Date.now()
@@ -87,7 +63,8 @@ export async function generatePreview(url: string) {
     console.log('🔵 [generatePreview] Cleaning HTML...')
     const cleanedHtml = cleanHtml(html)
     
-    // Save to temp_previews (raw HTML, cleaned HTML, and structured data if available)
+    // Save to temp_previews (only raw HTML and cleaned HTML for now)
+    // No parsing or config generation yet - just scraping
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
@@ -95,7 +72,7 @@ export async function generatePreview(url: string) {
         source_url: url,
         raw_html: html, // Store raw HTML from ScraperAPI
         cleaned_html: cleanedHtml, // Store cleaned HTML from cheerio
-        scraped_data: structuredData || {}, // Store structured JSON data if available
+        scraped_data: {}, // Empty for now - no parsing yet
         generated_config: {}, // Empty for now - no config generation yet
       })
       .select('id')
