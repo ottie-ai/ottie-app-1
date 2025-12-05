@@ -29,6 +29,7 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
       }
       
       const brandingConfig = workspace?.branding_config as any
+      const currentBrandDomain = brandingConfig?.custom_brand_domain
       
       // Also check if domain exists in ANY workspace (for debugging)
       const { data: allWorkspaces, error: allWorkspacesError } = await supabase
@@ -37,10 +38,13 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
         .is('deleted_at', null)
         .limit(100)
       
-      const workspacesWithDomain = allWorkspaces?.filter(w => {
-        const config = w.branding_config as any
-        return config?.custom_brand_domain === 'properties.ottie.ai'
-      }) || []
+      // Filter workspaces that have the same brand domain as current workspace (for debugging)
+      const workspacesWithDomain = currentBrandDomain 
+        ? allWorkspaces?.filter(w => {
+            const config = w.branding_config as any
+            return config?.custom_brand_domain === currentBrandDomain
+          }) || []
+        : []
       
       // Get all sites in workspace
       const { data: sites, error: sitesError } = await supabase
@@ -108,7 +112,7 @@ export function DebugBrandDomain({ workspaceId }: { workspaceId: string }) {
               <div><strong>Sites with Correct Domain:</strong> {debugInfo.sitesWithCorrectDomain}</div>
               {debugInfo.workspacesWithDomain && debugInfo.workspacesWithDomain.length > 0 && (
                 <div className="mt-2 pt-2 border-t">
-                  <div><strong>Workspaces with properties.ottie.ai:</strong></div>
+                  <div><strong>Workspaces with same brand domain ({debugInfo.brandDomain}):</strong></div>
                   {debugInfo.workspacesWithDomain.map((w: any) => (
                     <div key={w.id} className="text-sm">
                       Workspace {w.id}: domain={w.domain}, verified={w.verified ? 'Yes' : 'No'}

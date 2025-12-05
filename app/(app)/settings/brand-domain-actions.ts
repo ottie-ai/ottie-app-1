@@ -244,7 +244,7 @@ export async function setBrandDomain(
   // Wildcard subdomains use CNAME to point to Vercel
   // For wildcard domain *.properties.ottie.ai, we need to create CNAME for "*" subdomain
   const subdomainName = domainParts[0] // e.g., "properties" from "properties.example.com"
-  const apexDomain = domainParts.slice(1).join('.') // e.g., "ottie.ai" from "properties.ottie.ai"
+  // Note: apexDomain is already defined earlier in the function (line 79)
   
   if (config.recommendedCNAME && config.recommendedCNAME.length > 0) {
     // Get the first item (highest rank)
