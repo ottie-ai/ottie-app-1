@@ -41,7 +41,7 @@ function PreviewContent() {
       try {
         const result = await getPreview(previewId)
         if ('error' in result) {
-          setError(result.error)
+          setError(result.error || 'Failed to load preview')
           setLoading(false)
           return
         }
