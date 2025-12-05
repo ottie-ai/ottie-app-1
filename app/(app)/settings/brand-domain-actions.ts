@@ -343,9 +343,10 @@ export async function setBrandDomain(
   }
   
   // Add non-www version WITH redirect to www (redirect is set during creation)
+  // Note: redirect parameter should be just the domain name, not full URL
   console.log('[Brand Domain] Adding non-www domain to Vercel WITH 307 redirect to www:', normalizedDomain, '->', wwwDomain)
   const vercelResult = await addVercelDomain(normalizedDomain, undefined, {
-    redirect: `https://${wwwDomain}`,
+    redirect: wwwDomain,  // Just domain name, not https://
     redirectStatusCode: 307,
   })
   
@@ -367,9 +368,10 @@ export async function setBrandDomain(
         console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
         
         // Try to update redirect if domain exists but redirect is not set
+        // Note: redirect parameter should be just the domain name, not full URL
         const redirectResult = await updateVercelDomainRedirect(
           normalizedDomain,
-          `https://${wwwDomain}`,
+          wwwDomain,  // Just domain name, not https://
           307
         )
         if ('error' in redirectResult) {
