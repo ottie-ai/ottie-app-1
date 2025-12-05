@@ -1959,7 +1959,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 </>
                               ) : (
                                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                                  Please configure your DNS settings to point your domain to Vercel. 
+                                  Please configure your DNS settings to point your domain to our hosting platform. 
                                   Contact support if you need assistance with DNS configuration.
                                 </p>
                               )}
@@ -2017,9 +2017,9 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 Your brand domain <strong>{brandingConfig.custom_brand_domain}</strong> is active. All sites are accessible at {brandingConfig.custom_brand_domain}/site-slug
                               </p>
                             </div>
-                          </div>
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     <Separator />
 

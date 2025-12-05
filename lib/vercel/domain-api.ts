@@ -46,6 +46,17 @@ interface VercelError {
 }
 
 /**
+ * Sanitize error messages to remove platform-specific references
+ * This ensures user-facing errors are generic
+ */
+function sanitizeErrorMessage(error: string): string {
+  return error
+    .replace(/Vercel/gi, 'the platform')
+    .replace(/vercel\.com/gi, 'the platform')
+    .trim()
+}
+
+/**
  * Get Vercel API credentials from environment
  */
 function getVercelCredentials() {
@@ -113,7 +124,7 @@ export async function addVercelDomain(
     const finalProjectId = projectId || await getProjectId()
 
     if (!finalProjectId) {
-      return { error: 'Vercel Project ID not found. Set VERCEL_PROJECT_ID environment variable.' }
+      return { error: 'Project ID not found. Please contact support.' }
     }
 
     // Add domain to Vercel project
@@ -145,16 +156,18 @@ export async function addVercelDomain(
         }
       }
 
+      const errorMessage = error.error?.message || `Failed to add domain: ${response.statusText}`
       return { 
-        error: error.error?.message || `Failed to add domain: ${response.statusText}` 
+        error: sanitizeErrorMessage(errorMessage)
       }
     }
 
     return { success: true, domain: data as VercelDomainResponse }
   } catch (error) {
     console.error('[Vercel API] Error adding domain:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error adding domain'
     return { 
-      error: error instanceof Error ? error.message : 'Unknown error adding domain' 
+      error: sanitizeErrorMessage(errorMessage)
     }
   }
 }
@@ -171,7 +184,7 @@ export async function removeVercelDomain(
     const finalProjectId = projectId || await getProjectId()
 
     if (!finalProjectId) {
-      return { error: 'Vercel Project ID not found' }
+      return { error: 'Project ID not found. Please contact support.' }
     }
 
     // URL encode the domain name to handle special characters like * in wildcard domains
@@ -193,16 +206,18 @@ export async function removeVercelDomain(
       }
 
       const data = await response.json() as VercelError
+      const errorMessage = data.error?.message || `Failed to remove domain: ${response.statusText}`
       return { 
-        error: data.error?.message || `Failed to remove domain: ${response.statusText}` 
+        error: sanitizeErrorMessage(errorMessage)
       }
     }
 
     return { success: true }
   } catch (error) {
     console.error('[Vercel API] Error removing domain:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error removing domain'
     return { 
-      error: error instanceof Error ? error.message : 'Unknown error removing domain' 
+      error: sanitizeErrorMessage(errorMessage)
     }
   }
 }
@@ -219,7 +234,7 @@ export async function getVercelDomain(
     const finalProjectId = projectId || await getProjectId()
 
     if (!finalProjectId) {
-      return { error: 'Vercel Project ID not found' }
+      return { error: 'Project ID not found. Please contact support.' }
     }
 
     const response = await fetch(
@@ -233,11 +248,12 @@ export async function getVercelDomain(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { error: 'Domain not found in Vercel project' }
+        return { error: 'Domain not found' }
       }
       const data = await response.json() as VercelError
+      const errorMessage = data.error?.message || `Failed to get domain: ${response.statusText}`
       return { 
-        error: data.error?.message || `Failed to get domain: ${response.statusText}` 
+        error: sanitizeErrorMessage(errorMessage)
       }
     }
 
@@ -245,8 +261,9 @@ export async function getVercelDomain(
     return { success: true, domain: data }
   } catch (error) {
     console.error('[Vercel API] Error getting domain:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error getting domain'
     return { 
-      error: error instanceof Error ? error.message : 'Unknown error getting domain' 
+      error: sanitizeErrorMessage(errorMessage)
     }
   }
 }
@@ -285,21 +302,22 @@ export async function getVercelDomainConfig(
       })
       
       if (response.status === 404) {
-        return { error: 'Domain configuration not found. The domain may not be added to your Vercel account yet.' }
+        return { error: 'Domain configuration not found. The domain may not be added to your account yet.' }
       }
       
       if (response.status === 403) {
-        return { error: 'Access forbidden. Please check that your Vercel API token has domain management permissions and the domain is added to your account.' }
+        return { error: 'Access forbidden. Please contact support if you believe this is an error.' }
       }
       
       try {
         const data = await response.json() as VercelError
+        const errorMessage = data.error?.message || `Failed to get domain config: ${response.statusText}`
         return { 
-          error: data.error?.message || `Failed to get domain config: ${response.statusText}` 
+          error: sanitizeErrorMessage(errorMessage)
         }
       } catch {
         return { 
-          error: `Failed to get domain config: ${response.statusText}` 
+          error: sanitizeErrorMessage(`Failed to get domain config: ${response.statusText}`)
         }
       }
     }
@@ -318,8 +336,9 @@ export async function getVercelDomainConfig(
     return { success: true, config: data }
   } catch (error) {
     console.error('[Vercel API] Error getting domain config:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error getting domain config'
     return { 
-      error: error instanceof Error ? error.message : 'Unknown error getting domain config' 
+      error: sanitizeErrorMessage(errorMessage)
     }
   }
 }
@@ -335,7 +354,7 @@ export async function listVercelDomains(
     const finalProjectId = projectId || await getProjectId()
 
     if (!finalProjectId) {
-      return { error: 'Vercel Project ID not found' }
+      return { error: 'Project ID not found. Please contact support.' }
     }
 
     const response = await fetch(
@@ -349,8 +368,9 @@ export async function listVercelDomains(
 
     if (!response.ok) {
       const data = await response.json() as VercelError
+      const errorMessage = data.error?.message || `Failed to list domains: ${response.statusText}`
       return { 
-        error: data.error?.message || `Failed to list domains: ${response.statusText}` 
+        error: sanitizeErrorMessage(errorMessage)
       }
     }
 
@@ -358,8 +378,9 @@ export async function listVercelDomains(
     return { success: true, domains: data.domains || [] }
   } catch (error) {
     console.error('[Vercel API] Error listing domains:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error listing domains'
     return { 
-      error: error instanceof Error ? error.message : 'Unknown error listing domains' 
+      error: sanitizeErrorMessage(errorMessage)
     }
   }
 }

@@ -21,6 +21,65 @@ interface BrandingConfig {
 }
 
 /**
+ * Check rate limit for domain operations
+ * Returns error message if rate limit exceeded, null if allowed
+ */
+async function checkDomainOperationRateLimit(
+  workspaceId: string,
+  operationType: 'set' | 'verify' | 'remove'
+): Promise<string | null> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase.rpc('check_domain_operation_rate_limit', {
+    p_workspace_id: workspaceId,
+    p_operation_type: operationType,
+  })
+  
+  if (error) {
+    console.error('[Rate Limit] Error checking rate limit:', error)
+    // If check fails, allow the operation (fail open)
+    return null
+  }
+  
+  if (!data.allowed) {
+    const operationName = operationType === 'set' ? 'domain setup' : 
+                          operationType === 'verify' ? 'domain verification' : 
+                          'domain removal'
+    return `Rate limit exceeded for ${operationName}. You have ${data.current}/${data.limit} attempts. Please try again in ${data.reset_in_minutes} minute(s).`
+  }
+  
+  return null
+}
+
+/**
+ * Log domain operation for rate limiting and audit
+ */
+async function logDomainOperation(
+  workspaceId: string,
+  userId: string,
+  operationType: 'set' | 'verify' | 'remove',
+  domain: string,
+  success: boolean,
+  errorMessage?: string
+): Promise<void> {
+  const supabase = await createClient()
+  
+  const { error } = await supabase.rpc('log_domain_operation', {
+    p_workspace_id: workspaceId,
+    p_user_id: userId,
+    p_operation_type: operationType,
+    p_domain: domain,
+    p_success: success,
+    p_error_message: errorMessage || null,
+  })
+  
+  if (error) {
+    console.error('[Rate Limit] Error logging operation:', error)
+    // Don't fail the operation if logging fails
+  }
+}
+
+/**
  * Set brand domain for workspace
  * 1. Validates domain format
  * 2. Checks feature flag
@@ -42,6 +101,12 @@ export async function setBrandDomain(
   }>
   vercelVerified: boolean
 } | { error: string }> {
+  // 0. Check rate limit (5 attempts per hour)
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'set')
+  if (rateLimitError) {
+    return { error: rateLimitError }
+  }
+
   // 1. Validate user permissions
   const supabase = await createClient()
   const { data: membership } = await supabase
@@ -52,6 +117,7 @@ export async function setBrandDomain(
     .single()
 
   if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    await logDomainOperation(workspaceId, userId, 'set', domain, false, 'Permission denied')
     return { error: 'Only workspace owners and admins can set brand domain' }
   }
 
@@ -66,13 +132,41 @@ export async function setBrandDomain(
   
   const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i
   if (!domainRegex.test(normalizedDomain)) {
-    return { error: 'Invalid domain format. Please enter a valid subdomain (e.g., properties.example.com)' }
+    const errorMsg = 'Invalid domain format. Please enter a valid subdomain (e.g., properties.example.com)'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
   }
 
   // 2.5. Validate that it's a subdomain (must have at least 3 parts: subdomain.domain.tld)
   const domainParts = normalizedDomain.split('.')
   if (domainParts.length < 3) {
-    return { error: 'Only subdomains are supported. Please enter an address like properties.yourdomain.com or sites.yourdomain.com.' }
+    const errorMsg = 'Only subdomains are supported. Please enter an address like properties.yourdomain.com or sites.yourdomain.com.'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
+  }
+  
+  // 2.6. Validate subdomain depth (max 4 levels to prevent abuse)
+  // e.g., "a.b.c.domain.com" is OK, but "a.b.c.d.e.domain.com" is not
+  if (domainParts.length > 5) {
+    const errorMsg = 'Subdomain is too deep. Maximum 4 subdomain levels are supported.'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
+  }
+  
+  // 2.7. Validate each part length (prevent extremely long subdomain labels)
+  for (const part of domainParts) {
+    if (part.length > 63) {
+      const errorMsg = 'Each part of the domain must be 63 characters or less.'
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+      return { error: errorMsg }
+    }
+  }
+  
+  // 2.8. Validate total domain length (max 253 characters per DNS spec)
+  if (normalizedDomain.length > 253) {
+    const errorMsg = 'Domain name is too long. Maximum 253 characters allowed.'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
   }
   
   // Extract apex domain from subdomain (e.g., properties.example.com -> example.com)
@@ -84,10 +178,29 @@ export async function setBrandDomain(
   // 3. Check reserved domains (check both normalized and www versions)
   const reservedDomains = ['ottie.com', 'ottie.site', 'app.ottie.com', 'www.ottie.com', 'www.ottie.site']
   if (reservedDomains.some(reserved => normalizedDomain === reserved || normalizedDomain.endsWith(`.${reserved}`))) {
-    return { error: 'This domain is reserved and cannot be used' }
+    const errorMsg = 'This domain is reserved and cannot be used'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
   }
   if (reservedDomains.some(reserved => wwwSubdomain === reserved || wwwSubdomain.endsWith(`.${reserved}`))) {
-    return { error: 'This domain is reserved and cannot be used' }
+    const errorMsg = 'This domain is reserved and cannot be used'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
+  }
+  
+  // 3.5. Check for suspicious/phishing patterns in subdomain
+  const suspiciousPatterns = [
+    /^(login|signin|auth|secure|account|verify|confirm|update|security|bank|paypal|amazon|google|microsoft|apple|facebook)/i,
+    /^(support|help|admin|administrator|root|system|mail|email|webmail)/i,
+    /(password|credential|ssn|credit.?card|billing)/i,
+  ]
+  const subdomain = domainParts[0]
+  for (const pattern of suspiciousPatterns) {
+    if (pattern.test(subdomain)) {
+      const errorMsg = 'This subdomain name is not allowed due to security restrictions.'
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+      return { error: errorMsg }
+    }
   }
 
   // 4. Get workspace with plan
@@ -98,7 +211,9 @@ export async function setBrandDomain(
     .single()
 
   if (!workspace) {
-    return { error: 'Workspace not found' }
+    const errorMsg = 'Workspace not found'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
   }
 
   // Get current config once - will be used multiple times
@@ -109,7 +224,9 @@ export async function setBrandDomain(
   if (!hasFeature(plans, workspace.plan, 'feature_custom_brand_domain')) {
     const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_brand_domain')
     const planName = firstPlanWithFeature ? firstPlanWithFeature.name.charAt(0).toUpperCase() + firstPlanWithFeature.name.slice(1) : 'a higher tier'
-    return { error: `Brand domain feature is not available for your plan. Please upgrade to ${planName} plan or higher.` }
+    const errorMsg = `Brand domain feature is not available for your plan. Please upgrade to ${planName} plan or higher.`
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Feature not available on plan')
+    return { error: errorMsg }
   }
 
   // 6. Check if subdomain is already used by another workspace
@@ -123,7 +240,9 @@ export async function setBrandDomain(
     .is('deleted_at', null)
 
   if (existingWorkspaces && existingWorkspaces.length > 0) {
-    return { error: 'This subdomain is already in use by another workspace' }
+    const errorMsg = 'This subdomain is already in use by another workspace'
+    await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+    return { error: errorMsg }
   }
 
   // 6.5. Check if subdomain already exists in Vercel project (check both www and non-www versions)
@@ -138,7 +257,9 @@ export async function setBrandDomain(
   if (!('error' in existingDomainCheck)) {
     // Domain already exists in Vercel - check if it belongs to this workspace
     if (currentDomain !== normalizedDomain) {
-      return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+      const errorMsg = 'This subdomain is already configured. It may belong to another project or account. Please contact support if you believe this is an error.'
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Domain exists in Vercel')
+      return { error: errorMsg }
     }
   }
   
@@ -146,7 +267,9 @@ export async function setBrandDomain(
   if (!('error' in existingWwwCheck)) {
     // www domain already exists - check if it belongs to this workspace
     if (currentDomain !== normalizedDomain) {
-      return { error: 'This subdomain (www) is already configured in Vercel. It may belong to another project or account. Please contact support if you believe this is an error.' }
+      const errorMsg = 'This subdomain (www) is already configured. It may belong to another project or account. Please contact support if you believe this is an error.'
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'WWW domain exists in Vercel')
+      return { error: errorMsg }
     }
   }
 
@@ -163,15 +286,23 @@ export async function setBrandDomain(
       if (!('error' in domainCheck)) {
         // Domain exists - check if it's ours
         if (currentDomain !== normalizedDomain) {
-          return { error: 'This subdomain is already configured in Vercel. It may belong to another project or account.' }
+          const errorMsg = 'This subdomain is already configured. It may belong to another project or account.'
+          await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Domain conflict in Vercel')
+          return { error: errorMsg }
         }
         // It's our domain, continue with existing domain
         console.log('[Brand Domain] Non-www domain already exists in Vercel, continuing with existing domain')
       } else {
-        return { error: 'Subdomain already exists but cannot be accessed. Please contact support.' }
+        const errorMsg = 'Subdomain already exists but cannot be accessed. Please contact support.'
+        await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, errorMsg)
+        return { error: errorMsg }
       }
     } else {
-      return { error: `Failed to add subdomain: ${vercelResult.error}. Please try again later.` }
+      // Sanitize error message to remove any platform-specific references
+      const sanitizedError = vercelResult.error.replace(/Vercel/gi, 'the platform').trim()
+      const errorMsg = `Failed to add subdomain: ${sanitizedError}. Please try again later.`
+      await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'API error')
+      return { error: errorMsg }
     }
   }
   
@@ -188,7 +319,7 @@ export async function setBrandDomain(
         if (currentDomain !== normalizedDomain) {
           // Rollback: remove non-www domain if www belongs to someone else
           await removeVercelDomain(normalizedDomain)
-          return { error: 'This subdomain (www) is already configured in Vercel. It may belong to another project or account.' }
+          return { error: 'This subdomain (www) is already configured. It may belong to another project or account.' }
         }
         // It's our domain, continue with existing www domain
         console.log('[Brand Domain] www domain already exists in Vercel, continuing with existing domain')
@@ -200,7 +331,9 @@ export async function setBrandDomain(
     } else {
       // Rollback: remove non-www domain if www addition fails
       await removeVercelDomain(normalizedDomain)
-      return { error: `Failed to add www subdomain: ${vercelWwwResult.error}. Please try again later.` }
+      // Sanitize error message to remove any platform-specific references
+      const sanitizedError = vercelWwwResult.error.replace(/Vercel/gi, 'the platform').trim()
+      return { error: `Failed to add www subdomain: ${sanitizedError}. Please try again later.` }
     }
   }
 
@@ -263,7 +396,7 @@ export async function setBrandDomain(
         },
       })
     }
-    return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The subdomain may need a few moments to be processed by Vercel. Please try again in a minute.` }
+    return { error: `Failed to get DNS configuration: ${configResult?.error || 'Unknown error'}. The subdomain may need a few moments to be processed. Please try again in a minute.` }
   }
 
   const { config } = configResult
@@ -286,7 +419,7 @@ export async function setBrandDomain(
       type: 'CNAME',
       domain: subdomainName, // e.g., "properties"
       value: cnameValue,
-      reason: 'Point your subdomain to Vercel'
+      reason: 'Point your subdomain to our hosting platform'
     })
     
     // Add CNAME for www version
@@ -294,7 +427,7 @@ export async function setBrandDomain(
       type: 'CNAME',
       domain: `www.${subdomainName}`, // e.g., "www.properties"
       value: cnameValue,
-      reason: 'Point your www subdomain to Vercel'
+      reason: 'Point your www subdomain to our hosting platform'
     })
   } else if (config.cnames && config.cnames.length > 0) {
     // Fallback to cnames - use first one only
@@ -305,7 +438,7 @@ export async function setBrandDomain(
       type: 'CNAME',
       domain: subdomainName, // e.g., "properties"
       value: cnameValue,
-      reason: 'Point your subdomain to Vercel'
+      reason: 'Point your subdomain to our hosting platform'
     })
     
     // Add CNAME for www version
@@ -313,7 +446,7 @@ export async function setBrandDomain(
       type: 'CNAME',
       domain: `www.${subdomainName}`, // e.g., "www.properties"
       value: cnameValue,
-      reason: 'Point your www subdomain to Vercel'
+      reason: 'Point your www subdomain to our hosting platform'
     })
   } else if (config.recommendedIPv4 && config.recommendedIPv4.length > 0) {
     // Fallback: if no CNAME, try A records (shouldn't happen for subdomains, but just in case)
@@ -326,7 +459,7 @@ export async function setBrandDomain(
         type: 'A',
         domain: subdomainName, // e.g., "properties"
         value: aValue,
-        reason: 'Point your subdomain to Vercel'
+        reason: 'Point your subdomain to our hosting platform'
       })
       
       // Add A record for www version
@@ -334,7 +467,7 @@ export async function setBrandDomain(
         type: 'A',
         domain: `www.${subdomainName}`, // e.g., "www.properties"
         value: aValue,
-        reason: 'Point your www subdomain to Vercel'
+        reason: 'Point your www subdomain to our hosting platform'
       })
     }
   } else if (config.aValues && config.aValues.length > 0) {
@@ -346,7 +479,7 @@ export async function setBrandDomain(
       type: 'A',
       domain: subdomainName, // e.g., "properties"
       value: aValue,
-      reason: 'Point your subdomain to Vercel'
+      reason: 'Point your subdomain to our hosting platform'
     })
     
     // Add A record for www version
@@ -354,7 +487,7 @@ export async function setBrandDomain(
       type: 'A',
       domain: `www.${subdomainName}`, // e.g., "www.properties"
       value: aValue,
-      reason: 'Point your www subdomain to Vercel'
+      reason: 'Point your www subdomain to our hosting platform'
     })
   }
   
@@ -391,7 +524,7 @@ export async function setBrandDomain(
         },
       })
     }
-    return { error: 'Failed to get DNS configuration from Vercel. Please try again or contact support.' }
+    return { error: 'Failed to get DNS configuration. Please try again or contact support.' }
   }
 
   // 9. Update branding_config
@@ -435,6 +568,9 @@ export async function setBrandDomain(
     return { error: 'Failed to save subdomain configuration' }
   }
 
+  // Log successful operation
+  await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, true)
+
   revalidatePath('/settings')
   return { 
     success: true, 
@@ -450,6 +586,12 @@ export async function verifyBrandDomain(
   workspaceId: string,
   userId: string
 ): Promise<{ success: true } | { error: string }> {
+  // 0. Check rate limit (10 attempts per hour)
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'verify')
+  if (rateLimitError) {
+    return { error: rateLimitError }
+  }
+
   // 1. Validate permissions
   const supabase = await createClient()
   const { data: membership } = await supabase
@@ -460,6 +602,7 @@ export async function verifyBrandDomain(
     .single()
 
   if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    await logDomainOperation(workspaceId, userId, 'verify', '', false, 'Permission denied')
     return { error: 'Only workspace owners and admins can verify domain' }
   }
 
@@ -471,6 +614,7 @@ export async function verifyBrandDomain(
     .single()
 
   if (!workspace) {
+    await logDomainOperation(workspaceId, userId, 'verify', '', false, 'Workspace not found')
     return { error: 'Workspace not found' }
   }
 
@@ -478,6 +622,7 @@ export async function verifyBrandDomain(
   const domain = config.custom_brand_domain
 
   if (!domain) {
+    await logDomainOperation(workspaceId, userId, 'verify', '', false, 'Domain not set')
     return { error: 'Brand domain not set. Please set a domain first.' }
   }
 
@@ -485,7 +630,9 @@ export async function verifyBrandDomain(
   // Check non-www domain (both www and non-www should be verified)
   const vercelResult = await getVercelDomain(domain)
   if ('error' in vercelResult) {
-    return { error: 'Domain not found. Please contact support.' }
+    const errorMsg = 'Domain not found. Please contact support.'
+    await logDomainOperation(workspaceId, userId, 'verify', domain, false, 'Domain not found in Vercel')
+    return { error: errorMsg }
   }
 
   // 4. Check domain config to see if DNS is configured correctly
@@ -508,6 +655,7 @@ export async function verifyBrandDomain(
       errorMessage = verificationErrors.map(v => v.reason).join(', ')
     }
     
+    await logDomainOperation(workspaceId, userId, 'verify', domain, false, 'DNS not configured or misconfigured')
     return { 
       error: `Domain verification failed. ${errorMessage}` 
     }
@@ -542,8 +690,13 @@ export async function verifyBrandDomain(
   })
 
   if (!updatedWorkspace) {
-    return { error: 'Failed to update workspace configuration' }
+    const errorMsg = 'Failed to update workspace configuration'
+    await logDomainOperation(workspaceId, userId, 'verify', domain, false, errorMsg)
+    return { error: errorMsg }
   }
+
+  // Log successful verification
+  await logDomainOperation(workspaceId, userId, 'verify', domain, true)
 
   revalidatePath('/settings')
   return { success: true }
@@ -650,6 +803,12 @@ export async function removeBrandDomain(
   workspaceId: string,
   userId: string
 ): Promise<{ success: true } | { error: string }> {
+  // 0. Check rate limit (3 attempts per day)
+  const rateLimitError = await checkDomainOperationRateLimit(workspaceId, 'remove')
+  if (rateLimitError) {
+    return { error: rateLimitError }
+  }
+
   // 1. Validate permissions
   const supabase = await createClient()
   const { data: membership } = await supabase
@@ -660,10 +819,30 @@ export async function removeBrandDomain(
     .single()
 
   if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
+    await logDomainOperation(workspaceId, userId, 'remove', '', false, 'Permission denied')
     return { error: 'Only workspace owners and admins can remove brand domain' }
   }
 
+  // Get domain before removal for logging
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('branding_config')
+    .eq('id', workspaceId)
+    .single()
+
+  const config = (workspace?.branding_config || {}) as BrandingConfig
+  const domain = config.custom_brand_domain || ''
+
   // 2. Call internal function to perform the removal
-  return await removeBrandDomainInternal(workspaceId)
+  const result = await removeBrandDomainInternal(workspaceId)
+  
+  // Log operation result
+  if ('error' in result) {
+    await logDomainOperation(workspaceId, userId, 'remove', domain, false, result.error)
+  } else {
+    await logDomainOperation(workspaceId, userId, 'remove', domain, true)
+  }
+  
+  return result
 }
 
