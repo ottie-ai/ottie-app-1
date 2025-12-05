@@ -46,34 +46,72 @@ function getBaseKey(url: string): string {
 /**
  * Score an image URL to determine which is "best" in a group
  * Higher score = better
+ * 
+ * Universal heuristics that work for various URL patterns:
+ * - Prefers uncropped_scaled_within with largest width
+ * - Extracts numeric dimensions from URL (e.g., _1536, _192, etc.)
+ * - Prefers .jpg > .jpeg > .webp > others
+ * - Falls back to longest URL
  */
 function scoreImageUrl(url: string): { score: number; width?: number } {
-  // Check for uncropped_scaled_within pattern
+  // Check for uncropped_scaled_within pattern (highest priority)
   const uncroppedMatch = url.match(/uncropped_scaled_within_(\d+)_\d+/i)
   if (uncroppedMatch) {
     const width = parseInt(uncroppedMatch[1], 10)
-    // Return a high base score + width (so larger widths score higher)
-    return { score: 1000000 + width, width }
+    // Return a very high base score + width (so larger widths score higher)
+    return { score: 10000000 + width, width }
   }
+  
+  // Extract all numbers from the URL that might represent dimensions
+  // Look for patterns like: _1536, _192, -1536, cc_ft_1536, etc.
+  // This is universal and works for various URL patterns
+  // Try multiple patterns to catch different formats
+  const dimensionPatterns = [
+    /[-_](\d{3,4})(?:[-_.]|$)/g,  // _1536, -192, etc.
+    /_(\d{3,4})\./g,               // _1536.jpg
+    /-(\d{3,4})\./g,               // -1536.jpg
+  ]
+  
+  let maxDimension = 0
+  
+  for (const pattern of dimensionPatterns) {
+    let match
+    // Reset regex lastIndex for global patterns
+    pattern.lastIndex = 0
+    while ((match = pattern.exec(url)) !== null) {
+      const num = parseInt(match[1], 10)
+      if (num > maxDimension && num < 10000) { // Reasonable dimension range
+        maxDimension = num
+      }
+    }
+  }
+  
+  // If we found dimension numbers, use them (but lower priority than uncropped)
+  // Multiply by 1000 to give significant weight to larger dimensions
+  // Also add a bonus if we found dimensions (prefer images with explicit sizes)
+  const dimensionScore = maxDimension > 0 ? maxDimension * 1000 + 50000 : 0
   
   // Check file extension preference
   const extension = url.toLowerCase().match(/\.([a-z0-9]+)(\?|$)/)?.[1] || ''
   let extensionScore = 0
   
   if (extension === 'jpg') {
-    extensionScore = 1000
-  } else if (extension === 'jpeg') {
-    extensionScore = 900
-  } else if (extension === 'webp') {
-    extensionScore = 800
-  } else {
     extensionScore = 100
+  } else if (extension === 'jpeg') {
+    extensionScore = 90
+  } else if (extension === 'webp') {
+    extensionScore = 80
+  } else {
+    extensionScore = 10
   }
   
-  // Add URL length as final tiebreaker
-  const lengthScore = url.length
+  // Add URL length as final tiebreaker (small weight)
+  const lengthScore = url.length * 0.1
   
-  return { score: extensionScore + lengthScore }
+  return { 
+    score: dimensionScore + extensionScore + lengthScore,
+    width: maxDimension > 0 ? maxDimension : undefined
+  }
 }
 
 /**
@@ -151,57 +189,44 @@ export function dedupeMarkdownImages(markdown: string): { markdown: string; kept
   // Remove duplicate images from markdown
   // We need to remove the full line containing the image, but be careful
   // to only remove exact matches and preserve other content
-  // Process in reverse order to avoid index shifting issues
   let cleanedMarkdown = markdown
   
-  // Find all positions of images to remove (with their full context)
-  const matchesToRemove = matches.filter(m => urlsToRemove.has(m.url))
+  // Use regex to find and remove images that should be removed
+  // Match: optional whitespace + image markdown + optional whitespace + newline
+  // This ensures we remove standalone image lines cleanly
+  // Reuse the same regex pattern (but create new instance for replace)
+  const removeImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
   
-  // Process in reverse order to avoid index shifting
-  for (let i = matchesToRemove.length - 1; i >= 0; i--) {
-    const imageMatch = matchesToRemove[i]
-    
-    // Find the position of this image in the current markdown
-    // Use a more specific search to avoid matching partial strings
-    const searchStart = cleanedMarkdown.lastIndexOf(imageMatch.fullMatch)
-    if (searchStart === -1) {
-      // Already removed or not found
-      continue
+  cleanedMarkdown = cleanedMarkdown.replace(removeImageRegex, (fullMatch, alt, url) => {
+    // Check if this URL should be removed
+    if (urlsToRemove.has(url)) {
+      // Check if this is on its own line (with optional whitespace)
+      // We'll remove it by returning empty string, but we need to handle newlines carefully
+      // For now, return a special marker that we'll clean up
+      return '\0REMOVE_IMAGE\0'
     }
-    
-    // Verify this is actually the full match (not part of a larger string)
-    const before = searchStart > 0 ? cleanedMarkdown[searchStart - 1] : ''
-    const after = searchStart + imageMatch.fullMatch.length < cleanedMarkdown.length 
-      ? cleanedMarkdown[searchStart + imageMatch.fullMatch.length] 
-      : ''
-    
-    // Find the start of the line (or beginning of string)
-    let lineStart = searchStart
-    while (lineStart > 0 && cleanedMarkdown[lineStart - 1] !== '\n') {
-      lineStart--
+    // Keep this image
+    return fullMatch
+  })
+  
+  // Now clean up the markers and their surrounding whitespace/newlines
+  // Pattern: optional newline + whitespace + marker + whitespace + optional newline
+  cleanedMarkdown = cleanedMarkdown.replace(/(\n?)\s*\0REMOVE_IMAGE\0\s*(\n?)/g, (match, beforeNewline, afterNewline) => {
+    // If we have newlines on both sides, keep one
+    if (beforeNewline === '\n' && afterNewline === '\n') {
+      return '\n'
     }
-    
-    // Find the end of the line (or end of string)
-    let lineEnd = searchStart + imageMatch.fullMatch.length
-    while (lineEnd < cleanedMarkdown.length && cleanedMarkdown[lineEnd] !== '\n') {
-      lineEnd++
+    // If we have a newline on one side, keep it
+    if (beforeNewline === '\n' || afterNewline === '\n') {
+      return beforeNewline || afterNewline
     }
-    
-    // Check if the line contains only whitespace and the image
-    const line = cleanedMarkdown.substring(lineStart, lineEnd)
-    const lineWithoutImage = line.replace(imageMatch.fullMatch, '').trim()
-    
-    // Only remove if the line is empty after removing the image
-    // This ensures we don't remove images that are inline with other content
-    if (lineWithoutImage === '') {
-      // Remove the entire line including the newline after it (if present)
-      const removeEnd = lineEnd < cleanedMarkdown.length ? lineEnd + 1 : lineEnd
-      cleanedMarkdown = cleanedMarkdown.substring(0, lineStart) + cleanedMarkdown.substring(removeEnd)
-    } else {
-      // Image is inline with other content, just remove the image markdown itself
-      cleanedMarkdown = cleanedMarkdown.substring(0, searchStart) + cleanedMarkdown.substring(searchStart + imageMatch.fullMatch.length)
-    }
-  }
+    // No newlines, remove everything
+    return ''
+  })
+  
+  // Also handle images at the start or end of the string
+  cleanedMarkdown = cleanedMarkdown.replace(/^\s*\0REMOVE_IMAGE\0\s*\n?/gm, '')
+  cleanedMarkdown = cleanedMarkdown.replace(/\n?\s*\0REMOVE_IMAGE\0\s*$/gm, '')
   
   return {
     markdown: cleanedMarkdown,

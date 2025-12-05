@@ -6,6 +6,7 @@
 
 import TurndownService from 'turndown'
 import { load } from 'cheerio'
+import { dedupeMarkdownImages } from './dedupeMarkdownImages'
 
 /**
  * Convert cleaned HTML to markdown
@@ -121,11 +122,14 @@ export function htmlToMarkdown(cleanHtml: string): string {
   
   // Add image URLs from scripts to the markdown
   // Remove duplicates and add them as image links at the end
-  const uniqueImageUrls = [...new Set(imageUrlsFromScripts)]
+  const uniqueImageUrls = Array.from(new Set(imageUrlsFromScripts))
   if (uniqueImageUrls.length > 0) {
     const imageLinks = uniqueImageUrls.map(url => `![Image](${url})`).join('\n')
     markdown = markdown + (markdown.trim() ? '\n\n' : '') + imageLinks
   }
   
-  return markdown
+  // Deduplicate images (remove variants of the same photo, keep only the best)
+  const deduped = dedupeMarkdownImages(markdown)
+  
+  return deduped.markdown
 }
