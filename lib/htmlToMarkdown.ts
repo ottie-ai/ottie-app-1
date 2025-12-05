@@ -28,58 +28,13 @@ export function htmlToMarkdown(cleanHtml: string): string {
   // Light cleanup with Cheerio - remove only obvious noise
   const $ = load(cleanHtml)
   
-  // Helper function to check if element contains "agent" in content or attributes
-  // Also checks recursively in children
-  const containsAgent = ($el: ReturnType<typeof $>, el: any): boolean => {
-    // Check text content (includes all descendant text)
-    const text = ($el.text() || '').toLowerCase()
-    if (text.includes('agent')) {
-      return true
-    }
-    
-    // Check HTML content (includes all descendant HTML)
-    const html = ($el.html() || '').toLowerCase()
-    if (html.includes('agent')) {
-      return true
-    }
-    
-    // Check all attributes (class, id, data-*, etc.) on this element
-    const attrs = el.attribs || {}
-    for (const attrValue of Object.values(attrs)) {
-      if (typeof attrValue === 'string' && attrValue.toLowerCase().includes('agent')) {
-        return true
-      }
-    }
-    
-    // Check attributes on all descendant elements recursively
-    $el.find('*').each((_, childEl) => {
-      // Only check elements (not text nodes)
-      if ('attribs' in childEl && childEl.attribs) {
-        const childAttrs = childEl.attribs
-        for (const attrValue of Object.values(childAttrs)) {
-          if (typeof attrValue === 'string' && attrValue.toLowerCase().includes('agent')) {
-            return true
-          }
-        }
-      }
-    })
-    
-    return false
-  }
-  
   // Extract image URLs from scripts before removing them
   const imageUrlsFromScripts: string[] = []
   
   // Check script tags for image URLs (like cleanHtml does)
-  // But preserve scripts that contain "agent"
   $('script').each((_, el) => {
     const $el = $(el)
     const content = $el.html() || $el.text() || ''
-    
-    // Preserve scripts that contain "agent"
-    if (containsAgent($el, el)) {
-      return // Skip removal
-    }
     
     // Check for image URLs in the script content
     const imagePatterns = [
@@ -104,37 +59,8 @@ export function htmlToMarkdown(cleanHtml: string): string {
     }
   })
   
-  // Remove obvious noise tags, but preserve elements that contain "agent"
-  // Process each tag type separately to check for "agent" before removing
-  $('style, noscript, iframe, svg, canvas').each((_, el) => {
-    const $el = $(el)
-    // Preserve if contains "agent"
-    if (!containsAgent($el, el)) {
-      $el.remove()
-    }
-  })
-  
-  // Remove scripts that don't contain "agent" and don't have image links
-  $('script').each((_, el) => {
-    const $el = $(el)
-    // Already preserved scripts with "agent" above, now remove others without images
-    if (!containsAgent($el, el)) {
-      const content = $el.html() || $el.text() || ''
-      const imagePatterns = [
-        /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff|tif)(\?|"|'|\s|,|})/i,
-        /"image":\s*"https?:\/\//i,
-        /"imageUrl":\s*"https?:\/\//i,
-        /"url":\s*"https?:\/\/[^"]*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
-        /photos\./i,
-        /images?\./i,
-        /img[^"]*\.(jpg|jpeg|png|gif|webp)/i,
-      ]
-      const hasImageLinks = imagePatterns.some(pattern => pattern.test(content))
-      if (!hasImageLinks) {
-        $el.remove()
-      }
-    }
-  })
+  // Remove obvious noise tags (but scripts with images are already processed)
+  $('script, style, noscript, iframe, svg, canvas').remove()
   
   let contentToConvert: string
   
@@ -192,8 +118,6 @@ export function htmlToMarkdown(cleanHtml: string): string {
   })
   
   // Convert to markdown
-  // Elements containing "agent" are already preserved in the HTML (not removed in cleanup above),
-  // so Turndown will convert them to markdown automatically
   let markdown = turndownService.turndown(contentToConvert)
   
   // Add image URLs from scripts to the markdown
