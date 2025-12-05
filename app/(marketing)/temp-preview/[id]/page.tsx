@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Save, ExternalLink, Code, Copy, Check } from 'lucide-react'
-import { getPreview, claimPreview } from '../../actions'
+import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
+import { getPreview, claimPreview, reprocessHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -24,6 +24,7 @@ function PreviewContent() {
   const [workspace, setWorkspace] = useState<any>(null)
   const [copied, setCopied] = useState(false)
   const [copiedSection, setCopiedSection] = useState<string | null>(null) // Track which section was copied
+  const [reprocessing, setReprocessing] = useState(false)
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -125,6 +126,31 @@ function PreviewContent() {
         setCopied(false)
         setCopiedSection(null)
       }, 2000)
+    }
+  }
+
+  const handleReprocessHtml = async () => {
+    if (!preview?.raw_html || reprocessing) return
+    
+    setReprocessing(true)
+    try {
+      const result = await reprocessHtml(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to reprocess HTML')
+        setReprocessing(false)
+        return
+      }
+      
+      // Update preview state with new cleaned_html
+      setPreview({
+        ...preview,
+        cleaned_html: result.cleaned_html,
+      })
+    } catch (err) {
+      setError('Failed to reprocess HTML')
+    } finally {
+      setReprocessing(false)
     }
   }
 
@@ -234,24 +260,45 @@ function PreviewContent() {
                     ({(preview.raw_html.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
-                <Button
-                  onClick={handleCopyRawHtml}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copied && copiedSection === 'raw' ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy HTML
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleReprocessHtml}
+                    disabled={reprocessing}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {reprocessing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reprocess with Cheerio
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleCopyRawHtml}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'raw' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy HTML
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">

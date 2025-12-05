@@ -214,3 +214,58 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     slug: site.slug,
   }
 }
+
+/**
+ * Reprocess raw HTML through Cheerio cleaning
+ * Updates cleaned_html in temp_previews table
+ */
+export async function reprocessHtml(previewId: string) {
+  try {
+    const supabase = await createClient()
+    
+    // Get preview with raw_html
+    const { data: preview, error: previewError } = await supabase
+      .from('temp_previews')
+      .select('raw_html')
+      .eq('id', previewId)
+      .gt('expires_at', new Date().toISOString())
+      .single()
+    
+    if (previewError || !preview) {
+      return { error: 'Preview not found or expired' }
+    }
+    
+    if (!preview.raw_html) {
+      return { error: 'No raw HTML available to process' }
+    }
+    
+    // Clean HTML with cheerio
+    console.log('🔵 [reprocessHtml] Reprocessing HTML for preview:', previewId)
+    const cleanedHtml = cleanHtml(preview.raw_html)
+    
+    // Update cleaned_html in database
+    const { data: updatedPreview, error: updateError } = await supabase
+      .from('temp_previews')
+      .update({ cleaned_html: cleanedHtml })
+      .eq('id', previewId)
+      .select('cleaned_html')
+      .single()
+    
+    if (updateError || !updatedPreview) {
+      console.error('🔴 [reprocessHtml] Failed to update preview:', updateError)
+      return { error: 'Failed to update preview. Please try again.' }
+    }
+    
+    console.log('✅ [reprocessHtml] Successfully reprocessed HTML')
+    
+    return { 
+      success: true,
+      cleaned_html: updatedPreview.cleaned_html,
+    }
+  } catch (error) {
+    console.error('🔴 [reprocessHtml] Error:', error)
+    return { 
+      error: error instanceof Error ? error.message : 'Failed to reprocess HTML' 
+    }
+  }
+}
