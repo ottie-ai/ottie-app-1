@@ -105,22 +105,20 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     
     const callDuration = Date.now() - callStartTime
     
-    // Firecrawl returns data in structure: { success: boolean, data: { markdown?: string, ... } }
+    // Firecrawl returns ScrapeResponse directly with properties: markdown, html, title, etc.
     let markdown = ''
     
-    if (scrapeResponse.data?.markdown) {
-      markdown = scrapeResponse.data.markdown
-    } else if (scrapeResponse.data?.html) {
+    if (scrapeResponse.markdown) {
+      markdown = scrapeResponse.markdown
+    } else if (scrapeResponse.html) {
       // Fallback to HTML if markdown not available
-      markdown = scrapeResponse.data.html
-    } else if (scrapeResponse.data?.content) {
-      markdown = scrapeResponse.data.content
-    } else if (typeof scrapeResponse.data === 'string') {
-      markdown = scrapeResponse.data
+      markdown = scrapeResponse.html
+    } else if (scrapeResponse.rawHtml) {
+      markdown = scrapeResponse.rawHtml
     } else {
       // Fallback: try to get any text content from response
-      console.warn('⚠️ [Firecrawl] Unexpected response structure:', JSON.stringify(scrapeResponse).substring(0, 200))
-      markdown = JSON.stringify(scrapeResponse.data || scrapeResponse)
+      console.warn('⚠️ [Firecrawl] No markdown or HTML in response:', Object.keys(scrapeResponse))
+      markdown = JSON.stringify(scrapeResponse)
     }
     
     if (!markdown || markdown.trim().length === 0) {
