@@ -285,39 +285,41 @@ function PreviewContent() {
       {/* Raw Results Display */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="space-y-6">
-          {/* ScraperAPI Raw HTML Result */}
+          {/* Raw Result (HTML or Markdown depending on provider) */}
           {preview?.raw_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    ScraperAPI Raw HTML Result
+                    {preview.markdown ? 'Firecrawl Raw Markdown Result' : 'ScraperAPI Raw HTML Result'}
                   </Typography>
                   <span className="text-xs text-white/40">
                     ({(preview.raw_html.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleReprocessHtml}
-                    disabled={reprocessing}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {reprocessing ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Reprocess with Cheerio
-                      </>
-                    )}
-                  </Button>
+                  {!preview.markdown && (
+                    <Button
+                      onClick={handleReprocessHtml}
+                      disabled={reprocessing}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {reprocessing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Reprocess with Cheerio
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <Button
                     onClick={handleCopyRawHtml}
                     variant="ghost"
@@ -332,7 +334,7 @@ function PreviewContent() {
                     ) : (
                       <>
                         <Copy className="h-4 w-4 mr-2" />
-                        Copy HTML
+                        {preview.markdown ? 'Copy Markdown' : 'Copy HTML'}
                       </>
                     )}
                   </Button>
@@ -340,14 +342,14 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.raw_html}
+                  {preview.markdown || preview.raw_html}
                 </pre>
               </div>
             </div>
           )}
 
-          {/* Cheerio Cleaned HTML Result */}
-          {preview?.cleaned_html && (
+          {/* Cheerio Cleaned HTML Result (only for ScraperAPI, not Firecrawl) */}
+          {preview?.cleaned_html && !preview?.markdown && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">

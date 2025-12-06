@@ -45,21 +45,32 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     const scrapeResult = await scrapeUrl(url, 170000)
-    const { html, duration: callDuration } = scrapeResult
+    const { html, markdown, duration: callDuration, provider } = scrapeResult
 
-    // Clean HTML with cheerio (remove headers, footers, scripts, etc.)
-    console.log('🔵 [generatePreview] Cleaning HTML...')
-    const cleanedHtml = cleanHtml(html)
+    // For Firecrawl: if we have markdown, store it directly and skip HTML cleaning
+    // For ScraperAPI: clean HTML with cheerio as usual
+    let cleanedHtml: string | null = null
     
-    // Save to temp_previews (only raw HTML and cleaned HTML for now)
-    // No parsing or config generation yet - just scraping
+    if (provider === 'firecrawl' && markdown) {
+      // Firecrawl already returns clean markdown, no need for HTML cleaning
+      // Store markdown directly
+      console.log('🔵 [generatePreview] Firecrawl returned markdown, storing directly')
+      // No cleaned HTML needed for Firecrawl
+    } else {
+      // ScraperAPI or fallback: clean HTML with cheerio
+      console.log('🔵 [generatePreview] Cleaning HTML...')
+      cleanedHtml = cleanHtml(html)
+    }
+    
+    // Save to temp_previews
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
       .insert({
         source_url: url,
-        raw_html: html, // Store raw HTML from scraper
-        cleaned_html: cleanedHtml, // Store cleaned HTML from cheerio
+        raw_html: provider === 'firecrawl' && markdown ? markdown : html, // Store markdown as raw_html for Firecrawl (for display), HTML for ScraperAPI
+        cleaned_html: cleanedHtml, // Only for ScraperAPI (null for Firecrawl)
+        markdown: markdown || null, // Store markdown if available (Firecrawl)
         scraped_data: {}, // Empty for now - no parsing yet
         generated_config: {}, // Empty for now - no config generation yet
       })

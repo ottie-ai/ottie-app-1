@@ -10,6 +10,7 @@ export type ScraperProvider = 'scraperapi' | 'firecrawl'
 
 export interface ScrapeResult {
   html: string
+  markdown?: string // Optional markdown (for Firecrawl)
   provider: ScraperProvider
   duration: number
 }
@@ -125,38 +126,14 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       throw new Error('Firecrawl returned empty content')
     }
     
-    // Convert markdown to basic HTML for consistency with ScraperAPI flow
-    // We'll wrap markdown in a container and convert basic markdown syntax to HTML
-    // This is a simple conversion - cheerio will process it further
-    let html = markdown
-    
-    // Basic markdown to HTML conversion (simple approach)
-    // Convert headers
-    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    
-    // Convert bold and italic
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-    
-    // Convert links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    
-    // Convert images
-    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-    
-    // Convert line breaks to <br>
-    html = html.replace(/\n\n/g, '</p><p>')
-    html = html.replace(/\n/g, '<br>')
-    
-    // Wrap in body tag for cheerio processing
-    html = `<body><div class="firecrawl-content">${html}</div></body>`
-    
+    // For Firecrawl, we return markdown as-is
+    // HTML conversion will happen later if needed (for cheerio processing)
+    // For now, return markdown directly and empty HTML (will be generated from markdown if needed)
     console.log('✅ [Firecrawl] Successfully scraped URL, markdown length:', markdown.length, `(${callDuration}ms)`)
     
     return {
-      html,
+      html: '', // Empty HTML for Firecrawl - we use markdown directly
+      markdown, // Return markdown so it can be stored directly
       provider: 'firecrawl',
       duration: callDuration,
     }
