@@ -100,11 +100,10 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     
     // Scrape with markdown format
     // Firecrawl's markdown format is cleaner and already processed
-    // Explicitly disable stealth mode and use basic proxy to save credits (1 credit instead of 5)
+    // Use basic proxy to save credits (1 credit instead of 5 with stealth mode)
     const scrapeResponse = await firecrawl.scrape(url, {
       formats: ['markdown'],
-      actions: { stealth: false }, // Disable stealth mode (saves 4 credits)
-      proxy: 'basic', // Use basic proxy instead of stealth (saves 4 credits)
+      proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
     })
     
     const callDuration = Date.now() - callStartTime
