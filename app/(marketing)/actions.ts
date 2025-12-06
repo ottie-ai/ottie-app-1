@@ -45,7 +45,7 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     const scrapeResult = await scrapeUrl(url, 170000)
-    const { html, markdown, duration: callDuration, provider } = scrapeResult
+    const { html, markdown, duration: callDuration } = scrapeResult
 
     // For Firecrawl: if we have markdown, store it directly and skip HTML cleaning
     // For ScraperAPI: clean HTML with cheerio as usual
