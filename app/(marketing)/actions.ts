@@ -1,13 +1,22 @@
 'use server'
 
+// Configure max duration for server actions (180 seconds / 3 minutes)
+// This allows ScraperAPI calls to complete without timing out
+export const maxDuration = 180
+
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cleanHtml } from '@/lib/scraper/html-parser'
 import { htmlToMarkdown } from '@/lib/htmlToMarkdown'
+import { scrapeUrl, getScraperProvider } from '@/lib/scraper/providers'
 
 /**
- * Scrape a URL using ScraperAPI and create anonymous preview
+ * Scrape a URL using configured provider (ScraperAPI or Firecrawl) and create anonymous preview
  * Returns preview_id for accessing the generated preview
+ * 
+ * Provider can be switched via SCRAPER_PROVIDER env variable:
+ * - 'scraperapi' (default) - requires SCRAPERAPI_KEY
+ * - 'firecrawl' - requires FIRECRAWL_API_KEY
  */
 export async function generatePreview(url: string) {
   try {
@@ -20,44 +29,27 @@ export async function generatePreview(url: string) {
       }
     }
 
-    const apiKey = process.env.SCRAPERAPI_KEY
+    const provider = getScraperProvider()
+    console.log(`🔵 [generatePreview] Using provider: ${provider}`)
     
-    if (!apiKey) {
+    // Check if required API key is configured
+    if (provider === 'firecrawl' && !process.env.FIRECRAWL_API_KEY) {
+      console.error('FIRECRAWL_API_KEY is not configured')
+      return { 
+        error: 'Firecrawl API is not configured. Please set FIRECRAWL_API_KEY environment variable.' 
+      }
+    }
+    
+    if (provider === 'scraperapi' && !process.env.SCRAPERAPI_KEY) {
       console.error('SCRAPERAPI_KEY is not configured')
       return { 
-        error: 'Scraper API is not configured. Please contact support.' 
+        error: 'ScraperAPI is not configured. Please set SCRAPERAPI_KEY environment variable.' 
       }
     }
 
-    // Call ScraperAPI with the URL
-    const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}`
-    
-    console.log('🔵 [generatePreview] Scraping URL:', url)
-    
-    // Start timing the API call
-    const callStartTime = Date.now()
-    
-    const response = await fetch(scraperUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      console.error('🔴 [generatePreview] ScraperAPI error:', response.status, response.statusText)
-      return { 
-        error: `Failed to scrape URL: ${response.status} ${response.statusText}` 
-      }
-    }
-
-    const html = await response.text()
-    
-    // Calculate call duration
-    const callEndTime = Date.now()
-    const callDuration = callEndTime - callStartTime
-    
-    console.log('✅ [generatePreview] Successfully scraped URL, content length:', html.length, `(${callDuration}ms)`)
+    // Scrape URL using configured provider (170 seconds timeout)
+    const scrapeResult = await scrapeUrl(url, 170000)
+    const { html, duration: callDuration } = scrapeResult
 
     // Clean HTML with cheerio (remove headers, footers, scripts, etc.)
     console.log('🔵 [generatePreview] Cleaning HTML...')
@@ -70,7 +62,7 @@ export async function generatePreview(url: string) {
       .from('temp_previews')
       .insert({
         source_url: url,
-        raw_html: html, // Store raw HTML from ScraperAPI
+        raw_html: html, // Store raw HTML from scraper
         cleaned_html: cleanedHtml, // Store cleaned HTML from cheerio
         scraped_data: {}, // Empty for now - no parsing yet
         generated_config: {}, // Empty for now - no config generation yet
@@ -96,6 +88,14 @@ export async function generatePreview(url: string) {
     }
   } catch (error) {
     console.error('🔴 [generatePreview] Error:', error)
+    
+    // Handle timeout errors specifically
+    if (error instanceof Error && error.message.includes('timeout')) {
+      return { 
+        error: 'Request timed out. The website may be too slow or unresponsive. Please try again or use a different URL.' 
+      }
+    }
+    
     return { 
       error: error instanceof Error ? error.message : 'Failed to generate preview' 
     }
