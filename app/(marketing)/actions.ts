@@ -1,9 +1,5 @@
 'use server'
 
-// Configure max duration for server actions (180 seconds / 3 minutes)
-// This allows ScraperAPI calls to complete without timing out
-export const maxDuration = 180
-
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cleanHtml } from '@/lib/scraper/html-parser'

@@ -1,3 +1,7 @@
+// Configure max duration for server actions (180 seconds / 3 minutes)
+// This allows scraper calls to complete without timing out
+export const maxDuration = 180
+
 import type { Metadata } from 'next'
 
 /**
