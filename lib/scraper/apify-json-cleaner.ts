@@ -54,6 +54,8 @@ function cleanApifyItem(item: any): any {
   // Add more fields here as needed
   const fieldsToRemove = [
     'collections',
+    'staticMap',
+    'submitflow',
     // Add other fields to remove here
   ]
 
