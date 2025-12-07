@@ -64,6 +64,7 @@
     "turndown": "^7.2.2"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.14.12",
     "@types/react": "^18.3.3",
