@@ -92,7 +92,7 @@ export function htmlToMarkdownUniversal(rawHtml: string): MarkdownResult {
     
     // Add custom rules for better conversion
     turndownService.addRule('strikethrough', {
-      filter: ['del', 's', 'strike'],
+      filter: ['del', 's', 'strike'] as any, // strike is deprecated but still used
       replacement: (content) => `~~${content}~~`,
     })
     
