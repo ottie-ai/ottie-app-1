@@ -24,6 +24,7 @@ function PreviewContent() {
   const [workspace, setWorkspace] = useState<any>(null)
   const [copied, setCopied] = useState(false)
   const [copiedSection, setCopiedSection] = useState<string | null>(null) // Track which section was copied
+  const [copiedFullJson, setCopiedFullJson] = useState(false) // Track if full JSON was copied
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -427,9 +428,35 @@ function PreviewContent() {
 
                 {/* Full JSON Display */}
                 <div className="border-t border-white/10 pt-4">
-                  <Typography variant="small" className="text-white/80 font-medium mb-3">
-                    🔍 Full Structured Data (JSON)
-                  </Typography>
+                  <div className="flex items-center justify-between mb-3">
+                    <Typography variant="small" className="text-white/80 font-medium">
+                      🔍 Full Structured Data (JSON)
+                    </Typography>
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(structuredData, null, 2))
+                        setCopiedFullJson(true)
+                        setTimeout(() => {
+                          setCopiedFullJson(false)
+                        }, 2000)
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {copiedFullJson ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy JSON
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <div className="max-h-[600px] overflow-auto">
                     <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
                       {JSON.stringify(structuredData, null, 2)}
