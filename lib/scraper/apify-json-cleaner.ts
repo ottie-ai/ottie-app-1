@@ -96,10 +96,41 @@ function cleanApifyItem(item: any): any {
     }
   }
 
-  // Recursively clean nested objects (but skip staticMap since we already processed it)
+  // Process mixedSources - keep only the largest image for each format (webp and jpeg/jpg)
+  if ('mixedSources' in cleaned && cleaned.mixedSources && typeof cleaned.mixedSources === 'object') {
+    const mixedSources = cleaned.mixedSources
+    const processed: any = {}
+
+    // Process each format (webp, jpeg, jpg)
+    for (const format in mixedSources) {
+      if (format === 'webp' || format === 'jpeg' || format === 'jpg') {
+        const images = mixedSources[format]
+        if (Array.isArray(images) && images.length > 0) {
+          // Find the image with the largest width
+          const largestImage = images.reduce((max, img) => {
+            const maxWidth = max?.width || 0
+            const imgWidth = img?.width || 0
+            return imgWidth > maxWidth ? img : max
+          }, images[0])
+
+          // Keep only the largest image
+          processed[format] = [largestImage]
+        } else {
+          processed[format] = images
+        }
+      } else {
+        // Keep other formats as-is
+        processed[format] = mixedSources[format]
+      }
+    }
+
+    cleaned.mixedSources = processed
+  }
+
+  // Recursively clean nested objects (but skip staticMap and mixedSources since we already processed them)
   for (const key in cleaned) {
-    if (key === 'staticMap') {
-      // Skip staticMap - we already processed it and it's now a simple object
+    if (key === 'staticMap' || key === 'mixedSources') {
+      // Skip staticMap and mixedSources - we already processed them
       continue
     }
     
