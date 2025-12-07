@@ -56,10 +56,21 @@ function cleanApifyItem(item: any): any {
   }
 
   // Remove other unnecessary fields that are typically not needed
-  // Add more fields here as needed
   const fieldsToRemove = [
     'collections',
-    // Add other fields to remove here
+    'rentalApplicationsAcceptedType',
+    'foreclosureBalanceReportingDate',
+    'housesForRentInZipcodeSearchUrl',
+    'isCurrentSignedInAgentResponsible',
+    'isCurrentSignedInUserVerifiedOwner',
+    'apartmentsForRentInZipcodeSearchUrl',
+    'hasApprovedThirdPartyVirtualTourUrl',
+    'streetViewTileImageUrlMediumAddress',
+    'streetViewTileImageUrlMediumLatLong',
+    'isListingClaimedByCurrentSignedInUser',
+    'streetViewMetadataUrlMediaWallAddress',
+    'streetViewMetadataUrlMediaWallLatLong',
+    'streetViewMetadataUrlMapLightboxAddress',
   ]
 
   fieldsToRemove.forEach(field => {
@@ -81,10 +92,17 @@ function cleanApifyItem(item: any): any {
       if (firstUrl && typeof firstUrl === 'string') {
         // Extract center parameter from URL: center=18.442053,-66.06174
         const centerMatch = firstUrl.match(/center=([^&]+)/)
-        if (centerMatch) {
-          const [lat, lng] = centerMatch[1].split(',')
-          latitude = parseFloat(lat)
-          longitude = parseFloat(lng)
+        if (centerMatch && centerMatch[1]) {
+          const coords = centerMatch[1].split(',')
+          if (coords.length >= 2) {
+            const lat = parseFloat(coords[0])
+            const lng = parseFloat(coords[1])
+            // Only set if both are valid numbers
+            if (!isNaN(lat) && !isNaN(lng)) {
+              latitude = lat
+              longitude = lng
+            }
+          }
         }
       }
     }
