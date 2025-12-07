@@ -130,8 +130,9 @@ function PreviewContent() {
   }
 
   const handleCopyStructuredData = () => {
-    if (preview?.scraped_data?.structuredData) {
-      navigator.clipboard.writeText(JSON.stringify(preview.scraped_data.structuredData, null, 2))
+    const structuredData = preview?.ai_ready_data?.structuredData || preview?.scraped_data?.structuredData
+    if (structuredData) {
+      navigator.clipboard.writeText(JSON.stringify(structuredData, null, 2))
       setCopiedSection('structured')
       setCopied(true)
       setTimeout(() => {
@@ -179,7 +180,9 @@ function PreviewContent() {
     )
   }
 
-  // scrapedData removed - not parsing yet, only showing raw and cleaned HTML
+  // Helper for backward compatibility - use new schema with fallback to old
+  const structuredData = preview?.ai_ready_data?.structuredData || preview?.scraped_data?.structuredData
+  const readabilityMetadata = preview?.ai_ready_data?.readabilityMetadata || preview?.scraped_data?.readabilityMetadata
 
   return (
     <div className="dark bg-[#08000d] min-h-screen">
@@ -232,7 +235,7 @@ function PreviewContent() {
       </div>
 
       {/* Extracted Structured Data Display */}
-      {preview?.scraped_data?.structuredData && (
+      {structuredData && (
         <div className="border-t border-white/10 bg-white/[0.02] py-12">
           <div className="max-w-7xl mx-auto px-4">
             <div className="mb-6">
@@ -252,7 +255,7 @@ function PreviewContent() {
                     Structured Data (Step 2)
                   </Typography>
                   <span className="text-xs text-white/40">
-                    ({(JSON.stringify(preview.scraped_data.structuredData).length / 1024).toFixed(1)} KB)
+                    ({(JSON.stringify(structuredData).length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <Button
@@ -283,25 +286,25 @@ function PreviewContent() {
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">JSON-LD</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.jsonLd?.length || 0}
+                        {structuredData.jsonLd?.length || 0}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Microdata</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.microdata?.length || 0}
+                        {structuredData.microdata?.length || 0}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">DataLayer (GTM)</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.dataLayer?.length || 0}
+                        {structuredData.dataLayer?.length || 0}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Data Attributes</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.dataAttributes?.length || 0}
+                        {structuredData.dataAttributes?.length || 0}
                       </div>
                     </div>
                   </div>
@@ -314,37 +317,37 @@ function PreviewContent() {
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">__NEXT_DATA__</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.nextData ? '✓' : '✗'}
+                        {structuredData.nextData ? '✓' : '✗'}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">__NUXT__</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.nuxtData ? '✓' : '✗'}
+                        {structuredData.nuxtData ? '✓' : '✗'}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">INITIAL_STATE</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.initialState ? '✓' : '✗'}
+                        {structuredData.initialState ? '✓' : '✗'}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Window States</div>
                       <div className="text-lg font-semibold text-white">
-                        {Object.keys(preview.scraped_data.structuredData.windowStates || {}).length}
+                        {Object.keys(structuredData.windowStates || {}).length}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Comments JSON</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.comments?.length || 0}
+                        {structuredData.comments?.length || 0}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Noscript</div>
                       <div className="text-lg font-semibold text-white">
-                        {preview.scraped_data.structuredData.noscriptContent?.length || 0}
+                        {structuredData.noscriptContent?.length || 0}
                       </div>
                     </div>
                   </div>
@@ -357,64 +360,64 @@ function PreviewContent() {
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">OpenGraph</div>
                       <div className="text-lg font-semibold text-white">
-                        {Object.keys(preview.scraped_data.structuredData.openGraph || {}).length}
+                        {Object.keys(structuredData.openGraph || {}).length}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Extended Meta</div>
                       <div className="text-lg font-semibold text-white">
-                        {Object.keys(preview.scraped_data.structuredData.extendedMeta || {}).length}
+                        {Object.keys(structuredData.extendedMeta || {}).length}
                       </div>
                     </div>
                     <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                       <div className="text-xs text-white/40 mb-1">Total Sources</div>
                       <div className="text-lg font-semibold text-green-400">
-                        {(preview.scraped_data.structuredData.jsonLd?.length || 0) + 
-                         (preview.scraped_data.structuredData.microdata?.length || 0) + 
-                         (preview.scraped_data.structuredData.dataLayer?.length || 0) + 
-                         (preview.scraped_data.structuredData.nextData ? 1 : 0) + 
-                         Object.keys(preview.scraped_data.structuredData.windowStates || {}).length}
+                        {(structuredData.jsonLd?.length || 0) + 
+                         (structuredData.microdata?.length || 0) + 
+                         (structuredData.dataLayer?.length || 0) + 
+                         (structuredData.nextData ? 1 : 0) + 
+                         Object.keys(structuredData.windowStates || {}).length}
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Readability Metadata (if available) */}
-                {preview.scraped_data?.readabilityMetadata && (
+                {readabilityMetadata && (
                   <div className="border-t border-white/10 pt-4">
                     <Typography variant="small" className="text-white/80 font-medium mb-3">
                       📖 Mozilla Readability Metadata
                     </Typography>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {preview.scraped_data.readabilityMetadata.title && (
+                      {readabilityMetadata.title && (
                         <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                           <div className="text-xs text-white/40 mb-1">Title</div>
                           <div className="text-sm text-white/90">
-                            {preview.scraped_data.readabilityMetadata.title}
+                            {readabilityMetadata.title}
                           </div>
                         </div>
                       )}
-                      {preview.scraped_data.readabilityMetadata.excerpt && (
+                      {readabilityMetadata.excerpt && (
                         <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                           <div className="text-xs text-white/40 mb-1">Excerpt</div>
                           <div className="text-sm text-white/90">
-                            {preview.scraped_data.readabilityMetadata.excerpt}
+                            {readabilityMetadata.excerpt}
                           </div>
                         </div>
                       )}
-                      {preview.scraped_data.readabilityMetadata.length > 0 && (
+                      {readabilityMetadata.length > 0 && (
                         <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                           <div className="text-xs text-white/40 mb-1">Content Length</div>
                           <div className="text-sm text-white/90">
-                            {preview.scraped_data.readabilityMetadata.length.toLocaleString()} characters
+                            {readabilityMetadata.length.toLocaleString()} characters
                           </div>
                         </div>
                       )}
-                      {preview.scraped_data.readabilityMetadata.siteName && (
+                      {readabilityMetadata.siteName && (
                         <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
                           <div className="text-xs text-white/40 mb-1">Site Name</div>
                           <div className="text-sm text-white/90">
-                            {preview.scraped_data.readabilityMetadata.siteName}
+                            {readabilityMetadata.siteName}
                           </div>
                         </div>
                       )}
@@ -429,7 +432,7 @@ function PreviewContent() {
                   </Typography>
                   <div className="max-h-[600px] overflow-auto">
                     <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                      {JSON.stringify(preview.scraped_data.structuredData, null, 2)}
+                      {JSON.stringify(structuredData, null, 2)}
                     </pre>
                   </div>
                 </div>
@@ -535,12 +538,12 @@ function PreviewContent() {
               Source
             </Typography>
             <a 
-              href={preview.source_url} 
+              href={preview.external_url || preview.source_url} 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-white/60 hover:text-white inline-flex items-center gap-2"
             >
-              {preview.source_url}
+              {preview.external_url || preview.source_url}
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>

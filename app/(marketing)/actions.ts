@@ -44,45 +44,104 @@ export async function generatePreview(url: string) {
     }
 
     // Scrape URL using configured provider (170 seconds timeout)
-    // All providers now return raw HTML in unified interface
+    // Returns either HTML (general scrapers) or JSON (Apify scrapers)
     const scrapeResult = await scrapeUrl(url, 170000)
-    const { html, duration: callDuration } = scrapeResult
+    const { html, json, provider, duration: callDuration } = scrapeResult
 
-    // PARALLEL PROCESSING: Run both branches simultaneously to save time
-    console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
-    const parallelStart = Date.now()
-    
-    const [structuredData, markdownResult] = await Promise.all([
-      // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
-      Promise.resolve(extractStructuredData(html)),
+    let structuredData: any = {}
+    let markdownResult: any = {}
+    let parallelDuration = 0
+
+    // Handle Apify results (structured JSON) differently from HTML results
+    if (provider === 'apify' && json) {
+      console.log('🔵 [generatePreview] Processing Apify JSON result...')
+      const parallelStart = Date.now()
       
-      // BRANCH B: Convert to clean Markdown using Mozilla Readability
-      Promise.resolve(htmlToMarkdownUniversal(html)),
-    ])
+      // For Apify results, store the JSON directly as structured data
+      structuredData = {
+        apifyData: json, // Store the raw Apify JSON
+        apifyScraperId: scrapeResult.apifyScraperId,
+      }
+      
+      // Create a simple markdown representation of the JSON
+      markdownResult = {
+        markdown: `# Scraped Data\n\n\`\`\`json\n${JSON.stringify(json, null, 2)}\n\`\`\``,
+        title: json[0]?.address?.streetAddress || 'Apify Scraped Data',
+        excerpt: `Data scraped using Apify scraper: ${scrapeResult.apifyScraperId}`,
+        byline: null,
+        length: JSON.stringify(json).length,
+        siteName: 'Apify',
+      }
+      
+      parallelDuration = Date.now() - parallelStart
+      console.log(`✅ [generatePreview] Apify processing complete in ${parallelDuration}ms`)
+    } else if (html) {
+      // PARALLEL PROCESSING: Run both branches simultaneously to save time (for HTML)
+      console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
+      const parallelStart = Date.now()
+      
+      const results = await Promise.all([
+        // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
+        Promise.resolve(extractStructuredData(html)),
+        
+        // BRANCH B: Convert to clean Markdown using Mozilla Readability
+        Promise.resolve(htmlToMarkdownUniversal(html)),
+      ])
+      
+      structuredData = results[0]
+      markdownResult = results[1]
+      
+      parallelDuration = Date.now() - parallelStart
+      console.log(`✅ [generatePreview] Parallel processing complete in ${parallelDuration}ms`)
+    } else {
+      throw new Error('Scraper returned neither HTML nor JSON')
+    }
     
-    const parallelDuration = Date.now() - parallelStart
-    console.log(`✅ [generatePreview] Parallel processing complete in ${parallelDuration}ms`)
-    
+    // Determine source_domain based on provider
+    let sourceDomain = 'unknown'
+    if (provider === 'apify' && scrapeResult.apifyScraperId === 'zillow') {
+      sourceDomain = 'apify_zillow'
+    } else if (provider === 'firecrawl') {
+      sourceDomain = 'firecrawl'
+    } else if (provider === 'scraperapi') {
+      sourceDomain = 'scraperapi'
+    } else if (provider === 'apify') {
+      sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
+    }
+
+    // Build ai_ready_data: {html, markdown, apify_json, structuredData, readabilityMetadata}
+    // structuredData and readabilityMetadata are included for backward compatibility with preview display
+    const aiReadyData: {
+      html: string
+      markdown: string
+      apify_json: any | null
+      structuredData?: any // For backward compatibility with preview page
+      readabilityMetadata?: any // For backward compatibility with preview page
+    } = {
+      html: '', // We don't store cleaned HTML anymore (Mozilla Readability handles it)
+      markdown: markdownResult.markdown || '',
+      apify_json: provider === 'apify' && json ? json : null,
+      structuredData: structuredData, // Include for preview page display
+      readabilityMetadata: provider !== 'apify' ? {
+        title: markdownResult.title,
+        excerpt: markdownResult.excerpt,
+        byline: markdownResult.byline,
+        length: markdownResult.length,
+        siteName: markdownResult.siteName,
+      } : undefined,
+    }
+
     // Save to temp_previews
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
       .insert({
-        source_url: url,
-        raw_html: html, // Raw HTML from provider (unified interface)
-        cleaned_html: null, // No longer used - Mozilla Readability handles cleaning
-        markdown: markdownResult.markdown, // Clean markdown from Mozilla Readability
-        scraped_data: {
-          structuredData, // Store extracted JSON blobs and meta tags
-          readabilityMetadata: { // Store Readability metadata
-            title: markdownResult.title,
-            excerpt: markdownResult.excerpt,
-            byline: markdownResult.byline,
-            length: markdownResult.length,
-            siteName: markdownResult.siteName,
-          },
-        },
-        generated_config: {}, // Empty for now - no config generation yet
+        external_url: url,
+        source_domain: sourceDomain,
+        raw_html: html || null, // Raw HTML from provider (or null for Apify)
+        ai_ready_data: aiReadyData,
+        unified_data: {}, // Empty for now - will be populated after LLM processing
+        status: 'pending',
       })
       .select('id')
       .single()
@@ -131,7 +190,6 @@ export async function getPreview(previewId: string) {
     .from('temp_previews')
     .select('*')
     .eq('id', previewId)
-    .gt('expires_at', new Date().toISOString())
     .single()
   
   if (error || !data) {
@@ -152,7 +210,6 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     .from('temp_previews')
     .select('*')
     .eq('id', previewId)
-    .gt('expires_at', new Date().toISOString())
     .single()
   
   if (previewError || !preview) {
@@ -182,8 +239,22 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     return { error: 'You do not have access to this workspace' }
   }
   
-  // Generate slug from title
-  const title = preview.scraped_data?.title || 'Imported Property'
+  // Extract title from ai_ready_data (markdown title) or use default
+  // The markdown in ai_ready_data was generated with Readability, which includes title
+  // For now, we'll try to extract it or use a default
+  let title = 'Imported Property'
+  
+  // Try to get title from markdown (first line after #) or from unified_data if available
+  if (preview.unified_data?.title) {
+    title = preview.unified_data.title
+  } else if (preview.ai_ready_data?.markdown) {
+    const markdown = preview.ai_ready_data.markdown
+    const titleMatch = markdown.match(/^#\s+(.+)$/m)
+    if (titleMatch) {
+      title = titleMatch[1].trim()
+    }
+  }
+  
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -210,10 +281,11 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
       title: title,
       slug: finalSlug,
       status: 'draft',
-      config: preview.generated_config,
+      config: preview.unified_data || {}, // Use unified_data instead of generated_config
       metadata: {
-        source_url: preview.source_url,
-        scraped_data: preview.scraped_data,
+        external_url: preview.external_url, // Use external_url instead of source_url
+        source_domain: preview.source_domain,
+        ai_ready_data: preview.ai_ready_data,
         imported_from_preview: true,
         preview_id: previewId,
       },
