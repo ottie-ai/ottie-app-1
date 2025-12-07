@@ -1,19 +1,25 @@
 /**
  * Scraper Provider Abstraction
- * Supports multiple scraping providers (ScraperAPI, Firecrawl)
- * Switch between providers via SCRAPER_PROVIDER env variable
+ * Supports multiple scraping providers:
+ * - ScraperAPI, Firecrawl (general purpose - return HTML)
+ * - Apify (site-specific scrapers - return structured JSON)
  * 
- * All providers return raw HTML - unified interface for extensibility
+ * Switch between general providers via SCRAPER_PROVIDER env variable
+ * Apify scrapers are automatically selected based on URL
  */
 
 import Firecrawl from '@mendable/firecrawl-js'
+import { findApifyScraperForUrl } from './apify-scrapers'
+import { runApifyActor, type ApifyResult } from './apify-client'
 
-export type ScraperProvider = 'scraperapi' | 'firecrawl'
+export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
-  html: string // Raw HTML - all providers return this
+  html?: string // Raw HTML - general providers return this
+  json?: any // Structured JSON - Apify scrapers return this
   provider: ScraperProvider
   duration: number
+  apifyScraperId?: string // Only for Apify results
 }
 
 /**
@@ -152,15 +158,43 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
 }
 
 /**
- * Scrape a URL using the configured provider
- * All providers return raw HTML in unified ScrapeResult interface
+ * Scrape a URL using the appropriate provider
+ * 
+ * Priority:
+ * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
+ * 2. Otherwise, use general provider (ScraperAPI or Firecrawl)
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
- * @returns ScrapeResult with raw HTML
+ * @returns ScrapeResult with either HTML (general) or JSON (Apify)
  */
 export async function scrapeUrl(url: string, timeout: number = 170000): Promise<ScrapeResult> {
+  // PRIORITY 1: Check if URL should use a dedicated Apify scraper
+  const apifyScraper = findApifyScraperForUrl(url)
+  
+  if (apifyScraper) {
+    console.log(`🎯 [Routing] URL matched Apify scraper: ${apifyScraper.name}`)
+    
+    try {
+      const apifyResult = await runApifyActor(apifyScraper, url, timeout)
+      
+      return {
+        json: apifyResult.data,
+        provider: 'apify',
+        duration: apifyResult.duration,
+        apifyScraperId: apifyScraper.id,
+      }
+    } catch (error) {
+      console.error(`❌ [Apify:${apifyScraper.name}] Failed:`, error)
+      // If Apify fails, throw error (don't fallback to general scraper)
+      // This ensures we get proper error messages for site-specific issues
+      throw error
+    }
+  }
+  
+  // PRIORITY 2: Use general scraper (ScraperAPI or Firecrawl)
   const provider = getScraperProvider()
+  console.log(`🎯 [Routing] Using general scraper: ${provider}`)
   
   switch (provider) {
     case 'firecrawl':
