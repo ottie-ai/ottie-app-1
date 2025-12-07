@@ -134,17 +134,22 @@ export async function generatePreview(url: string) {
       } : undefined,
     }
 
-    // Save to temp_previews
+    // Save to temp_previews (or update if URL already exists)
     const supabase = await createClient()
+    
+    // Use upsert to handle duplicate URLs - update existing record instead of failing
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
-      .insert({
+      .upsert({
         external_url: url,
         source_domain: sourceDomain,
         raw_html: html || null, // Raw HTML from provider (or null for Apify)
         ai_ready_data: aiReadyData,
         unified_data: {}, // Empty for now - will be populated after LLM processing
         status: 'pending',
+      }, {
+        onConflict: 'external_url', // Update if URL already exists
+        ignoreDuplicates: false, // Update the existing record
       })
       .select('id')
       .single()
