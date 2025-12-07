@@ -314,24 +314,24 @@ function PreviewContent() {
                       )}
                     </Button>
                   )}
-                  <Button
-                    onClick={handleCopyStructuredData}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {copied && copiedSection === 'structured' ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy JSON
-                      </>
-                    )}
-                  </Button>
+                <Button
+                  onClick={handleCopyStructuredData}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'structured' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy JSON
+                    </>
+                  )}
+                </Button>
                 </div>
               </div>
               
