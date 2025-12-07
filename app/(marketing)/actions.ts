@@ -25,18 +25,18 @@ export async function generatePreview(url: string) {
       }
     }
 
-    const provider = getScraperProvider()
-    console.log(`🔵 [generatePreview] Using provider: ${provider}`)
+    const configuredProvider = getScraperProvider()
+    console.log(`🔵 [generatePreview] Using provider: ${configuredProvider}`)
     
     // Check if required API key is configured
-    if (provider === 'firecrawl' && !process.env.FIRECRAWL_API_KEY) {
+    if (configuredProvider === 'firecrawl' && !process.env.FIRECRAWL_API_KEY) {
       console.error('FIRECRAWL_API_KEY is not configured')
       return { 
         error: 'Firecrawl API is not configured. Please set FIRECRAWL_API_KEY environment variable.' 
       }
     }
     
-    if (provider === 'scraperapi' && !process.env.SCRAPERAPI_KEY) {
+    if (configuredProvider === 'scraperapi' && !process.env.SCRAPERAPI_KEY) {
       console.error('SCRAPERAPI_KEY is not configured')
       return { 
         error: 'ScraperAPI is not configured. Please set SCRAPERAPI_KEY environment variable.' 
