@@ -2,8 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cleanHtml, extractStructuredData } from '@/lib/scraper/html-parser'
-import { htmlToMarkdown } from '@/lib/htmlToMarkdown'
+import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider } from '@/lib/scraper/providers'
 
@@ -53,15 +52,12 @@ export async function generatePreview(url: string) {
     console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
     const parallelStart = Date.now()
     
-    const [structuredData, markdownResult, cleanedHtml] = await Promise.all([
+    const [structuredData, markdownResult] = await Promise.all([
       // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
       Promise.resolve(extractStructuredData(html)),
       
       // BRANCH B: Convert to clean Markdown using Mozilla Readability
       Promise.resolve(htmlToMarkdownUniversal(html)),
-      
-      // STEP 3: Clean HTML with cheerio (for legacy purposes)
-      Promise.resolve(cleanHtml(html)),
     ])
     
     const parallelDuration = Date.now() - parallelStart
@@ -74,7 +70,7 @@ export async function generatePreview(url: string) {
       .insert({
         source_url: url,
         raw_html: html, // Raw HTML from provider (unified interface)
-        cleaned_html: cleanedHtml, // Cleaned HTML from cheerio (legacy)
+        cleaned_html: null, // No longer used - Mozilla Readability handles cleaning
         markdown: markdownResult.markdown, // Clean markdown from Mozilla Readability
         scraped_data: {
           structuredData, // Store extracted JSON blobs and meta tags
@@ -240,117 +236,3 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
   }
 }
 
-/**
- * Reprocess raw HTML through Cheerio cleaning
- * Updates cleaned_html in temp_previews table
- * Uses admin client to bypass RLS (no UPDATE policy needed)
- */
-export async function reprocessHtml(previewId: string) {
-  try {
-    // Use admin client to bypass RLS (no UPDATE policy needed)
-    const supabase = createAdminClient()
-    
-    // Get preview with raw_html
-    const { data: preview, error: previewError } = await supabase
-      .from('temp_previews')
-      .select('raw_html')
-      .eq('id', previewId)
-      .gt('expires_at', new Date().toISOString())
-      .single()
-    
-    if (previewError || !preview) {
-      return { error: 'Preview not found or expired' }
-    }
-    
-    if (!preview.raw_html) {
-      return { error: 'No raw HTML available to process' }
-    }
-    
-    // Clean HTML with cheerio
-    console.log('🔵 [reprocessHtml] Reprocessing HTML for preview:', previewId)
-    const cleanedHtml = cleanHtml(preview.raw_html)
-    
-    // Update cleaned_html in database (admin client bypasses RLS)
-    const { data: updatedPreview, error: updateError } = await supabase
-      .from('temp_previews')
-      .update({ cleaned_html: cleanedHtml })
-      .eq('id', previewId)
-      .select('cleaned_html')
-      .single()
-    
-    if (updateError || !updatedPreview) {
-      console.error('🔴 [reprocessHtml] Failed to update preview:', updateError)
-      return { error: 'Failed to update preview. Please try again.' }
-    }
-    
-    console.log('✅ [reprocessHtml] Successfully reprocessed HTML')
-    
-    return { 
-      success: true,
-      cleaned_html: updatedPreview.cleaned_html,
-    }
-  } catch (error) {
-    console.error('🔴 [reprocessHtml] Error:', error)
-    return { 
-      error: error instanceof Error ? error.message : 'Failed to reprocess HTML' 
-    }
-  }
-}
-
-/**
- * Convert cleaned HTML to markdown
- * Updates markdown in temp_previews table
- * Uses admin client to bypass RLS (no UPDATE policy needed)
- * This markdown is intended as LLM-ready content for property description generation
- */
-export async function convertToMarkdown(previewId: string) {
-  try {
-    // Use admin client to bypass RLS (no UPDATE policy needed)
-    const supabase = createAdminClient()
-    
-    // Get preview with cleaned_html
-    const { data: preview, error: previewError } = await supabase
-      .from('temp_previews')
-      .select('cleaned_html')
-      .eq('id', previewId)
-      .gt('expires_at', new Date().toISOString())
-      .single()
-    
-    if (previewError || !preview) {
-      return { error: 'Preview not found or expired' }
-    }
-    
-    if (!preview.cleaned_html) {
-      return { error: 'No cleaned HTML available to convert. Please process with Cheerio first.' }
-    }
-    
-    // Convert cleaned HTML to markdown
-    console.log('🔵 [convertToMarkdown] Converting HTML to markdown for preview:', previewId)
-    const markdown = htmlToMarkdown(preview.cleaned_html)
-    
-    // Update markdown in database (admin client bypasses RLS)
-    const { data: updatedPreview, error: updateError } = await supabase
-      .from('temp_previews')
-      .update({ markdown: markdown })
-      .eq('id', previewId)
-      .select('markdown')
-      .single()
-    
-    if (updateError || !updatedPreview) {
-      console.error('🔴 [convertToMarkdown] Failed to update preview:', updateError)
-      return { error: 'Failed to update preview. Please try again.' }
-    }
-    
-    console.log('✅ [convertToMarkdown] Successfully converted HTML to markdown')
-    
-    return { 
-      success: true,
-      markdown: updatedPreview.markdown,
-    }
-  } catch (error) {
-    console.error('🔴 [convertToMarkdown] Error:', error)
-    return { 
-      error: error instanceof Error ? error.message : 'Failed to convert to markdown' 
-    }
-  }
-}
