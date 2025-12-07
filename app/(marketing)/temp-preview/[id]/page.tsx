@@ -184,6 +184,11 @@ function PreviewContent() {
   // Helper for backward compatibility - use new schema with fallback to old
   const structuredData = preview?.ai_ready_data?.structuredData || preview?.scraped_data?.structuredData
   const readabilityMetadata = preview?.ai_ready_data?.readabilityMetadata || preview?.scraped_data?.readabilityMetadata
+  
+  // Check if this is an Apify result (structured JSON, not HTML parsing)
+  const isApifyResult = preview?.source_domain?.startsWith('apify_') || 
+                        preview?.ai_ready_data?.apify_json !== null ||
+                        preview?.scraped_data?.provider === 'apify'
 
   return (
     <div className="dark bg-[#08000d] min-h-screen">
@@ -280,108 +285,113 @@ function PreviewContent() {
               </div>
               
               <div className="p-4 space-y-4">
-                {/* Summary Stats - Row 1: Core JSON Data */}
-                <div>
-                  <Typography variant="small" className="text-white/60 mb-2">Core Structured Data</Typography>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">JSON-LD</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.jsonLd?.length || 0}
+                {/* Summary Stats - Only show for non-Apify results (HTML parsing) */}
+                {!isApifyResult && (
+                  <>
+                    {/* Summary Stats - Row 1: Core JSON Data */}
+                    <div>
+                      <Typography variant="small" className="text-white/60 mb-2">Core Structured Data</Typography>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">JSON-LD</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.jsonLd?.length || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Microdata</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.microdata?.length || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">DataLayer (GTM)</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.dataLayer?.length || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Data Attributes</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.dataAttributes?.length || 0}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Microdata</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.microdata?.length || 0}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">DataLayer (GTM)</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.dataLayer?.length || 0}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Data Attributes</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.dataAttributes?.length || 0}
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Summary Stats - Row 2: Framework Hydration */}
-                <div>
-                  <Typography variant="small" className="text-white/60 mb-2">Framework Hydration States</Typography>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">__NEXT_DATA__</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.nextData ? '✓' : '✗'}
+                    {/* Summary Stats - Row 2: Framework Hydration */}
+                    <div>
+                      <Typography variant="small" className="text-white/60 mb-2">Framework Hydration States</Typography>
+                      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">__NEXT_DATA__</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.nextData ? '✓' : '✗'}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">__NUXT__</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.nuxtData ? '✓' : '✗'}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">INITIAL_STATE</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.initialState ? '✓' : '✗'}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Window States</div>
+                          <div className="text-lg font-semibold text-white">
+                            {Object.keys(structuredData.windowStates || {}).length}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Comments JSON</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.comments?.length || 0}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Noscript</div>
+                          <div className="text-lg font-semibold text-white">
+                            {structuredData.noscriptContent?.length || 0}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">__NUXT__</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.nuxtData ? '✓' : '✗'}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">INITIAL_STATE</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.initialState ? '✓' : '✗'}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Window States</div>
-                      <div className="text-lg font-semibold text-white">
-                        {Object.keys(structuredData.windowStates || {}).length}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Comments JSON</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.comments?.length || 0}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Noscript</div>
-                      <div className="text-lg font-semibold text-white">
-                        {structuredData.noscriptContent?.length || 0}
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Summary Stats - Row 3: Meta Tags */}
-                <div>
-                  <Typography variant="small" className="text-white/60 mb-2">Meta Tags</Typography>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">OpenGraph</div>
-                      <div className="text-lg font-semibold text-white">
-                        {Object.keys(structuredData.openGraph || {}).length}
+                    {/* Summary Stats - Row 3: Meta Tags */}
+                    <div>
+                      <Typography variant="small" className="text-white/60 mb-2">Meta Tags</Typography>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">OpenGraph</div>
+                          <div className="text-lg font-semibold text-white">
+                            {Object.keys(structuredData.openGraph || {}).length}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Extended Meta</div>
+                          <div className="text-lg font-semibold text-white">
+                            {Object.keys(structuredData.extendedMeta || {}).length}
+                          </div>
+                        </div>
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Total Sources</div>
+                          <div className="text-lg font-semibold text-green-400">
+                            {(structuredData.jsonLd?.length || 0) + 
+                             (structuredData.microdata?.length || 0) + 
+                             (structuredData.dataLayer?.length || 0) + 
+                             (structuredData.nextData ? 1 : 0) + 
+                             Object.keys(structuredData.windowStates || {}).length}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Extended Meta</div>
-                      <div className="text-lg font-semibold text-white">
-                        {Object.keys(structuredData.extendedMeta || {}).length}
-                      </div>
-                    </div>
-                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
-                      <div className="text-xs text-white/40 mb-1">Total Sources</div>
-                      <div className="text-lg font-semibold text-green-400">
-                        {(structuredData.jsonLd?.length || 0) + 
-                         (structuredData.microdata?.length || 0) + 
-                         (structuredData.dataLayer?.length || 0) + 
-                         (structuredData.nextData ? 1 : 0) + 
-                         Object.keys(structuredData.windowStates || {}).length}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  </>
+                )}
 
                 {/* Readability Metadata (if available) */}
                 {readabilityMetadata && (
