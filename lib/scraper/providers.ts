@@ -2,6 +2,8 @@
  * Scraper Provider Abstraction
  * Supports multiple scraping providers (ScraperAPI, Firecrawl)
  * Switch between providers via SCRAPER_PROVIDER env variable
+ * 
+ * All providers return raw HTML - unified interface for extensibility
  */
 
 import Firecrawl from '@mendable/firecrawl-js'
@@ -9,8 +11,7 @@ import Firecrawl from '@mendable/firecrawl-js'
 export type ScraperProvider = 'scraperapi' | 'firecrawl'
 
 export interface ScrapeResult {
-  html: string
-  markdown?: string // Optional markdown (for Firecrawl)
+  html: string // Raw HTML - all providers return this
   provider: ScraperProvider
   duration: number
 }
@@ -84,6 +85,7 @@ async function scrapeWithScraperAPI(url: string, timeout: number): Promise<Scrap
 
 /**
  * Scrape URL using Firecrawl
+ * Returns raw HTML (unified interface with other providers)
  */
 async function scrapeWithFirecrawl(url: string, timeout: number): Promise<ScrapeResult> {
   const apiKey = process.env.FIRECRAWL_API_KEY
@@ -95,54 +97,53 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
   console.log('🔵 [Firecrawl] Scraping URL:', url)
   const callStartTime = Date.now()
   
+  // Set timeout for Firecrawl call
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  
   try {
     const firecrawl = new Firecrawl({ apiKey })
     
-    // Scrape with markdown format
-    // Firecrawl's markdown format is cleaner and already processed
+    // Request HTML format (not markdown) to match unified interface
     // Use basic proxy to save credits (1 credit instead of 5 with stealth mode)
     const scrapeResponse = await firecrawl.scrape(url, {
-      formats: ['markdown'],
+      formats: ['html'], // Request HTML instead of markdown
       proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
     })
     
+    clearTimeout(timeoutId)
     const callDuration = Date.now() - callStartTime
     
-    // Firecrawl returns ScrapeResponse directly with properties: markdown, html, title, etc.
-    let markdown = ''
+    // Firecrawl returns ScrapeResponse with html, rawHtml, or other properties
+    // Extract HTML in priority order: html -> rawHtml -> fallback
+    let html = ''
     
-    if (scrapeResponse.markdown) {
-      markdown = scrapeResponse.markdown
-    } else if (scrapeResponse.html) {
-      // Fallback to HTML if markdown not available
-      markdown = scrapeResponse.html
+    if (scrapeResponse.html) {
+      html = scrapeResponse.html
     } else if (scrapeResponse.rawHtml) {
-      markdown = scrapeResponse.rawHtml
+      html = scrapeResponse.rawHtml
     } else {
       // Fallback: try to get any text content from response
-      console.warn('⚠️ [Firecrawl] No markdown or HTML in response:', Object.keys(scrapeResponse))
-      markdown = JSON.stringify(scrapeResponse)
+      console.warn('⚠️ [Firecrawl] No HTML in response, available keys:', Object.keys(scrapeResponse))
+      throw new Error('Firecrawl returned no HTML content')
     }
     
-    if (!markdown || markdown.trim().length === 0) {
-      throw new Error('Firecrawl returned empty content')
+    if (!html || html.trim().length === 0) {
+      throw new Error('Firecrawl returned empty HTML content')
     }
     
-    // For Firecrawl, we return markdown as-is
-    // HTML conversion will happen later if needed (for cheerio processing)
-    // For now, return markdown directly and empty HTML (will be generated from markdown if needed)
-    console.log('✅ [Firecrawl] Successfully scraped URL, markdown length:', markdown.length, `(${callDuration}ms)`)
+    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, `(${callDuration}ms)`)
     
     return {
-      html: '', // Empty HTML for Firecrawl - we use markdown directly
-      markdown, // Return markdown so it can be stored directly
+      html, // Return raw HTML (unified interface)
       provider: 'firecrawl',
       duration: callDuration,
     }
   } catch (error: any) {
+    clearTimeout(timeoutId)
     const callDuration = Date.now() - callStartTime
     
-    if (error.message?.includes('timeout') || callDuration >= timeout) {
+    if (error.name === 'AbortError' || error.message?.includes('aborted') || callDuration >= timeout) {
       throw new Error(`Firecrawl timeout after ${timeout / 1000} seconds`)
     }
     
@@ -152,15 +153,20 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
 
 /**
  * Scrape a URL using the configured provider
+ * All providers return raw HTML in unified ScrapeResult interface
+ * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
+ * @returns ScrapeResult with raw HTML
  */
 export async function scrapeUrl(url: string, timeout: number = 170000): Promise<ScrapeResult> {
   const provider = getScraperProvider()
   
-  if (provider === 'firecrawl') {
-    return await scrapeWithFirecrawl(url, timeout)
-  } else {
-    return await scrapeWithScraperAPI(url, timeout)
+  switch (provider) {
+    case 'firecrawl':
+      return await scrapeWithFirecrawl(url, timeout)
+    case 'scraperapi':
+    default:
+      return await scrapeWithScraperAPI(url, timeout)
   }
 }

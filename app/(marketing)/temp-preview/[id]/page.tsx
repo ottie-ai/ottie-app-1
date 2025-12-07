@@ -192,6 +192,18 @@ function PreviewContent() {
     }
   }
 
+  const handleCopyStructuredData = () => {
+    if (preview?.scraped_data?.structuredData) {
+      navigator.clipboard.writeText(JSON.stringify(preview.scraped_data.structuredData, null, 2))
+      setCopiedSection('structured')
+      setCopied(true)
+      setTimeout(() => {
+        setCopied(false)
+        setCopiedSection(null)
+      }, 2000)
+    }
+  }
+
 
   if (loading) {
     return (
@@ -282,44 +294,250 @@ function PreviewContent() {
         </div>
       </div>
 
+      {/* Extracted Structured Data Display */}
+      {preview?.scraped_data?.structuredData && (
+        <div className="border-t border-white/10 bg-white/[0.02] py-12">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="mb-6">
+              <Typography variant="h3" className="text-white mb-2 border-none">
+                📊 Extracted Structured Data
+              </Typography>
+              <Typography variant="small" className="text-white/60">
+                JSON blobs and meta tags extracted before HTML cleaning (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
+              </Typography>
+            </div>
+
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Structured Data (Step 2)
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(JSON.stringify(preview.scraped_data.structuredData).length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  onClick={handleCopyStructuredData}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'structured' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy JSON
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="p-4 space-y-4">
+                {/* Summary Stats - Row 1: Core JSON Data */}
+                <div>
+                  <Typography variant="small" className="text-white/60 mb-2">Core Structured Data</Typography>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">JSON-LD</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.jsonLd?.length || 0}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Microdata</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.microdata?.length || 0}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">DataLayer (GTM)</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.dataLayer?.length || 0}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Data Attributes</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.dataAttributes?.length || 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Stats - Row 2: Framework Hydration */}
+                <div>
+                  <Typography variant="small" className="text-white/60 mb-2">Framework Hydration States</Typography>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">__NEXT_DATA__</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.nextData ? '✓' : '✗'}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">__NUXT__</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.nuxtData ? '✓' : '✗'}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">INITIAL_STATE</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.initialState ? '✓' : '✗'}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Window States</div>
+                      <div className="text-lg font-semibold text-white">
+                        {Object.keys(preview.scraped_data.structuredData.windowStates || {}).length}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Comments JSON</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.comments?.length || 0}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Noscript</div>
+                      <div className="text-lg font-semibold text-white">
+                        {preview.scraped_data.structuredData.noscriptContent?.length || 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Stats - Row 3: Meta Tags */}
+                <div>
+                  <Typography variant="small" className="text-white/60 mb-2">Meta Tags</Typography>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">OpenGraph</div>
+                      <div className="text-lg font-semibold text-white">
+                        {Object.keys(preview.scraped_data.structuredData.openGraph || {}).length}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Extended Meta</div>
+                      <div className="text-lg font-semibold text-white">
+                        {Object.keys(preview.scraped_data.structuredData.extendedMeta || {}).length}
+                      </div>
+                    </div>
+                    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                      <div className="text-xs text-white/40 mb-1">Total Sources</div>
+                      <div className="text-lg font-semibold text-green-400">
+                        {(preview.scraped_data.structuredData.jsonLd?.length || 0) + 
+                         (preview.scraped_data.structuredData.microdata?.length || 0) + 
+                         (preview.scraped_data.structuredData.dataLayer?.length || 0) + 
+                         (preview.scraped_data.structuredData.nextData ? 1 : 0) + 
+                         Object.keys(preview.scraped_data.structuredData.windowStates || {}).length}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Readability Metadata (if available) */}
+                {preview.scraped_data?.readabilityMetadata && (
+                  <div className="border-t border-white/10 pt-4">
+                    <Typography variant="small" className="text-white/80 font-medium mb-3">
+                      📖 Mozilla Readability Metadata
+                    </Typography>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {preview.scraped_data.readabilityMetadata.title && (
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Title</div>
+                          <div className="text-sm text-white/90">
+                            {preview.scraped_data.readabilityMetadata.title}
+                          </div>
+                        </div>
+                      )}
+                      {preview.scraped_data.readabilityMetadata.excerpt && (
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Excerpt</div>
+                          <div className="text-sm text-white/90">
+                            {preview.scraped_data.readabilityMetadata.excerpt}
+                          </div>
+                        </div>
+                      )}
+                      {preview.scraped_data.readabilityMetadata.length > 0 && (
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Content Length</div>
+                          <div className="text-sm text-white/90">
+                            {preview.scraped_data.readabilityMetadata.length.toLocaleString()} characters
+                          </div>
+                        </div>
+                      )}
+                      {preview.scraped_data.readabilityMetadata.siteName && (
+                        <div className="bg-white/[0.02] border border-white/10 rounded-lg p-3">
+                          <div className="text-xs text-white/40 mb-1">Site Name</div>
+                          <div className="text-sm text-white/90">
+                            {preview.scraped_data.readabilityMetadata.siteName}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Full JSON Display */}
+                <div className="border-t border-white/10 pt-4">
+                  <Typography variant="small" className="text-white/80 font-medium mb-3">
+                    🔍 Full Structured Data (JSON)
+                  </Typography>
+                  <div className="max-h-[600px] overflow-auto">
+                    <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                      {JSON.stringify(preview.scraped_data.structuredData, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Raw Results Display */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="space-y-6">
-          {/* Raw Result (HTML or Markdown depending on provider) */}
+          {/* Raw HTML Result (all providers return raw HTML) */}
           {preview?.raw_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    {preview.markdown ? 'Firecrawl Raw Markdown Result' : 'ScraperAPI Raw HTML Result'}
+                    Raw HTML Result
                   </Typography>
                   <span className="text-xs text-white/40">
                     ({(preview.raw_html.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!preview.markdown && (
-                    <Button
-                      onClick={handleReprocessHtml}
-                      disabled={reprocessing}
-                      variant="ghost"
-                      size="sm"
-                      className="text-white/60 hover:text-white hover:bg-white/10"
-                    >
-                      {reprocessing ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Reprocess with Cheerio
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  <Button
+                    onClick={handleReprocessHtml}
+                    disabled={reprocessing}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {reprocessing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Reprocess with Cheerio
+                      </>
+                    )}
+                  </Button>
                   <Button
                     onClick={handleCopyRawHtml}
                     variant="ghost"
@@ -334,7 +552,7 @@ function PreviewContent() {
                     ) : (
                       <>
                         <Copy className="h-4 w-4 mr-2" />
-                        {preview.markdown ? 'Copy Markdown' : 'Copy HTML'}
+                        Copy HTML
                       </>
                     )}
                   </Button>
@@ -342,14 +560,14 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.markdown || preview.raw_html}
+                  {preview.raw_html}
                 </pre>
               </div>
             </div>
           )}
 
-          {/* Cheerio Cleaned HTML Result (only for ScraperAPI, not Firecrawl) */}
-          {preview?.cleaned_html && !preview?.markdown && (
+          {/* Cheerio Cleaned HTML Result */}
+          {preview?.cleaned_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
@@ -409,14 +627,14 @@ function PreviewContent() {
             </div>
           )}
 
-          {/* Markdown Result */}
+          {/* Markdown Result (Mozilla Readability) */}
           {preview?.markdown && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    Markdown Result
+                    📖 Clean Markdown Result (Mozilla Readability)
                   </Typography>
                   <span className="text-xs text-white/40">
                     ({(preview.markdown.length / 1024).toFixed(1)} KB)

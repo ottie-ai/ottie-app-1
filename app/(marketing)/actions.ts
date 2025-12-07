@@ -2,8 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cleanHtml } from '@/lib/scraper/html-parser'
+import { cleanHtml, extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdown } from '@/lib/htmlToMarkdown'
+import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider } from '@/lib/scraper/providers'
 
 /**
@@ -44,23 +45,27 @@ export async function generatePreview(url: string) {
     }
 
     // Scrape URL using configured provider (170 seconds timeout)
+    // All providers now return raw HTML in unified interface
     const scrapeResult = await scrapeUrl(url, 170000)
-    const { html, markdown, duration: callDuration } = scrapeResult
+    const { html, duration: callDuration } = scrapeResult
 
-    // For Firecrawl: if we have markdown, store it directly and skip HTML cleaning
-    // For ScraperAPI: clean HTML with cheerio as usual
-    let cleanedHtml: string | null = null
+    // PARALLEL PROCESSING: Run both branches simultaneously to save time
+    console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
+    const parallelStart = Date.now()
     
-    if (provider === 'firecrawl' && markdown) {
-      // Firecrawl already returns clean markdown, no need for HTML cleaning
-      // Store markdown directly
-      console.log('🔵 [generatePreview] Firecrawl returned markdown, storing directly')
-      // No cleaned HTML needed for Firecrawl
-    } else {
-      // ScraperAPI or fallback: clean HTML with cheerio
-      console.log('🔵 [generatePreview] Cleaning HTML...')
-      cleanedHtml = cleanHtml(html)
-    }
+    const [structuredData, markdownResult, cleanedHtml] = await Promise.all([
+      // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
+      Promise.resolve(extractStructuredData(html)),
+      
+      // BRANCH B: Convert to clean Markdown using Mozilla Readability
+      Promise.resolve(htmlToMarkdownUniversal(html)),
+      
+      // STEP 3: Clean HTML with cheerio (for legacy purposes)
+      Promise.resolve(cleanHtml(html)),
+    ])
+    
+    const parallelDuration = Date.now() - parallelStart
+    console.log(`✅ [generatePreview] Parallel processing complete in ${parallelDuration}ms`)
     
     // Save to temp_previews
     const supabase = await createClient()
@@ -68,10 +73,19 @@ export async function generatePreview(url: string) {
       .from('temp_previews')
       .insert({
         source_url: url,
-        raw_html: provider === 'firecrawl' && markdown ? markdown : html, // Store markdown as raw_html for Firecrawl (for display), HTML for ScraperAPI
-        cleaned_html: cleanedHtml, // Only for ScraperAPI (null for Firecrawl)
-        markdown: markdown || null, // Store markdown if available (Firecrawl)
-        scraped_data: {}, // Empty for now - no parsing yet
+        raw_html: html, // Raw HTML from provider (unified interface)
+        cleaned_html: cleanedHtml, // Cleaned HTML from cheerio (legacy)
+        markdown: markdownResult.markdown, // Clean markdown from Mozilla Readability
+        scraped_data: {
+          structuredData, // Store extracted JSON blobs and meta tags
+          readabilityMetadata: { // Store Readability metadata
+            title: markdownResult.title,
+            excerpt: markdownResult.excerpt,
+            byline: markdownResult.byline,
+            length: markdownResult.length,
+            siteName: markdownResult.siteName,
+          },
+        },
         generated_config: {}, // Empty for now - no config generation yet
       })
       .select('id')
@@ -91,6 +105,8 @@ export async function generatePreview(url: string) {
       previewId: preview.id,
       timing: {
         scrapeCall: callDuration,
+        parallelProcessing: parallelDuration,
+        total: Date.now() - (Date.now() - callDuration - parallelDuration),
       }
     }
   } catch (error) {

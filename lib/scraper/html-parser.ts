@@ -8,6 +8,43 @@ import { load } from 'cheerio'
 
 type CheerioAPI = ReturnType<typeof load>
 
+/**
+ * Structured data extracted from HTML before cleaning
+ * Contains JSON blobs and meta tags that are typically removed during cleaning
+ */
+export interface ExtractedStructuredData {
+  // JSON-LD and Microdata
+  jsonLd: any[] // Schema.org JSON-LD data
+  microdata: any[] // HTML Microdata (itemscope/itemprop)
+  
+  // Framework hydration data
+  nextData: any | null // Next.js __NEXT_DATA__
+  nuxtData: any | null // Nuxt.js __NUXT__
+  initialState: any | null // window.INITIAL_STATE
+  windowStates: Record<string, any> // All other window.* states (Redux, Apollo, Gatsby, etc.)
+  
+  // Analytics and tracking
+  dataLayer: any[] // Google Tag Manager dataLayer
+  
+  // Meta tags
+  openGraph: Record<string, string> // OpenGraph meta tags
+  extendedMeta: Record<string, string> // Other meta tags (geo, DC, parsely, etc.)
+  
+  // Hidden content
+  noscriptContent: string[] // Content from <noscript> tags
+  comments: string[] // JSON content from HTML comments
+  dataAttributes: Record<string, any>[] // Elements with data-* attributes
+  
+  // Basic metadata
+  metadata: {
+    title: string | null
+    description: string | null
+    favicon: string | null
+    canonical: string | null
+    imageSrc: string | null
+  }
+}
+
 export interface ParsedPropertyData {
   title: string | null
   address: string | null
@@ -28,6 +65,361 @@ export interface ParsedPropertyData {
     country: string | null
   }
   rawData: Record<string, any> // Store any additional extracted data
+}
+
+/**
+ * Extract structured data from raw HTML BEFORE cleaning
+ * This captures JSON blobs and meta tags that would be removed during HTML cleaning
+ * 
+ * Sources extracted:
+ * - JSON-LD (Schema.org) - Standard structured data for SEO
+ * - __NEXT_DATA__ - Next.js hydration data (Zillow, modern sites)
+ * - __NUXT__ - Nuxt.js hydration data
+ * - window.INITIAL_STATE - Legacy React apps
+ * - OpenGraph meta tags - Social media metadata
+ * - Basic metadata (title, description, favicon)
+ */
+export function extractStructuredData(rawHtml: string): ExtractedStructuredData {
+  const $ = load(rawHtml)
+  
+  const result: ExtractedStructuredData = {
+    jsonLd: [],
+    microdata: [],
+    nextData: null,
+    nuxtData: null,
+    initialState: null,
+    windowStates: {},
+    dataLayer: [],
+    openGraph: {},
+    extendedMeta: {},
+    noscriptContent: [],
+    comments: [],
+    dataAttributes: [],
+    metadata: {
+      title: null,
+      description: null,
+      favicon: null,
+      canonical: null,
+      imageSrc: null,
+    },
+  }
+
+  // 1. Extract JSON-LD (Schema.org) - the "gold standard"
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html()
+    if (content) {
+      try {
+        const data = JSON.parse(content)
+        result.jsonLd.push(data)
+        console.log('✅ [Extract] Found JSON-LD:', data['@type'] || 'unknown type')
+      } catch (error) {
+        console.warn('⚠️ [Extract] Failed to parse JSON-LD:', error)
+      }
+    }
+  })
+
+  // 2. Extract __NEXT_DATA__ (Next.js hydration data)
+  const nextDataEl = $('script#__NEXT_DATA__')
+  if (nextDataEl.length > 0) {
+    const content = nextDataEl.html()
+    if (content) {
+      try {
+        result.nextData = JSON.parse(content)
+        console.log('✅ [Extract] Found __NEXT_DATA__')
+      } catch (error) {
+        console.warn('⚠️ [Extract] Failed to parse __NEXT_DATA__:', error)
+      }
+    }
+  }
+
+  // 3. Extract __NUXT__ (Nuxt.js hydration data)
+  const nuxtDataEl = $('script#__NUXT__')
+  if (nuxtDataEl.length > 0) {
+    const content = nuxtDataEl.html()
+    if (content) {
+      try {
+        // Nuxt data is usually in format: window.__NUXT__={...}
+        const match = content.match(/window\.__NUXT__\s*=\s*({.+})/s)
+        if (match) {
+          result.nuxtData = JSON.parse(match[1])
+          console.log('✅ [Extract] Found __NUXT__')
+        }
+      } catch (error) {
+        console.warn('⚠️ [Extract] Failed to parse __NUXT__:', error)
+      }
+    }
+  }
+
+  // 4. Extract window.INITIAL_STATE (Legacy React apps)
+  $('script').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html()
+    if (content && content.includes('INITIAL_STATE')) {
+      try {
+        // Try to extract window.INITIAL_STATE = {...}
+        const match = content.match(/window\.INITIAL_STATE\s*=\s*({.+?});/s)
+        if (match) {
+          result.initialState = JSON.parse(match[1])
+          console.log('✅ [Extract] Found window.INITIAL_STATE')
+          return false // break
+        }
+      } catch (error) {
+        console.warn('⚠️ [Extract] Failed to parse INITIAL_STATE:', error)
+      }
+    }
+  })
+
+  // 4b. Extract ALL window.* state patterns (Redux, Apollo, Gatsby, Remix, etc.)
+  const windowStatePatterns = [
+    { name: 'preloadedState', regex: /window\.__PRELOADED_STATE__\s*=\s*({.+?});/s },
+    { name: 'reduxState', regex: /window\.__REDUX_STATE__\s*=\s*({.+?});/s },
+    { name: 'apolloState', regex: /window\.__APOLLO_STATE__\s*=\s*({.+?});/s },
+    { name: 'gatsbyState', regex: /window\.__GATSBY_STATE__\s*=\s*({.+?});/s },
+    { name: 'remixContext', regex: /window\.__remixContext\s*=\s*({.+?});/s },
+    { name: 'sveltekitData', regex: /window\.__SVELTEKIT_DATA__\s*=\s*({.+?});/s },
+    { name: 'nextProps', regex: /window\.__NEXT_PROPS__\s*=\s*({.+?});/s },
+    { name: 'ngState', regex: /window\.ngState\s*=\s*({.+?});/s },
+    { name: 'appData', regex: /window\.__APP_DATA__\s*=\s*({.+?});/s },
+    { name: 'data', regex: /window\.__DATA__\s*=\s*({.+?});/s },
+    { name: 'state', regex: /window\.__STATE__\s*=\s*({.+?});/s },
+    { name: 'context', regex: /window\.__CONTEXT__\s*=\s*({.+?});/s },
+  ]
+
+  $('script').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html()
+    if (!content) return
+
+    for (const pattern of windowStatePatterns) {
+      try {
+        const match = content.match(pattern.regex)
+        if (match) {
+          const data = JSON.parse(match[1])
+          result.windowStates[pattern.name] = data
+          console.log(`✅ [Extract] Found window.${pattern.name}`)
+        }
+      } catch (error) {
+        // Silent fail - regex might match non-JSON content
+      }
+    }
+  })
+
+  // 4c. Extract Google Tag Manager dataLayer
+  $('script').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html()
+    if (!content) return
+
+    try {
+      // Pattern 1: dataLayer = [...]
+      const arrayMatch = content.match(/dataLayer\s*=\s*(\[.+?\]);/s)
+      if (arrayMatch) {
+        const data = JSON.parse(arrayMatch[1])
+        result.dataLayer.push(...(Array.isArray(data) ? data : [data]))
+        console.log('✅ [Extract] Found dataLayer array')
+      }
+
+      // Pattern 2: dataLayer.push({...})
+      const pushMatches = content.matchAll(/dataLayer\.push\(({.+?})\)/g)
+      for (const match of pushMatches) {
+        try {
+          const data = JSON.parse(match[1])
+          result.dataLayer.push(data)
+        } catch (e) {
+          // Skip invalid JSON
+        }
+      }
+    } catch (error) {
+      // Silent fail
+    }
+  })
+
+  if (result.dataLayer.length > 0) {
+    console.log(`✅ [Extract] Found ${result.dataLayer.length} dataLayer entries`)
+  }
+
+  // 5. Extract OpenGraph meta tags
+  $('meta[property^="og:"]').each((_, el) => {
+    const $el = $(el)
+    const property = $el.attr('property')
+    const content = $el.attr('content')
+    if (property && content) {
+      result.openGraph[property] = content
+    }
+  })
+
+  // Also extract Twitter Card meta tags
+  $('meta[name^="twitter:"]').each((_, el) => {
+    const $el = $(el)
+    const name = $el.attr('name')
+    const content = $el.attr('content')
+    if (name && content) {
+      result.openGraph[name] = content
+    }
+  })
+
+  // 6. Extract extended meta tags
+  // Geo location meta tags
+  const geoPosition = $('meta[name="geo.position"]').attr('content')
+  const geoPlacename = $('meta[name="geo.placename"]').attr('content')
+  const icbm = $('meta[name="ICBM"]').attr('content')
+  
+  if (geoPosition) result.extendedMeta['geo.position'] = geoPosition
+  if (geoPlacename) result.extendedMeta['geo.placename'] = geoPlacename
+  if (icbm) result.extendedMeta['ICBM'] = icbm
+
+  // Dublin Core meta tags
+  $('meta[name^="DC."]').each((_, el) => {
+    const $el = $(el)
+    const name = $el.attr('name')
+    const content = $el.attr('content')
+    if (name && content) {
+      result.extendedMeta[name] = content
+    }
+  })
+
+  // Other structured meta tags
+  $('meta[name^="parsely-"], meta[name^="sailthru."], meta[name="price"]').each((_, el) => {
+    const $el = $(el)
+    const name = $el.attr('name')
+    const content = $el.attr('content')
+    if (name && content) {
+      result.extendedMeta[name] = content
+    }
+  })
+
+  // 7. Extract basic metadata
+  result.metadata.title = $('title').first().text().trim() || null
+  result.metadata.description = 
+    $('meta[name="description"]').attr('content') || 
+    $('meta[property="og:description"]').attr('content') || 
+    null
+  result.metadata.favicon = 
+    $('link[rel="icon"]').attr('href') || 
+    $('link[rel="shortcut icon"]').attr('href') || 
+    null
+  result.metadata.canonical = $('link[rel="canonical"]').attr('href') || null
+  result.metadata.imageSrc = $('link[rel="image_src"]').attr('href') || null
+
+  // 8. Extract noscript content
+  $('noscript').each((_, el) => {
+    const $el = $(el)
+    const content = $el.html()
+    if (content && content.trim().length > 0) {
+      result.noscriptContent.push(content.trim())
+    }
+  })
+
+  if (result.noscriptContent.length > 0) {
+    console.log(`✅ [Extract] Found ${result.noscriptContent.length} noscript elements`)
+  }
+
+  // 9. Extract JSON from HTML comments
+  const htmlContent = $.html()
+  const commentRegex = /<!--\s*({.+?})\s*-->/gs
+  const commentMatches = htmlContent.matchAll(commentRegex)
+  
+  for (const match of commentMatches) {
+    try {
+      const data = JSON.parse(match[1])
+      result.comments.push(data)
+    } catch (error) {
+      // Not valid JSON, skip
+    }
+  }
+
+  if (result.comments.length > 0) {
+    console.log(`✅ [Extract] Found ${result.comments.length} JSON comments`)
+  }
+
+  // 10. Extract Microdata (itemscope/itemprop)
+  $('[itemscope]').each((_, el) => {
+    const $el = $(el)
+    const itemType = $el.attr('itemtype')
+    const item: any = {
+      '@type': itemType || 'Thing',
+      '@context': 'http://schema.org',
+    }
+
+    // Extract all itemprop within this itemscope
+    $el.find('[itemprop]').each((_, propEl) => {
+      const $propEl = $(propEl)
+      const propName = $propEl.attr('itemprop')
+      if (!propName) return
+
+      // Check if this property has nested itemscope
+      if ($propEl.attr('itemscope')) {
+        const nestedType = $propEl.attr('itemtype')
+        const nested: any = { '@type': nestedType || 'Thing' }
+        
+        $propEl.find('[itemprop]').each((_, nestedPropEl) => {
+          const $nestedPropEl = $(nestedPropEl)
+          const nestedPropName = $nestedPropEl.attr('itemprop')
+          if (nestedPropName) {
+            nested[nestedPropName] = $nestedPropEl.text().trim()
+          }
+        })
+        
+        item[propName] = nested
+      } else {
+        // Use content attribute if available, otherwise text content
+        const content = $propEl.attr('content') || $propEl.text().trim()
+        item[propName] = content
+      }
+    })
+
+    if (Object.keys(item).length > 2) { // More than just @type and @context
+      result.microdata.push(item)
+    }
+  })
+
+  if (result.microdata.length > 0) {
+    console.log(`✅ [Extract] Found ${result.microdata.length} microdata items`)
+  }
+
+  // 11. Extract data-* attributes from key elements
+  // Focus on elements that commonly have listing/property data
+  $('[data-price], [data-listing-id], [data-property-id], [data-id]').each((_, el) => {
+    const $el = $(el)
+    const dataObj: any = {}
+    
+    // Extract all data-* attributes
+    const attrs = el.attribs
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key.startsWith('data-')) {
+        const cleanKey = key.replace('data-', '')
+        // Try to parse as number or keep as string
+        const numValue = parseFloat(value)
+        dataObj[cleanKey] = !isNaN(numValue) && value.trim() === numValue.toString() ? numValue : value
+      }
+    }
+
+    if (Object.keys(dataObj).length > 0) {
+      result.dataAttributes.push(dataObj)
+    }
+  })
+
+  if (result.dataAttributes.length > 0) {
+    console.log(`✅ [Extract] Found ${result.dataAttributes.length} elements with data-* attributes`)
+  }
+
+  console.log('📊 [Extract] Summary:', {
+    jsonLd: result.jsonLd.length,
+    microdata: result.microdata.length,
+    hasNextData: !!result.nextData,
+    hasNuxtData: !!result.nuxtData,
+    hasInitialState: !!result.initialState,
+    windowStates: Object.keys(result.windowStates).length,
+    dataLayer: result.dataLayer.length,
+    openGraphTags: Object.keys(result.openGraph).length,
+    extendedMeta: Object.keys(result.extendedMeta).length,
+    noscript: result.noscriptContent.length,
+    comments: result.comments.length,
+    dataAttributes: result.dataAttributes.length,
+  })
+
+  return result
 }
 
 /**
