@@ -47,7 +47,7 @@ export async function generatePreview(url: string) {
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
     const scrapeResult = await scrapeUrl(url, 170000)
     const html = scrapeResult.html
-    const json = scrapeResult.json
+    const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider = scrapeResult.provider
     const callDuration = scrapeResult.duration
 
