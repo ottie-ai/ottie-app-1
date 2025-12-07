@@ -140,7 +140,7 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
     if (content) {
       try {
         // Nuxt data is usually in format: window.__NUXT__={...}
-        const match = content.match(/window\.__NUXT__\s*=\s*({.+})/s)
+        const match = content.match(/window\.__NUXT__\s*=\s*({[\s\S]+})/)
         if (match) {
           result.nuxtData = JSON.parse(match[1])
           console.log('✅ [Extract] Found __NUXT__')
@@ -158,7 +158,7 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
     if (content && content.includes('INITIAL_STATE')) {
       try {
         // Try to extract window.INITIAL_STATE = {...}
-        const match = content.match(/window\.INITIAL_STATE\s*=\s*({.+?});/s)
+        const match = content.match(/window\.INITIAL_STATE\s*=\s*({[\s\S]+?});/)
         if (match) {
           result.initialState = JSON.parse(match[1])
           console.log('✅ [Extract] Found window.INITIAL_STATE')
@@ -172,18 +172,18 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
 
   // 4b. Extract ALL window.* state patterns (Redux, Apollo, Gatsby, Remix, etc.)
   const windowStatePatterns = [
-    { name: 'preloadedState', regex: /window\.__PRELOADED_STATE__\s*=\s*({.+?});/s },
-    { name: 'reduxState', regex: /window\.__REDUX_STATE__\s*=\s*({.+?});/s },
-    { name: 'apolloState', regex: /window\.__APOLLO_STATE__\s*=\s*({.+?});/s },
-    { name: 'gatsbyState', regex: /window\.__GATSBY_STATE__\s*=\s*({.+?});/s },
-    { name: 'remixContext', regex: /window\.__remixContext\s*=\s*({.+?});/s },
-    { name: 'sveltekitData', regex: /window\.__SVELTEKIT_DATA__\s*=\s*({.+?});/s },
-    { name: 'nextProps', regex: /window\.__NEXT_PROPS__\s*=\s*({.+?});/s },
-    { name: 'ngState', regex: /window\.ngState\s*=\s*({.+?});/s },
-    { name: 'appData', regex: /window\.__APP_DATA__\s*=\s*({.+?});/s },
-    { name: 'data', regex: /window\.__DATA__\s*=\s*({.+?});/s },
-    { name: 'state', regex: /window\.__STATE__\s*=\s*({.+?});/s },
-    { name: 'context', regex: /window\.__CONTEXT__\s*=\s*({.+?});/s },
+    { name: 'preloadedState', regex: /window\.__PRELOADED_STATE__\s*=\s*({[\s\S]+?});/ },
+    { name: 'reduxState', regex: /window\.__REDUX_STATE__\s*=\s*({[\s\S]+?});/ },
+    { name: 'apolloState', regex: /window\.__APOLLO_STATE__\s*=\s*({[\s\S]+?});/ },
+    { name: 'gatsbyState', regex: /window\.__GATSBY_STATE__\s*=\s*({[\s\S]+?});/ },
+    { name: 'remixContext', regex: /window\.__remixContext\s*=\s*({[\s\S]+?});/ },
+    { name: 'sveltekitData', regex: /window\.__SVELTEKIT_DATA__\s*=\s*({[\s\S]+?});/ },
+    { name: 'nextProps', regex: /window\.__NEXT_PROPS__\s*=\s*({[\s\S]+?});/ },
+    { name: 'ngState', regex: /window\.ngState\s*=\s*({[\s\S]+?});/ },
+    { name: 'appData', regex: /window\.__APP_DATA__\s*=\s*({[\s\S]+?});/ },
+    { name: 'data', regex: /window\.__DATA__\s*=\s*({[\s\S]+?});/ },
+    { name: 'state', regex: /window\.__STATE__\s*=\s*({[\s\S]+?});/ },
+    { name: 'context', regex: /window\.__CONTEXT__\s*=\s*({[\s\S]+?});/ },
   ]
 
   $('script').each((_, el) => {
@@ -213,7 +213,7 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
 
     try {
       // Pattern 1: dataLayer = [...]
-      const arrayMatch = content.match(/dataLayer\s*=\s*(\[.+?\]);/s)
+      const arrayMatch = content.match(/dataLayer\s*=\s*(\[[\s\S]+?\]);/)
       if (arrayMatch) {
         const data = JSON.parse(arrayMatch[1])
         result.dataLayer.push(...(Array.isArray(data) ? data : [data]))
@@ -221,7 +221,7 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
       }
 
       // Pattern 2: dataLayer.push({...})
-      const pushMatches = content.matchAll(/dataLayer\.push\(({.+?})\)/g)
+      const pushMatches = content.matchAll(/dataLayer\.push\(({[\s\S]+?})\)/g)
       for (const match of pushMatches) {
         try {
           const data = JSON.parse(match[1])
@@ -317,7 +317,7 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
 
   // 9. Extract JSON from HTML comments
   const htmlContent = $.html()
-  const commentRegex = /<!--\s*({.+?})\s*-->/gs
+  const commentRegex = /<!--\s*({[\s\S]+?})\s*-->/g
   const commentMatches = htmlContent.matchAll(commentRegex)
   
   for (const match of commentMatches) {
