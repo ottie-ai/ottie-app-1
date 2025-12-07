@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
-import { scrapeUrl, getScraperProvider, type ScrapeResult } from '@/lib/scraper/providers'
+import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 
 /**
  * Scrape a URL using configured provider (ScraperAPI or Firecrawl) and create anonymous preview
@@ -48,7 +48,7 @@ export async function generatePreview(url: string) {
     const scrapeResult = await scrapeUrl(url, 170000)
     const html = scrapeResult.html
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
-    const provider = scrapeResult.provider
+    const provider: ScraperProvider = scrapeResult.provider
     const callDuration = scrapeResult.duration
 
     let structuredData: any = {}
