@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview } from '../../actions'
+import { getPreview, claimPreview, processApifyJson } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -25,6 +25,7 @@ function PreviewContent() {
   const [copied, setCopied] = useState(false)
   const [copiedSection, setCopiedSection] = useState<string | null>(null) // Track which section was copied
   const [copiedFullJson, setCopiedFullJson] = useState(false) // Track if full JSON was copied
+  const [processingJson, setProcessingJson] = useState(false) // Track JSON processing state
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -140,6 +141,33 @@ function PreviewContent() {
         setCopied(false)
         setCopiedSection(null)
       }, 2000)
+    }
+  }
+
+  const handleProcessApifyJson = async () => {
+    if (!previewId) return
+    
+    setProcessingJson(true)
+    try {
+      const result = await processApifyJson(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to process JSON')
+        setProcessingJson(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to process JSON')
+    } finally {
+      setProcessingJson(false)
     }
   }
 
@@ -264,24 +292,47 @@ function PreviewContent() {
                     ({(JSON.stringify(structuredData).length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
-                <Button
-                  onClick={handleCopyStructuredData}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copied && copiedSection === 'structured' ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy JSON
-                    </>
+                <div className="flex items-center gap-2">
+                  {isApifyResult && (
+                    <Button
+                      onClick={handleProcessApifyJson}
+                      disabled={processingJson}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {processingJson ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Clean JSON
+                        </>
+                      )}
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    onClick={handleCopyStructuredData}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'structured' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy JSON
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               
               <div className="p-4 space-y-4">

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
+import { cleanApifyJson } from '@/lib/scraper/apify-json-cleaner'
 
 /**
  * Scrape a URL using configured provider (ScraperAPI or Firecrawl) and create anonymous preview
@@ -60,19 +61,23 @@ export async function generatePreview(url: string) {
       console.log('🔵 [generatePreview] Processing Apify JSON result...')
       const parallelStart = Date.now()
       
-      // For Apify results, store the JSON directly as structured data
+      // Clean the JSON to remove unnecessary fields (collections, etc.)
+      const cleanedJson = cleanApifyJson(json)
+      console.log('🔵 [generatePreview] Cleaned Apify JSON (removed unnecessary fields)')
+      
+      // For Apify results, store the cleaned JSON as structured data
       structuredData = {
-        apifyData: json, // Store the raw Apify JSON
+        apifyData: cleanedJson, // Store the cleaned Apify JSON
         apifyScraperId: scrapeResult.apifyScraperId,
       }
       
-      // Create a simple markdown representation of the JSON
+      // Create a simple markdown representation of the cleaned JSON
       markdownResult = {
-        markdown: `# Scraped Data\n\n\`\`\`json\n${JSON.stringify(json, null, 2)}\n\`\`\``,
-        title: json[0]?.address?.streetAddress || 'Apify Scraped Data',
+        markdown: `# Scraped Data\n\n\`\`\`json\n${JSON.stringify(cleanedJson, null, 2)}\n\`\`\``,
+        title: (Array.isArray(cleanedJson) ? cleanedJson[0] : cleanedJson)?.address?.streetAddress || 'Apify Scraped Data',
         excerpt: `Data scraped using Apify scraper: ${scrapeResult.apifyScraperId}`,
         byline: null,
-        length: JSON.stringify(json).length,
+        length: JSON.stringify(cleanedJson).length,
         siteName: 'Apify',
       }
       
@@ -123,7 +128,7 @@ export async function generatePreview(url: string) {
     } = {
       html: '', // We don't store cleaned HTML anymore (Mozilla Readability handles it)
       markdown: markdownResult.markdown || '',
-      apify_json: provider === 'apify' && json ? json : null,
+      apify_json: provider === 'apify' && json ? cleanApifyJson(json) : null,
       structuredData: structuredData, // Include for preview page display
       readabilityMetadata: provider !== 'apify' ? {
         title: markdownResult.title,
@@ -309,5 +314,58 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     siteId: site.id,
     slug: site.slug,
   }
+}
+
+/**
+ * Process and clean Apify JSON in an existing preview
+ * This is useful for debugging and reprocessing existing previews
+ */
+export async function processApifyJson(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Check if this is an Apify result
+  const apifyJson = preview?.ai_ready_data?.apify_json
+  if (!apifyJson) {
+    return { error: 'This preview does not contain Apify JSON data' }
+  }
+
+  // Clean the JSON
+  const cleanedJson = cleanApifyJson(apifyJson)
+  console.log('🔵 [processApifyJson] Cleaned Apify JSON for preview:', previewId)
+
+  // Update the preview with cleaned JSON
+  const updatedAiReadyData = {
+    ...preview.ai_ready_data,
+    apify_json: cleanedJson,
+    structuredData: {
+      ...preview.ai_ready_data?.structuredData,
+      apifyData: cleanedJson,
+    },
+  }
+
+  const { error: updateError } = await supabase
+    .from('temp_previews')
+    .update({
+      ai_ready_data: updatedAiReadyData,
+    })
+    .eq('id', previewId)
+
+  if (updateError) {
+    console.error('🔴 [processApifyJson] Failed to update preview:', updateError)
+    return { error: 'Failed to process JSON. Please try again.' }
+  }
+
+  return { success: true }
 }
 
