@@ -19,7 +19,7 @@ export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
   {
     id: 'zillow',
     name: 'Zillow Detail Scraper',
-    actorId: 'maxcopell/zillow-detail-scraper',
+    actorId: 'maxcopell~zillow-detail-scraper',
     shouldHandle: (url: string) => {
       try {
         const urlObj = new URL(url)
