@@ -384,14 +384,17 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
     const $el = $(el)
     const dataObj: any = {}
     
-    // Extract all data-* attributes
-    const attrs = el.attribs
-    for (const [key, value] of Object.entries(attrs)) {
-      if (key.startsWith('data-')) {
-        const cleanKey = key.replace('data-', '')
-        // Try to parse as number or keep as string
-        const numValue = parseFloat(value)
-        dataObj[cleanKey] = !isNaN(numValue) && value.trim() === numValue.toString() ? numValue : value
+    // Extract all data-* attributes using cheerio API
+    // Check if element has attributes (not a TextElement)
+    if ('attribs' in el && el.attribs) {
+      const attrs = el.attribs
+      for (const [key, value] of Object.entries(attrs)) {
+        if (key.startsWith('data-')) {
+          const cleanKey = key.replace('data-', '')
+          // Try to parse as number or keep as string
+          const numValue = parseFloat(value)
+          dataObj[cleanKey] = !isNaN(numValue) && value.trim() === numValue.toString() ? numValue : value
+        }
       }
     }
 
