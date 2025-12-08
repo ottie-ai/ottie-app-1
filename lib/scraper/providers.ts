@@ -16,7 +16,6 @@ export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
   html?: string // Raw HTML - general providers return this
-  markdown?: string // Markdown format - Firecrawl can return this
   json?: any // Structured JSON - Apify scrapers return this
   provider: ScraperProvider
   duration: number
@@ -111,17 +110,17 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
   try {
     const firecrawl = new Firecrawl({ apiKey })
     
-    // Request both HTML and markdown formats
+    // Request only HTML format (no markdown)
     // Use basic proxy to save credits (1 credit instead of 5 with stealth mode)
     const scrapeResponse = await firecrawl.scrape(url, {
-      formats: ['html', 'markdown'], // Request both HTML and markdown
+      formats: ['html'], // Request only HTML
       proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
     })
     
     clearTimeout(timeoutId)
     const callDuration = Date.now() - callStartTime
     
-    // Firecrawl returns ScrapeResponse with html, rawHtml, markdown, or other properties
+    // Firecrawl returns ScrapeResponse with html, rawHtml, or other properties
     // Extract HTML in priority order: html -> rawHtml -> fallback
     let html = ''
     
@@ -139,16 +138,10 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       throw new Error('Firecrawl returned empty HTML content')
     }
     
-    // Extract markdown if available
-    const markdown = scrapeResponse.markdown || null
-    
-    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, 
-      markdown ? `Markdown length: ${markdown.length},` : '', 
-      `(${callDuration}ms)`)
+    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, `(${callDuration}ms)`)
     
     return {
-      html, // Return raw HTML
-      markdown: markdown || undefined, // Return markdown if available
+      html, // Return raw HTML only
       provider: 'firecrawl',
       duration: callDuration,
     }

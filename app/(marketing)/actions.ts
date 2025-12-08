@@ -6,6 +6,7 @@ import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
+import { getHtmlProcessor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -49,13 +50,21 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
-    // Firecrawl can return both HTML and markdown
     const scrapeResult = await scrapeUrl(url, 170000)
-    const html = scrapeResult.html
-    const firecrawlMarkdown = 'markdown' in scrapeResult ? scrapeResult.markdown : undefined
+    let html = scrapeResult.html
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider: ScraperProvider = scrapeResult.provider
     const callDuration = scrapeResult.duration
+
+    // Apply website-specific HTML processor if available (e.g., realtor.com)
+    if (html) {
+      const htmlProcessor = getHtmlProcessor(url)
+      if (htmlProcessor) {
+        console.log(`🔵 [generatePreview] Applying website-specific HTML processor for ${url}`)
+        html = htmlProcessor(html)
+        console.log(`✅ [generatePreview] HTML processed, new length: ${html.length}`)
+      }
+    }
 
     let structuredData: any = {}
     let markdownResult: any = {}
@@ -94,38 +103,24 @@ export async function generatePreview(url: string) {
       parallelDuration = Date.now() - parallelStart
       console.log(`✅ [generatePreview] Apify processing complete in ${parallelDuration}ms`)
     } else if (html) {
-      // PARALLEL PROCESSING: Run both branches simultaneously to save time (for HTML)
-      console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
+      // Extract structured data from HTML
+      console.log('🔵 [generatePreview] Extracting structured data from HTML...')
       const parallelStart = Date.now()
       
-      // For Firecrawl, use markdown directly from API if available, otherwise convert HTML
-      const markdownPromise = provider === 'firecrawl' && firecrawlMarkdown
-        ? Promise.resolve({
-            markdown: firecrawlMarkdown,
-            title: '', // Firecrawl markdown doesn't include metadata
-            excerpt: '',
-            byline: null,
-            length: firecrawlMarkdown.length,
-            siteName: 'Firecrawl',
-          })
-        : Promise.resolve(htmlToMarkdownUniversal(html))
+      structuredData = extractStructuredData(html)
       
-      const results = await Promise.all([
-        // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
-        Promise.resolve(extractStructuredData(html)),
-        
-        // BRANCH B: Use Firecrawl markdown if available, otherwise convert HTML to markdown
-        markdownPromise,
-      ])
-      
-      structuredData = results[0]
-      markdownResult = results[1]
+      // Create minimal markdown result for backward compatibility (not used anymore)
+      markdownResult = {
+        markdown: '',
+        title: structuredData.metadata?.title || '',
+        excerpt: structuredData.metadata?.description || '',
+        byline: null,
+        length: html.length,
+        siteName: provider === 'firecrawl' ? 'Firecrawl' : 'ScraperAPI',
+      }
       
       parallelDuration = Date.now() - parallelStart
-      console.log(`✅ [generatePreview] Parallel processing complete in ${parallelDuration}ms`)
-      if (provider === 'firecrawl' && firecrawlMarkdown) {
-        console.log(`🔵 [generatePreview] Using Firecrawl markdown (${firecrawlMarkdown.length} chars)`)
-      }
+      console.log(`✅ [generatePreview] Structured data extraction complete in ${parallelDuration}ms`)
     } else {
       throw new Error('Scraper returned neither HTML nor JSON')
     }
@@ -142,19 +137,15 @@ export async function generatePreview(url: string) {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
 
-    // Build ai_ready_data: {html, markdown, apify_json, structuredData, readabilityMetadata}
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
-    // For Firecrawl, store both raw HTML and markdown from API
     const aiReadyData: {
       html: string
-      markdown: string
       apify_json: any | null
       structuredData?: any // For backward compatibility with preview page
       readabilityMetadata?: any // For backward compatibility with preview page
-      firecrawlMarkdown?: string // Firecrawl markdown (if available, separate from converted markdown)
     } = {
-      html: '', // We don't store cleaned HTML anymore (Mozilla Readability handles it)
-      markdown: markdownResult.markdown || '',
+      html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
         const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
         const cleaner = scraper?.cleanJson
@@ -168,8 +159,6 @@ export async function generatePreview(url: string) {
         length: markdownResult.length,
         siteName: markdownResult.siteName,
       } : undefined,
-      // Store Firecrawl markdown separately if available
-      firecrawlMarkdown: provider === 'firecrawl' && firecrawlMarkdown ? firecrawlMarkdown : undefined,
     }
 
     // Save to temp_previews
