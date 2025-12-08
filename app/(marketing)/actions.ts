@@ -5,7 +5,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
-import TurndownService from 'turndown'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -553,9 +552,10 @@ export async function processRawHtml(previewId: string) {
     return { error: 'Preview not found or expired' }
   }
 
-  // Check if raw HTML exists
-  if (!preview.raw_html) {
-    return { error: 'This preview does not contain raw HTML data' }
+  // Check if raw HTML or html_before_actions exists
+  const htmlToProcess = preview.raw_html || preview.ai_ready_data?.html_before_actions
+  if (!htmlToProcess) {
+    return { error: 'This preview does not contain HTML data to process' }
   }
 
   // Get source URL
@@ -570,8 +570,8 @@ export async function processRawHtml(previewId: string) {
     return { error: 'No HTML processor available for this website' }
   }
 
-  // Process the raw HTML
-  const processedHtml = htmlProcessor(preview.raw_html)
+  // Process the HTML
+  const processedHtml = htmlProcessor(htmlToProcess)
   console.log(`🔵 [processRawHtml] Processed HTML using website-specific processor for preview:`, previewId)
 
   // Update the preview with processed HTML
@@ -704,22 +704,11 @@ export async function convertProcessedHtmlToMarkdown(previewId: string) {
     return { error: 'This preview does not contain processed HTML data to convert to markdown' }
   }
 
-  // Convert processed HTML to markdown using TurndownService ONLY
-  // NOTE: Do NOT use Readability here, as processed_html is already cleaned
-  // Readability would remove more content thinking it's ads/navigation
+  // Convert processed HTML to markdown using Mozilla Readability + Turndown
   try {
-    const turndownService = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-      hr: '---',
-      bulletListMarker: '-',
-      emDelimiter: '_',
-      strongDelimiter: '**',
-    })
-
-    // Convert HTML to markdown (no Readability, just direct conversion)
-    const markdown = turndownService.turndown(processedHtml)
-    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown (${markdown.length} chars) for preview:`, previewId)
+    const result = htmlToMarkdownUniversal(processedHtml)
+    const markdown = result.markdown
+    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown using Mozilla Readability (${markdown.length} chars) for preview:`, previewId)
 
     // Update the preview with markdown
     const updatedAiReadyData = {

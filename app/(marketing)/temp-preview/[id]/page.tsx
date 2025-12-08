@@ -623,6 +623,25 @@ function PreviewContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
+                    onClick={handleProcessRawHtml}
+                    disabled={processingHtml}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {processingHtml ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Process to HTML
+                      </>
+                    )}
+                  </Button>
+                  <Button
                     onClick={() => {
                       navigator.clipboard.writeText(preview.ai_ready_data.html_before_actions)
                       setCopiedSection('html-before-actions')
