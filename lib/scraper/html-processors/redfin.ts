@@ -20,77 +20,97 @@ export function extractRedfinGalleryImages(html: string): string[] {
   const $ = load(html)
   const imageUrls: string[] = []
 
-  // Redfin gallery structure - find all img tags in gallery containers
-  // Common selectors for Redfin gallery images:
-  // - Gallery modal/overlay images
-  // - Photo carousel images
-  // - Main photo container images
+  // Helper function to extract image URL from img element
+  const extractImageUrl = ($img: any): string | null => {
+    // Check multiple possible attributes for image source (lazy loading support)
+    const src = $img.attr('src') || 
+                $img.attr('data-src') || 
+                $img.attr('data-lazy') ||
+                $img.attr('data-original') ||
+                $img.attr('data-image') ||
+                $img.attr('data-url') ||
+                null
+    
+    if (!src || src.trim().length === 0) {
+      return null
+    }
+    
+    // Filter out obvious non-gallery images
+    const srcLower = src.toLowerCase()
+    if (srcLower.includes('icon') || 
+        srcLower.includes('logo') || 
+        srcLower.includes('avatar') ||
+        srcLower.includes('placeholder') ||
+        srcLower.includes('1x1') ||
+        srcLower.includes('pixel')) {
+      return null
+    }
+    
+    // Check if it's a Redfin photo URL pattern
+    if (src.includes('cdn-redfin.com') || src.includes('redfin.com/photo')) {
+      return src
+    }
+    
+    // Also accept other absolute URLs that look like photos
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      // Check width/height to filter out small icons
+      const width = parseInt($img.attr('width') || '0')
+      const height = parseInt($img.attr('height') || '0')
+      
+      // If width/height are not set, check style attribute
+      let styleWidth = 0
+      let styleHeight = 0
+      const style = $img.attr('style') || ''
+      const widthMatch = style.match(/width:\s*(\d+)px/)
+      const heightMatch = style.match(/height:\s*(\d+)px/)
+      if (widthMatch) styleWidth = parseInt(widthMatch[1])
+      if (heightMatch) styleHeight = parseInt(heightMatch[1])
+      
+      const finalWidth = width || styleWidth
+      const finalHeight = height || styleHeight
+      
+      // If dimensions are available, filter out very small images
+      // But if dimensions are not available, include it anyway (might be lazy loaded)
+      if (finalWidth > 0 && finalHeight > 0) {
+        if (finalWidth <= 50 || finalHeight <= 50) {
+          return null
+        }
+      }
+      
+      // If it's a Redfin photo URL or looks like a photo, include it
+      if (src.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i)) {
+        return src
+      }
+    }
+    
+    return null
+  }
+
+  // Strategy 1: Look for all img tags and filter by Redfin photo patterns
+  $('img').each((_, img) => {
+    const $img = $(img)
+    const url = extractImageUrl($img)
+    if (url) {
+      imageUrls.push(url)
+    }
+  })
+
+  // Strategy 2: Look for specific Redfin gallery containers (more targeted)
+  $('[id*="photo"], [id*="gallery"], [class*="PhotoViewer"], [class*="Photo"], [class*="Gallery"]').find('img').each((_, img) => {
+    const $img = $(img)
+    const url = extractImageUrl($img)
+    if (url) {
+      imageUrls.push(url)
+    }
+  })
+
+  // Remove duplicates and sort (to maintain consistent order)
+  const uniqueUrls = [...new Set(imageUrls)]
   
-  // Strategy 1: Look for gallery modal/overlay images
-  $('[class*="gallery"] img, [class*="photo"] img, [class*="carousel"] img').each((_, img) => {
-    const $img = $(img)
-    
-    // Get src attribute (or data-src, data-lazy as fallback)
-    const src = $img.attr('src') || 
-                $img.attr('data-src') || 
-                $img.attr('data-lazy') ||
-                $img.attr('data-original') ||
-                null
-    
-    if (src && src.trim().length > 0) {
-      // Filter out small icons, avatars, and tracking pixels
-      const width = parseInt($img.attr('width') || '0')
-      const height = parseInt($img.attr('height') || '0')
-      
-      // Skip very small images (likely icons)
-      if (width > 50 && height > 50) {
-        // Convert relative URLs to absolute if needed
-        try {
-          // If it's already absolute, use it as is
-          if (src.startsWith('http://') || src.startsWith('https://')) {
-            imageUrls.push(src)
-          } else {
-            // If relative, we'd need base URL - for now just add as is
-            // In practice, Redfin.com likely uses absolute URLs
-            imageUrls.push(src)
-          }
-        } catch {
-          // Invalid URL, skip
-        }
-      }
-    }
-  })
-
-  // Strategy 2: Look for specific Redfin gallery containers
-  // This might need adjustment based on actual Redfin HTML structure
-  $('[id*="photo"], [id*="gallery"], [class*="PhotoViewer"]').find('img').each((_, img) => {
-    const $img = $(img)
-    const src = $img.attr('src') || 
-                $img.attr('data-src') || 
-                $img.attr('data-lazy') ||
-                $img.attr('data-original') ||
-                null
-    
-    if (src && src.trim().length > 0) {
-      const width = parseInt($img.attr('width') || '0')
-      const height = parseInt($img.attr('height') || '0')
-      
-      if (width > 50 && height > 50) {
-        try {
-          if (src.startsWith('http://') || src.startsWith('https://')) {
-            imageUrls.push(src)
-          } else {
-            imageUrls.push(src)
-          }
-        } catch {
-          // Invalid URL, skip
-        }
-      }
-    }
-  })
-
-  // Remove duplicates and return
-  return [...new Set(imageUrls)]
+  // Sort by URL to maintain consistent order (helps with debugging)
+  uniqueUrls.sort()
+  
+  return uniqueUrls
 }
 
 /**
