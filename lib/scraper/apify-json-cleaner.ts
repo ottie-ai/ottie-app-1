@@ -71,6 +71,15 @@ function cleanApifyItem(item: any): any {
     'streetViewMetadataUrlMediaWallAddress',
     'streetViewMetadataUrlMediaWallLatLong',
     'streetViewMetadataUrlMapLightboxAddress',
+    'displayed_agents',
+    'fallback_form',
+    'hidden_fields',
+    'hide_textarea',
+    'request_trace',
+    'tour_eligible',
+    'authentication',
+    'lender_details',
+    'display_options',
   ]
 
   fieldsToRemove.forEach(field => {
