@@ -1,8 +1,8 @@
 /**
  * Scraper Provider Abstraction
  * Supports multiple scraping providers:
- * - ScraperAPI, Firecrawl (general purpose - return HTML)
- * - Apify (site-specific scrapers - return structured JSON)
+ * - Firecrawl (general purpose - return HTML)
+ * - Apify (site-specific scrapers - return structured JSON, also used as fallback)
  * 
  * Switch between general providers via SCRAPER_PROVIDER env variable
  * Apify scrapers are automatically selected based on URL
@@ -14,7 +14,7 @@ import { runApifyActor, type ApifyResult } from './apify-client'
 import { getFirecrawlActions, getFirecrawlActionsGallery } from './firecrawl-actions'
 import { getGalleryImageExtractor } from './html-processors'
 
-export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
+export type ScraperProvider = 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
   html?: string // Raw HTML - general providers return this (or HTML after actions if actions were used)
@@ -24,19 +24,19 @@ export interface ScrapeResult {
   duration: number
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
-  actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'scraperapi_fallback')
+  actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
 }
 
 /**
  * Get the active scraper provider from environment variable
- * Defaults to 'scraperapi' if not set
+ * Defaults to 'firecrawl' if not set
  */
 export function getScraperProvider(): ScraperProvider {
   const provider = process.env.SCRAPER_PROVIDER?.toLowerCase()
-  if (provider === 'firecrawl' || provider === 'scraperapi') {
+  if (provider === 'firecrawl' || provider === 'apify') {
     return provider
   }
-  return 'scraperapi' // Default to ScraperAPI
+  return 'firecrawl' // Default to Firecrawl
 }
 
 /**
@@ -328,7 +328,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
  * 
  * Priority:
  * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
- * 2. Otherwise, use general provider (ScraperAPI or Firecrawl)
+ * 2. Otherwise, use general provider (Firecrawl or Apify)
  * 3. If blocked, try fallback providers:
  *    - If Firecrawl blocked → try Apify
  *    - If Apify blocked → try Firecrawl with stealth mode
@@ -374,10 +374,12 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
       case 'firecrawl':
         result = await scrapeWithFirecrawl(url, timeout, false)
         break
-      case 'scraperapi':
+      case 'apify':
+        result = await scrapeWithApify(url, timeout)
+        result.actualProvider = 'apify'
+        break
       default:
-        result = await scrapeWithScraperAPI(url, timeout)
-        result.actualProvider = 'scraperapi'
+        result = await scrapeWithFirecrawl(url, timeout, false)
         break
     }
     

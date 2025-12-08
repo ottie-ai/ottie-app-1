@@ -12,12 +12,12 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 /**
- * Scrape a URL using configured provider (ScraperAPI or Firecrawl) and create anonymous preview
+ * Scrape a URL using configured provider (Firecrawl or Apify) and create anonymous preview
  * Returns preview_id for accessing the generated preview
  * 
  * Provider can be switched via SCRAPER_PROVIDER env variable:
- * - 'scraperapi' (default) - requires SCRAPERAPI_KEY
- * - 'firecrawl' - requires FIRECRAWL_API_KEY
+ * - 'firecrawl' (default) - requires FIRECRAWL_API_KEY
+ * - 'apify' - requires APIFY_API_TOKEN
  */
 export async function generatePreview(url: string) {
   try {
@@ -41,10 +41,10 @@ export async function generatePreview(url: string) {
       }
     }
     
-    if (configuredProvider === 'scraperapi' && !process.env.SCRAPERAPI_KEY) {
-      console.error('SCRAPERAPI_KEY is not configured')
+    if (configuredProvider === 'apify' && !process.env.APIFY_API_TOKEN) {
+      console.error('APIFY_API_TOKEN is not configured')
       return { 
-        error: 'ScraperAPI is not configured. Please set SCRAPERAPI_KEY environment variable.' 
+        error: 'Apify API is not configured. Please set APIFY_API_TOKEN environment variable.' 
       }
     }
 
@@ -120,7 +120,7 @@ export async function generatePreview(url: string) {
         excerpt: structuredData.metadata?.description || '',
         byline: null,
         length: html.length,
-        siteName: provider === 'firecrawl' ? 'Firecrawl' : 'ScraperAPI',
+        siteName: provider === 'firecrawl' ? 'Firecrawl' : provider === 'apify' ? 'Apify' : 'Unknown',
       }
       
       parallelDuration = Date.now() - parallelStart
@@ -135,8 +135,6 @@ export async function generatePreview(url: string) {
       sourceDomain = 'apify_zillow'
     } else if (provider === 'firecrawl') {
       sourceDomain = 'firecrawl'
-    } else if (provider === 'scraperapi') {
-      sourceDomain = 'scraperapi'
     } else if (provider === 'apify') {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
@@ -158,7 +156,7 @@ export async function generatePreview(url: string) {
       readabilityMetadata?: any // For backward compatibility with preview page
       processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
       gallery_images?: string[] // Extracted gallery images (e.g., from Realtor.com)
-      actual_provider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'scraperapi_fallback')
+      actual_provider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
     } = {
       html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
