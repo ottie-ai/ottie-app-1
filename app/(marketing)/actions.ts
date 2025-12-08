@@ -5,7 +5,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
-import TurndownService from 'turndown'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -704,31 +703,11 @@ export async function convertProcessedHtmlToMarkdown(previewId: string) {
     return { error: 'This preview does not contain processed HTML data to convert to markdown' }
   }
 
-  // Convert processed HTML to markdown using Turndown
+  // Convert processed HTML to markdown using Mozilla Readability + Turndown
   try {
-    const turndownService = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-    })
-
-    // Add explicit rule to preserve all paragraph tags
-    turndownService.addRule('paragraph', {
-      filter: 'p',
-      replacement: (content, node) => {
-        // Always preserve paragraph, even if content seems empty
-        const text = content.trim()
-        if (text.length === 0) {
-          // Empty paragraph - preserve as blank line
-          return '\n\n'
-        }
-        // Regular paragraph with content - ensure proper spacing
-        return `\n\n${text}\n\n`
-      },
-    })
-
-    // Convert HTML to markdown
-    const markdown = turndownService.turndown(processedHtml)
-    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown (${markdown.length} chars) for preview:`, previewId)
+    const result = htmlToMarkdownUniversal(processedHtml)
+    const markdown = result.markdown
+    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown using Mozilla Readability (${markdown.length} chars) for preview:`, previewId)
 
     // Update the preview with markdown
     const updatedAiReadyData = {
