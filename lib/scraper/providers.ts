@@ -24,6 +24,7 @@ export interface ScrapeResult {
   duration: number
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
+  actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'scraperapi_fallback')
 }
 
 /**
@@ -36,6 +37,56 @@ export function getScraperProvider(): ScraperProvider {
     return provider
   }
   return 'scraperapi' // Default to ScraperAPI
+}
+
+/**
+ * Detect if HTML content indicates a blocking/access denied error
+ * Universal detection for various blocking patterns
+ */
+function isBlockedContent(html: string): boolean {
+  if (!html || html.trim().length === 0) {
+    return false
+  }
+
+  const htmlLower = html.toLowerCase()
+  
+  // Common blocking patterns
+  const blockingPatterns = [
+    'access denied',
+    'access forbidden',
+    'permission denied',
+    'you don\'t have permission',
+    'blocked',
+    'forbidden',
+    '403 forbidden',
+    'cloudflare',
+    'checking your browser',
+    'please wait',
+    'ddos protection',
+    'captcha',
+    'robot',
+    'bot detected',
+    'reference #', // Common in error pages
+    'errors.edgesuite.net', // Akamai error pages
+  ]
+  
+  // Check if any blocking pattern is present
+  for (const pattern of blockingPatterns) {
+    if (htmlLower.includes(pattern)) {
+      return true
+    }
+  }
+  
+  // Check for very short HTML that might be an error page
+  if (html.length < 500 && (
+    htmlLower.includes('<h1>') && htmlLower.includes('denied') ||
+    htmlLower.includes('<h1>') && htmlLower.includes('forbidden') ||
+    htmlLower.includes('<h1>') && htmlLower.includes('error')
+  )) {
+    return true
+  }
+  
+  return false
 }
 
 /**
@@ -96,8 +147,12 @@ async function scrapeWithScraperAPI(url: string, timeout: number): Promise<Scrap
 /**
  * Scrape URL using Firecrawl
  * Returns raw HTML (unified interface with other providers)
+ * 
+ * @param url - URL to scrape
+ * @param timeout - Timeout in milliseconds
+ * @param useStealth - Use stealth proxy mode (default: false)
  */
-async function scrapeWithFirecrawl(url: string, timeout: number): Promise<ScrapeResult> {
+async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boolean = false): Promise<ScrapeResult> {
   const apiKey = process.env.FIRECRAWL_API_KEY
   
   if (!apiKey) {
@@ -122,7 +177,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     // Base scrape options
     const baseScrapeOptions: any = {
       formats: ['html'], // Request only HTML
-      proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
+      proxy: useStealth ? 'stealth' : 'basic', // Use stealth proxy if requested, otherwise basic (saves credits)
     }
     
     let html: string | undefined = undefined
@@ -254,6 +309,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       provider: 'firecrawl',
       duration: callDuration,
       galleryImages: galleryImages, // Gallery images from Call 2 (for Realtor.com and Redfin.com)
+      actualProvider: useStealth ? 'firecrawl_stealth' : 'firecrawl',
     }
   } catch (error: any) {
     clearTimeout(timeoutId)
@@ -268,11 +324,14 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
 }
 
 /**
- * Scrape a URL using the appropriate provider
+ * Scrape a URL using the appropriate provider with fallback logic
  * 
  * Priority:
  * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
  * 2. Otherwise, use general provider (ScraperAPI or Firecrawl)
+ * 3. If blocked, try fallback providers:
+ *    - If Firecrawl blocked → try ScraperAPI
+ *    - If ScraperAPI blocked → try Firecrawl with stealth mode
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
@@ -293,6 +352,7 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
         provider: 'apify',
         duration: apifyResult.duration,
         apifyScraperId: apifyScraper.id,
+        actualProvider: `apify_${apifyScraper.id}`,
       }
     } catch (error) {
       console.error(`❌ [Apify:${apifyScraper.name}] Failed:`, error)
@@ -306,11 +366,102 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
   const provider = getScraperProvider()
   console.log(`🎯 [Routing] Using general scraper: ${provider}`)
   
-  switch (provider) {
-    case 'firecrawl':
-      return await scrapeWithFirecrawl(url, timeout)
-    case 'scraperapi':
-    default:
-      return await scrapeWithScraperAPI(url, timeout)
+  let result: ScrapeResult
+  
+  try {
+    // Try primary provider
+    switch (provider) {
+      case 'firecrawl':
+        result = await scrapeWithFirecrawl(url, timeout, false)
+        break
+      case 'scraperapi':
+      default:
+        result = await scrapeWithScraperAPI(url, timeout)
+        result.actualProvider = 'scraperapi'
+        break
+    }
+    
+    // Check if result is blocked
+    if (result.html && isBlockedContent(result.html)) {
+      console.warn(`⚠️ [Routing] Primary provider (${provider}) returned blocked content, trying fallback...`)
+      
+      // Fallback 1: Try ScraperAPI if primary was Firecrawl
+      if (provider === 'firecrawl' && process.env.SCRAPERAPI_KEY) {
+        try {
+          console.log(`🔄 [Routing] Trying ScraperAPI as fallback...`)
+          const fallbackResult = await scrapeWithScraperAPI(url, timeout)
+          fallbackResult.actualProvider = 'scraperapi_fallback'
+          
+          if (!fallbackResult.html || !isBlockedContent(fallbackResult.html)) {
+            console.log(`✅ [Routing] ScraperAPI fallback succeeded`)
+            return fallbackResult
+          }
+          console.warn(`⚠️ [Routing] ScraperAPI fallback also blocked`)
+        } catch (fallbackError) {
+          console.error(`❌ [Routing] ScraperAPI fallback failed:`, fallbackError)
+        }
+      }
+      
+      // Fallback 2: Try Firecrawl with stealth mode
+      if (process.env.FIRECRAWL_API_KEY) {
+        try {
+          console.log(`🔄 [Routing] Trying Firecrawl with stealth mode as fallback...`)
+          const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
+          
+          if (!stealthResult.html || !isBlockedContent(stealthResult.html)) {
+            console.log(`✅ [Routing] Firecrawl stealth fallback succeeded`)
+            return stealthResult
+          }
+          console.warn(`⚠️ [Routing] Firecrawl stealth fallback also blocked`)
+        } catch (stealthError) {
+          console.error(`❌ [Routing] Firecrawl stealth fallback failed:`, stealthError)
+        }
+      }
+      
+      // If all fallbacks failed, return the original blocked result with warning
+      console.error(`❌ [Routing] All providers returned blocked content`)
+      result.actualProvider = `${provider}_blocked`
+      return result
+    }
+    
+    // Success - return result
+    return result
+  } catch (error: any) {
+    // If primary provider throws error, try fallbacks
+    console.warn(`⚠️ [Routing] Primary provider (${provider}) failed:`, error.message)
+    
+    // Fallback 1: Try ScraperAPI if primary was Firecrawl
+    if (provider === 'firecrawl' && process.env.SCRAPERAPI_KEY) {
+      try {
+        console.log(`🔄 [Routing] Trying ScraperAPI as fallback after error...`)
+        const fallbackResult = await scrapeWithScraperAPI(url, timeout)
+        fallbackResult.actualProvider = 'scraperapi_fallback'
+        
+        if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
+          console.log(`✅ [Routing] ScraperAPI fallback succeeded after error`)
+          return fallbackResult
+        }
+      } catch (fallbackError) {
+        console.error(`❌ [Routing] ScraperAPI fallback failed:`, fallbackError)
+      }
+    }
+    
+    // Fallback 2: Try Firecrawl with stealth mode
+    if (process.env.FIRECRAWL_API_KEY) {
+      try {
+        console.log(`🔄 [Routing] Trying Firecrawl with stealth mode as fallback after error...`)
+        const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
+        
+        if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
+          console.log(`✅ [Routing] Firecrawl stealth fallback succeeded after error`)
+          return stealthResult
+        }
+      } catch (stealthError) {
+        console.error(`❌ [Routing] Firecrawl stealth fallback failed:`, stealthError)
+      }
+    }
+    
+    // All fallbacks failed, throw original error
+    throw error
   }
 }

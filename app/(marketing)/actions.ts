@@ -149,7 +149,7 @@ export async function generatePreview(url: string) {
       console.log(`🔵 [generatePreview] Using ${galleryImages.length} gallery images from scrape result (Call 2)`)
     }
 
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, gallery_images}
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, gallery_images, actual_provider}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
     const aiReadyData: {
       html: string
@@ -158,6 +158,7 @@ export async function generatePreview(url: string) {
       readabilityMetadata?: any // For backward compatibility with preview page
       processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
       gallery_images?: string[] // Extracted gallery images (e.g., from Realtor.com)
+      actual_provider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'scraperapi_fallback')
     } = {
       html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
@@ -175,6 +176,7 @@ export async function generatePreview(url: string) {
       } : undefined,
       processed_html: processedHtml || null, // Store processed HTML if processor was used
       gallery_images: galleryImages.length > 0 ? galleryImages : undefined, // Store gallery images if extracted
+      actual_provider: scrapeResult.actualProvider || provider, // Store actual provider used (including fallbacks)
     }
 
     // Save to temp_previews
