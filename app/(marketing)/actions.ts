@@ -899,11 +899,40 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     
     let textContent: string
     if (mainElement.length > 0) {
-      // Extract only <main> element HTML
+      // Remove unwanted sections from Realtor.com (before text extraction)
+      // These sections are not relevant for property details
+      
+      // Remove "Similar homes" section
+      mainElement.find('[data-testid*="similar"]').remove()
+      mainElement.find('section:contains("Similar homes")').remove()
+      mainElement.find('h2:contains("Similar homes")').parent().remove()
+      
+      // Remove "Schedule tour" section
+      mainElement.find('[data-testid*="schedule"]').remove()
+      mainElement.find('[data-testid*="tour"]').remove()
+      mainElement.find('section:contains("Schedule")').remove()
+      mainElement.find('button:contains("Schedule")').parent().remove()
+      
+      // Remove "Nearby" sections (Cities, ZIPs, Neighborhoods)
+      mainElement.find('[data-testid*="nearby"]').remove()
+      mainElement.find('section:contains("Nearby Cities")').remove()
+      mainElement.find('section:contains("Nearby ZIPs")').remove()
+      mainElement.find('section:contains("Nearby Neighborhoods")').remove()
+      mainElement.find('h2:contains("Nearby Cities")').parent().remove()
+      mainElement.find('h2:contains("Nearby ZIPs")').parent().remove()
+      mainElement.find('h2:contains("Nearby Neighborhoods")').parent().remove()
+      mainElement.find('h3:contains("Nearby Cities")').parent().remove()
+      mainElement.find('h3:contains("Nearby ZIPs")').parent().remove()
+      mainElement.find('h3:contains("Nearby Neighborhoods")').parent().remove()
+      
+      // Remove sidebar and other noise
+      mainElement.find('[data-testid="ldp-sidebar"]').remove()
+      
+      // Extract cleaned <main> element HTML
       const mainHtml = $.html(mainElement)
       // Convert to structured text (LLM-ready format with preserved hierarchy)
       textContent = extractStructuredText(mainHtml)
-      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element and converted to structured text (${textContent.length} chars) for preview:`, previewId)
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element, removed unwanted sections, and converted to structured text (${textContent.length} chars) for preview:`, previewId)
     } else {
       // Fallback: use entire HTML if <main> not found
       textContent = extractStructuredText(rawHtml)
