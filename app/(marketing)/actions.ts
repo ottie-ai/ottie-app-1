@@ -902,10 +902,16 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
       // Remove unwanted sections from Realtor.com (before text extraction)
       // These sections are not relevant for property details
       
-      // Remove "Similar homes" section
+      // Remove "Similar homes" and related sections
       mainElement.find('[data-testid*="similar"]').remove()
       mainElement.find('section:contains("Similar homes")').remove()
       mainElement.find('h2:contains("Similar homes")').parent().remove()
+      mainElement.find('h2:contains("Homes with similar exteriors")').parent().remove()
+      mainElement.find('h2:contains("Similar new construction homes")').parent().remove()
+      mainElement.find('h3:contains("Homes with similar exteriors")').parent().remove()
+      mainElement.find('h3:contains("Similar new construction homes")').parent().remove()
+      mainElement.find('section:contains("Homes with similar exteriors")').remove()
+      mainElement.find('section:contains("Similar new construction homes")').remove()
       
       // Remove "Schedule tour" section
       mainElement.find('[data-testid*="schedule"]').remove()
