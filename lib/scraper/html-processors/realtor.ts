@@ -57,6 +57,57 @@ export function extractRealtorGalleryImages(html: string): string[] {
 }
 
 /**
+ * Remove Realtor.com specific unwanted sections from HTML main element
+ * This is website-specific cleaning logic that removes sections not relevant for property details
+ * 
+ * @param mainElement - Cheerio main element to clean
+ */
+export function removeRealtorSpecificSections(mainElement: any): void {
+  // Find element with data-testid="similar_homes" and remove it and everything after it
+  const similarHomesElement = mainElement.find('[data-testid="similar_homes"]')
+  if (similarHomesElement.length > 0) {
+    // Remove the element itself and all following siblings
+    similarHomesElement.nextAll().remove()
+    similarHomesElement.remove()
+    console.log('🔵 [removeRealtorSpecificSections] Removed similar_homes element and all following content')
+  }
+  
+  // Also remove other similar sections (fallback if similar_homes not found)
+  mainElement.find('[data-testid*="similar"]').remove()
+  mainElement.find('section:contains("Similar homes")').remove()
+  mainElement.find('h2:contains("Similar homes")').parent().remove()
+  mainElement.find('h2:contains("Homes with similar exteriors")').parent().remove()
+  mainElement.find('h2:contains("Similar new construction homes")').parent().remove()
+  mainElement.find('h3:contains("Homes with similar exteriors")').parent().remove()
+  mainElement.find('h3:contains("Similar new construction homes")').parent().remove()
+  mainElement.find('section:contains("Homes with similar exteriors")').remove()
+  mainElement.find('section:contains("Similar new construction homes")').remove()
+  
+  // Remove "Schedule tour" section
+  mainElement.find('[data-testid*="schedule"]').remove()
+  mainElement.find('[data-testid*="tour"]').remove()
+  mainElement.find('section:contains("Schedule")').remove()
+  mainElement.find('button:contains("Schedule")').parent().remove()
+  
+  // Remove "Nearby" sections (Cities, ZIPs, Neighborhoods)
+  mainElement.find('[data-testid*="nearby"]').remove()
+  mainElement.find('section:contains("Nearby Cities")').remove()
+  mainElement.find('section:contains("Nearby ZIPs")').remove()
+  mainElement.find('section:contains("Nearby Neighborhoods")').remove()
+  mainElement.find('h2:contains("Nearby Cities")').parent().remove()
+  mainElement.find('h2:contains("Nearby ZIPs")').parent().remove()
+  mainElement.find('h2:contains("Nearby Neighborhoods")').parent().remove()
+  mainElement.find('h3:contains("Nearby Cities")').parent().remove()
+  mainElement.find('h3:contains("Nearby ZIPs")').parent().remove()
+  mainElement.find('h3:contains("Nearby Neighborhoods")').parent().remove()
+  
+  // Remove sidebar and other noise
+  mainElement.find('[data-testid="ldp-sidebar"]').remove()
+  mainElement.find('[data-testid="ldp-footer-additional-information"]').remove()
+  mainElement.find('[data-testid="footer-lead-form"]').remove()
+}
+
+/**
  * Process Realtor.com HTML by extracting only the main component
  * 
  * IMPORTANT: This processor preserves ALL content within <main>, including:

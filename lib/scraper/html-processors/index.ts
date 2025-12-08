@@ -9,9 +9,10 @@
 import { load } from 'cheerio'
 
 export type HtmlProcessor = (rawHtml: string) => string
+export type HtmlCleaner = (mainElement: any) => void
 
 // Import website-specific processors
-export { processRealtorHtml, extractRealtorGalleryImages } from './realtor'
+export { processRealtorHtml, extractRealtorGalleryImages, removeRealtorSpecificSections } from './realtor'
 
 /**
  * Get the appropriate HTML processor for a URL
@@ -26,6 +27,28 @@ export function getHtmlProcessor(url: string): HtmlProcessor | null {
     
     if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
       return require('./realtor').processRealtorHtml
+    }
+    
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get the appropriate HTML cleaner for a URL
+ * HTML cleaner removes website-specific unwanted sections before text extraction
+ * 
+ * @param url - The URL to check
+ * @returns The cleaner function for that website, or null if no cleaner exists
+ */
+export function getHtmlCleaner(url: string): HtmlCleaner | null {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+      return require('./realtor').removeRealtorSpecificSections
     }
     
     return null

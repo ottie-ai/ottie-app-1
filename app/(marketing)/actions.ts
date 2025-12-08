@@ -6,7 +6,7 @@ import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
-import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
+import { getHtmlProcessor, getHtmlCleaner, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -216,50 +216,49 @@ export async function generatePreview(url: string) {
       console.log('⏭️ [generatePreview] OpenAI processing skipped (DISABLE_OPENAI_PROCESSING=true)')
     }
     
-    // If this is Realtor.com (Firecrawl), automatically extract structured text and process with OpenAI
+    // If this is Firecrawl result (HTML), automatically extract structured text and process with OpenAI
+    // Works for any website that uses Firecrawl, not just Realtor.com
     if (provider === 'firecrawl' && rawHtml && preview.id && !process.env.DISABLE_OPENAI_PROCESSING) {
       try {
-        const urlObj = new URL(url)
-        const hostname = urlObj.hostname.toLowerCase()
+        console.log('🤖 [generatePreview] Processing Firecrawl HTML with OpenAI...')
         
-        // Check if this is Realtor.com
-        if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-          console.log('🤖 [generatePreview] Processing Realtor.com with OpenAI...')
-          
-          // First, extract structured text (remove HTML tags and unwanted sections)
-          const $ = load(rawHtml)
-          const mainElement = $('main')
-          
-          if (mainElement.length > 0) {
-            // Remove Realtor.com specific sections
-            removeRealtorSpecificSections(mainElement)
-            
-            // Extract structured text (universal function)
-            const mainHtml = $.html(mainElement)
-            const structuredText = extractStructuredText(mainHtml)
-            
-            // Update preview with structured text
-            const updatedAiReadyData = {
-              ...aiReadyData,
-              raw_html_text: structuredText,
-            }
-            
-            await supabase
-              .from('temp_previews')
-              .update({
-                ai_ready_data: updatedAiReadyData,
-              })
-              .eq('id', preview.id)
-            
-            // Process with OpenAI
-            await generateConfigFromRealtorText(preview.id, structuredText)
-            console.log('✅ [generatePreview] Realtor.com OpenAI processing complete')
-          } else {
-            console.warn('⚠️ [generatePreview] No <main> element found for Realtor.com, skipping OpenAI processing')
+        // First, extract structured text (remove HTML tags and website-specific unwanted sections)
+        const $ = load(rawHtml)
+        const mainElement = $('main')
+        
+        if (mainElement.length > 0) {
+          // Get website-specific HTML cleaner if available
+          const htmlCleaner = getHtmlCleaner(url)
+          if (htmlCleaner) {
+            htmlCleaner(mainElement)
+            console.log('🔵 [generatePreview] Applied website-specific HTML cleaner')
           }
+          
+          // Extract structured text (universal function)
+          const mainHtml = $.html(mainElement)
+          const structuredText = extractStructuredText(mainHtml)
+          
+          // Update preview with structured text
+          const updatedAiReadyData = {
+            ...aiReadyData,
+            raw_html_text: structuredText,
+          }
+          
+          await supabase
+            .from('temp_previews')
+            .update({
+              ai_ready_data: updatedAiReadyData,
+            })
+            .eq('id', preview.id)
+          
+          // Process with OpenAI (universal function)
+          await generateConfigFromStructuredText(preview.id, structuredText)
+          console.log('✅ [generatePreview] Firecrawl OpenAI processing complete')
+        } else {
+          console.warn('⚠️ [generatePreview] No <main> element found, skipping OpenAI processing')
         }
       } catch (openAiError) {
-        console.error('⚠️ [generatePreview] Realtor.com OpenAI processing failed:', openAiError)
+        console.error('⚠️ [generatePreview] Firecrawl OpenAI processing failed:', openAiError)
         // Don't fail the whole request if OpenAI fails - preview is still created
       }
     }
@@ -414,6 +413,104 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     success: true, 
     siteId: site.id,
     slug: site.slug,
+  }
+}
+
+/**
+ * Generate site config from structured text using OpenAI
+ * Universal function - works with any structured text extracted from HTML
+ */
+async function generateConfigFromStructuredText(previewId: string, structuredText: string) {
+  try {
+    // Load site-config-sample.json as example
+    const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
+    const sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
+
+    // Build prompt for text-based extraction (similar to Apify but for structured text)
+    const prompt = `Extract from provided real estate property text - exact structure below.
+
+**RULES (strict):**
+
+1. ONLY use explicit data from the text
+
+2. Detect language - set "language" (en, es, etc.) + use same language everywhere
+
+3. Missing = "" / 0 / []
+
+4. NEVER invent data
+
+5. **currency:** detect from country/city/price symbol → USD(EUR,GBP,CZK,etc.) NOT hardcoded
+
+6. title: lifestyle marketing hero title
+
+7. photos: extract ALL image URLs from the text
+
+8. highlights: max 6 - Phosphor icon names (Eye, Car, Building2, etc.)
+
+9. font: Inter/Playfair Display (luxury=Playfair, modern=Inter)
+
+10. brand_color: match property style
+
+11. description: EXACT from text
+
+12. original_price: ONLY if discounted
+
+**CURRENCY MAPPING:**
+
+- USA/PR → USD
+
+- Spain/EU → EUR
+
+- UK → GBP
+
+- CZ/SK → CZK
+
+- price symbol $ → USD, € → EUR, £ → GBP
+
+**STRUCTURE:**
+
+${JSON.stringify(sampleConfig, null, 2)}
+
+**OUTPUT:** JSON only
+
+**TEXT TO PROCESS:**
+
+${structuredText}`
+
+    // Call OpenAI
+    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+
+    // Update preview with generated config
+    const supabase = await createClient()
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        generated_config: generatedConfig,
+        status: 'completed',
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [generateConfigFromStructuredText] Failed to update preview:', updateError)
+      throw new Error('Failed to save generated config')
+    }
+
+    console.log('✅ [generateConfigFromStructuredText] Config generated and saved')
+    return { success: true, config: generatedConfig }
+  } catch (error: any) {
+    console.error('🔴 [generateConfigFromStructuredText] Error:', error)
+    
+    // Update status to error
+    const supabase = await createClient()
+    await supabase
+      .from('temp_previews')
+      .update({
+        status: 'error',
+        error_message: error.message || 'Failed to generate config',
+      })
+      .eq('id', previewId)
+    
+    throw error
   }
 }
 
@@ -640,55 +737,6 @@ export async function extractGalleryImages(previewId: string) {
 }
 
 /**
- * Remove Realtor.com specific unwanted sections from HTML
- * This is website-specific cleaning logic
- */
-function removeRealtorSpecificSections(mainElement: any): void {
-  // Find element with data-testid="similar_homes" and remove it and everything after it
-  const similarHomesElement = mainElement.find('[data-testid="similar_homes"]')
-  if (similarHomesElement.length > 0) {
-    // Remove the element itself and all following siblings
-    similarHomesElement.nextAll().remove()
-    similarHomesElement.remove()
-    console.log('🔵 [removeRealtorSpecificSections] Removed similar_homes element and all following content')
-  }
-  
-  // Also remove other similar sections (fallback if similar_homes not found)
-  mainElement.find('[data-testid*="similar"]').remove()
-  mainElement.find('section:contains("Similar homes")').remove()
-  mainElement.find('h2:contains("Similar homes")').parent().remove()
-  mainElement.find('h2:contains("Homes with similar exteriors")').parent().remove()
-  mainElement.find('h2:contains("Similar new construction homes")').parent().remove()
-  mainElement.find('h3:contains("Homes with similar exteriors")').parent().remove()
-  mainElement.find('h3:contains("Similar new construction homes")').parent().remove()
-  mainElement.find('section:contains("Homes with similar exteriors")').remove()
-  mainElement.find('section:contains("Similar new construction homes")').remove()
-  
-  // Remove "Schedule tour" section
-  mainElement.find('[data-testid*="schedule"]').remove()
-  mainElement.find('[data-testid*="tour"]').remove()
-  mainElement.find('section:contains("Schedule")').remove()
-  mainElement.find('button:contains("Schedule")').parent().remove()
-  
-  // Remove "Nearby" sections (Cities, ZIPs, Neighborhoods)
-  mainElement.find('[data-testid*="nearby"]').remove()
-  mainElement.find('section:contains("Nearby Cities")').remove()
-  mainElement.find('section:contains("Nearby ZIPs")').remove()
-  mainElement.find('section:contains("Nearby Neighborhoods")').remove()
-  mainElement.find('h2:contains("Nearby Cities")').parent().remove()
-  mainElement.find('h2:contains("Nearby ZIPs")').parent().remove()
-  mainElement.find('h2:contains("Nearby Neighborhoods")').parent().remove()
-  mainElement.find('h3:contains("Nearby Cities")').parent().remove()
-  mainElement.find('h3:contains("Nearby ZIPs")').parent().remove()
-  mainElement.find('h3:contains("Nearby Neighborhoods")').parent().remove()
-  
-  // Remove sidebar and other noise
-  mainElement.find('[data-testid="ldp-sidebar"]').remove()
-  mainElement.find('[data-testid="ldp-footer-additional-information"]').remove()
-  mainElement.find('[data-testid="footer-lead-form"]').remove()
-}
-
-/**
  * Extract structured text from HTML element (LLM-ready format)
  * Universal function - preserves hierarchy with markdown-style formatting
  * Works with any HTML content, no website-specific logic
@@ -809,12 +857,14 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     
     let textContent: string
     if (mainElement.length > 0) {
-      // Check if this is Realtor.com and remove website-specific sections
-      const urlObj = new URL(preview.external_url || preview.source_url || '')
-      const hostname = urlObj.hostname.toLowerCase()
-      if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-        removeRealtorSpecificSections(mainElement)
-        console.log('🔵 [removeHtmlTagsFromRawHtml] Removed Realtor.com specific sections')
+      // Get website-specific HTML cleaner if available
+      const sourceUrl = preview.external_url || preview.source_url
+      if (sourceUrl) {
+        const htmlCleaner = getHtmlCleaner(sourceUrl)
+        if (htmlCleaner) {
+          htmlCleaner(mainElement)
+          console.log('🔵 [removeHtmlTagsFromRawHtml] Applied website-specific HTML cleaner')
+        }
       }
       
       // Extract cleaned <main> element HTML
