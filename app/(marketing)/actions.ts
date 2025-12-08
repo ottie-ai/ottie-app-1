@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
+import { load } from 'cheerio'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
@@ -779,8 +780,96 @@ export async function convertRawHtmlToMarkdown(previewId: string) {
 }
 
 /**
+ * Extract structured text from HTML element (LLM-ready format)
+ * Preserves hierarchy with markdown-style formatting
+ */
+function extractStructuredText(htmlContent: string): string {
+  const $ = load(htmlContent)
+  const lines: string[] = []
+  
+  // Process each significant element and preserve structure
+  function processElement(element: any): void {
+    const $el = $(element)
+    const tagName = element.tagName?.toLowerCase()
+    
+    // Skip script and style tags
+    if (tagName === 'script' || tagName === 'style') {
+      return
+    }
+    
+    // Headings - add markdown-style hierarchy
+    if (tagName?.match(/^h[1-6]$/)) {
+      const level = parseInt(tagName[1])
+      const text = $el.text().trim()
+      if (text) {
+        lines.push('') // empty line before heading
+        lines.push('#'.repeat(level) + ' ' + text)
+        lines.push('') // empty line after heading
+      }
+      return
+    }
+    
+    // Paragraphs
+    if (tagName === 'p') {
+      const text = $el.text().trim()
+      if (text && text.length > 10) { // ignore very short paragraphs
+        lines.push(text)
+        lines.push('') // empty line between paragraphs
+      }
+      return
+    }
+    
+    // Lists
+    if (tagName === 'ul' || tagName === 'ol') {
+      $el.children('li').each((i: number, li: any) => {
+        const text = $(li).text().trim()
+        if (text) {
+          const prefix = tagName === 'ul' ? '• ' : `${i + 1}. `
+          lines.push(prefix + text)
+        }
+      })
+      lines.push('') // empty line after list
+      return
+    }
+    
+    // Divs, sections, articles - recursively process children
+    if (tagName === 'div' || tagName === 'section' || tagName === 'article' || tagName === 'main') {
+      $el.children().each((i: number, child: any) => {
+        processElement(child)
+      })
+      return
+    }
+    
+    // For other elements, try to process children
+    if ($el.children().length > 0) {
+      $el.children().each((i: number, child: any) => {
+        processElement(child)
+      })
+    } else {
+      // Leaf node with text content
+      const text = $el.text().trim()
+      if (text && text.length > 3 && !lines[lines.length - 1]?.includes(text)) {
+        lines.push(text)
+      }
+    }
+  }
+  
+  // Start processing from root
+  $.root().children().each((i: number, child: any) => {
+    processElement(child)
+  })
+  
+  // Join lines and clean up
+  return lines
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n') // max 2 empty lines in a row
+    .replace(/\s+$/gm, '') // remove trailing whitespace from each line
+    .trim()
+}
+
+/**
  * Remove HTML tags from raw HTML (manual trigger for debugging)
- * Extracts only text content without HTML tags
+ * Extracts structured text content with preserved hierarchy (LLM-ready format)
  */
 export async function removeHtmlTagsFromRawHtml(previewId: string) {
   const supabase = await createClient()
@@ -802,10 +891,24 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     return { error: 'This preview does not contain raw HTML data to process' }
   }
 
-  // Extract text content (remove HTML tags)
+  // Extract structured text content (remove HTML tags, preserve hierarchy)
   try {
-    const textContent = extractText(rawHtml)
-    console.log(`🔵 [removeHtmlTagsFromRawHtml] Removed HTML tags from raw HTML (${textContent.length} chars) for preview:`, previewId)
+    // First, extract only <main> element from raw HTML
+    const $ = load(rawHtml)
+    const mainElement = $('main')
+    
+    let textContent: string
+    if (mainElement.length > 0) {
+      // Extract only <main> element HTML
+      const mainHtml = $.html(mainElement)
+      // Convert to structured text (LLM-ready format with preserved hierarchy)
+      textContent = extractStructuredText(mainHtml)
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element and converted to structured text (${textContent.length} chars) for preview:`, previewId)
+    } else {
+      // Fallback: use entire HTML if <main> not found
+      textContent = extractStructuredText(rawHtml)
+      console.log(`⚠️ [removeHtmlTagsFromRawHtml] No <main> element found, using entire HTML (${textContent.length} chars) for preview:`, previewId)
+    }
 
     // Update the preview with text content
     const updatedAiReadyData = {
