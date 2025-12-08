@@ -8,6 +8,7 @@
  */
 
 import { redirect } from 'next/navigation'
+import { COMPANY_ADDRESS } from '@/lib/company-info'
 
 // Only allow in development
 export default function EmailPreviewPage() {
@@ -90,8 +91,7 @@ export default function EmailPreviewPage() {
                     <p style="margin: 0; font-size: 12px; color: #444444; line-height: 1.6;">
                       <a href="https://ottie.com" style="color: #666666; text-decoration: underline;">Ottie</a>
                       <br>
-                      16192 Coastal Hwy, Lewes,<br>
-                      DE 19958, United States
+                      ${COMPANY_ADDRESS.html}
                     </p>
                   </td>
                 </tr>

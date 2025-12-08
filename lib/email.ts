@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { COMPANY_ADDRESS } from '@/lib/company-info'
 
 // Initialize Resend with API key
 // You need to set RESEND_API_KEY in your .env.local file
@@ -160,8 +161,7 @@ export async function sendInviteEmail({
                         <p style="margin: 0; font-size: 12px; color: #444444; line-height: 1.6;">
                           <a href="https://ottie.com" style="color: #666666; text-decoration: underline;">Ottie</a>
                           <br>
-                          16192 Coastal Hwy, Lewes,<br>
-                          DE 19958, United States
+                          ${COMPANY_ADDRESS.html}
                         </p>
                       </td>
                     </tr>
@@ -184,8 +184,7 @@ This invitation expires in 7 days.
 
 ---
 Ottie
-16192 Coastal Hwy, Lewes,
-DE 19958, United States
+${COMPANY_ADDRESS.text}
       `.trim(),
     })
 
