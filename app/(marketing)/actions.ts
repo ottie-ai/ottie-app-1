@@ -731,6 +731,61 @@ export async function convertProcessedHtmlToMarkdown(previewId: string) {
 }
 
 /**
+ * Convert raw HTML to markdown (manual trigger for debugging)
+ * Converts raw HTML directly to markdown without processing
+ */
+export async function convertRawHtmlToMarkdown(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Get raw HTML
+  const rawHtml = preview.raw_html
+  if (!rawHtml || rawHtml.trim().length === 0) {
+    return { error: 'This preview does not contain raw HTML data to convert to markdown' }
+  }
+
+  // Convert raw HTML to markdown using Mozilla Readability + Turndown
+  try {
+    const result = htmlToMarkdownUniversal(rawHtml)
+    const markdown = result.markdown
+    console.log(`🔵 [convertRawHtmlToMarkdown] Converted raw HTML to markdown using Mozilla Readability (${markdown.length} chars) for preview:`, previewId)
+
+    // Update the preview with markdown
+    const updatedAiReadyData = {
+      ...preview.ai_ready_data || {},
+      raw_html_markdown: markdown,
+    }
+
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        ai_ready_data: updatedAiReadyData,
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [convertRawHtmlToMarkdown] Failed to update preview:', updateError)
+      return { error: 'Failed to convert to markdown. Please try again.' }
+    }
+
+    return { success: true, markdownLength: markdown.length }
+  } catch (error) {
+    console.error('🔴 [convertRawHtmlToMarkdown] Error:', error)
+    return { error: 'Failed to convert to markdown. Please try again.' }
+  }
+}
+
+/**
  * Generate site config from Apify data using OpenAI (manual trigger)
  * This can be called manually if automatic processing failed
  */
