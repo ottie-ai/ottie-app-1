@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { extractStructuredData } from '@/lib/scraper/html-parser'
+import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
@@ -775,6 +775,60 @@ export async function convertRawHtmlToMarkdown(previewId: string) {
   } catch (error) {
     console.error('🔴 [convertRawHtmlToMarkdown] Error:', error)
     return { error: 'Failed to convert to markdown. Please try again.' }
+  }
+}
+
+/**
+ * Remove HTML tags from raw HTML (manual trigger for debugging)
+ * Extracts only text content without HTML tags
+ */
+export async function removeHtmlTagsFromRawHtml(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Get raw HTML
+  const rawHtml = preview.raw_html
+  if (!rawHtml || rawHtml.trim().length === 0) {
+    return { error: 'This preview does not contain raw HTML data to process' }
+  }
+
+  // Extract text content (remove HTML tags)
+  try {
+    const textContent = extractText(rawHtml)
+    console.log(`🔵 [removeHtmlTagsFromRawHtml] Removed HTML tags from raw HTML (${textContent.length} chars) for preview:`, previewId)
+
+    // Update the preview with text content
+    const updatedAiReadyData = {
+      ...preview.ai_ready_data || {},
+      raw_html_text: textContent,
+    }
+
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        ai_ready_data: updatedAiReadyData,
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [removeHtmlTagsFromRawHtml] Failed to update preview:', updateError)
+      return { error: 'Failed to remove HTML tags. Please try again.' }
+    }
+
+    return { success: true, textLength: textContent.length }
+  } catch (error) {
+    console.error('🔴 [removeHtmlTagsFromRawHtml] Error:', error)
+    return { error: 'Failed to remove HTML tags. Please try again.' }
   }
 }
 

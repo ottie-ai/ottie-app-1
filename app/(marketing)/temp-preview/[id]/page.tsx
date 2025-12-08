@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, processRawHtml, extractGalleryImages, convertProcessedHtmlToMarkdown, convertRawHtmlToMarkdown } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, processRawHtml, extractGalleryImages, convertProcessedHtmlToMarkdown, convertRawHtmlToMarkdown, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -31,6 +31,7 @@ function PreviewContent() {
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
   const [convertingToMarkdown, setConvertingToMarkdown] = useState(false) // Track markdown conversion state
   const [convertingRawToMarkdown, setConvertingRawToMarkdown] = useState(false) // Track raw HTML to markdown conversion state
+  const [removingHtmlTags, setRemovingHtmlTags] = useState(false) // Track HTML tags removal state
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -288,6 +289,33 @@ function PreviewContent() {
     }
   }
 
+  const handleRemoveHtmlTags = async () => {
+    if (!previewId) return
+    
+    setRemovingHtmlTags(true)
+    try {
+      const result = await removeHtmlTagsFromRawHtml(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to remove HTML tags')
+        setRemovingHtmlTags(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to remove HTML tags')
+    } finally {
+      setRemovingHtmlTags(false)
+    }
+  }
+
 
   if (loading) {
     return (
@@ -531,6 +559,25 @@ function PreviewContent() {
                     )}
                   </Button>
                   <Button
+                    onClick={handleRemoveHtmlTags}
+                    disabled={removingHtmlTags}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {removingHtmlTags ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Removing...
+                      </>
+                    ) : (
+                      <>
+                        <Code className="h-4 w-4 mr-2" />
+                        Remove Tags
+                      </>
+                    )}
+                  </Button>
+                  <Button
                     onClick={handleProcessRawHtml}
                     disabled={processingHtml}
                     variant="ghost"
@@ -620,6 +667,54 @@ function PreviewContent() {
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
                   {preview.ai_ready_data.raw_html_markdown}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Raw HTML Text Display (if HTML tags removed) */}
+          {preview?.ai_ready_data?.raw_html_text && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Raw HTML → Text (No Tags)
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.ai_ready_data.raw_html_text.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(preview.ai_ready_data.raw_html_text)
+                    setCopiedSection('raw-text')
+                    setCopied(true)
+                    setTimeout(() => {
+                      setCopied(false)
+                      setCopiedSection(null)
+                    }, 2000)
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'raw-text' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Text
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.ai_ready_data.raw_html_text}
                 </pre>
               </div>
             </div>
