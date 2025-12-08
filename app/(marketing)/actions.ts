@@ -458,8 +458,6 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
 
 12. original_price: ONLY if discounted
 
-13. **longitude and latitude:** If not available in the data, generate them from the property address using geocoding knowledge. Use realistic coordinates for the given address location.
-
 **CURRENCY MAPPING:**
 
 - USA/PR → USD
@@ -556,8 +554,6 @@ async function generateConfigFromApifyData(previewId: string, apifyData: any) {
 11. description: EXACT from data
 
 12. original_price: ONLY if discounted
-
-13. **longitude and latitude:** If not available in the data, generate them from the property address using geocoding knowledge. Use realistic coordinates for the given address location.
 
 **CURRENCY MAPPING:**
 
