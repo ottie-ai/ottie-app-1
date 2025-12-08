@@ -92,3 +92,48 @@ export function extractRedfinGalleryImages(html: string): string[] {
   // Remove duplicates and return
   return [...new Set(imageUrls)]
 }
+
+/**
+ * Remove Redfin.com specific unwanted sections from HTML main element
+ * This is website-specific cleaning logic that removes sections not relevant for property details
+ * 
+ * @param mainElement - Cheerio main element to clean
+ */
+export function removeRedfinSpecificSections(mainElement: any): void {
+  // List of class names to remove
+  const classesToRemove = [
+    'OpenHouseTourInsightSection',
+    'AskRedfinSection',
+    'PropertyHistory',
+    'ClimateRiskDataSection',
+    'SunExposureSection',
+    'DPRedfinEstimateSection',
+    'SimilarsPanel',
+  ]
+  
+  // Build combined selector for all elements to check
+  const classSelector = classesToRemove.map(className => `.${className}`).join(', ')
+  const allSelectors = `${classSelector}, #neighborhood-scroll`
+  
+  // Find all matching elements
+  const allMatchingElements = mainElement.find(allSelectors)
+  
+  if (allMatchingElements.length > 0) {
+    // Get the first element (Cheerio returns elements in DOM order)
+    const firstElement = allMatchingElements.first()
+    
+    if (firstElement.length > 0) {
+      // Remove all following siblings
+      firstElement.nextAll().remove()
+      // Remove the element itself
+      firstElement.remove()
+      console.log('🔵 [removeRedfinSpecificSections] Removed first unwanted section and all following content')
+    }
+  }
+  
+  // Also remove individual elements by class as fallback (in case selector didn't catch them all)
+  classesToRemove.forEach(className => {
+    mainElement.find(`.${className}`).remove()
+  })
+  mainElement.find('#neighborhood-scroll').remove()
+}
