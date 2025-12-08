@@ -11,11 +11,13 @@
 import Firecrawl from '@mendable/firecrawl-js'
 import { findApifyScraperForUrl } from './apify-scrapers'
 import { runApifyActor, type ApifyResult } from './apify-client'
+import { getFirecrawlActions } from './firecrawl-actions'
 
 export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
-  html?: string // Raw HTML - general providers return this
+  html?: string // Raw HTML - general providers return this (or HTML after actions if actions were used)
+  htmlBeforeActions?: string // Original HTML before actions (only if actions were used)
   json?: any // Structured JSON - Apify scrapers return this
   provider: ScraperProvider
   duration: number
@@ -110,38 +112,88 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
   try {
     const firecrawl = new Firecrawl({ apiKey })
     
-    // Request only HTML format (no markdown)
-    // Use basic proxy to save credits (1 credit instead of 5 with stealth mode)
-    const scrapeResponse = await firecrawl.scrape(url, {
+    // Get website-specific actions (e.g., click "View all photos" button)
+    // Returns null for websites without specific actions
+    const actions = getFirecrawlActions(url)
+    
+    // Base scrape options
+    const baseScrapeOptions: any = {
       formats: ['html'], // Request only HTML
       proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
-    })
+    }
+    
+    let htmlBeforeActions: string | undefined = undefined
+    let htmlAfterActions: string | undefined = undefined
+    
+    // If actions exist, do TWO scrapes:
+    // 1. First scrape WITHOUT actions (original HTML)
+    // 2. Second scrape WITH actions (HTML after actions)
+    if (actions && actions.length > 0) {
+      console.log(`🔵 [Firecrawl] Website has ${actions.length} actions, performing TWO scrapes for ${url}`)
+      
+      // SCRAPE 1: Without actions (original HTML)
+      console.log('🔵 [Firecrawl] Scrape 1/2: Getting original HTML (without actions)...')
+      const scrape1Response = await firecrawl.scrape(url, baseScrapeOptions)
+      
+      if (scrape1Response.html) {
+        htmlBeforeActions = scrape1Response.html
+      } else if (scrape1Response.rawHtml) {
+        htmlBeforeActions = scrape1Response.rawHtml
+      }
+      
+      if (!htmlBeforeActions || htmlBeforeActions.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content (scrape 1)')
+      }
+      
+      console.log(`✅ [Firecrawl] Scrape 1/2 complete, HTML length: ${htmlBeforeActions.length}`)
+      
+      // SCRAPE 2: With actions (HTML after actions)
+      console.log(`🔵 [Firecrawl] Scrape 2/2: Getting HTML after ${actions.length} actions...`)
+      const scrape2Options = {
+        ...baseScrapeOptions,
+        actions: actions,
+      }
+      
+      const scrape2Response = await firecrawl.scrape(url, scrape2Options)
+      
+      if (scrape2Response.html) {
+        htmlAfterActions = scrape2Response.html
+      } else if (scrape2Response.rawHtml) {
+        htmlAfterActions = scrape2Response.rawHtml
+      }
+      
+      if (!htmlAfterActions || htmlAfterActions.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content (scrape 2)')
+      }
+      
+      console.log(`✅ [Firecrawl] Scrape 2/2 complete, HTML length: ${htmlAfterActions.length}`)
+    } else {
+      // No actions: Single scrape (normal behavior)
+      console.log('🔵 [Firecrawl] No actions, performing single scrape...')
+      const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
+      
+      if (scrapeResponse.html) {
+        htmlAfterActions = scrapeResponse.html
+      } else if (scrapeResponse.rawHtml) {
+        htmlAfterActions = scrapeResponse.rawHtml
+      }
+      
+      if (!htmlAfterActions || htmlAfterActions.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content')
+      }
+    }
     
     clearTimeout(timeoutId)
     const callDuration = Date.now() - callStartTime
     
-    // Firecrawl returns ScrapeResponse with html, rawHtml, or other properties
-    // Extract HTML in priority order: html -> rawHtml -> fallback
-    let html = ''
-    
-    if (scrapeResponse.html) {
-      html = scrapeResponse.html
-    } else if (scrapeResponse.rawHtml) {
-      html = scrapeResponse.rawHtml
-    } else {
-      // Fallback: try to get any text content from response
-      console.warn('⚠️ [Firecrawl] No HTML in response, available keys:', Object.keys(scrapeResponse))
-      throw new Error('Firecrawl returned no HTML content')
-    }
-    
-    if (!html || html.trim().length === 0) {
-      throw new Error('Firecrawl returned empty HTML content')
-    }
-    
-    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, `(${callDuration}ms)`)
+    console.log('✅ [Firecrawl] Successfully scraped URL', 
+      htmlBeforeActions ? `(2 scrapes: ${htmlBeforeActions.length} + ${htmlAfterActions?.length || 0} chars)` : 
+      `(1 scrape: ${htmlAfterActions?.length || 0} chars)`, 
+      `(${callDuration}ms)`)
     
     return {
-      html, // Return raw HTML only
+      html: htmlAfterActions, // HTML after actions (or normal HTML if no actions)
+      htmlBeforeActions: htmlBeforeActions, // Original HTML before actions (only if actions were used)
       provider: 'firecrawl',
       duration: callDuration,
     }

@@ -50,8 +50,10 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
+    // For websites with actions: returns both htmlBeforeActions and html (after actions)
     const scrapeResult = await scrapeUrl(url, 170000)
-    const rawHtml = scrapeResult.html // Keep original raw HTML
+    const rawHtml = scrapeResult.html // HTML after actions (or normal HTML if no actions)
+    const htmlBeforeActions = 'htmlBeforeActions' in scrapeResult ? scrapeResult.htmlBeforeActions : undefined // Original HTML before actions
     let html = scrapeResult.html // This will be processed if processor exists
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider: ScraperProvider = scrapeResult.provider
@@ -140,7 +142,7 @@ export async function generatePreview(url: string) {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
 
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html}
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, html_before_actions}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
     const aiReadyData: {
       html: string
@@ -148,6 +150,7 @@ export async function generatePreview(url: string) {
       structuredData?: any // For backward compatibility with preview page
       readabilityMetadata?: any // For backward compatibility with preview page
       processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
+      html_before_actions?: string | null // Original HTML before actions (only for websites with actions)
     } = {
       html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
@@ -164,6 +167,7 @@ export async function generatePreview(url: string) {
         siteName: markdownResult.siteName,
       } : undefined,
       processed_html: processedHtml || null, // Store processed HTML if processor was used
+      html_before_actions: htmlBeforeActions || null, // Store original HTML before actions (if actions were used)
     }
 
     // Save to temp_previews
@@ -173,7 +177,7 @@ export async function generatePreview(url: string) {
       .insert({
         external_url: url,
         source_domain: sourceDomain,
-        raw_html: rawHtml || null, // Original raw HTML from provider (before processing)
+        raw_html: rawHtml || null, // HTML after actions (or normal HTML if no actions)
         ai_ready_data: aiReadyData,
         unified_data: {}, // Empty for now - will be populated after LLM processing
         status: 'pending',
