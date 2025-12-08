@@ -392,7 +392,7 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
           const fallbackResult = await scrapeWithScraperAPI(url, timeout)
           fallbackResult.actualProvider = 'scraperapi_fallback'
           
-          if (!fallbackResult.html || !isBlockedContent(fallbackResult.html)) {
+          if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
             console.log(`✅ [Routing] ScraperAPI fallback succeeded`)
             return fallbackResult
           }
@@ -408,7 +408,7 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
           console.log(`🔄 [Routing] Trying Firecrawl with stealth mode as fallback...`)
           const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
           
-          if (!stealthResult.html || !isBlockedContent(stealthResult.html)) {
+          if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
             console.log(`✅ [Routing] Firecrawl stealth fallback succeeded`)
             return stealthResult
           }
