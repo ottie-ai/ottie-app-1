@@ -6,7 +6,7 @@ import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
-import { getHtmlProcessor, getHtmlCleaner, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
+import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -224,7 +224,10 @@ export async function generatePreview(url: string) {
         
         // First, extract structured text (remove HTML tags and website-specific unwanted sections)
         const $ = load(rawHtml)
-        const mainElement = $('main')
+        
+        // Get website-specific main content selector
+        const mainContentSelector = getMainContentSelector(url) || 'main' // Fallback to 'main' if not specified
+        const mainElement = $(mainContentSelector)
         
         if (mainElement.length > 0) {
           // Get website-specific HTML cleaner if available
@@ -253,9 +256,9 @@ export async function generatePreview(url: string) {
           
           // Process with OpenAI (universal function)
           await generateConfigFromStructuredText(preview.id, structuredText)
-          console.log('✅ [generatePreview] Firecrawl OpenAI processing complete')
+          console.log(`✅ [generatePreview] Firecrawl OpenAI processing complete (used selector: ${mainContentSelector})`)
         } else {
-          console.warn('⚠️ [generatePreview] No <main> element found, skipping OpenAI processing')
+          console.warn(`⚠️ [generatePreview] No main content element found (selector: ${mainContentSelector}), skipping OpenAI processing`)
         }
       } catch (openAiError) {
         console.error('⚠️ [generatePreview] Firecrawl OpenAI processing failed:', openAiError)
@@ -851,14 +854,16 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
 
   // Extract structured text content (remove HTML tags, preserve hierarchy)
   try {
-    // First, extract only <main> element from raw HTML
+    // Get website-specific main content selector
+    const sourceUrl = preview.external_url || preview.source_url
+    const mainContentSelector = sourceUrl ? (getMainContentSelector(sourceUrl) || 'main') : 'main' // Fallback to 'main' if not specified
+    
     const $ = load(rawHtml)
-    const mainElement = $('main')
+    const mainElement = $(mainContentSelector)
     
     let textContent: string
     if (mainElement.length > 0) {
       // Get website-specific HTML cleaner if available
-      const sourceUrl = preview.external_url || preview.source_url
       if (sourceUrl) {
         const htmlCleaner = getHtmlCleaner(sourceUrl)
         if (htmlCleaner) {
@@ -867,15 +872,15 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
         }
       }
       
-      // Extract cleaned <main> element HTML
+      // Extract cleaned main content element HTML
       const mainHtml = $.html(mainElement)
       // Convert to structured text (universal function, LLM-ready format)
       textContent = extractStructuredText(mainHtml)
-      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element and converted to structured text (${textContent.length} chars) for preview:`, previewId)
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted main content (selector: ${mainContentSelector}) and converted to structured text (${textContent.length} chars) for preview:`, previewId)
     } else {
-      // Fallback: use entire HTML if <main> not found
+      // Fallback: use entire HTML if main content element not found
       textContent = extractStructuredText(rawHtml)
-      console.log(`⚠️ [removeHtmlTagsFromRawHtml] No <main> element found, using entire HTML (${textContent.length} chars) for preview:`, previewId)
+      console.log(`⚠️ [removeHtmlTagsFromRawHtml] No main content element found (selector: ${mainContentSelector}), using entire HTML (${textContent.length} chars) for preview:`, previewId)
     }
 
     // Update the preview with text content

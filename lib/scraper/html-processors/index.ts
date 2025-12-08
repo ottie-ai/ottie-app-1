@@ -11,6 +11,35 @@ import { load } from 'cheerio'
 export type HtmlProcessor = (rawHtml: string) => string
 export type HtmlCleaner = (mainElement: any) => void
 
+/**
+ * Get the main content selector for a URL
+ * Different websites use different elements for main content
+ * 
+ * @param url - The URL to check
+ * @returns CSS selector for main content element, or null to use fallback
+ */
+export function getMainContentSelector(url: string): string | null {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    // Realtor.com: Uses <main> element
+    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+      return 'main'
+    }
+    
+    // Redfin.com: Uses div#content
+    if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {
+      return 'div#content'
+    }
+    
+    // Default: return null to use fallback (main or body)
+    return null
+  } catch {
+    return null
+  }
+}
+
 // Import website-specific processors
 export { processRealtorHtml, extractRealtorGalleryImages, removeRealtorSpecificSections } from './realtor'
 
