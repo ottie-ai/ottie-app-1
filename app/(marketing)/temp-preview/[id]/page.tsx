@@ -402,6 +402,99 @@ function PreviewContent() {
       </div>
 
 
+      {/* Gallery Images Display (if extracted) */}
+      {preview?.ai_ready_data?.gallery_images && preview.ai_ready_data.gallery_images.length > 0 && (
+        <div className="border-t border-white/10 bg-white/[0.02] py-12">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="mb-6">
+              <Typography variant="h3" className="text-white mb-2 border-none">
+                📸 Gallery Images ({preview.ai_ready_data.gallery_images.length})
+              </Typography>
+              <Typography variant="small" className="text-white/60">
+                Extracted from gallery-photo-container elements (post actions HTML)
+              </Typography>
+            </div>
+
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Image URLs
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({preview.ai_ready_data.gallery_images.length} images)
+                  </span>
+                </div>
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(preview.ai_ready_data.gallery_images, null, 2))
+                    setCopiedSection('gallery-images')
+                    setCopied(true)
+                    setTimeout(() => {
+                      setCopied(false)
+                      setCopiedSection(null)
+                    }, 2000)
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'gallery-images' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy JSON
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <div className="space-y-2">
+                  {preview.ai_ready_data.gallery_images.map((url: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-white/[0.02] rounded border border-white/10">
+                      <span className="text-xs text-white/40 w-8">{index + 1}.</span>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-400 hover:text-blue-300 break-all flex-1"
+                      >
+                        {url}
+                      </a>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(url)
+                          setCopiedSection(`gallery-image-${index}`)
+                          setCopied(true)
+                          setTimeout(() => {
+                            setCopied(false)
+                            setCopiedSection(null)
+                          }, 2000)
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/40 hover:text-white hover:bg-white/10 h-6 px-2"
+                      >
+                        {copied && copiedSection === `gallery-image-${index}` ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Raw Results Display */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="space-y-6">

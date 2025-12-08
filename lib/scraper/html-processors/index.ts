@@ -11,7 +11,7 @@ import { load } from 'cheerio'
 export type HtmlProcessor = (rawHtml: string) => string
 
 // Import website-specific processors
-export { processRealtorHtml } from './realtor'
+export { processRealtorHtml, extractRealtorGalleryImages } from './realtor'
 
 /**
  * Get the appropriate HTML processor for a URL

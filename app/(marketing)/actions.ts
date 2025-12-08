@@ -6,7 +6,7 @@ import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
-import { getHtmlProcessor } from '@/lib/scraper/html-processors'
+import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -142,7 +142,22 @@ export async function generatePreview(url: string) {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
 
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, html_before_actions}
+    // Extract gallery images from HTML after actions (for Realtor.com)
+    let galleryImages: string[] = []
+    if (rawHtml && provider === 'firecrawl') {
+      try {
+        const urlObj = new URL(url)
+        const hostname = urlObj.hostname.toLowerCase()
+        if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+          galleryImages = extractRealtorGalleryImages(rawHtml)
+          console.log(`🔵 [generatePreview] Extracted ${galleryImages.length} gallery images from Realtor.com HTML`)
+        }
+      } catch (error) {
+        console.warn('⚠️ [generatePreview] Failed to extract gallery images:', error)
+      }
+    }
+
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, html_before_actions, gallery_images}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
     const aiReadyData: {
       html: string
@@ -151,6 +166,7 @@ export async function generatePreview(url: string) {
       readabilityMetadata?: any // For backward compatibility with preview page
       processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
       html_before_actions?: string | null // Original HTML before actions (only for websites with actions)
+      gallery_images?: string[] // Extracted gallery images (e.g., from Realtor.com)
     } = {
       html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
@@ -168,6 +184,7 @@ export async function generatePreview(url: string) {
       } : undefined,
       processed_html: processedHtml || null, // Store processed HTML if processor was used
       html_before_actions: htmlBeforeActions || null, // Store original HTML before actions (if actions were used)
+      gallery_images: galleryImages.length > 0 ? galleryImages : undefined, // Store gallery images if extracted
     }
 
     // Save to temp_previews
