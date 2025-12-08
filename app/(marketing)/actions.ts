@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
+import TurndownService from 'turndown'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -703,11 +704,22 @@ export async function convertProcessedHtmlToMarkdown(previewId: string) {
     return { error: 'This preview does not contain processed HTML data to convert to markdown' }
   }
 
-  // Convert processed HTML to markdown using Mozilla Readability + Turndown
+  // Convert processed HTML to markdown using TurndownService ONLY
+  // NOTE: Do NOT use Readability here, as processed_html is already cleaned
+  // Readability would remove more content thinking it's ads/navigation
   try {
-    const result = htmlToMarkdownUniversal(processedHtml)
-    const markdown = result.markdown
-    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown using Mozilla Readability (${markdown.length} chars) for preview:`, previewId)
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      hr: '---',
+      bulletListMarker: '-',
+      emDelimiter: '_',
+      strongDelimiter: '**',
+    })
+
+    // Convert HTML to markdown (no Readability, just direct conversion)
+    const markdown = turndownService.turndown(processedHtml)
+    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown (${markdown.length} chars) for preview:`, previewId)
 
     // Update the preview with markdown
     const updatedAiReadyData = {
