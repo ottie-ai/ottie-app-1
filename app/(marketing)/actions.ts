@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
+import TurndownService from 'turndown'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -659,6 +660,83 @@ export async function extractGalleryImages(previewId: string) {
   } catch (error) {
     console.error('🔴 [extractGalleryImages] Error:', error)
     return { error: 'Failed to extract images. Please try again.' }
+  }
+}
+
+/**
+ * Convert processed HTML to markdown (manual trigger for debugging)
+ * Converts processed HTML (e.g., <main> element) to markdown
+ */
+export async function convertProcessedHtmlToMarkdown(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Get processed HTML (from html_before_actions after processing)
+  // First try processed_html, then try to process html_before_actions
+  let processedHtml: string | null = null
+  
+  if (preview.ai_ready_data?.processed_html) {
+    processedHtml = preview.ai_ready_data.processed_html
+  } else if (preview.ai_ready_data?.html_before_actions) {
+    // Process html_before_actions if not already processed
+    const sourceUrl = preview.source_url || preview.external_url
+    if (sourceUrl) {
+      const htmlProcessor = getHtmlProcessor(sourceUrl)
+      if (htmlProcessor) {
+        processedHtml = htmlProcessor(preview.ai_ready_data.html_before_actions)
+      } else {
+        processedHtml = preview.ai_ready_data.html_before_actions
+      }
+    }
+  }
+
+  if (!processedHtml || processedHtml.trim().length === 0) {
+    return { error: 'This preview does not contain processed HTML data to convert to markdown' }
+  }
+
+  // Convert processed HTML to markdown using Turndown
+  try {
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+    })
+
+    // Convert HTML to markdown
+    const markdown = turndownService.turndown(processedHtml)
+    console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown (${markdown.length} chars) for preview:`, previewId)
+
+    // Update the preview with markdown
+    const updatedAiReadyData = {
+      ...preview.ai_ready_data,
+      processed_html_markdown: markdown,
+    }
+
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        ai_ready_data: updatedAiReadyData,
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [convertProcessedHtmlToMarkdown] Failed to update preview:', updateError)
+      return { error: 'Failed to convert to markdown. Please try again.' }
+    }
+
+    return { success: true, markdownLength: markdown.length }
+  } catch (error) {
+    console.error('🔴 [convertProcessedHtmlToMarkdown] Error:', error)
+    return { error: 'Failed to convert to markdown. Please try again.' }
   }
 }
 

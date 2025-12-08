@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, processRawHtml, extractGalleryImages } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, processRawHtml, extractGalleryImages, convertProcessedHtmlToMarkdown } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -29,6 +29,7 @@ function PreviewContent() {
   const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation
   const [processingHtml, setProcessingHtml] = useState(false) // Track HTML processing state
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
+  const [convertingToMarkdown, setConvertingToMarkdown] = useState(false) // Track markdown conversion state
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -229,6 +230,33 @@ function PreviewContent() {
       setError('Failed to extract gallery images')
     } finally {
       setExtractingImages(false)
+    }
+  }
+
+  const handleConvertToMarkdown = async () => {
+    if (!previewId) return
+    
+    setConvertingToMarkdown(true)
+    try {
+      const result = await convertProcessedHtmlToMarkdown(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to convert to markdown')
+        setConvertingToMarkdown(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to convert to markdown')
+    } finally {
+      setConvertingToMarkdown(false)
     }
   }
 
@@ -645,6 +673,25 @@ function PreviewContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
+                    onClick={handleConvertToMarkdown}
+                    disabled={convertingToMarkdown}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {convertingToMarkdown ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Converting...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        To Markdown
+                      </>
+                    )}
+                  </Button>
+                  <Button
                     onClick={() => {
                       navigator.clipboard.writeText(preview.ai_ready_data.processed_html)
                       setCopiedSection('processed')
@@ -675,6 +722,75 @@ function PreviewContent() {
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
                   {preview.ai_ready_data.processed_html}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Processed HTML Markdown (if converted) */}
+          {preview?.ai_ready_data?.processed_html_markdown && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    📝 Processed HTML Markdown
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.ai_ready_data.processed_html_markdown.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleConvertToMarkdown}
+                    disabled={convertingToMarkdown}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {convertingToMarkdown ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Converting...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Re-convert
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(preview.ai_ready_data.processed_html_markdown)
+                      setCopiedSection('processed-markdown')
+                      setCopied(true)
+                      setTimeout(() => {
+                        setCopied(false)
+                        setCopiedSection(null)
+                      }, 2000)
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'processed-markdown' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Markdown
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.ai_ready_data.processed_html_markdown}
                 </pre>
               </div>
             </div>
