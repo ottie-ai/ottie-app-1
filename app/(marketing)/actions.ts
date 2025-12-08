@@ -595,6 +595,74 @@ export async function processRawHtml(previewId: string) {
 }
 
 /**
+ * Extract gallery images from HTML (manual trigger for debugging)
+ * Extracts images from gallery-photo-container elements
+ */
+export async function extractGalleryImages(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Check if raw HTML exists (HTML after actions)
+  const htmlToExtract = preview.raw_html || preview.ai_ready_data?.html_before_actions
+  if (!htmlToExtract) {
+    return { error: 'This preview does not contain HTML data to extract images from' }
+  }
+
+  // Get source URL
+  const sourceUrl = preview.source_url || preview.external_url
+  if (!sourceUrl) {
+    return { error: 'Source URL not found in preview' }
+  }
+
+  // Check if this is Realtor.com
+  try {
+    const urlObj = new URL(sourceUrl)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+      // Extract gallery images
+      const galleryImages = extractRealtorGalleryImages(htmlToExtract)
+      console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
+
+      // Update the preview with extracted images
+      const updatedAiReadyData = {
+        ...preview.ai_ready_data,
+        gallery_images: galleryImages,
+      }
+
+      const { error: updateError } = await supabase
+        .from('temp_previews')
+        .update({
+          ai_ready_data: updatedAiReadyData,
+        })
+        .eq('id', previewId)
+
+      if (updateError) {
+        console.error('🔴 [extractGalleryImages] Failed to update preview:', updateError)
+        return { error: 'Failed to extract images. Please try again.' }
+      }
+
+      return { success: true, imageCount: galleryImages.length }
+    } else {
+      return { error: 'Gallery image extraction is only available for Realtor.com' }
+    }
+  } catch (error) {
+    console.error('🔴 [extractGalleryImages] Error:', error)
+    return { error: 'Failed to extract images. Please try again.' }
+  }
+}
+
+/**
  * Generate site config from Apify data using OpenAI (manual trigger)
  * This can be called manually if automatic processing failed
  */
