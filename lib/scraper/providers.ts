@@ -9,7 +9,7 @@
  */
 
 import Firecrawl from '@mendable/firecrawl-js'
-import { findApifyScraperForUrl } from './apify-scrapers'
+import { findApifyScraperForUrl, type ApifyScraperConfig } from './apify-scrapers'
 import { runApifyActor, type ApifyResult } from './apify-client'
 import { getFirecrawlActions, getFirecrawlActionsGallery } from './firecrawl-actions'
 import { getGalleryImageExtractor } from './html-processors'
@@ -90,54 +90,54 @@ function isBlockedContent(html: string): boolean {
 }
 
 /**
- * Scrape URL using ScraperAPI
+ * Scrape URL using Apify Web Scraper (general purpose)
+ * Returns HTML content like other providers
  */
-async function scrapeWithScraperAPI(url: string, timeout: number): Promise<ScrapeResult> {
-  const apiKey = process.env.SCRAPERAPI_KEY
+async function scrapeWithApify(url: string, timeout: number): Promise<ScrapeResult> {
+  const apiToken = process.env.APIFY_API_TOKEN
   
-  if (!apiKey) {
-    throw new Error('SCRAPERAPI_KEY is not configured')
+  if (!apiToken) {
+    throw new Error('APIFY_API_TOKEN is not configured')
   }
 
-  const scraperUrl = `http://api.scraperapi.com/?api_key=${apiKey}&url=${encodeURIComponent(url)}`
-  
-  console.log('🔵 [ScraperAPI] Scraping URL:', url)
+  console.log('🔵 [Apify] Scraping URL:', url)
   const callStartTime = Date.now()
   
-  // Set timeout for ScraperAPI call
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  // Create a generic scraper config for Website Content Crawler
+  const genericScraper: ApifyScraperConfig = {
+    id: 'generic_web_scraper',
+    name: 'Website Content Crawler',
+    actorId: 'apify/website-content-crawler',
+    shouldHandle: () => true,
+    buildInput: (url: string) => ({
+      startUrls: [{ url }],
+      maxCrawlPages: 1,
+      crawlerType: 'cheerio',
+    }),
+  }
   
   try {
-    const response = await fetch(scraperUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      signal: controller.signal,
-    })
-    
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`ScraperAPI error: ${response.status} ${response.statusText}`)
-    }
-
-    const html = await response.text()
+    const result = await runApifyActor(genericScraper, url, timeout)
     const callDuration = Date.now() - callStartTime
     
-    console.log('✅ [ScraperAPI] Successfully scraped URL, content length:', html.length, `(${callDuration}ms)`)
+    // Extract HTML from Apify result
+    let html = ''
+    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+      const item = result.data[0]
+      html = item.html || item.text || item.markdown || ''
+    }
+    
+    console.log('✅ [Apify] Successfully scraped URL, content length:', html.length, `(${callDuration}ms)`)
     
     return {
       html,
-      provider: 'scraperapi',
+      provider: 'apify',
       duration: callDuration,
+      actualProvider: 'apify_generic',
     }
   } catch (error: any) {
-    clearTimeout(timeoutId)
-    
-    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-      throw new Error(`ScraperAPI timeout after ${timeout / 1000} seconds`)
+    if (error.message?.includes('timeout')) {
+      throw new Error(`Apify timeout after ${timeout / 1000} seconds`)
     }
     
     throw error
@@ -330,8 +330,8 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
  * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
  * 2. Otherwise, use general provider (ScraperAPI or Firecrawl)
  * 3. If blocked, try fallback providers:
- *    - If Firecrawl blocked → try ScraperAPI
- *    - If ScraperAPI blocked → try Firecrawl with stealth mode
+ *    - If Firecrawl blocked → try Apify
+ *    - If Apify blocked → try Firecrawl with stealth mode
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
@@ -385,20 +385,20 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
     if (result.html && isBlockedContent(result.html)) {
       console.warn(`⚠️ [Routing] Primary provider (${provider}) returned blocked content, trying fallback...`)
       
-      // Fallback 1: Try ScraperAPI if primary was Firecrawl
-      if (provider === 'firecrawl' && process.env.SCRAPERAPI_KEY) {
+      // Fallback 1: Try Apify if primary was Firecrawl
+      if (provider === 'firecrawl' && process.env.APIFY_API_TOKEN) {
         try {
-          console.log(`🔄 [Routing] Trying ScraperAPI as fallback...`)
-          const fallbackResult = await scrapeWithScraperAPI(url, timeout)
-          fallbackResult.actualProvider = 'scraperapi_fallback'
+          console.log(`🔄 [Routing] Trying Apify as fallback...`)
+          const fallbackResult = await scrapeWithApify(url, timeout)
+          fallbackResult.actualProvider = 'apify_fallback'
           
           if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
-            console.log(`✅ [Routing] ScraperAPI fallback succeeded`)
+            console.log(`✅ [Routing] Apify fallback succeeded`)
             return fallbackResult
           }
-          console.warn(`⚠️ [Routing] ScraperAPI fallback also blocked`)
+          console.warn(`⚠️ [Routing] Apify fallback also blocked`)
         } catch (fallbackError) {
-          console.error(`❌ [Routing] ScraperAPI fallback failed:`, fallbackError)
+          console.error(`❌ [Routing] Apify fallback failed:`, fallbackError)
         }
       }
       
@@ -430,19 +430,19 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
     // If primary provider throws error, try fallbacks
     console.warn(`⚠️ [Routing] Primary provider (${provider}) failed:`, error.message)
     
-    // Fallback 1: Try ScraperAPI if primary was Firecrawl
-    if (provider === 'firecrawl' && process.env.SCRAPERAPI_KEY) {
+    // Fallback 1: Try Apify if primary was Firecrawl
+    if (provider === 'firecrawl' && process.env.APIFY_API_TOKEN) {
       try {
-        console.log(`🔄 [Routing] Trying ScraperAPI as fallback after error...`)
-        const fallbackResult = await scrapeWithScraperAPI(url, timeout)
-        fallbackResult.actualProvider = 'scraperapi_fallback'
+        console.log(`🔄 [Routing] Trying Apify as fallback after error...`)
+        const fallbackResult = await scrapeWithApify(url, timeout)
+        fallbackResult.actualProvider = 'apify_fallback'
         
         if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
-          console.log(`✅ [Routing] ScraperAPI fallback succeeded after error`)
+          console.log(`✅ [Routing] Apify fallback succeeded after error`)
           return fallbackResult
         }
       } catch (fallbackError) {
-        console.error(`❌ [Routing] ScraperAPI fallback failed:`, fallbackError)
+        console.error(`❌ [Routing] Apify fallback failed:`, fallbackError)
       }
     }
     
