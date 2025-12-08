@@ -76,19 +76,15 @@ export function processRealtorHtml(rawHtml: string): string {
   // Strategy 1: Look for <main> element
   const mainElement = $('main')
   if (mainElement.length > 0) {
-    // Return the entire <main> element with its content
+    // Return the entire <main> element with its content (without any cleaning)
     const mainHtml = mainElement.get(0)
     if (mainHtml) {
       mainContent = $.html(mainHtml)
       console.log('✅ [Realtor Processor] Found <main> element')
-      // Clean up the extracted main element
+      // Just remove the sidebar, keep everything else (scripts, ads, etc.)
       const processed = load(mainContent)
-      // Remove scripts, styles, and other non-content elements
-      processed('script, style, noscript, iframe, svg, canvas').remove()
-      // Remove common noise elements
-      processed('[class*="ad"], [class*="advertisement"], [id*="ad"]').remove()
-      processed('[class*="cookie"], [class*="banner"], [class*="popup"]').remove()
-      processed('[class*="social"], [class*="share"]').remove()
+      // Remove only Realtor.com specific sidebar
+      processed('div[data-testid="ldp-sidebar"]').remove()
       return processed.html() || mainContent
     }
   }
