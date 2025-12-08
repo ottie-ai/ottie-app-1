@@ -33,6 +33,9 @@ export function getMainContentSelector(url: string): string | null {
       return 'div#content'
     }
     
+    // Homes.com: Uses fallback (main or body)
+    // (hostname === 'homes.com' || hostname === 'www.homes.com') - uses fallback selector
+    
     // Default: return null to use fallback (main or body)
     return null
   } catch {
@@ -62,6 +65,9 @@ export function getHtmlProcessor(url: string): HtmlProcessor | null {
     // Redfin.com: No HTML processor needed - uses raw HTML directly
     // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no processor required
     
+    // Homes.com: No HTML processor needed - uses raw HTML directly
+    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no processor required
+    
     return null
   } catch {
     return null
@@ -87,6 +93,9 @@ export function getHtmlCleaner(url: string): HtmlCleaner | null {
     if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {
       return require('./redfin').removeRedfinSpecificSections
     }
+    
+    // Homes.com: No HTML cleaner needed - no specific sections to remove
+    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no cleaner required
     
     return null
   } catch {

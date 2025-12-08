@@ -43,6 +43,9 @@ export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null 
     // Redfin.com: No actions needed - uses universal Firecrawl scraping
     // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no actions required
     
+    // Homes.com: No actions needed - uses universal Firecrawl scraping
+    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no actions required
+    
     // Add more websites here as needed
     // Each website can have completely different actions
     
@@ -80,6 +83,9 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
         actions: require('./redfin').getRedfinActionsGallery(),
       }
     }
+    
+    // Homes.com: No gallery actions needed - uses single call
+    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no gallery call needed
     
     // Add more websites here as needed
     
