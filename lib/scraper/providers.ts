@@ -129,15 +129,15 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     let galleryImages: string[] | undefined = undefined
     
     // Check if we need to do two calls (Realtor.com)
-    const needsTwoCalls = actionsConfig && galleryActionsConfig
+    const needsTwoCalls = actionsConfig && actionsConfig.actions && galleryActionsConfig && galleryActionsConfig.actions
     
     if (needsTwoCalls) {
       // Call 1: Main content with property details
-      console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions.length} actions for ${url}`)
+      console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions!.length} actions for ${url}`)
       
       const scrapeOptions1 = {
         ...baseScrapeOptions,
-        actions: actionsConfig.actions,
+        actions: actionsConfig.actions!,
       }
       
       const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
@@ -155,11 +155,11 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
       
       // Call 2: Gallery images only (don't save raw HTML, just extract images)
-      console.log(`🔵 [Firecrawl] Performing Call 2 with ${galleryActionsConfig.actions.length} gallery actions for ${url}`)
+      console.log(`🔵 [Firecrawl] Performing Call 2 with ${galleryActionsConfig.actions!.length} gallery actions for ${url}`)
       
       const scrapeOptions2 = {
         ...baseScrapeOptions,
-        actions: galleryActionsConfig.actions,
+        actions: galleryActionsConfig.actions!,
       }
       
       const scrapeResponse2 = await firecrawl.scrape(url, scrapeOptions2)
