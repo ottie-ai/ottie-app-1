@@ -377,6 +377,56 @@ function PreviewContent() {
       {/* Raw Results Display */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="space-y-6">
+          {/* Processed HTML Result (if website-specific processor was used) */}
+          {preview?.ai_ready_data?.processed_html && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    🔧 Processed HTML (Website-Specific)
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.ai_ready_data.processed_html.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(preview.ai_ready_data.processed_html)
+                      setCopiedSection('processed')
+                      setCopied(true)
+                      setTimeout(() => {
+                        setCopied(false)
+                        setCopiedSection(null)
+                      }, 2000)
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'processed' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy HTML
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.ai_ready_data.processed_html}
+                </pre>
+              </div>
+            </div>
+          )}
+
           {/* Raw HTML Result (all providers return raw HTML) */}
           {preview?.raw_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
@@ -384,7 +434,7 @@ function PreviewContent() {
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    Raw HTML Result
+                    Raw HTML Result (Original)
                   </Typography>
                   <span className="text-xs text-white/40">
                     ({(preview.raw_html.length / 1024).toFixed(1)} KB)

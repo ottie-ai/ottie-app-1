@@ -51,17 +51,20 @@ export async function generatePreview(url: string) {
     // Scrape URL using configured provider (170 seconds timeout)
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
     const scrapeResult = await scrapeUrl(url, 170000)
-    let html = scrapeResult.html
+    const rawHtml = scrapeResult.html // Keep original raw HTML
+    let html = scrapeResult.html // This will be processed if processor exists
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider: ScraperProvider = scrapeResult.provider
     const callDuration = scrapeResult.duration
 
     // Apply website-specific HTML processor if available (e.g., realtor.com)
+    let processedHtml: string | null = null
     if (html) {
       const htmlProcessor = getHtmlProcessor(url)
       if (htmlProcessor) {
         console.log(`🔵 [generatePreview] Applying website-specific HTML processor for ${url}`)
-        html = htmlProcessor(html)
+        processedHtml = htmlProcessor(html)
+        html = processedHtml // Use processed HTML for further processing
         console.log(`✅ [generatePreview] HTML processed, new length: ${html.length}`)
       }
     }
@@ -137,13 +140,14 @@ export async function generatePreview(url: string) {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
 
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata}
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
     const aiReadyData: {
       html: string
       apify_json: any | null
       structuredData?: any // For backward compatibility with preview page
       readabilityMetadata?: any // For backward compatibility with preview page
+      processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
     } = {
       html: '', // We don't store cleaned HTML anymore
       apify_json: provider === 'apify' && json ? (() => {
@@ -159,6 +163,7 @@ export async function generatePreview(url: string) {
         length: markdownResult.length,
         siteName: markdownResult.siteName,
       } : undefined,
+      processed_html: processedHtml || null, // Store processed HTML if processor was used
     }
 
     // Save to temp_previews
@@ -168,7 +173,7 @@ export async function generatePreview(url: string) {
       .insert({
         external_url: url,
         source_domain: sourceDomain,
-        raw_html: html || null, // Raw HTML from provider (or null for Apify)
+        raw_html: rawHtml || null, // Original raw HTML from provider (before processing)
         ai_ready_data: aiReadyData,
         unified_data: {}, // Empty for now - will be populated after LLM processing
         status: 'pending',
