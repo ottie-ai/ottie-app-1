@@ -215,6 +215,54 @@ export async function generatePreview(url: string) {
     } else if (provider === 'apify' && process.env.DISABLE_OPENAI_PROCESSING) {
       console.log('⏭️ [generatePreview] OpenAI processing skipped (DISABLE_OPENAI_PROCESSING=true)')
     }
+    
+    // If this is Realtor.com (Firecrawl), automatically extract structured text and process with OpenAI
+    if (provider === 'firecrawl' && rawHtml && preview.id && !process.env.DISABLE_OPENAI_PROCESSING) {
+      try {
+        const urlObj = new URL(url)
+        const hostname = urlObj.hostname.toLowerCase()
+        
+        // Check if this is Realtor.com
+        if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+          console.log('🤖 [generatePreview] Processing Realtor.com with OpenAI...')
+          
+          // First, extract structured text (remove HTML tags and unwanted sections)
+          const $ = load(rawHtml)
+          const mainElement = $('main')
+          
+          if (mainElement.length > 0) {
+            // Remove Realtor.com specific sections
+            removeRealtorSpecificSections(mainElement)
+            
+            // Extract structured text (universal function)
+            const mainHtml = $.html(mainElement)
+            const structuredText = extractStructuredText(mainHtml)
+            
+            // Update preview with structured text
+            const updatedAiReadyData = {
+              ...aiReadyData,
+              raw_html_text: structuredText,
+            }
+            
+            await supabase
+              .from('temp_previews')
+              .update({
+                ai_ready_data: updatedAiReadyData,
+              })
+              .eq('id', preview.id)
+            
+            // Process with OpenAI
+            await generateConfigFromRealtorText(preview.id, structuredText)
+            console.log('✅ [generatePreview] Realtor.com OpenAI processing complete')
+          } else {
+            console.warn('⚠️ [generatePreview] No <main> element found for Realtor.com, skipping OpenAI processing')
+          }
+        }
+      } catch (openAiError) {
+        console.error('⚠️ [generatePreview] Realtor.com OpenAI processing failed:', openAiError)
+        // Don't fail the whole request if OpenAI fails - preview is still created
+      }
+    }
 
     return { 
       success: true,
@@ -592,8 +640,58 @@ export async function extractGalleryImages(previewId: string) {
 }
 
 /**
+ * Remove Realtor.com specific unwanted sections from HTML
+ * This is website-specific cleaning logic
+ */
+function removeRealtorSpecificSections(mainElement: any): void {
+  // Find element with data-testid="similar_homes" and remove it and everything after it
+  const similarHomesElement = mainElement.find('[data-testid="similar_homes"]')
+  if (similarHomesElement.length > 0) {
+    // Remove the element itself and all following siblings
+    similarHomesElement.nextAll().remove()
+    similarHomesElement.remove()
+    console.log('🔵 [removeRealtorSpecificSections] Removed similar_homes element and all following content')
+  }
+  
+  // Also remove other similar sections (fallback if similar_homes not found)
+  mainElement.find('[data-testid*="similar"]').remove()
+  mainElement.find('section:contains("Similar homes")').remove()
+  mainElement.find('h2:contains("Similar homes")').parent().remove()
+  mainElement.find('h2:contains("Homes with similar exteriors")').parent().remove()
+  mainElement.find('h2:contains("Similar new construction homes")').parent().remove()
+  mainElement.find('h3:contains("Homes with similar exteriors")').parent().remove()
+  mainElement.find('h3:contains("Similar new construction homes")').parent().remove()
+  mainElement.find('section:contains("Homes with similar exteriors")').remove()
+  mainElement.find('section:contains("Similar new construction homes")').remove()
+  
+  // Remove "Schedule tour" section
+  mainElement.find('[data-testid*="schedule"]').remove()
+  mainElement.find('[data-testid*="tour"]').remove()
+  mainElement.find('section:contains("Schedule")').remove()
+  mainElement.find('button:contains("Schedule")').parent().remove()
+  
+  // Remove "Nearby" sections (Cities, ZIPs, Neighborhoods)
+  mainElement.find('[data-testid*="nearby"]').remove()
+  mainElement.find('section:contains("Nearby Cities")').remove()
+  mainElement.find('section:contains("Nearby ZIPs")').remove()
+  mainElement.find('section:contains("Nearby Neighborhoods")').remove()
+  mainElement.find('h2:contains("Nearby Cities")').parent().remove()
+  mainElement.find('h2:contains("Nearby ZIPs")').parent().remove()
+  mainElement.find('h2:contains("Nearby Neighborhoods")').parent().remove()
+  mainElement.find('h3:contains("Nearby Cities")').parent().remove()
+  mainElement.find('h3:contains("Nearby ZIPs")').parent().remove()
+  mainElement.find('h3:contains("Nearby Neighborhoods")').parent().remove()
+  
+  // Remove sidebar and other noise
+  mainElement.find('[data-testid="ldp-sidebar"]').remove()
+  mainElement.find('[data-testid="ldp-footer-additional-information"]').remove()
+  mainElement.find('[data-testid="footer-lead-form"]').remove()
+}
+
+/**
  * Extract structured text from HTML element (LLM-ready format)
- * Preserves hierarchy with markdown-style formatting
+ * Universal function - preserves hierarchy with markdown-style formatting
+ * Works with any HTML content, no website-specific logic
  */
 function extractStructuredText(htmlContent: string): string {
   const $ = load(htmlContent)
@@ -711,57 +809,19 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     
     let textContent: string
     if (mainElement.length > 0) {
-      // Remove unwanted sections from Realtor.com (before text extraction)
-      // These sections are not relevant for property details
-      
-      // Find element with data-testid="similar_homes" and remove it and everything after it
-      const similarHomesElement = mainElement.find('[data-testid="similar_homes"]')
-      if (similarHomesElement.length > 0) {
-        // Remove the element itself and all following siblings
-        similarHomesElement.nextAll().remove()
-        similarHomesElement.remove()
-        console.log('🔵 [removeHtmlTagsFromRawHtml] Removed similar_homes element and all following content')
+      // Check if this is Realtor.com and remove website-specific sections
+      const urlObj = new URL(preview.external_url || preview.source_url || '')
+      const hostname = urlObj.hostname.toLowerCase()
+      if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+        removeRealtorSpecificSections(mainElement)
+        console.log('🔵 [removeHtmlTagsFromRawHtml] Removed Realtor.com specific sections')
       }
-      
-      // Also remove other similar sections (fallback if similar_homes not found)
-      mainElement.find('[data-testid*="similar"]').remove()
-      mainElement.find('section:contains("Similar homes")').remove()
-      mainElement.find('h2:contains("Similar homes")').parent().remove()
-      mainElement.find('h2:contains("Homes with similar exteriors")').parent().remove()
-      mainElement.find('h2:contains("Similar new construction homes")').parent().remove()
-      mainElement.find('h3:contains("Homes with similar exteriors")').parent().remove()
-      mainElement.find('h3:contains("Similar new construction homes")').parent().remove()
-      mainElement.find('section:contains("Homes with similar exteriors")').remove()
-      mainElement.find('section:contains("Similar new construction homes")').remove()
-      
-      // Remove "Schedule tour" section
-      mainElement.find('[data-testid*="schedule"]').remove()
-      mainElement.find('[data-testid*="tour"]').remove()
-      mainElement.find('section:contains("Schedule")').remove()
-      mainElement.find('button:contains("Schedule")').parent().remove()
-      
-      // Remove "Nearby" sections (Cities, ZIPs, Neighborhoods)
-      mainElement.find('[data-testid*="nearby"]').remove()
-      mainElement.find('section:contains("Nearby Cities")').remove()
-      mainElement.find('section:contains("Nearby ZIPs")').remove()
-      mainElement.find('section:contains("Nearby Neighborhoods")').remove()
-      mainElement.find('h2:contains("Nearby Cities")').parent().remove()
-      mainElement.find('h2:contains("Nearby ZIPs")').parent().remove()
-      mainElement.find('h2:contains("Nearby Neighborhoods")').parent().remove()
-      mainElement.find('h3:contains("Nearby Cities")').parent().remove()
-      mainElement.find('h3:contains("Nearby ZIPs")').parent().remove()
-      mainElement.find('h3:contains("Nearby Neighborhoods")').parent().remove()
-      
-      // Remove sidebar and other noise
-      mainElement.find('[data-testid="ldp-sidebar"]').remove()
-      mainElement.find('[data-testid="ldp-footer-additional-information"]').remove()
-      mainElement.find('[data-testid="footer-lead-form"]').remove()
       
       // Extract cleaned <main> element HTML
       const mainHtml = $.html(mainElement)
-      // Convert to structured text (LLM-ready format with preserved hierarchy)
+      // Convert to structured text (universal function, LLM-ready format)
       textContent = extractStructuredText(mainHtml)
-      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element, removed unwanted sections, and converted to structured text (${textContent.length} chars) for preview:`, previewId)
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted <main> element and converted to structured text (${textContent.length} chars) for preview:`, previewId)
     } else {
       // Fallback: use entire HTML if <main> not found
       textContent = extractStructuredText(rawHtml)
