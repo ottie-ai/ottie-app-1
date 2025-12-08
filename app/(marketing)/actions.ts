@@ -514,6 +514,66 @@ export async function processApifyJson(previewId: string) {
 }
 
 /**
+ * Process and clean raw HTML using website-specific processor
+ * This is useful for debugging and reprocessing existing previews without using API credits
+ */
+export async function processRawHtml(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Check if raw HTML exists
+  if (!preview.raw_html) {
+    return { error: 'This preview does not contain raw HTML data' }
+  }
+
+  // Get source URL
+  const sourceUrl = preview.source_url || preview.external_url
+  if (!sourceUrl) {
+    return { error: 'Source URL not found in preview' }
+  }
+
+  // Get HTML processor for this website
+  const htmlProcessor = getHtmlProcessor(sourceUrl)
+  if (!htmlProcessor) {
+    return { error: 'No HTML processor available for this website' }
+  }
+
+  // Process the raw HTML
+  const processedHtml = htmlProcessor(preview.raw_html)
+  console.log(`🔵 [processRawHtml] Processed HTML using website-specific processor for preview:`, previewId)
+
+  // Update the preview with processed HTML
+  const updatedAiReadyData = {
+    ...preview.ai_ready_data,
+    processed_html: processedHtml,
+  }
+
+  const { error: updateError } = await supabase
+    .from('temp_previews')
+    .update({
+      ai_ready_data: updatedAiReadyData,
+    })
+    .eq('id', previewId)
+
+  if (updateError) {
+    console.error('🔴 [processRawHtml] Failed to update preview:', updateError)
+    return { error: 'Failed to process HTML. Please try again.' }
+  }
+
+  return { success: true }
+}
+
+/**
  * Generate site config from Apify data using OpenAI (manual trigger)
  * This can be called manually if automatic processing failed
  */

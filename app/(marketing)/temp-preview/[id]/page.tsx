@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, processRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -27,6 +27,7 @@ function PreviewContent() {
   const [copiedFullJson, setCopiedFullJson] = useState(false) // Track if full JSON was copied
   const [processingJson, setProcessingJson] = useState(false) // Track JSON processing state
   const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation
+  const [processingHtml, setProcessingHtml] = useState(false) // Track HTML processing state
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -173,6 +174,33 @@ function PreviewContent() {
       setError('Failed to generate config')
     } finally {
       setGeneratingConfig(false)
+    }
+  }
+
+  const handleProcessRawHtml = async () => {
+    if (!previewId) return
+    
+    setProcessingHtml(true)
+    try {
+      const result = await processRawHtml(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to process HTML')
+        setProcessingHtml(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to process HTML')
+    } finally {
+      setProcessingHtml(false)
     }
   }
 
@@ -441,6 +469,25 @@ function PreviewContent() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleProcessRawHtml}
+                    disabled={processingHtml}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {processingHtml ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Process HTML
+                      </>
+                    )}
+                  </Button>
                   <Button
                     onClick={handleCopyRawHtml}
                     variant="ghost"
