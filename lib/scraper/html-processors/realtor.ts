@@ -59,6 +59,11 @@ export function extractRealtorGalleryImages(html: string): string[] {
 /**
  * Process Realtor.com HTML by extracting only the main component
  * 
+ * IMPORTANT: This processor preserves ALL content within <main>, including:
+ * - Accordion elements (even if collapsed/hidden)
+ * - Amenities and description sections
+ * - All data attributes and nested structures
+ * 
  * @param rawHtml - The raw HTML from Realtor.com
  * @returns Processed HTML containing only the main component
  */
@@ -81,11 +86,33 @@ export function processRealtorHtml(rawHtml: string): string {
     if (mainHtml) {
       mainContent = $.html(mainHtml)
       console.log('✅ [Realtor Processor] Found <main> element')
-      // Just remove the sidebar, keep everything else (scripts, ads, etc.)
+      
+      // Process the main content
       const processed = load(mainContent)
-      // Remove only Realtor.com specific sidebar
+      
+      // Remove only Realtor.com specific sidebar (keep everything else)
       processed('div[data-testid="ldp-sidebar"]').remove()
-      return processed.html() || mainContent
+      
+      // IMPORTANT: Preserve all accordion elements and their content
+      // Don't remove elements based on aria-hidden, hidden attributes, or display:none
+      // These might contain amenities, description, and other important data
+      
+      // Remove only obvious noise (scripts, styles, tracking) but keep all content elements
+      processed('script').remove()
+      processed('style').remove()
+      processed('noscript').remove()
+      
+      // Remove tracking pixels and beacons
+      processed('img[width="1"][height="1"]').remove()
+      processed('img[src*="tracking"]').remove()
+      processed('img[src*="beacon"]').remove()
+      
+      // Keep everything else - all divs, sections, accordions, etc.
+      // This ensures amenities, description, and all property details are preserved
+      
+      const result = processed.html() || mainContent
+      console.log(`✅ [Realtor Processor] Processed HTML length: ${result.length} chars`)
+      return result
     }
   }
 
