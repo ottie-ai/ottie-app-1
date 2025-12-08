@@ -76,17 +76,11 @@ export function processRealtorHtml(rawHtml: string): string {
   // Strategy 1: Look for <main> element
   const mainElement = $('main')
   if (mainElement.length > 0) {
-    // Return the entire <main> element with its content (without any cleaning)
-    const mainHtml = mainElement.get(0)
-    if (mainHtml) {
-      mainContent = $.html(mainHtml)
-      console.log('✅ [Realtor Processor] Found <main> element')
-      // Just remove the sidebar, keep everything else (scripts, ads, etc.)
-      const processed = load(mainContent)
-      // Remove only Realtor.com specific sidebar
-      processed('div[data-testid="ldp-sidebar"]').remove()
-      return processed.html() || mainContent
-    }
+    console.log('✅ [Realtor Processor] Found <main> element')
+    // Remove sidebar from within the main element
+    mainElement.find('div[data-testid="ldp-sidebar"]').remove()
+    // Return the HTML of the main element with all its content preserved
+    return $.html(mainElement)
   }
 
   // If <main> element was not found, return original HTML
