@@ -933,6 +933,7 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
       
       // Remove sidebar and other noise
       mainElement.find('[data-testid="ldp-sidebar"]').remove()
+      mainElement.find('[data-testid="ldp-footer-additional-information"]').remove()
       
       // Extract cleaned <main> element HTML
       const mainHtml = $.html(mainElement)
