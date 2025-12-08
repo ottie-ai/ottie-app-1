@@ -774,7 +774,16 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
       // Remove unwanted sections from Realtor.com (before text extraction)
       // These sections are not relevant for property details
       
-      // Remove "Similar homes" and related sections
+      // Find element with data-testid="similar_homes" and remove it and everything after it
+      const similarHomesElement = mainElement.find('[data-testid="similar_homes"]')
+      if (similarHomesElement.length > 0) {
+        // Remove the element itself and all following siblings
+        similarHomesElement.nextAll().remove()
+        similarHomesElement.remove()
+        console.log('🔵 [removeHtmlTagsFromRawHtml] Removed similar_homes element and all following content')
+      }
+      
+      // Also remove other similar sections (fallback if similar_homes not found)
       mainElement.find('[data-testid*="similar"]').remove()
       mainElement.find('section:contains("Similar homes")').remove()
       mainElement.find('h2:contains("Similar homes")').parent().remove()
