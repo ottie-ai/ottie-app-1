@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
-import { cleanApifyJson } from '@/lib/scraper/apify-json-cleaner'
+import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -49,8 +49,10 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
+    // Firecrawl can return both HTML and markdown
     const scrapeResult = await scrapeUrl(url, 170000)
     const html = scrapeResult.html
+    const firecrawlMarkdown = 'markdown' in scrapeResult ? scrapeResult.markdown : undefined
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider: ScraperProvider = scrapeResult.provider
     const callDuration = scrapeResult.duration
@@ -65,9 +67,13 @@ export async function generatePreview(url: string) {
       console.log('🔵 [generatePreview] Processing Apify JSON result...')
       const parallelStart = Date.now()
       
-      // Clean the JSON to remove unnecessary fields (collections, etc.)
-      cleanedJson = cleanApifyJson(json)
-      console.log('🔵 [generatePreview] Cleaned Apify JSON (removed unnecessary fields)')
+      // Get scraper-specific cleaner if available
+      const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
+      const cleaner = scraper?.cleanJson
+      
+      // Clean the JSON using website-specific cleaner if available, otherwise use raw JSON
+      cleanedJson = cleaner ? cleaner(json) : json
+      console.log(`🔵 [generatePreview] Cleaned Apify JSON using ${scraper?.name || 'default'} cleaner`)
       
       // For Apify results, store the cleaned JSON as structured data
       structuredData = {
@@ -92,12 +98,24 @@ export async function generatePreview(url: string) {
       console.log('🔵 [generatePreview] Starting parallel processing (extract + convert)...')
       const parallelStart = Date.now()
       
+      // For Firecrawl, use markdown directly from API if available, otherwise convert HTML
+      const markdownPromise = provider === 'firecrawl' && firecrawlMarkdown
+        ? Promise.resolve({
+            markdown: firecrawlMarkdown,
+            title: '', // Firecrawl markdown doesn't include metadata
+            excerpt: '',
+            byline: null,
+            length: firecrawlMarkdown.length,
+            siteName: 'Firecrawl',
+          })
+        : Promise.resolve(htmlToMarkdownUniversal(html))
+      
       const results = await Promise.all([
         // BRANCH A: Extract structured data (JSON-LD, __NEXT_DATA__, OpenGraph, etc.)
         Promise.resolve(extractStructuredData(html)),
         
-        // BRANCH B: Convert to clean Markdown using Mozilla Readability
-        Promise.resolve(htmlToMarkdownUniversal(html)),
+        // BRANCH B: Use Firecrawl markdown if available, otherwise convert HTML to markdown
+        markdownPromise,
       ])
       
       structuredData = results[0]
@@ -105,6 +123,9 @@ export async function generatePreview(url: string) {
       
       parallelDuration = Date.now() - parallelStart
       console.log(`✅ [generatePreview] Parallel processing complete in ${parallelDuration}ms`)
+      if (provider === 'firecrawl' && firecrawlMarkdown) {
+        console.log(`🔵 [generatePreview] Using Firecrawl markdown (${firecrawlMarkdown.length} chars)`)
+      }
     } else {
       throw new Error('Scraper returned neither HTML nor JSON')
     }
@@ -123,16 +144,22 @@ export async function generatePreview(url: string) {
 
     // Build ai_ready_data: {html, markdown, apify_json, structuredData, readabilityMetadata}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
+    // For Firecrawl, store both raw HTML and markdown from API
     const aiReadyData: {
       html: string
       markdown: string
       apify_json: any | null
       structuredData?: any // For backward compatibility with preview page
       readabilityMetadata?: any // For backward compatibility with preview page
+      firecrawlMarkdown?: string // Firecrawl markdown (if available, separate from converted markdown)
     } = {
       html: '', // We don't store cleaned HTML anymore (Mozilla Readability handles it)
       markdown: markdownResult.markdown || '',
-      apify_json: provider === 'apify' && json ? cleanApifyJson(json) : null,
+      apify_json: provider === 'apify' && json ? (() => {
+        const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
+        const cleaner = scraper?.cleanJson
+        return cleaner ? cleaner(json) : json
+      })() : null,
       structuredData: structuredData, // Include for preview page display
       readabilityMetadata: provider !== 'apify' ? {
         title: markdownResult.title,
@@ -141,6 +168,8 @@ export async function generatePreview(url: string) {
         length: markdownResult.length,
         siteName: markdownResult.siteName,
       } : undefined,
+      // Store Firecrawl markdown separately if available
+      firecrawlMarkdown: provider === 'firecrawl' && firecrawlMarkdown ? firecrawlMarkdown : undefined,
     }
 
     // Save to temp_previews
@@ -168,7 +197,8 @@ export async function generatePreview(url: string) {
     console.log('✅ [generatePreview] Preview created:', preview.id)
 
     // If this is an Apify result, process it with OpenAI to generate config
-    if (provider === 'apify' && json && preview.id) {
+    // Can be disabled via DISABLE_OPENAI_PROCESSING env variable for debugging
+    if (provider === 'apify' && json && preview.id && !process.env.DISABLE_OPENAI_PROCESSING) {
       try {
         console.log('🤖 [generatePreview] Processing Apify data with OpenAI...')
         await generateConfigFromApifyData(preview.id, cleanedJson)
@@ -177,6 +207,8 @@ export async function generatePreview(url: string) {
         console.error('⚠️ [generatePreview] OpenAI processing failed:', openAiError)
         // Don't fail the whole request if OpenAI fails - preview is still created
       }
+    } else if (provider === 'apify' && process.env.DISABLE_OPENAI_PROCESSING) {
+      console.log('⏭️ [generatePreview] OpenAI processing skipped (DISABLE_OPENAI_PROCESSING=true)')
     }
 
     return { 
@@ -453,9 +485,14 @@ export async function processApifyJson(previewId: string) {
     return { error: 'This preview does not contain Apify JSON data' }
   }
 
-  // Clean the JSON
-  const cleanedJson = cleanApifyJson(apifyJson)
-  console.log('🔵 [processApifyJson] Cleaned Apify JSON for preview:', previewId)
+  // Get scraper ID from preview metadata
+  const scraperId = preview?.scraped_data?.apifyScraperId || preview?.source_domain?.replace('apify_', '')
+  const scraper = scraperId ? findApifyScraperById(scraperId) : null
+  const cleaner = scraper?.cleanJson
+
+  // Clean the JSON using website-specific cleaner if available
+  const cleanedJson = cleaner ? cleaner(apifyJson) : apifyJson
+  console.log(`🔵 [processApifyJson] Cleaned Apify JSON using ${scraper?.name || 'default'} cleaner for preview:`, previewId)
 
   // Update the preview with cleaned JSON
   const updatedAiReadyData = {

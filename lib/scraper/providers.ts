@@ -16,6 +16,7 @@ export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
   html?: string // Raw HTML - general providers return this
+  markdown?: string // Markdown format - Firecrawl can return this
   json?: any // Structured JSON - Apify scrapers return this
   provider: ScraperProvider
   duration: number
@@ -110,17 +111,17 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
   try {
     const firecrawl = new Firecrawl({ apiKey })
     
-    // Request HTML format (not markdown) to match unified interface
+    // Request both HTML and markdown formats
     // Use basic proxy to save credits (1 credit instead of 5 with stealth mode)
     const scrapeResponse = await firecrawl.scrape(url, {
-      formats: ['html'], // Request HTML instead of markdown
+      formats: ['html', 'markdown'], // Request both HTML and markdown
       proxy: 'basic', // Use basic proxy instead of stealth/auto (saves 4 credits per scrape)
     })
     
     clearTimeout(timeoutId)
     const callDuration = Date.now() - callStartTime
     
-    // Firecrawl returns ScrapeResponse with html, rawHtml, or other properties
+    // Firecrawl returns ScrapeResponse with html, rawHtml, markdown, or other properties
     // Extract HTML in priority order: html -> rawHtml -> fallback
     let html = ''
     
@@ -138,10 +139,16 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       throw new Error('Firecrawl returned empty HTML content')
     }
     
-    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, `(${callDuration}ms)`)
+    // Extract markdown if available
+    const markdown = scrapeResponse.markdown || null
+    
+    console.log('✅ [Firecrawl] Successfully scraped URL, HTML length:', html.length, 
+      markdown ? `Markdown length: ${markdown.length},` : '', 
+      `(${callDuration}ms)`)
     
     return {
-      html, // Return raw HTML (unified interface)
+      html, // Return raw HTML
+      markdown: markdown || undefined, // Return markdown if available
       provider: 'firecrawl',
       duration: callDuration,
     }

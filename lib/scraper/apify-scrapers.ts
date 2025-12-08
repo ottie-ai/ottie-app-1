@@ -3,17 +3,30 @@
  * Defines which Apify actors to use for specific websites
  */
 
+import type { ApifyJsonCleaner } from './apify-cleaners'
+
 export interface ApifyScraperConfig {
   id: string // Unique identifier (e.g., 'zillow')
   name: string // Display name (e.g., 'Zillow Detail Scraper')
   actorId: string // Apify actor ID (e.g., 'maxcopell/zillow-detail-scraper')
   shouldHandle: (url: string) => boolean // Function to check if this scraper should handle the URL
   buildInput: (url: string) => any // Function to build the input object for the actor
+  cleanJson?: ApifyJsonCleaner // Optional: Website-specific JSON cleaning function
 }
+
+import { cleanZillowJson } from './apify-cleaners/zillow'
 
 /**
  * List of configured Apify scrapers
  * Add new scrapers here for additional website support
+ * 
+ * Each scraper can have:
+ * - id: Unique identifier
+ * - name: Display name
+ * - actorId: Apify actor ID
+ * - shouldHandle: Function to detect if URL matches this scraper
+ * - buildInput: Function to build Apify actor input
+ * - cleanJson: Optional website-specific JSON cleaning function
  */
 export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
   {
@@ -34,6 +47,7 @@ export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
         startUrls: [{ url }],
       }
     },
+    cleanJson: cleanZillowJson, // Zillow-specific JSON cleaning
   },
 ]
 
@@ -50,4 +64,14 @@ export function findApifyScraperForUrl(url: string): ApifyScraperConfig | null {
     }
   }
   return null
+}
+
+/**
+ * Find an Apify scraper by its ID
+ * 
+ * @param scraperId - The scraper ID (e.g., 'zillow')
+ * @returns ApifyScraperConfig if found, null otherwise
+ */
+export function findApifyScraperById(scraperId: string): ApifyScraperConfig | null {
+  return APIFY_SCRAPERS.find(scraper => scraper.id === scraperId) || null
 }

@@ -1,15 +1,15 @@
 /**
- * Apify JSON Cleaner
- * Removes unnecessary fields from Apify JSON responses to reduce size and noise
+ * Zillow-specific JSON cleaner
+ * Removes unnecessary fields from Zillow Apify JSON responses
  */
 
 /**
- * Clean Apify JSON by removing unnecessary fields
+ * Clean Zillow Apify JSON by removing unnecessary fields
  * 
- * @param apifyJson - The raw Apify JSON response (usually an array or object with apifyData)
+ * @param apifyJson - The raw Apify JSON response from Zillow scraper
  * @returns Cleaned JSON with unnecessary fields removed
  */
-export function cleanApifyJson(apifyJson: any): any {
+export function cleanZillowJson(apifyJson: any): any {
   if (!apifyJson) {
     return apifyJson
   }
@@ -18,27 +18,27 @@ export function cleanApifyJson(apifyJson: any): any {
   if (apifyJson.apifyData && Array.isArray(apifyJson.apifyData)) {
     return {
       ...apifyJson,
-      apifyData: apifyJson.apifyData.map((item: any) => cleanApifyItem(item))
+      apifyData: apifyJson.apifyData.map((item: any) => cleanZillowItem(item))
     }
   }
 
   // If it's an array (direct Apify response), clean each item
   if (Array.isArray(apifyJson)) {
-    return apifyJson.map(item => cleanApifyItem(item))
+    return apifyJson.map(item => cleanZillowItem(item))
   }
 
   // If it's a single object, clean it
   if (typeof apifyJson === 'object') {
-    return cleanApifyItem(apifyJson)
+    return cleanZillowItem(apifyJson)
   }
 
   return apifyJson
 }
 
 /**
- * Clean a single Apify item by removing unnecessary fields
+ * Clean a single Zillow Apify item by removing unnecessary fields
  */
-function cleanApifyItem(item: any): any {
+function cleanZillowItem(item: any): any {
   if (!item || typeof item !== 'object') {
     return item
   }
@@ -351,8 +351,6 @@ function cleanApifyItem(item: any): any {
     if ('vrModelGuid' in cleaned.vrModel) {
       delete cleaned.vrModel.vrModelGuid
     }
-    // If vrModel is now empty or only has null values, we could remove it entirely
-    // But let's keep it for now in case there are other fields
   }
 
   // Handle nested fields in resoFacts
@@ -398,7 +396,6 @@ function cleanApifyItem(item: any): any {
   }
 
   // Process staticMap - extract latitude and longitude from Google Maps URL
-  // Do this before recursive cleaning to avoid processing the complex staticMap structure
   if ('staticMap' in cleaned && cleaned.staticMap) {
     const staticMapData = cleaned.staticMap
     let latitude: number | null = null
@@ -474,12 +471,12 @@ function cleanApifyItem(item: any): any {
       if (Array.isArray(cleaned[key])) {
         cleaned[key] = cleaned[key].map((nestedItem: any) => {
           if (typeof nestedItem === 'object' && nestedItem !== null) {
-            return cleanApifyItem(nestedItem)
+            return cleanZillowItem(nestedItem)
           }
           return nestedItem
         })
       } else {
-        cleaned[key] = cleanApifyItem(cleaned[key])
+        cleaned[key] = cleanZillowItem(cleaned[key])
       }
     }
   }

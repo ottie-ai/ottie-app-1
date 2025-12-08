@@ -24,9 +24,22 @@ Add the following to your `.env.local` file:
 ```bash
 # OpenAI Configuration
 OPENAI_API_KEY=sk-your_api_key_here
+
+# Optional: Disable OpenAI processing for debugging
+# DISABLE_OPENAI_PROCESSING=true
 ```
 
 **Important**: Do NOT commit `.env.local` to version control. It's already in `.gitignore`.
+
+### Debug Mode
+
+To disable OpenAI processing (useful for debugging scraping without AI costs):
+
+```bash
+DISABLE_OPENAI_PROCESSING=true
+```
+
+When enabled, Apify data will still be scraped and saved, but the OpenAI config generation step will be skipped. You can manually trigger it later via the "Generate Config" button on the preview page.
 
 ### 3. Usage
 
