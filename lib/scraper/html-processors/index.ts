@@ -29,6 +29,9 @@ export function getHtmlProcessor(url: string): HtmlProcessor | null {
       return require('./realtor').processRealtorHtml
     }
     
+    // Redfin.com: No HTML processor needed - uses raw HTML directly
+    // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no processor required
+    
     return null
   } catch {
     return null
@@ -50,6 +53,9 @@ export function getHtmlCleaner(url: string): HtmlCleaner | null {
     if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
       return require('./realtor').removeRealtorSpecificSections
     }
+    
+    // Redfin.com: No HTML cleaner needed - no specific sections to remove
+    // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no cleaner required
     
     return null
   } catch {

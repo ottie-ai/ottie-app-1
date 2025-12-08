@@ -40,10 +40,13 @@ export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null 
       }
     }
     
+    // Redfin.com: No actions needed - uses universal Firecrawl scraping
+    // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no actions required
+    
     // Add more websites here as needed
     // Each website can have completely different actions
     
-    // Return null for websites without specific actions
+    // Return null for websites without specific actions (uses universal scraping)
     return null
   } catch {
     return null
@@ -71,9 +74,12 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
       }
     }
     
+    // Redfin.com: No gallery actions needed - uses single call
+    // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no gallery call needed
+    
     // Add more websites here as needed
     
-    // Return null for websites without gallery actions
+    // Return null for websites without gallery actions (uses single call)
     return null
   } catch {
     return null
