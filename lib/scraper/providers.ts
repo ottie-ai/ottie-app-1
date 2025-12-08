@@ -11,7 +11,8 @@
 import Firecrawl from '@mendable/firecrawl-js'
 import { findApifyScraperForUrl } from './apify-scrapers'
 import { runApifyActor, type ApifyResult } from './apify-client'
-import { getFirecrawlActions } from './firecrawl-actions'
+import { getFirecrawlActions, getFirecrawlActionsGallery } from './firecrawl-actions'
+import { extractRealtorGalleryImages } from './html-processors'
 
 export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
@@ -22,6 +23,7 @@ export interface ScrapeResult {
   provider: ScraperProvider
   duration: number
   apifyScraperId?: string // Only for Apify results
+  galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
 }
 
 /**
@@ -115,6 +117,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     // Get website-specific actions config
     // Returns null for websites without specific actions
     const actionsConfig = getFirecrawlActions(url)
+    const galleryActionsConfig = getFirecrawlActionsGallery(url)
     
     // Base scrape options
     const baseScrapeOptions: any = {
@@ -123,9 +126,60 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     }
     
     let html: string | undefined = undefined
+    let galleryImages: string[] | undefined = undefined
     
-    // If actions config exists, perform ONE scrape with combined actions
-    if (actionsConfig && actionsConfig.actions) {
+    // Check if we need to do two calls (Realtor.com)
+    const needsTwoCalls = actionsConfig && galleryActionsConfig
+    
+    if (needsTwoCalls) {
+      // Call 1: Main content with property details
+      console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions.length} actions for ${url}`)
+      
+      const scrapeOptions1 = {
+        ...baseScrapeOptions,
+        actions: actionsConfig.actions,
+      }
+      
+      const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
+      
+      if (scrapeResponse1.html) {
+        html = scrapeResponse1.html
+      } else if (scrapeResponse1.rawHtml) {
+        html = scrapeResponse1.rawHtml
+      }
+      
+      if (!html || html.trim().length === 0) {
+        throw new Error('Firecrawl Call 1 returned empty HTML content')
+      }
+      
+      console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
+      
+      // Call 2: Gallery images only (don't save raw HTML, just extract images)
+      console.log(`🔵 [Firecrawl] Performing Call 2 with ${galleryActionsConfig.actions.length} gallery actions for ${url}`)
+      
+      const scrapeOptions2 = {
+        ...baseScrapeOptions,
+        actions: galleryActionsConfig.actions,
+      }
+      
+      const scrapeResponse2 = await firecrawl.scrape(url, scrapeOptions2)
+      
+      let galleryHtml: string | undefined = undefined
+      if (scrapeResponse2.html) {
+        galleryHtml = scrapeResponse2.html
+      } else if (scrapeResponse2.rawHtml) {
+        galleryHtml = scrapeResponse2.rawHtml
+      }
+      
+      if (galleryHtml && galleryHtml.trim().length > 0) {
+        // Extract gallery images from Call 2 HTML
+        galleryImages = extractRealtorGalleryImages(galleryHtml)
+        console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
+      } else {
+        console.warn('⚠️ [Firecrawl] Call 2 returned empty HTML, no gallery images extracted')
+      }
+    } else if (actionsConfig && actionsConfig.actions) {
+      // Single call with actions (other websites)
       console.log(`🔵 [Firecrawl] Website has actions, performing scrape with ${actionsConfig.actions.length} actions for ${url}`)
       
       const scrapeOptions = {
@@ -167,12 +221,14 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     
     console.log('✅ [Firecrawl] Successfully scraped URL', 
       `(${html?.length || 0} chars)`, 
+      galleryImages ? `(${galleryImages.length} gallery images)` : '',
       `(${callDuration}ms)`)
     
     return {
       html: html, // HTML after actions (or normal HTML if no actions)
       provider: 'firecrawl',
       duration: callDuration,
+      galleryImages: galleryImages, // Gallery images from Call 2 (only for Realtor.com)
     }
   } catch (error: any) {
     clearTimeout(timeoutId)

@@ -141,19 +141,12 @@ export async function generatePreview(url: string) {
       sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
     }
 
-    // Extract gallery images from HTML after actions (for Realtor.com)
-    let galleryImages: string[] = []
-    if (rawHtml && provider === 'firecrawl') {
-      try {
-        const urlObj = new URL(url)
-        const hostname = urlObj.hostname.toLowerCase()
-        if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-          galleryImages = extractRealtorGalleryImages(rawHtml)
-          console.log(`🔵 [generatePreview] Extracted ${galleryImages.length} gallery images from Realtor.com HTML`)
-        }
-      } catch (error) {
-        console.warn('⚠️ [generatePreview] Failed to extract gallery images:', error)
-      }
+    // Get gallery images from scrape result (extracted from Call 2 for Realtor.com)
+    // For Realtor.com, gallery images are extracted from the second Firecrawl call
+    // and returned in scrapeResult.galleryImages (not extracted from rawHtml)
+    const galleryImages: string[] = scrapeResult.galleryImages || []
+    if (galleryImages.length > 0) {
+      console.log(`🔵 [generatePreview] Using ${galleryImages.length} gallery images from scrape result (Call 2)`)
     }
 
     // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, gallery_images}

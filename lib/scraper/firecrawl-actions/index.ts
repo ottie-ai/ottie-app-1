@@ -20,13 +20,10 @@ export interface FirecrawlActionsConfig {
 }
 
 /**
- * Get Firecrawl actions for a specific URL
+ * Get Firecrawl actions for a specific URL (Call 1 - main content)
  * Returns null if no actions are needed for this website
  * 
- * For Realtor.com: Returns combined actions that:
- * 1. Click property-details accordion
- * 2. Click "View all listing photos" button
- * 3. Scrape once with both expanded
+ * For Realtor.com: Returns property details actions only
  * 
  * @param url - The URL to check
  * @returns FirecrawlActionsConfig with actions, or null if no actions needed
@@ -36,10 +33,10 @@ export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null 
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
     
-    // Realtor.com: Combined actions in one scrape
+    // Realtor.com: Property details actions only (Call 1)
     if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
       return {
-        actions: require('./realtor').getRealtorActionsCombined(),
+        actions: require('./realtor').getRealtorActionsPropertyDetails(),
       }
     }
     
@@ -47,6 +44,36 @@ export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null 
     // Each website can have completely different actions
     
     // Return null for websites without specific actions
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get Firecrawl actions for gallery extraction (Call 2 - images only)
+ * Returns null if no gallery actions are needed for this website
+ * 
+ * For Realtor.com: Returns gallery expansion actions only
+ * 
+ * @param url - The URL to check
+ * @returns FirecrawlActionsConfig with gallery actions, or null if no gallery actions needed
+ */
+export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig | null {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    // Realtor.com: Gallery actions only (Call 2)
+    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+      return {
+        actions: require('./realtor').getRealtorActionsGallery(),
+      }
+    }
+    
+    // Add more websites here as needed
+    
+    // Return null for websites without gallery actions
     return null
   } catch {
     return null

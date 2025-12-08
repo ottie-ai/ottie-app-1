@@ -485,6 +485,148 @@ function PreviewContent() {
         </div>
       </div>
 
+      {/* Processing Steps Display */}
+      <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="mb-6">
+          <Typography variant="h3" className="text-white mb-2 border-none">
+            🔄 Processing Steps
+          </Typography>
+          <Typography variant="small" className="text-white/60">
+            Each step can be manually triggered for debugging purposes
+          </Typography>
+        </div>
+
+        <div className="space-y-6">
+          {/* Step 1: Raw HTML (from Firecrawl call) */}
+          {preview?.raw_html && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Step 1: Raw HTML (from Firecrawl)
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.raw_html.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleConvertRawHtmlToMarkdown}
+                    disabled={convertingRawToMarkdown}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {convertingRawToMarkdown ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Converting...
+                      </>
+                    ) : (
+                      <>
+                        <Code className="h-4 w-4 mr-2" />
+                        To Markdown
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleProcessRawHtml}
+                    disabled={processingHtml}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {processingHtml ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Process to HTML
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleCopyRawHtml}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'raw' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy HTML
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.raw_html}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Raw HTML Markdown Display (if converted) */}
+          {preview?.ai_ready_data?.raw_html_markdown && (
+            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4 text-white/60" />
+                  <Typography variant="small" className="text-white/80 font-medium">
+                    Raw HTML → Markdown
+                  </Typography>
+                  <span className="text-xs text-white/40">
+                    ({(preview.ai_ready_data.raw_html_markdown.length / 1024).toFixed(1)} KB)
+                  </span>
+                </div>
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(preview.ai_ready_data.raw_html_markdown)
+                    setCopiedSection('raw-markdown')
+                    setCopied(true)
+                    setTimeout(() => {
+                      setCopied(false)
+                      setCopiedSection(null)
+                    }, 2000)
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {copied && copiedSection === 'raw-markdown' ? (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Markdown
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="p-4 max-h-[600px] overflow-auto">
+                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                  {preview.ai_ready_data.raw_html_markdown}
+                </pre>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
 
       {/* Gallery Images Display (if extracted) */}
       <div className="border-t border-white/10 bg-white/[0.02] py-12">
@@ -630,149 +772,6 @@ function PreviewContent() {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Processing Steps Display */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-6">
-          <Typography variant="h3" className="text-white mb-2 border-none">
-            🔄 Processing Steps
-          </Typography>
-          <Typography variant="small" className="text-white/60">
-            Each step can be manually triggered for debugging purposes
-          </Typography>
-        </div>
-
-        <div className="space-y-6">
-          {/* Step 1: Raw HTML (from Firecrawl call) */}
-          {preview?.raw_html && (
-            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-white/60" />
-                  <Typography variant="small" className="text-white/80 font-medium">
-                    Step 1: Raw HTML (from Firecrawl)
-                  </Typography>
-                  <span className="text-xs text-white/40">
-                    ({(preview.raw_html.length / 1024).toFixed(1)} KB)
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleConvertRawHtmlToMarkdown}
-                    disabled={convertingRawToMarkdown}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {convertingRawToMarkdown ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Converting...
-                      </>
-                    ) : (
-                      <>
-                        <Code className="h-4 w-4 mr-2" />
-                        To Markdown
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleProcessRawHtml}
-                    disabled={processingHtml}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {processingHtml ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Process to HTML
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleCopyRawHtml}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {copied && copiedSection === 'raw' ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy HTML
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <div className="p-4 max-h-[600px] overflow-auto">
-                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.raw_html}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {/* Raw HTML Markdown Display (if converted) */}
-          {preview?.ai_ready_data?.raw_html_markdown && (
-            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-white/60" />
-                  <Typography variant="small" className="text-white/80 font-medium">
-                    Raw HTML → Markdown
-                  </Typography>
-                  <span className="text-xs text-white/40">
-                    ({(preview.ai_ready_data.raw_html_markdown.length / 1024).toFixed(1)} KB)
-                  </span>
-                </div>
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(preview.ai_ready_data.raw_html_markdown)
-                    setCopiedSection('raw-markdown')
-                    setCopied(true)
-                    setTimeout(() => {
-                      setCopied(false)
-                      setCopiedSection(null)
-                    }, 2000)
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copied && copiedSection === 'raw-markdown' ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy Markdown
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="p-4 max-h-[600px] overflow-auto">
-                <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.ai_ready_data.raw_html_markdown}
-                </pre>
-              </div>
-            </div>
-          )}
-
         </div>
       </div>
 
