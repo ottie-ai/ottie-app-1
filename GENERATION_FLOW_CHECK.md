@@ -9,6 +9,11 @@
 6. Navigates to `/temp-preview/[id]`
 7. Preview page displays raw HTML and parsed JSON
 
+### Site config sample
+- Reference JSON stored at `docs/site-config-sample.json`.
+- Use this shape when writing to `sites.config` (live sites) or `temp_previews.generated_config` (preview records).
+- We will evolve this schema as we add more fields; treat the file as the source of truth for examples.
+
 ## ✅ Checks
 
 ### 1. Dependencies

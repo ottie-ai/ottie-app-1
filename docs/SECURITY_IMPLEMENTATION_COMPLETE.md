@@ -278,3 +278,4 @@ Po aplikovaní všetkých zmien máte:
 **Implementoval:** AI Security Audit
 **Status:** ✅ READY FOR PRODUCTION (po spustení SQL)
 
+

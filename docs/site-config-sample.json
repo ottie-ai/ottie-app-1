@@ -1,0 +1,96 @@
+{
+  "title": "Penthouse I-4 | 3 Bed | 4 Bath | 2,629 sqft | $950K",
+  "currency": "USD",
+  "property_status": "For Sale",
+  "font": "Inter",
+  "brand_color": "#000000",
+  "language": "en",
+  "photos": [],
+  "address": {
+    "street": "",
+    "city": "",
+    "state": "",
+    "zipcode": "",
+    "country": "",
+    "neighborhood": "",
+    "subdivision": ""
+  },
+  "price": {
+    "amount": 950000
+  },
+  "price_per_unit": {
+    "amount": 361,
+    "unit": "sqft"
+  },
+  "beds": 3,
+  "baths": 4,
+  "living_area": {
+    "value": 2629,
+    "unit": "sqft"
+  },
+  "lot_size": {
+    "value": 0.73,
+    "unit": "acres"
+  },
+  "agent": {
+    "name": "",
+    "agency": "",
+    "phone": "",
+    "email": ""
+  },
+  "highlights": [
+    {
+      "title": "Views",
+      "value": "360° City & Ocean",
+      "icon": "view"
+    },
+    {
+      "title": "Parking",
+      "value": "2 Carport",
+      "icon": "car"
+    }
+  ],
+  "property_type": "Condo",
+  "year_built": 1978,
+  "mls_id": "PR9116157",
+  "description": "",
+  "features_amenities": {
+    "amenities": [
+      "Cable Ready",
+      "Security"
+    ],
+    "appliances": [
+      "Dishwasher",
+      "Microwave",
+      "Washer"
+    ],
+    "architecture_style": "New Traditional",
+    "exterior_type": "Brick",
+    "floor_covering": [
+      "Ceramic Tile"
+    ],
+    "cooling": [
+      "Ductless"
+    ],
+    "heating": [
+      "Electric"
+    ],
+    "parking": "Carport"
+  },
+  "mortgage_info": {
+    "interest_rate": "",
+    "property_tax": "$4,063",
+    "hoa_fee": "$488 monthly"
+  },
+  "location": {
+    "latitude": 18.442053,
+    "longitude": -66.06174
+  },
+  "neighborhood": {
+    "schools": [],
+    "lifestyle": "",
+    "street_view_url": ""
+  },
+  "virtual_tour_url": "",
+  "original_price": 0
+}

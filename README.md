@@ -56,9 +56,15 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 # ScraperAPI Configuration (for URL scraping feature)
 # Get your API key from: https://www.scraperapi.com/
 SCRAPERAPI_KEY=your_scraperapi_key_here
+
+# OpenAI Configuration (for AI-powered features)
+# Get your API key from: https://platform.openai.com/
+OPENAI_API_KEY=sk-your_openai_api_key_here
 ```
 
-**Note**: The ScraperAPI key is required for the "Generate Free Site" feature on the marketing homepage. If not configured, users will receive an error when trying to scrape URLs.
+**Note**: 
+- The ScraperAPI key is required for the "Generate Free Site" feature on the marketing homepage. If not configured, users will receive an error when trying to scrape URLs.
+- The OpenAI API key is required for AI-powered features like generating structured JSON from scraped data. See [OpenAI Integration Documentation](./docs/OPENAI_INTEGRATION.md) for details.
 
 ## Project Structure
 

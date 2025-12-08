@@ -6,6 +6,9 @@ import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { htmlToMarkdownUniversal } from '@/lib/scraper/markdown-converter'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { cleanApifyJson } from '@/lib/scraper/apify-json-cleaner'
+import { generateStructuredJSON } from '@/lib/openai/client'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 /**
  * Scrape a URL using configured provider (ScraperAPI or Firecrawl) and create anonymous preview
@@ -55,6 +58,7 @@ export async function generatePreview(url: string) {
     let structuredData: any = {}
     let markdownResult: any = {}
     let parallelDuration = 0
+    let cleanedJson: any = null // Store cleaned JSON for OpenAI processing
 
     // Handle Apify results (structured JSON) differently from HTML results
     if (provider === 'apify' && json) {
@@ -62,7 +66,7 @@ export async function generatePreview(url: string) {
       const parallelStart = Date.now()
       
       // Clean the JSON to remove unnecessary fields (collections, etc.)
-      const cleanedJson = cleanApifyJson(json)
+      cleanedJson = cleanApifyJson(json)
       console.log('🔵 [generatePreview] Cleaned Apify JSON (removed unnecessary fields)')
       
       // For Apify results, store the cleaned JSON as structured data
@@ -163,6 +167,18 @@ export async function generatePreview(url: string) {
     
     console.log('✅ [generatePreview] Preview created:', preview.id)
 
+    // If this is an Apify result, process it with OpenAI to generate config
+    if (provider === 'apify' && json && preview.id) {
+      try {
+        console.log('🤖 [generatePreview] Processing Apify data with OpenAI...')
+        await generateConfigFromApifyData(preview.id, cleanedJson)
+        console.log('✅ [generatePreview] OpenAI processing complete')
+      } catch (openAiError) {
+        console.error('⚠️ [generatePreview] OpenAI processing failed:', openAiError)
+        // Don't fail the whole request if OpenAI fails - preview is still created
+      }
+    }
+
     return { 
       success: true,
       previewId: preview.id,
@@ -252,9 +268,9 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
   // For now, we'll try to extract it or use a default
   let title = 'Imported Property'
   
-  // Try to get title from markdown (first line after #) or from unified_data if available
-  if (preview.unified_data?.title) {
-    title = preview.unified_data.title
+  // Try to get title from generated_config or markdown
+  if (preview.generated_config?.title) {
+    title = preview.generated_config.title
   } else if (preview.ai_ready_data?.markdown) {
     const markdown = preview.ai_ready_data.markdown
     const titleMatch = markdown.match(/^#\s+(.+)$/m)
@@ -289,7 +305,7 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
       title: title,
       slug: finalSlug,
       status: 'draft',
-      config: preview.unified_data || {}, // Use unified_data instead of generated_config
+      config: preview.generated_config || {}, // Use generated_config from AI processing
       metadata: {
         external_url: preview.external_url, // Use external_url instead of source_url
         source_domain: preview.source_domain,
@@ -313,6 +329,103 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     success: true, 
     siteId: site.id,
     slug: site.slug,
+  }
+}
+
+/**
+ * Generate site config from Apify JSON data using OpenAI
+ */
+async function generateConfigFromApifyData(previewId: string, apifyData: any) {
+  try {
+    // Load site-config-sample.json as example
+    const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
+    const sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
+
+    // Build prompt according to specification
+    const prompt = `Extract from provided real estate JSON - exact structure below.
+
+**RULES (strict):**
+
+1. ONLY use explicit JSON data
+
+2. Detect language - set "language" (en, es, etc.) + use same language everywhere
+
+3. Missing = "" / 0 / []
+
+4. NEVER invent data
+
+5. **currency:** detect from country/city/price symbol → USD(EUR,GBP,CZK,etc.) NOT hardcoded
+
+6. title: lifestyle marketing hero title
+
+7. photos: ALL jpeg from mixedSources
+
+8. highlights: max 6 - Phosphor icon names (Eye, Car, Building2, etc.)
+
+9. font: Inter/Playfair Display (luxury=Playfair, modern=Inter)
+
+10. brand_color: match property style
+
+11. description: EXACT from data
+
+12. original_price: ONLY if discounted
+
+**CURRENCY MAPPING:**
+
+- USA/PR → USD
+
+- Spain/EU → EUR
+
+- UK → GBP
+
+- CZ/SK → CZK
+
+- price symbol $ → USD, € → EUR, £ → GBP
+
+**STRUCTURE:**
+
+${JSON.stringify(sampleConfig, null, 2)}
+
+**OUTPUT:** JSON only
+
+**DATA TO PROCESS:**
+
+${JSON.stringify(apifyData, null, 2)}`
+
+    // Call OpenAI
+    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+
+    // Update preview with generated config
+    const supabase = await createClient()
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        generated_config: generatedConfig,
+        status: 'completed',
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [generateConfigFromApifyData] Failed to update preview:', updateError)
+      throw new Error('Failed to save generated config')
+    }
+
+    console.log('✅ [generateConfigFromApifyData] Config generated and saved')
+    return { success: true, config: generatedConfig }
+  } catch (error: any) {
+    console.error('🔴 [generateConfigFromApifyData] Error:', error)
+    
+    // Update status to error
+    const supabase = await createClient()
+    await supabase
+      .from('temp_previews')
+      .update({
+        status: 'error',
+        error_message: error.message || 'Failed to generate config',
+      })
+      .eq('id', previewId)
+    
+    throw error
   }
 }
 
@@ -367,5 +480,37 @@ export async function processApifyJson(previewId: string) {
   }
 
   return { success: true }
+}
+
+/**
+ * Generate site config from Apify data using OpenAI (manual trigger)
+ * This can be called manually if automatic processing failed
+ */
+export async function generateConfigFromApify(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Check if this is an Apify result
+  const apifyJson = preview?.ai_ready_data?.apify_json
+  if (!apifyJson) {
+    return { error: 'This preview does not contain Apify JSON data' }
+  }
+
+  try {
+    const result = await generateConfigFromApifyData(previewId, apifyJson)
+    return result
+  } catch (error: any) {
+    return { error: error.message || 'Failed to generate config' }
+  }
 }
 

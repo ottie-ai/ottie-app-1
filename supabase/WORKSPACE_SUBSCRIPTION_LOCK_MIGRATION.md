@@ -133,3 +133,4 @@ DROP POLICY IF EXISTS "Access workspace based on subscription" ON public.workspa
 - Trigger automaticky aktualizuje `seats_used` pri každej zmene memberships
 
 
+

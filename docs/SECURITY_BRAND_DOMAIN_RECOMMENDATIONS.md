@@ -87,3 +87,4 @@ See: `supabase/fix-brand-domain-rls-security.sql`
 - Enhanced RLS policy to verify workspace brand domain verification status
 - Added index for performance on brand domain lookups
 
+

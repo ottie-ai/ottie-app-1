@@ -436,10 +436,10 @@ export function extractStructuredData(rawHtml: string): ExtractedStructuredData 
  * so we prioritize keeping content over aggressive filtering.
  * 
  * To extend: Add new selectors to the helper functions below. Always test against
- * scrape_example.html to ensure property facts and descriptions are preserved.
+ * docs/scrape_example.html to ensure property facts and descriptions are preserved.
  * 
- * Compare scrape_example.html and cheerio_example.html to ensure the new cleaner
- * preserves all descriptive text and property facts visible in scrape_example.html.
+ * Compare docs/scrape_example.html and docs/cheerio_example.html to ensure the new cleaner
+ * preserves all descriptive text and property facts visible in docs/scrape_example.html.
  */
 export function cleanHtml(rawHtml: string): string {
   const $ = load(rawHtml)

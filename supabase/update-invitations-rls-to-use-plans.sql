@@ -28,3 +28,4 @@ CREATE POLICY "Admins manage invitations" ON invitations
 -- SELECT * FROM pg_policies WHERE tablename = 'invitations';
 
 
+

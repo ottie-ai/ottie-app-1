@@ -4,37 +4,56 @@ The application supports multiple scraping providers that can be switched via en
 
 ## Supported Providers
 
-### 1. ScraperAPI (Default)
+### 1. Apify (Automatic for specific websites)
+- **Provider ID**: `apify`
+- **Environment Variable**: `APIFY_API_TOKEN`
+- **Documentation**: https://docs.apify.com/
+- **Returns**: Structured JSON data
+- **Used For**: Specific websites like Zillow that have dedicated scrapers
+- **See**: [APIFY_INTEGRATION.md](./APIFY_INTEGRATION.md) for full documentation
+
+### 2. ScraperAPI (Default fallback)
 - **Provider ID**: `scraperapi`
 - **Environment Variable**: `SCRAPERAPI_KEY`
 - **Documentation**: https://www.scraperapi.com/
+- **Returns**: Raw HTML
 
-### 2. Firecrawl
+### 3. Firecrawl (Alternative fallback)
 - **Provider ID**: `firecrawl`
 - **Environment Variable**: `FIRECRAWL_API_KEY`
 - **Documentation**: https://docs.firecrawl.dev/
+- **Returns**: Raw HTML
 
 ## Configuration
 
-### Switching Providers
+### Provider Priority
 
-Set the `SCRAPER_PROVIDER` environment variable in your `.env.local` file:
+The system uses providers in this order:
+
+1. **Apify** (automatic) - If URL matches a specific website (e.g., Zillow)
+2. **General Provider** (configurable) - ScraperAPI or Firecrawl for all other URLs
+
+### Environment Variables
+
+Set these in your `.env.local` file:
 
 ```bash
-# Use ScraperAPI (default)
-SCRAPER_PROVIDER=scraperapi
+# Apify (required for site-specific scrapers like Zillow)
+APIFY_API_TOKEN=your_apify_token_here
+
+# General scraper (required as fallback)
+SCRAPER_PROVIDER=scraperapi  # or 'firecrawl'
+
+# ScraperAPI (if using as general provider)
 SCRAPERAPI_KEY=your_scraperapi_key_here
 
-# OR use Firecrawl
-SCRAPER_PROVIDER=firecrawl
+# OR Firecrawl (if using as general provider)
 FIRECRAWL_API_KEY=fc-your_firecrawl_key_here
 ```
 
-If `SCRAPER_PROVIDER` is not set, the application defaults to `scraperapi`.
+### Switching General Providers
 
-### Required Environment Variables
-
-**For ScraperAPI:**
+**For ScraperAPI (default):**
 ```bash
 SCRAPER_PROVIDER=scraperapi
 SCRAPERAPI_KEY=your_api_key_here
@@ -46,13 +65,23 @@ SCRAPER_PROVIDER=firecrawl
 FIRECRAWL_API_KEY=fc-your_api_key_here
 ```
 
+If `SCRAPER_PROVIDER` is not set, the application defaults to `scraperapi`.
+
 ## Implementation Details
 
-The scraper abstraction is implemented in `lib/scraper/providers.ts`:
+The scraper abstraction is implemented in:
 
-- `getScraperProvider()` - Returns the active provider from env
-- `scrapeUrl(url, timeout)` - Scrapes a URL using the configured provider
-- Both providers return the same `ScrapeResult` interface for consistency
+- `lib/scraper/providers.ts` - Provider routing and general scrapers
+- `lib/scraper/apify-scrapers.ts` - Apify scraper configurations
+- `lib/scraper/apify-client.ts` - Apify API client
+
+### Key Functions
+
+- `scrapeUrl(url, timeout)` - Main entry point, routes to appropriate provider
+- `getScraperProvider()` - Returns the active general provider from env
+- `findApifyScraperForUrl(url)` - Checks if URL has a dedicated Apify scraper
+
+All providers return the same `ScrapeResult` interface for consistency.
 
 ## Timeout Configuration
 

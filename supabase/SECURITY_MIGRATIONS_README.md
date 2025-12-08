@@ -310,3 +310,4 @@ DROP INDEX IF EXISTS idx_domain_verification_history_workspace_domain;
 **Status:** ✅ PRODUCTION READY
 **Next Action:** Spusti `apply-all-security-fixes.sql` v Supabase
 
+
