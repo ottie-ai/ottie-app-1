@@ -109,6 +109,7 @@ export function removeRedfinSpecificSections(mainElement: any): void {
     'SunExposureSection',
     'DPRedfinEstimateSection',
     'SimilarsPanel',
+    'SiteFooter',
   ]
   
   // Build combined selector for all elements to check
