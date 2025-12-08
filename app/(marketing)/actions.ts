@@ -711,6 +711,21 @@ export async function convertProcessedHtmlToMarkdown(previewId: string) {
       codeBlockStyle: 'fenced',
     })
 
+    // Add explicit rule to preserve all paragraph tags
+    turndownService.addRule('paragraph', {
+      filter: 'p',
+      replacement: (content, node) => {
+        // Always preserve paragraph, even if content seems empty
+        const text = content.trim()
+        if (text.length === 0) {
+          // Empty paragraph - preserve as blank line
+          return '\n\n'
+        }
+        // Regular paragraph with content - ensure proper spacing
+        return `\n\n${text}\n\n`
+      },
+    })
+
     // Convert HTML to markdown
     const markdown = turndownService.turndown(processedHtml)
     console.log(`🔵 [convertProcessedHtmlToMarkdown] Converted processed HTML to markdown (${markdown.length} chars) for preview:`, previewId)
