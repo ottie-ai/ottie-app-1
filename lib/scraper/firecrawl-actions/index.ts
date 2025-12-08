@@ -74,8 +74,12 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
       }
     }
     
-    // Redfin.com: No gallery actions needed - uses single call
-    // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no gallery call needed
+    // Redfin.com: Gallery actions (Call 2)
+    if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {
+      return {
+        actions: require('./redfin').getRedfinActionsGallery(),
+      }
+    }
     
     // Add more websites here as needed
     

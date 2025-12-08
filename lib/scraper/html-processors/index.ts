@@ -42,6 +42,7 @@ export function getMainContentSelector(url: string): string | null {
 
 // Import website-specific processors
 export { processRealtorHtml, extractRealtorGalleryImages, removeRealtorSpecificSections } from './realtor'
+export { extractRedfinGalleryImages } from './redfin'
 
 /**
  * Get the appropriate HTML processor for a URL
@@ -85,6 +86,32 @@ export function getHtmlCleaner(url: string): HtmlCleaner | null {
     
     // Redfin.com: No HTML cleaner needed - no specific sections to remove
     // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no cleaner required
+    
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get the appropriate gallery image extractor for a URL
+ * Gallery extractor extracts image URLs from gallery HTML after actions
+ * 
+ * @param url - The URL to check
+ * @returns The extractor function for that website, or null if no extractor exists
+ */
+export function getGalleryImageExtractor(url: string): ((html: string) => string[]) | null {
+  try {
+    const urlObj = new URL(url)
+    const hostname = urlObj.hostname.toLowerCase()
+    
+    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
+      return require('./realtor').extractRealtorGalleryImages
+    }
+    
+    if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {
+      return require('./redfin').extractRedfinGalleryImages
+    }
     
     return null
   } catch {

@@ -6,7 +6,7 @@ import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
-import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, extractRealtorGalleryImages } from '@/lib/scraper/html-processors'
+import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -701,38 +701,38 @@ export async function extractGalleryImages(previewId: string) {
     return { error: 'Source URL not found in preview' }
   }
 
-  // Check if this is Realtor.com
+  // Get website-specific gallery extractor
   try {
     const urlObj = new URL(sourceUrl)
-    const hostname = urlObj.hostname.toLowerCase()
+    const galleryExtractor = getGalleryImageExtractor(sourceUrl)
     
-    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-      // Extract gallery images
-      const galleryImages = extractRealtorGalleryImages(preview.raw_html)
-      console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
-
-      // Update the preview with extracted images
-      const updatedAiReadyData = {
-        ...preview.ai_ready_data,
-        gallery_images: galleryImages,
-      }
-
-      const { error: updateError } = await supabase
-        .from('temp_previews')
-        .update({
-          ai_ready_data: updatedAiReadyData,
-        })
-        .eq('id', previewId)
-
-      if (updateError) {
-        console.error('🔴 [extractGalleryImages] Failed to update preview:', updateError)
-        return { error: 'Failed to extract images. Please try again.' }
-      }
-
-      return { success: true, imageCount: galleryImages.length }
-    } else {
-      return { error: 'Gallery image extraction is only available for Realtor.com' }
+    if (!galleryExtractor) {
+      return { error: 'Gallery image extraction is not available for this website' }
     }
+    
+    // Extract gallery images using website-specific extractor
+    const galleryImages = galleryExtractor(preview.raw_html)
+    console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
+
+    // Update the preview with extracted images
+    const updatedAiReadyData = {
+      ...preview.ai_ready_data,
+      gallery_images: galleryImages,
+    }
+
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        ai_ready_data: updatedAiReadyData,
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [extractGalleryImages] Failed to update preview:', updateError)
+      return { error: 'Failed to extract images. Please try again.' }
+    }
+
+    return { success: true, imageCount: galleryImages.length }
   } catch (error) {
     console.error('🔴 [extractGalleryImages] Error:', error)
     return { error: 'Failed to extract images. Please try again.' }

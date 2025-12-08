@@ -12,7 +12,7 @@ import Firecrawl from '@mendable/firecrawl-js'
 import { findApifyScraperForUrl } from './apify-scrapers'
 import { runApifyActor, type ApifyResult } from './apify-client'
 import { getFirecrawlActions, getFirecrawlActionsGallery } from './firecrawl-actions'
-import { extractRealtorGalleryImages } from './html-processors'
+import { getGalleryImageExtractor } from './html-processors'
 
 export type ScraperProvider = 'scraperapi' | 'firecrawl' | 'apify'
 
@@ -128,17 +128,144 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     let html: string | undefined = undefined
     let galleryImages: string[] | undefined = undefined
     
-    // Check if we need to do two calls (Realtor.com)
-    const needsTwoCalls = actionsConfig && actionsConfig.actions && galleryActionsConfig && galleryActionsConfig.actions
+    // Check if we need to do two calls (websites with gallery extraction)
+    // Two calls are needed if galleryActionsConfig exists (even if actionsConfig is null)
+    const needsTwoCalls = galleryActionsConfig && galleryActionsConfig.actions
     
     if (needsTwoCalls) {
-      // Call 1: Main content with property details
-      console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions!.length} actions for ${url}`)
-      
-      const scrapeOptions1 = {
-        ...baseScrapeOptions,
-        actions: actionsConfig.actions!,
+      // Call 1: Main content (with or without actions)
+      if (actionsConfig && actionsConfig.actions) {
+        console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions.length} actions for ${url}`)
+        
+        const scrapeOptions1 = {
+          ...baseScrapeOptions,
+          actions: actionsConfig.actions,
+        }
+        
+        const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
+        
+        if (scrapeResponse1.html) {
+          html = scrapeResponse1.html
+        } else if (scrapeResponse1.rawHtml) {
+          html = scrapeResponse1.rawHtml
+        }
+        
+        if (!html || html.trim().length === 0) {
+          throw new Error('Firecrawl Call 1 returned empty HTML content')
+        }
+        
+        console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
+      } else {
+        // Call 1: No actions needed, just scrape main content
+        console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 (no actions) for ${url}`)
+        
+        const scrapeResponse1 = await firecrawl.scrape(url, baseScrapeOptions)
+        
+        if (scrapeResponse1.html) {
+          html = scrapeResponse1.html
+        } else if (scrapeResponse1.rawHtml) {
+          html = scrapeResponse1.rawHtml
+        }
+        
+        if (!html || html.trim().length === 0) {
+          throw new Error('Firecrawl Call 1 returned empty HTML content')
+        }
+        
+        console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
       }
+      
+      // Call 2: Gallery images only (don't save raw HTML, just extract images)
+      console.log(`🔵 [Firecrawl] Performing Call 2 with ${galleryActionsConfig.actions!.length} gallery actions for ${url}`)
+      
+      const scrapeOptions2 = {
+        ...baseScrapeOptions,
+        actions: galleryActionsConfig.actions!,
+      }
+      
+      const scrapeResponse2 = await firecrawl.scrape(url, scrapeOptions2)
+      
+      let galleryHtml: string | undefined = undefined
+      if (scrapeResponse2.html) {
+        galleryHtml = scrapeResponse2.html
+      } else if (scrapeResponse2.rawHtml) {
+        galleryHtml = scrapeResponse2.rawHtml
+      }
+      
+      if (galleryHtml && galleryHtml.trim().length > 0) {
+        // Extract gallery images from Call 2 HTML using website-specific extractor
+        const galleryExtractor = getGalleryImageExtractor(url)
+        if (galleryExtractor) {
+          galleryImages = galleryExtractor(galleryHtml)
+          console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
+        } else {
+          console.warn('⚠️ [Firecrawl] Call 2 complete but no gallery extractor found for this website')
+        }
+      } else {
+        console.warn('⚠️ [Firecrawl] Call 2 returned empty HTML, no gallery images extracted')
+      }
+    } else if (actionsConfig && actionsConfig.actions) {
+      // Single call with actions (other websites)
+      console.log(`🔵 [Firecrawl] Website has actions, performing scrape with ${actionsConfig.actions.length} actions for ${url}`)
+      
+      const scrapeOptions = {
+        ...baseScrapeOptions,
+        actions: actionsConfig.actions,
+      }
+      
+      const scrapeResponse = await firecrawl.scrape(url, scrapeOptions)
+      
+      if (scrapeResponse.html) {
+        html = scrapeResponse.html
+      } else if (scrapeResponse.rawHtml) {
+        html = scrapeResponse.rawHtml
+      }
+      
+      if (!html || html.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content')
+      }
+      
+      console.log(`✅ [Firecrawl] Scrape complete with actions, HTML length: ${html.length}`)
+    } else {
+      // No actions: Single scrape (normal behavior)
+      console.log('🔵 [Firecrawl] No actions, performing single scrape...')
+      const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
+      
+      if (scrapeResponse.html) {
+        html = scrapeResponse.html
+      } else if (scrapeResponse.rawHtml) {
+        html = scrapeResponse.rawHtml
+      }
+      
+      if (!html || html.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content')
+      }
+    }
+    
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    console.log('✅ [Firecrawl] Successfully scraped URL', 
+      `(${html?.length || 0} chars)`, 
+      galleryImages ? `(${galleryImages.length} gallery images)` : '',
+      `(${callDuration}ms)`)
+    
+    return {
+      html: html, // HTML after actions (or normal HTML if no actions)
+      provider: 'firecrawl',
+      duration: callDuration,
+      galleryImages: galleryImages, // Gallery images from Call 2 (for Realtor.com and Redfin.com)
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    if (error.name === 'AbortError' || error.message?.includes('aborted') || callDuration >= timeout) {
+      throw new Error(`Firecrawl timeout after ${timeout / 1000} seconds`)
+    }
+    
+    throw new Error(`Firecrawl error: ${error.message || 'Unknown error'}`)
+  }
+}
       
       const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
       
@@ -172,9 +299,14 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       }
       
       if (galleryHtml && galleryHtml.trim().length > 0) {
-        // Extract gallery images from Call 2 HTML
-        galleryImages = extractRealtorGalleryImages(galleryHtml)
-        console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
+        // Extract gallery images from Call 2 HTML using website-specific extractor
+        const galleryExtractor = getGalleryImageExtractor(url)
+        if (galleryExtractor) {
+          galleryImages = galleryExtractor(galleryHtml)
+          console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
+        } else {
+          console.warn('⚠️ [Firecrawl] Call 2 complete but no gallery extractor found for this website')
+        }
       } else {
         console.warn('⚠️ [Firecrawl] Call 2 returned empty HTML, no gallery images extracted')
       }
