@@ -112,9 +112,9 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
   try {
     const firecrawl = new Firecrawl({ apiKey })
     
-    // Get website-specific actions (e.g., click "View all photos" button)
+    // Get website-specific actions config
     // Returns null for websites without specific actions
-    const actions = getFirecrawlActions(url)
+    const actionsConfig = getFirecrawlActions(url)
     
     // Base scrape options
     const baseScrapeOptions: any = {
@@ -125,15 +125,20 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     let htmlBeforeActions: string | undefined = undefined
     let htmlAfterActions: string | undefined = undefined
     
-    // If actions exist, do TWO scrapes:
-    // 1. First scrape WITHOUT actions (original HTML)
-    // 2. Second scrape WITH actions (HTML after actions)
-    if (actions && actions.length > 0) {
-      console.log(`🔵 [Firecrawl] Website has ${actions.length} actions, performing TWO scrapes for ${url}`)
+    // If actions config exists, do TWO scrapes with different actions:
+    // 1. First scrape WITH firstScrapeActions (e.g., click property-details)
+    // 2. Second scrape WITH secondScrapeActions (e.g., click "View all photos")
+    if (actionsConfig && actionsConfig.firstScrapeActions && actionsConfig.secondScrapeActions) {
+      console.log(`🔵 [Firecrawl] Website has dual actions, performing TWO scrapes for ${url}`)
       
-      // SCRAPE 1: Without actions (original HTML)
-      console.log('🔵 [Firecrawl] Scrape 1/2: Getting original HTML (without actions)...')
-      const scrape1Response = await firecrawl.scrape(url, baseScrapeOptions)
+      // SCRAPE 1: With first set of actions (e.g., property-details)
+      console.log(`🔵 [Firecrawl] Scrape 1/2: Getting HTML after ${actionsConfig.firstScrapeActions.length} actions (property-details)...`)
+      const scrape1Options = {
+        ...baseScrapeOptions,
+        actions: actionsConfig.firstScrapeActions,
+      }
+      
+      const scrape1Response = await firecrawl.scrape(url, scrape1Options)
       
       if (scrape1Response.html) {
         htmlBeforeActions = scrape1Response.html
@@ -147,11 +152,11 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       
       console.log(`✅ [Firecrawl] Scrape 1/2 complete, HTML length: ${htmlBeforeActions.length}`)
       
-      // SCRAPE 2: With actions (HTML after actions)
-      console.log(`🔵 [Firecrawl] Scrape 2/2: Getting HTML after ${actions.length} actions...`)
+      // SCRAPE 2: With second set of actions (e.g., gallery photos)
+      console.log(`🔵 [Firecrawl] Scrape 2/2: Getting HTML after ${actionsConfig.secondScrapeActions.length} actions (gallery photos)...`)
       const scrape2Options = {
         ...baseScrapeOptions,
-        actions: actions,
+        actions: actionsConfig.secondScrapeActions,
       }
       
       const scrape2Response = await firecrawl.scrape(url, scrape2Options)

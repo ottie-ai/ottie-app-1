@@ -15,21 +15,33 @@ export type FirecrawlAction =
   | { type: 'screenshot' }
   | { type: 'scrape' }
 
+export interface FirecrawlActionsConfig {
+  firstScrapeActions: FirecrawlAction[] | null // Actions for first scrape
+  secondScrapeActions: FirecrawlAction[] | null // Actions for second scrape (if needed)
+}
+
 /**
  * Get Firecrawl actions for a specific URL
  * Returns null if no actions are needed for this website
  * 
+ * For Realtor.com: Returns config with two different action sets
+ * - First scrape: Click property-details accordion
+ * - Second scrape: Click "View all listing photos" button
+ * 
  * @param url - The URL to check
- * @returns Array of actions to perform, or null if no actions needed
+ * @returns FirecrawlActionsConfig with action sets, or null if no actions needed
  */
-export function getFirecrawlActions(url: string): FirecrawlAction[] | null {
+export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null {
   try {
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
     
-    // Realtor.com: Click "View all listing photos" button to expand gallery
+    // Realtor.com: Two scrapes with different actions
     if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-      return require('./realtor').getRealtorActions()
+      return {
+        firstScrapeActions: require('./realtor').getRealtorActionsPropertyDetails(),
+        secondScrapeActions: require('./realtor').getRealtorActionsGalleryPhotos(),
+      }
     }
     
     // Add more websites here as needed
