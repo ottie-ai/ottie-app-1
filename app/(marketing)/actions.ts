@@ -50,10 +50,9 @@ export async function generatePreview(url: string) {
 
     // Scrape URL using configured provider (170 seconds timeout)
     // Returns either HTML (general scrapers) or JSON (Apify scrapers)
-    // For websites with actions: returns both htmlBeforeActions and html (after actions)
+    // For websites with actions: returns HTML after all actions are performed
     const scrapeResult = await scrapeUrl(url, 170000)
     const rawHtml = scrapeResult.html // HTML after actions (or normal HTML if no actions)
-    const htmlBeforeActions = 'htmlBeforeActions' in scrapeResult ? scrapeResult.htmlBeforeActions : undefined // Original HTML before actions
     let html = scrapeResult.html // This will be processed if processor exists
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider: ScraperProvider = scrapeResult.provider
@@ -157,7 +156,7 @@ export async function generatePreview(url: string) {
       }
     }
 
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, html_before_actions, gallery_images}
+    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, gallery_images}
     // structuredData and readabilityMetadata are included for backward compatibility with preview display
     const aiReadyData: {
       html: string
@@ -165,7 +164,6 @@ export async function generatePreview(url: string) {
       structuredData?: any // For backward compatibility with preview page
       readabilityMetadata?: any // For backward compatibility with preview page
       processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
-      html_before_actions?: string | null // Original HTML before actions (only for websites with actions)
       gallery_images?: string[] // Extracted gallery images (e.g., from Realtor.com)
     } = {
       html: '', // We don't store cleaned HTML anymore
@@ -183,7 +181,6 @@ export async function generatePreview(url: string) {
         siteName: markdownResult.siteName,
       } : undefined,
       processed_html: processedHtml || null, // Store processed HTML if processor was used
-      html_before_actions: htmlBeforeActions || null, // Store original HTML before actions (if actions were used)
       gallery_images: galleryImages.length > 0 ? galleryImages : undefined, // Store gallery images if extracted
     }
 
@@ -552,10 +549,9 @@ export async function processRawHtml(previewId: string) {
     return { error: 'Preview not found or expired' }
   }
 
-  // Check if raw HTML or html_before_actions exists
-  const htmlToProcess = preview.raw_html || preview.ai_ready_data?.html_before_actions
-  if (!htmlToProcess) {
-    return { error: 'This preview does not contain HTML data to process' }
+  // Check if raw HTML exists
+  if (!preview.raw_html) {
+    return { error: 'This preview does not contain raw HTML data to process' }
   }
 
   // Get source URL
@@ -570,8 +566,8 @@ export async function processRawHtml(previewId: string) {
     return { error: 'No HTML processor available for this website' }
   }
 
-  // Process the HTML
-  const processedHtml = htmlProcessor(htmlToProcess)
+  // Process the raw HTML
+  const processedHtml = htmlProcessor(preview.raw_html)
   console.log(`🔵 [processRawHtml] Processed HTML using website-specific processor for preview:`, previewId)
 
   // Update the preview with processed HTML
@@ -613,10 +609,9 @@ export async function extractGalleryImages(previewId: string) {
     return { error: 'Preview not found or expired' }
   }
 
-  // Check if raw HTML exists (HTML after actions)
-  const htmlToExtract = preview.raw_html || preview.ai_ready_data?.html_before_actions
-  if (!htmlToExtract) {
-    return { error: 'This preview does not contain HTML data to extract images from' }
+  // Check if raw HTML exists
+  if (!preview.raw_html) {
+    return { error: 'This preview does not contain raw HTML data to extract images from' }
   }
 
   // Get source URL
@@ -632,7 +627,7 @@ export async function extractGalleryImages(previewId: string) {
     
     if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
       // Extract gallery images
-      const galleryImages = extractRealtorGalleryImages(htmlToExtract)
+      const galleryImages = extractRealtorGalleryImages(preview.raw_html)
       console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
 
       // Update the preview with extracted images
