@@ -328,10 +328,8 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
  * 
  * Priority:
  * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
- * 2. Otherwise, use general provider (Firecrawl or Apify)
- * 3. If blocked, try fallback providers:
- *    - If Firecrawl blocked → try Apify
- *    - If Apify blocked → try Firecrawl with stealth mode
+ * 2. Otherwise, use Firecrawl (basic proxy)
+ * 3. If Firecrawl fails or is blocked → fallback to Firecrawl stealth mode
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
@@ -362,108 +360,59 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
     }
   }
   
-  // PRIORITY 2: Use general scraper (ScraperAPI or Firecrawl)
-  const provider = getScraperProvider()
-  console.log(`🎯 [Routing] Using general scraper: ${provider}`)
-  
-  let result: ScrapeResult
+  // PRIORITY 2: Use Firecrawl (basic proxy)
+  console.log(`🎯 [Routing] Using Firecrawl with basic proxy`)
   
   try {
-    // Try primary provider
-    switch (provider) {
-      case 'firecrawl':
-        result = await scrapeWithFirecrawl(url, timeout, false)
-        break
-      case 'apify':
-        result = await scrapeWithApify(url, timeout)
-        result.actualProvider = 'apify'
-        break
-      default:
-        result = await scrapeWithFirecrawl(url, timeout, false)
-        break
-    }
+    // Try Firecrawl with basic proxy first
+    const result = await scrapeWithFirecrawl(url, timeout, false)
+    result.actualProvider = 'firecrawl'
     
     // Check if result is blocked
     if (result.html && isBlockedContent(result.html)) {
-      console.warn(`⚠️ [Routing] Primary provider (${provider}) returned blocked content, trying fallback...`)
+      console.warn(`⚠️ [Routing] Firecrawl returned blocked content, trying stealth mode...`)
       
-      // Fallback 1: Try Apify if primary was Firecrawl
-      if (provider === 'firecrawl' && process.env.APIFY_API_TOKEN) {
-        try {
-          console.log(`🔄 [Routing] Trying Apify as fallback...`)
-          const fallbackResult = await scrapeWithApify(url, timeout)
-          fallbackResult.actualProvider = 'apify_fallback'
-          
-          if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
-            console.log(`✅ [Routing] Apify fallback succeeded`)
-            return fallbackResult
-          }
-          console.warn(`⚠️ [Routing] Apify fallback also blocked`)
-        } catch (fallbackError) {
-          console.error(`❌ [Routing] Apify fallback failed:`, fallbackError)
+      // Try Firecrawl with stealth mode
+      try {
+        const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
+        
+        if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
+          console.log(`✅ [Routing] Firecrawl stealth succeeded`)
+          return stealthResult
         }
+        
+        console.error(`❌ [Routing] Firecrawl stealth also blocked`)
+        result.actualProvider = 'firecrawl_blocked'
+        return result
+      } catch (stealthError) {
+        console.error(`❌ [Routing] Firecrawl stealth failed:`, stealthError)
+        result.actualProvider = 'firecrawl_blocked'
+        return result
       }
-      
-      // Fallback 2: Try Firecrawl with stealth mode
-      if (process.env.FIRECRAWL_API_KEY) {
-        try {
-          console.log(`🔄 [Routing] Trying Firecrawl with stealth mode as fallback...`)
-          const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
-          
-          if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
-            console.log(`✅ [Routing] Firecrawl stealth fallback succeeded`)
-            return stealthResult
-          }
-          console.warn(`⚠️ [Routing] Firecrawl stealth fallback also blocked`)
-        } catch (stealthError) {
-          console.error(`❌ [Routing] Firecrawl stealth fallback failed:`, stealthError)
-        }
-      }
-      
-      // If all fallbacks failed, return the original blocked result with warning
-      console.error(`❌ [Routing] All providers returned blocked content`)
-      result.actualProvider = `${provider}_blocked`
-      return result
     }
     
     // Success - return result
     return result
+    
   } catch (error: any) {
-    // If primary provider throws error, try fallbacks
-    console.warn(`⚠️ [Routing] Primary provider (${provider}) failed:`, error.message)
+    console.error(`❌ [Routing] Firecrawl failed:`, error.message)
     
-    // Fallback 1: Try Apify if primary was Firecrawl
-    if (provider === 'firecrawl' && process.env.APIFY_API_TOKEN) {
-      try {
-        console.log(`🔄 [Routing] Trying Apify as fallback after error...`)
-        const fallbackResult = await scrapeWithApify(url, timeout)
-        fallbackResult.actualProvider = 'apify_fallback'
-        
-        if (fallbackResult.html && !isBlockedContent(fallbackResult.html)) {
-          console.log(`✅ [Routing] Apify fallback succeeded after error`)
-          return fallbackResult
-        }
-      } catch (fallbackError) {
-        console.error(`❌ [Routing] Apify fallback failed:`, fallbackError)
-      }
-    }
-    
-    // Fallback 2: Try Firecrawl with stealth mode
+    // Try Firecrawl with stealth mode as fallback
     if (process.env.FIRECRAWL_API_KEY) {
       try {
-        console.log(`🔄 [Routing] Trying Firecrawl with stealth mode as fallback after error...`)
+        console.log(`🔄 [Routing] Trying Firecrawl with stealth mode after error...`)
         const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
         
         if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
-          console.log(`✅ [Routing] Firecrawl stealth fallback succeeded after error`)
+          console.log(`✅ [Routing] Firecrawl stealth succeeded after error`)
           return stealthResult
         }
       } catch (stealthError) {
-        console.error(`❌ [Routing] Firecrawl stealth fallback failed:`, stealthError)
+        console.error(`❌ [Routing] Firecrawl stealth also failed:`, stealthError)
       }
     }
     
-    // All fallbacks failed, throw original error
+    // All attempts failed, throw original error
     throw error
   }
 }
