@@ -225,26 +225,76 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
         actions: galleryActionsConfig.actions!,
       }
       
-      const scrapeResponse2 = await firecrawl.scrape(url, scrapeOptions2)
-      
       let galleryHtml: string | undefined = undefined
-      if (scrapeResponse2.html) {
-        galleryHtml = scrapeResponse2.html
-      } else if (scrapeResponse2.rawHtml) {
-        galleryHtml = scrapeResponse2.rawHtml
-      }
+      let call2Success = false
       
-      if (galleryHtml && galleryHtml.trim().length > 0) {
-        // Extract gallery images from Call 2 HTML using website-specific extractor
-        const galleryExtractor = getGalleryImageExtractor(url)
-        if (galleryExtractor) {
-          galleryImages = galleryExtractor(galleryHtml)
-          console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
-        } else {
-          console.warn('⚠️ [Firecrawl] Call 2 complete but no gallery extractor found for this website')
+      try {
+        const scrapeResponse2 = await firecrawl.scrape(url, scrapeOptions2)
+        
+        if (scrapeResponse2.html) {
+          galleryHtml = scrapeResponse2.html
+        } else if (scrapeResponse2.rawHtml) {
+          galleryHtml = scrapeResponse2.rawHtml
         }
-      } else {
-        console.warn('⚠️ [Firecrawl] Call 2 returned empty HTML, no gallery images extracted')
+        
+        if (galleryHtml && galleryHtml.trim().length > 0) {
+          call2Success = true
+          // Extract gallery images from Call 2 HTML using website-specific extractor
+          const galleryExtractor = getGalleryImageExtractor(url)
+          if (galleryExtractor) {
+            galleryImages = galleryExtractor(galleryHtml)
+            console.log(`✅ [Firecrawl] Call 2 complete, extracted ${galleryImages.length} gallery images`)
+          } else {
+            console.warn('⚠️ [Firecrawl] Call 2 complete but no gallery extractor found for this website')
+          }
+        } else {
+          console.warn('⚠️ [Firecrawl] Call 2 returned empty HTML, no gallery images extracted')
+        }
+      } catch (call2Error: any) {
+        console.warn(`⚠️ [Firecrawl] Call 2 failed: ${call2Error.message || 'Unknown error'}`)
+        
+        // Try fallback: Call 2 with stealth mode
+        if (!useStealth && process.env.FIRECRAWL_API_KEY) {
+          try {
+            console.log(`🔄 [Firecrawl] Trying Call 2 with stealth mode as fallback...`)
+            const stealthScrapeOptions2 = {
+              ...baseScrapeOptions,
+              proxy: 'stealth', // Use stealth mode for fallback
+              actions: galleryActionsConfig.actions!,
+            }
+            
+            const stealthScrapeResponse2 = await firecrawl.scrape(url, stealthScrapeOptions2)
+            
+            if (stealthScrapeResponse2.html) {
+              galleryHtml = stealthScrapeResponse2.html
+            } else if (stealthScrapeResponse2.rawHtml) {
+              galleryHtml = stealthScrapeResponse2.rawHtml
+            }
+            
+            if (galleryHtml && galleryHtml.trim().length > 0) {
+              call2Success = true
+              // Extract gallery images from stealth Call 2 HTML
+              const galleryExtractor = getGalleryImageExtractor(url)
+              if (galleryExtractor) {
+                galleryImages = galleryExtractor(galleryHtml)
+                console.log(`✅ [Firecrawl] Call 2 stealth fallback succeeded, extracted ${galleryImages.length} gallery images`)
+              } else {
+                console.warn('⚠️ [Firecrawl] Call 2 stealth fallback complete but no gallery extractor found')
+              }
+            } else {
+              console.warn('⚠️ [Firecrawl] Call 2 stealth fallback returned empty HTML')
+            }
+          } catch (stealthError: any) {
+            console.error(`❌ [Firecrawl] Call 2 stealth fallback also failed: ${stealthError.message || 'Unknown error'}`)
+            // Continue without gallery images - Call 1 was successful, so we can still return the result
+          }
+        }
+        
+        // If Call 2 failed and no fallback succeeded, log warning but don't throw error
+        // Call 1 was successful, so we can still return the result without gallery images
+        if (!call2Success) {
+          console.warn('⚠️ [Firecrawl] Call 2 failed and fallback also failed, continuing without gallery images')
+        }
       }
     } else if (actionsConfig && actionsConfig.actions) {
       // Single call with actions (other websites)

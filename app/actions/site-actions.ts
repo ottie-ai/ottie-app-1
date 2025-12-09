@@ -3,6 +3,65 @@
 import { createClient } from '@/lib/supabase/server'
 import { archiveSite, unarchiveSite, duplicateSite, deleteSite, updateSite, publishSite, unpublishSite } from '@/lib/data/site-data'
 import bcrypt from 'bcryptjs'
+import { headers } from 'next/headers'
+
+/**
+ * Get client IP address from request headers
+ */
+async function getClientIp(): Promise<string> {
+  const headersList = await headers()
+  const forwardedFor = headersList.get('x-forwarded-for')
+  const realIp = headersList.get('x-real-ip')
+  const cfConnectingIp = headersList.get('cf-connecting-ip')
+  
+  return forwardedFor?.split(',')[0]?.trim() ||
+         realIp?.trim() ||
+         cfConnectingIp?.trim() ||
+         'unknown'
+}
+
+/**
+ * Verify user has access to site through workspace membership
+ * Returns workspace_id if authorized, null otherwise
+ */
+async function verifySiteAccess(siteId: string): Promise<{ workspaceId: string; role: string } | null> {
+  const supabase = await createClient()
+  
+  // Get current user
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return null
+  }
+  
+  // Get site's workspace_id
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('workspace_id')
+    .eq('id', siteId)
+    .is('deleted_at', null)
+    .single()
+  
+  if (siteError || !site) {
+    return null
+  }
+  
+  // Verify user is member of the workspace
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', site.workspace_id)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (membershipError || !membership) {
+    return null
+  }
+  
+  return {
+    workspaceId: site.workspace_id,
+    role: membership.role
+  }
+}
 
 /**
  * Archive a site (sets status to archived)
@@ -10,6 +69,12 @@ import bcrypt from 'bcryptjs'
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleArchiveSite(siteId: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await archiveSite(siteId)
   
   if ('error' in result) {
@@ -25,6 +90,12 @@ export async function handleArchiveSite(siteId: string) {
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleUnarchiveSite(siteId: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await unarchiveSite(siteId)
   
   if ('error' in result) {
@@ -40,6 +111,12 @@ export async function handleUnarchiveSite(siteId: string) {
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleDuplicateSite(siteId: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await duplicateSite(siteId)
   
   if ('error' in result) {
@@ -56,6 +133,13 @@ export async function handleDuplicateSite(siteId: string) {
  */
 export async function handleDeleteSite(siteId: string) {
   console.log('🔵 [handleDeleteSite] Called with siteId:', siteId)
+  
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await deleteSite(siteId)
   console.log('🔵 [handleDeleteSite] Result:', result)
   
@@ -73,6 +157,12 @@ export async function handleDeleteSite(siteId: string) {
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleReassignSite(siteId: string, agentId: string | null) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const supabase = await createClient()
   
   // Get current site to check status
@@ -105,6 +195,12 @@ export async function handleReassignSite(siteId: string, agentId: string | null)
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleUpdateSiteTitle(siteId: string, title: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await updateSite(siteId, { title })
   
   if ('error' in result) {
@@ -263,9 +359,30 @@ export async function handleRemoveSitePassword(siteId: string) {
 /**
  * Verify password for a site (used on public site page)
  * Returns success if password is correct
+ * Includes rate limiting to prevent brute-force attacks
  */
 export async function verifySitePassword(siteId: string, password: string) {
   const supabase = await createClient()
+  
+  // Get client IP from request headers
+  const clientIp = await getClientIp()
+  
+  // Check rate limit (5 failed attempts per 15 minutes per IP)
+  const { data: rateLimitCheck, error: rateLimitError } = await supabase
+    .rpc('check_password_verification_rate_limit', {
+      p_site_id: siteId,
+      p_ip_address: clientIp
+    })
+  
+  if (rateLimitError) {
+    console.error('[verifySitePassword] Rate limit check error:', rateLimitError)
+    // Continue even if rate limit check fails (fail open for availability)
+  } else if (rateLimitCheck && !rateLimitCheck.allowed) {
+    return { 
+      error: rateLimitCheck.error || 'Too many failed attempts. Please try again later.',
+      retryAfterMinutes: rateLimitCheck.retry_after_minutes 
+    }
+  }
   
   // Get site with password hash
   const { data: site, error } = await supabase
@@ -285,6 +402,18 @@ export async function verifySitePassword(siteId: string, password: string) {
   // Verify password
   const isValid = await bcrypt.compare(password, site.password_hash)
   
+  // Log the attempt (success or failure)
+  try {
+    await supabase.rpc('log_password_verification_attempt', {
+      p_site_id: siteId,
+      p_ip_address: clientIp,
+      p_success: isValid
+    })
+  } catch (err) {
+    // Log error but don't fail the request
+    console.error('[verifySitePassword] Failed to log attempt:', err)
+  }
+  
   if (!isValid) {
     return { error: 'Incorrect password' }
   }
@@ -299,6 +428,12 @@ export async function verifySitePassword(siteId: string, password: string) {
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handlePublishSite(siteId: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const supabase = await createClient()
   
   // Get site to check workspace and current domain
@@ -353,6 +488,12 @@ export async function handlePublishSite(siteId: string) {
  * Note: We don't revalidate here - the client will refresh React Query cache
  */
 export async function handleUnpublishSite(siteId: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
   const result = await unpublishSite(siteId)
   
   if ('error' in result) {

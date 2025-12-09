@@ -87,10 +87,15 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
+    // Log full error server-side for debugging
+    console.error('[Test Email] Error:', error)
+    
+    // Return sanitized error to client (no stack trace)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
+        // Stack trace only in development
+        ...(process.env.NODE_ENV === 'development' && error instanceof Error && { stack: error.stack })
       },
       { status: 500 }
     )

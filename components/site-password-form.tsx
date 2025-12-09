@@ -42,7 +42,10 @@ export function SitePasswordForm({ siteId, siteTitle, onSuccess }: SitePasswordF
         const expiresAt = new Date()
         expiresAt.setHours(expiresAt.getHours() + 24)
         
-        document.cookie = `site_access_${siteId}=${Date.now()}; expires=${expiresAt.toUTCString()}; path=/; SameSite=Lax`
+        // Use Secure flag in production, SameSite=Strict for better security
+        const isProduction = window.location.protocol === 'https:'
+        const secureSuffix = isProduction ? '; Secure' : ''
+        document.cookie = `site_access_${siteId}=${Date.now()}; expires=${expiresAt.toUTCString()}; path=/; SameSite=Strict${secureSuffix}`
         
         toast.success('Access granted')
         onSuccess()
