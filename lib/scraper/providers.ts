@@ -24,6 +24,7 @@ export interface ScrapeResult {
   duration: number
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
+  galleryHtml?: string // Raw HTML from Call 2 (gallery extraction) - for debugging
   actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
 }
 
@@ -170,6 +171,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
     
     let html: string | undefined = undefined
     let galleryImages: string[] | undefined = undefined
+    let galleryHtml: string | undefined = undefined
     let usedStealthForCall1 = false
     let usedStealthForCall2 = false
     
@@ -404,6 +406,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
       provider: 'firecrawl',
       duration: callDuration,
       galleryImages: galleryImages, // Gallery images from Call 2 (for Realtor.com and Redfin.com)
+      galleryHtml: galleryHtml, // Raw HTML from Call 2 (for debugging)
       actualProvider: actualProvider,
     }
   } catch (error: any) {
