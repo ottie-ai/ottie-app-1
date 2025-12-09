@@ -24,13 +24,18 @@ export function removeHomesSpecificSections(mainElement: any): void {
     'ldp-property-history-container',
     'suggested-listings-container',
     'breadcrumbs-container',
+    'nearby-links-section-dt-v2',
   ]
   
   // Build combined selector for all elements to remove
   const classSelector = classesToRemove.map(className => `.${className}`).join(', ')
   
-  // Remove all matching elements
+  // Remove all matching elements by class
   mainElement.find(classSelector).remove()
   
-  console.log(`🔵 [removeHomesSpecificSections] Removed ${classesToRemove.length} unwanted sections from Homes.com HTML`)
+  // Remove footer and header elements
+  mainElement.find('footer').remove()
+  mainElement.find('header').remove()
+  
+  console.log(`🔵 [removeHomesSpecificSections] Removed ${classesToRemove.length} unwanted sections, footer, and header from Homes.com HTML`)
 }
