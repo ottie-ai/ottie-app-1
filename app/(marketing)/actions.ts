@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
-import { scrapeUrl, getScraperProvider, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
+import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -12,12 +12,11 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 
 /**
- * Scrape a URL using configured provider (Firecrawl or Apify) and create anonymous preview
+ * Scrape a URL using Firecrawl (with Apify for specific sites like Zillow) and create anonymous preview
  * Returns preview_id for accessing the generated preview
  * 
- * Provider can be switched via SCRAPER_PROVIDER env variable:
- * - 'firecrawl' (default) - requires FIRECRAWL_API_KEY
- * - 'apify' - requires APIFY_API_TOKEN
+ * Uses Firecrawl for general websites, automatically uses Apify for specific sites (e.g., Zillow)
+ * Requires FIRECRAWL_API_KEY (and APIFY_API_TOKEN for Apify-supported sites)
  */
 export async function generatePreview(url: string) {
   try {
@@ -30,21 +29,11 @@ export async function generatePreview(url: string) {
       }
     }
 
-    const configuredProvider = getScraperProvider()
-    console.log(`🔵 [generatePreview] Using provider: ${configuredProvider}`)
-    
     // Check if required API key is configured
-    if (configuredProvider === 'firecrawl' && !process.env.FIRECRAWL_API_KEY) {
+    if (!process.env.FIRECRAWL_API_KEY) {
       console.error('FIRECRAWL_API_KEY is not configured')
       return { 
         error: 'Firecrawl API is not configured. Please set FIRECRAWL_API_KEY environment variable.' 
-      }
-    }
-    
-    if (configuredProvider === 'apify' && !process.env.APIFY_API_TOKEN) {
-      console.error('APIFY_API_TOKEN is not configured')
-      return { 
-        error: 'Apify API is not configured. Please set APIFY_API_TOKEN environment variable.' 
       }
     }
 

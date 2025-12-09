@@ -1,11 +1,11 @@
 /**
  * Scraper Provider Abstraction
  * Supports multiple scraping providers:
- * - Firecrawl (general purpose - return HTML)
- * - Apify (site-specific scrapers - return structured JSON, also used as fallback)
+ * - Firecrawl (general purpose - return HTML, with basic proxy and stealth mode fallback)
+ * - Apify (site-specific scrapers - return structured JSON, automatically selected based on URL)
  * 
- * Switch between general providers via SCRAPER_PROVIDER env variable
- * Apify scrapers are automatically selected based on URL
+ * Apify scrapers are automatically selected based on URL (e.g., Zillow)
+ * For all other URLs, Firecrawl is used with automatic fallback to stealth mode if blocked
  */
 
 import Firecrawl from '@mendable/firecrawl-js'
@@ -25,18 +25,6 @@ export interface ScrapeResult {
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
   actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
-}
-
-/**
- * Get the active scraper provider from environment variable
- * Defaults to 'firecrawl' if not set
- */
-export function getScraperProvider(): ScraperProvider {
-  const provider = process.env.SCRAPER_PROVIDER?.toLowerCase()
-  if (provider === 'firecrawl' || provider === 'apify') {
-    return provider
-  }
-  return 'firecrawl' // Default to Firecrawl
 }
 
 /**
