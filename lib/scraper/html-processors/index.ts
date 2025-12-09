@@ -46,6 +46,7 @@ export function getMainContentSelector(url: string): string | null {
 // Import website-specific processors
 export { processRealtorHtml, extractRealtorGalleryImages, removeRealtorSpecificSections } from './realtor'
 export { extractRedfinGalleryImages, removeRedfinSpecificSections } from './redfin'
+export { removeHomesSpecificSections } from './homes'
 
 /**
  * Get the appropriate HTML processor for a URL
@@ -94,8 +95,9 @@ export function getHtmlCleaner(url: string): HtmlCleaner | null {
       return require('./redfin').removeRedfinSpecificSections
     }
     
-    // Homes.com: No HTML cleaner needed - no specific sections to remove
-    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no cleaner required
+    if (hostname === 'homes.com' || hostname === 'www.homes.com') {
+      return require('./homes').removeHomesSpecificSections
+    }
     
     return null
   } catch {
