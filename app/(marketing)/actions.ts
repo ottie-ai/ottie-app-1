@@ -230,27 +230,10 @@ export async function generatePreview(url: string) {
           const mainHtml = $.html(mainElement)
           const structuredText = extractStructuredText(mainHtml)
           
-          // For Homes.com, extract gallery images from cleaned HTML
-          let homesGalleryImages: string[] = []
-          try {
-            const urlObj = new URL(url)
-            const hostname = urlObj.hostname.toLowerCase()
-            if (hostname === 'homes.com' || hostname === 'www.homes.com') {
-              const galleryExtractor = getGalleryImageExtractor(url)
-              if (galleryExtractor) {
-                homesGalleryImages = galleryExtractor(mainHtml)
-                console.log(`🔵 [generatePreview] Extracted ${homesGalleryImages.length} gallery images from Homes.com cleaned HTML`)
-              }
-            }
-          } catch (error) {
-            console.error('⚠️ [generatePreview] Failed to extract Homes.com gallery images:', error)
-          }
-          
-          // Update preview with structured text and gallery images (if Homes.com)
+          // Update preview with structured text
           const updatedAiReadyData = {
             ...aiReadyData,
             raw_html_text: structuredText,
-            ...(homesGalleryImages.length > 0 && { gallery_images: homesGalleryImages }),
           }
           
           await supabase

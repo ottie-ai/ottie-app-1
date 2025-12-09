@@ -84,8 +84,12 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
       }
     }
     
-    // Homes.com: No gallery actions needed - uses single call
-    // (hostname === 'homes.com' || hostname === 'www.homes.com') - no gallery call needed
+    // Homes.com: Gallery actions (Call 2)
+    if (hostname === 'homes.com' || hostname === 'www.homes.com') {
+      return {
+        actions: require('./homes').getHomesActionsGallery(),
+      }
+    }
     
     // Add more websites here as needed
     
