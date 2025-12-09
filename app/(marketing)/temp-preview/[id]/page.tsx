@@ -515,32 +515,53 @@ function PreviewContent() {
                     ({(preview.ai_ready_data.gallery_html.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(preview.ai_ready_data.gallery_html)
-                    setCopiedSection('gallery-html')
-                    setCopied(true)
-                    setTimeout(() => {
-                      setCopied(false)
-                      setCopiedSection(null)
-                    }, 2000)
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copied && copiedSection === 'gallery-html' ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy HTML
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleExtractGalleryImages}
+                    disabled={extractingImages}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {extractingImages ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Extracting...
+                      </>
+                    ) : (
+                      <>
+                        <Code className="h-4 w-4 mr-2" />
+                        Extract Gallery
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(preview.ai_ready_data.gallery_html)
+                      setCopiedSection('gallery-html')
+                      setCopied(true)
+                      setTimeout(() => {
+                        setCopied(false)
+                        setCopiedSection(null)
+                      }, 2000)
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="text-white/60 hover:text-white hover:bg-white/10"
+                  >
+                    {copied && copiedSection === 'gallery-html' ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy HTML
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">

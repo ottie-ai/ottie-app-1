@@ -684,15 +684,17 @@ export async function extractGalleryImages(previewId: string) {
     return { error: 'Preview not found or expired' }
   }
 
-  // Check if raw HTML exists
-  if (!preview.raw_html) {
-    return { error: 'This preview does not contain raw HTML data to extract images from' }
-  }
-
   // Get source URL
   const sourceUrl = preview.source_url || preview.external_url
   if (!sourceUrl) {
     return { error: 'Source URL not found in preview' }
+  }
+
+  // Use gallery_html if available (from Call 2), otherwise fallback to raw_html
+  const htmlToExtract = preview.ai_ready_data?.gallery_html || preview.raw_html
+  
+  if (!htmlToExtract) {
+    return { error: 'This preview does not contain HTML data to extract images from' }
   }
 
   // Get website-specific gallery extractor
@@ -705,7 +707,7 @@ export async function extractGalleryImages(previewId: string) {
     }
     
     // Extract gallery images using website-specific extractor
-    const galleryImages = galleryExtractor(preview.raw_html)
+    const galleryImages = galleryExtractor(htmlToExtract)
     console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
 
     // Update the preview with extracted images
