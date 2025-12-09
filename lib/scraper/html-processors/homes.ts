@@ -101,12 +101,12 @@ export function extractHomesGalleryImages(html: string): string[] {
         ]
         shouldInclude = !excludePatterns.some(pattern => lowerSrc.includes(pattern)) &&
                        // Include images that look like property photos (common patterns)
-                       (lowerSrc.includes('photo') || 
+                        (lowerSrc.includes('photo') || 
                         lowerSrc.includes('image') || 
                         lowerSrc.includes('img') ||
                         lowerSrc.includes('property') ||
                         lowerSrc.includes('listing') ||
-                        !!lowerSrc.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i))
+                        !!lowerSrc.match(/\.(jpg|jpeg|webp)(\?|$)/i))
       }
       
       if (shouldInclude) {
@@ -162,12 +162,12 @@ export function extractHomesGalleryImages(html: string): string[] {
         ]
         shouldInclude = !excludePatterns.some(pattern => lowerSrc.includes(pattern)) &&
                        // Include images that look like property photos (common patterns)
-                       (lowerSrc.includes('photo') || 
+                        (lowerSrc.includes('photo') || 
                         lowerSrc.includes('image') || 
                         lowerSrc.includes('img') ||
                         lowerSrc.includes('property') ||
                         lowerSrc.includes('listing') ||
-                        !!lowerSrc.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i))
+                        !!lowerSrc.match(/\.(jpg|jpeg|webp)(\?|$)/i))
       }
       
       if (shouldInclude) {
