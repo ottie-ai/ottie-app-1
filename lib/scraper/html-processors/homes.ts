@@ -75,12 +75,41 @@ export function extractHomesGalleryImages(html: string): string[] {
                 null
     
     if (src && src.trim().length > 0) {
+      // Filter out data: URLs, base64 images, and other non-http sources
+      if (src.startsWith('data:') || src.startsWith('blob:') || !src.startsWith('http')) {
+        return // Skip non-http images
+      }
+      
       // Filter out small icons, avatars, and tracking pixels
       const width = parseInt($img.attr('width') || '0')
       const height = parseInt($img.attr('height') || '0')
       
-      // Skip very small images (likely icons)
-      if (width > 50 && height > 50) {
+      // If width/height are available, use them for filtering
+      // Otherwise, use URL pattern filtering
+      let shouldInclude = false
+      
+      if (width > 0 && height > 0) {
+        // Use width/height if available
+        shouldInclude = width > 50 && height > 50
+      } else {
+        // Use URL pattern filtering if width/height not available
+        // Exclude common icon/avatar patterns
+        const lowerSrc = src.toLowerCase()
+        const excludePatterns = [
+          'icon', 'avatar', 'logo', 'badge', 'button', 'arrow', 
+          'spinner', 'loader', 'placeholder', '1x1', 'pixel'
+        ]
+        shouldInclude = !excludePatterns.some(pattern => lowerSrc.includes(pattern)) &&
+                       // Include images that look like property photos (common patterns)
+                       (lowerSrc.includes('photo') || 
+                        lowerSrc.includes('image') || 
+                        lowerSrc.includes('img') ||
+                        lowerSrc.includes('property') ||
+                        lowerSrc.includes('listing') ||
+                        !!lowerSrc.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i))
+      }
+      
+      if (shouldInclude) {
         // Convert relative URLs to absolute if needed
         try {
           // If it's already absolute, use it as is
@@ -108,10 +137,40 @@ export function extractHomesGalleryImages(html: string): string[] {
                 null
     
     if (src && src.trim().length > 0) {
+      // Filter out data: URLs, base64 images, and other non-http sources
+      if (src.startsWith('data:') || src.startsWith('blob:') || !src.startsWith('http')) {
+        return // Skip non-http images
+      }
+      
       const width = parseInt($img.attr('width') || '0')
       const height = parseInt($img.attr('height') || '0')
       
-      if (width > 50 && height > 50) {
+      // If width/height are available, use them for filtering
+      // Otherwise, use URL pattern filtering
+      let shouldInclude = false
+      
+      if (width > 0 && height > 0) {
+        // Use width/height if available
+        shouldInclude = width > 50 && height > 50
+      } else {
+        // Use URL pattern filtering if width/height not available
+        // Exclude common icon/avatar patterns
+        const lowerSrc = src.toLowerCase()
+        const excludePatterns = [
+          'icon', 'avatar', 'logo', 'badge', 'button', 'arrow', 
+          'spinner', 'loader', 'placeholder', '1x1', 'pixel'
+        ]
+        shouldInclude = !excludePatterns.some(pattern => lowerSrc.includes(pattern)) &&
+                       // Include images that look like property photos (common patterns)
+                       (lowerSrc.includes('photo') || 
+                        lowerSrc.includes('image') || 
+                        lowerSrc.includes('img') ||
+                        lowerSrc.includes('property') ||
+                        lowerSrc.includes('listing') ||
+                        !!lowerSrc.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i))
+      }
+      
+      if (shouldInclude) {
         try {
           if (src.startsWith('http://') || src.startsWith('https://')) {
             imageUrls.push(src)
