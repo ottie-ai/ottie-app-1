@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
-import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
+import { scrapeUrl, retryCall1, retryCall2, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
@@ -167,7 +167,7 @@ export async function generatePreview(url: string) {
       } : undefined,
       processed_html: processedHtml || null, // Store processed HTML if processor was used
       gallery_images: galleryImages.length > 0 ? galleryImages : undefined, // Store gallery images if extracted
-      gallery_html: galleryHtml || null, // Store gallery HTML from Call 2 (for debugging)
+      gallery_html: galleryHtml !== undefined ? galleryHtml : null, // Store gallery HTML from Call 2 (for debugging, even if empty)
       actual_provider: scrapeResult.actualProvider || provider, // Store actual provider used (including fallbacks)
     }
 
@@ -933,6 +933,108 @@ export async function generateConfigFromApify(previewId: string) {
     return result
   } catch (error: any) {
     return { error: error.message || 'Failed to generate config' }
+  }
+}
+
+/**
+ * Retry Call 1 (main content) for debugging
+ * Allows retrying just Call 1 without running Call 2
+ */
+export async function retryPreviewCall1(previewId: string, useStealth: boolean = false) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  const sourceUrl = preview.external_url || preview.source_url
+  if (!sourceUrl) {
+    return { error: 'Source URL not found in preview' }
+  }
+
+  try {
+    console.log(`🔵 [retryPreviewCall1] Retrying Call 1 for preview: ${previewId}`)
+    const result = await retryCall1(sourceUrl, 170000, useStealth)
+    
+    // Update preview with new Call 1 HTML
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        raw_html: result.html,
+      })
+      .eq('id', previewId)
+    
+    if (updateError) {
+      console.error('🔴 [retryPreviewCall1] Failed to update preview:', updateError)
+      return { error: 'Failed to update preview. Please try again.' }
+    }
+    
+    console.log(`✅ [retryPreviewCall1] Call 1 retry complete, HTML length: ${result.html.length} (${result.duration}ms)`)
+    return { success: true, html: result.html, duration: result.duration }
+  } catch (error: any) {
+    console.error('🔴 [retryPreviewCall1] Error:', error)
+    return { error: error.message || 'Failed to retry Call 1. Please try again.' }
+  }
+}
+
+/**
+ * Retry Call 2 (gallery) for debugging
+ * Allows retrying just Call 2 without running Call 1
+ */
+export async function retryPreviewCall2(previewId: string, useStealth: boolean = false) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  const sourceUrl = preview.external_url || preview.source_url
+  if (!sourceUrl) {
+    return { error: 'Source URL not found in preview' }
+  }
+
+  try {
+    console.log(`🔵 [retryPreviewCall2] Retrying Call 2 for preview: ${previewId}`)
+    const result = await retryCall2(sourceUrl, 170000, useStealth)
+    
+    // Update preview with new Call 2 HTML and gallery images
+    const updatedAiReadyData = {
+      ...preview.ai_ready_data || {},
+      gallery_html: result.html,
+      gallery_images: result.galleryImages.length > 0 ? result.galleryImages : undefined,
+    }
+    
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        ai_ready_data: updatedAiReadyData,
+      })
+      .eq('id', previewId)
+    
+    if (updateError) {
+      console.error('🔴 [retryPreviewCall2] Failed to update preview:', updateError)
+      return { error: 'Failed to update preview. Please try again.' }
+    }
+    
+    console.log(`✅ [retryPreviewCall2] Call 2 retry complete, HTML length: ${result.html.length}, extracted ${result.galleryImages.length} images (${result.duration}ms)`)
+    return { success: true, html: result.html, galleryImages: result.galleryImages, duration: result.duration }
+  } catch (error: any) {
+    console.error('🔴 [retryPreviewCall2] Error:', error)
+    return { error: error.message || 'Failed to retry Call 2. Please try again.' }
   }
 }
 

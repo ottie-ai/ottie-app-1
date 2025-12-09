@@ -184,6 +184,14 @@ export function extractHomesGalleryImages(html: string): string[] {
     }
   })
 
-  // Remove duplicates and return
-  return [...new Set(imageUrls)]
+  // Remove duplicates
+  const uniqueUrls = [...new Set(imageUrls)]
+  
+  // Filter out thumb/thumbnail images (universal filter for all scrapes)
+  const filteredUrls = uniqueUrls.filter(url => {
+    const lowerUrl = url.toLowerCase()
+    return !lowerUrl.includes('thumb') && !lowerUrl.includes('thumbnail')
+  })
+  
+  return filteredUrls
 }

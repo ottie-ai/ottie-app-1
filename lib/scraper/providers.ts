@@ -24,7 +24,7 @@ export interface ScrapeResult {
   duration: number
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
-  galleryHtml?: string // Raw HTML from Call 2 (gallery extraction) - for debugging
+  galleryHtml?: string // Raw HTML from Call 2 (for debugging)
   actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
 }
 
@@ -32,105 +32,32 @@ export interface ScrapeResult {
  * Detect if HTML content indicates a blocking/access denied error
  * Universal detection for various blocking patterns
  */
-function isBlockedContent(html: string): boolean {
+export function isBlockedContent(html: string): boolean {
   if (!html || html.trim().length === 0) {
     return false
   }
 
-  const htmlLower = html.toLowerCase()
+  const lowerHtml = html.toLowerCase()
   
   // Common blocking patterns
   const blockingPatterns = [
     'access denied',
-    'access forbidden',
-    'permission denied',
-    'you don\'t have permission',
-    'blocked',
-    'forbidden',
-    '403 forbidden',
+    'accessdenied',
     'cloudflare',
     'checking your browser',
     'please wait',
     'ddos protection',
+    'reference #',
+    'error 403',
+    'error 429',
+    'too many requests',
+    'blocked',
+    'forbidden',
     'captcha',
-    'robot',
-    'bot detected',
-    'reference #', // Common in error pages
-    'errors.edgesuite.net', // Akamai error pages
+    'recaptcha',
   ]
   
-  // Check if any blocking pattern is present
-  for (const pattern of blockingPatterns) {
-    if (htmlLower.includes(pattern)) {
-      return true
-    }
-  }
-  
-  // Check for very short HTML that might be an error page
-  if (html.length < 500 && (
-    htmlLower.includes('<h1>') && htmlLower.includes('denied') ||
-    htmlLower.includes('<h1>') && htmlLower.includes('forbidden') ||
-    htmlLower.includes('<h1>') && htmlLower.includes('error')
-  )) {
-    return true
-  }
-  
-  return false
-}
-
-/**
- * Scrape URL using Apify Web Scraper (general purpose)
- * Returns HTML content like other providers
- */
-async function scrapeWithApify(url: string, timeout: number): Promise<ScrapeResult> {
-  const apiToken = process.env.APIFY_API_TOKEN
-  
-  if (!apiToken) {
-    throw new Error('APIFY_API_TOKEN is not configured')
-  }
-
-  console.log('🔵 [Apify] Scraping URL:', url)
-  const callStartTime = Date.now()
-  
-  // Create a generic scraper config for Website Content Crawler
-  const genericScraper: ApifyScraperConfig = {
-    id: 'generic_web_scraper',
-    name: 'Website Content Crawler',
-    actorId: 'apify/website-content-crawler',
-    shouldHandle: () => true,
-    buildInput: (url: string) => ({
-      startUrls: [{ url }],
-      maxCrawlPages: 1,
-      crawlerType: 'cheerio',
-    }),
-  }
-  
-  try {
-    const result = await runApifyActor(genericScraper, url, timeout)
-    const callDuration = Date.now() - callStartTime
-    
-    // Extract HTML from Apify result
-    let html = ''
-    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-      const item = result.data[0]
-      html = item.html || item.text || item.markdown || ''
-    }
-    
-    console.log('✅ [Apify] Successfully scraped URL, content length:', html.length, `(${callDuration}ms)`)
-    
-    return {
-      html,
-      provider: 'apify',
-      duration: callDuration,
-      actualProvider: 'apify_generic',
-    }
-  } catch (error: any) {
-    if (error.message?.includes('timeout')) {
-      throw new Error(`Apify timeout after ${timeout / 1000} seconds`)
-    }
-    
-    throw error
-  }
+  return blockingPatterns.some(pattern => lowerHtml.includes(pattern))
 }
 
 /**
@@ -467,4 +394,147 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
   result.actualProvider = result.actualProvider || 'firecrawl'
   
   return result
+}
+
+/**
+ * Retry Call 1 (main content) for a URL
+ * Used for debugging - allows retrying just Call 1 without running Call 2
+ * 
+ * @param url - URL to scrape
+ * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
+ * @param useStealth - Use stealth proxy mode (default: false)
+ * @returns HTML string from Call 1
+ */
+export async function retryCall1(url: string, timeout: number = 170000, useStealth: boolean = false): Promise<{ html: string; duration: number }> {
+  const apiKey = process.env.FIRECRAWL_API_KEY
+  
+  if (!apiKey) {
+    throw new Error('FIRECRAWL_API_KEY is not configured')
+  }
+
+  console.log('🔵 [Retry Call 1] Scraping URL:', url, useStealth ? '(stealth mode)' : '(basic mode)')
+  const callStartTime = Date.now()
+  
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  
+  try {
+    const firecrawl = new Firecrawl({ apiKey })
+    const actionsConfig = getFirecrawlActions(url)
+    
+    const baseScrapeOptions: any = {
+      formats: ['html'],
+      proxy: useStealth ? 'stealth' : 'basic',
+    }
+    
+    let html: string | undefined = undefined
+    
+    if (actionsConfig && actionsConfig.actions) {
+      console.log(`🔵 [Retry Call 1] Performing with ${actionsConfig.actions.length} actions`)
+      const scrapeOptions = {
+        ...baseScrapeOptions,
+        actions: actionsConfig.actions,
+      }
+      const scrapeResponse = await firecrawl.scrape(url, scrapeOptions)
+      html = scrapeResponse.html || scrapeResponse.rawHtml
+    } else {
+      console.log(`🔵 [Retry Call 1] Performing without actions`)
+      const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
+      html = scrapeResponse.html || scrapeResponse.rawHtml
+    }
+    
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    if (!html || html.trim().length === 0) {
+      throw new Error('Call 1 returned empty HTML content')
+    }
+    
+    console.log(`✅ [Retry Call 1] Complete, HTML length: ${html.length} (${callDuration}ms)`)
+    
+    return { html, duration: callDuration }
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    if (error.name === 'AbortError' || error.message?.includes('aborted') || callDuration >= timeout) {
+      throw new Error(`Call 1 timeout after ${timeout / 1000} seconds`)
+    }
+    
+    throw new Error(`Call 1 error: ${error.message || 'Unknown error'}`)
+  }
+}
+
+/**
+ * Retry Call 2 (gallery) for a URL
+ * Used for debugging - allows retrying just Call 2 without running Call 1
+ * 
+ * @param url - URL to scrape
+ * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
+ * @param useStealth - Use stealth proxy mode (default: false)
+ * @returns HTML string and extracted gallery images from Call 2
+ */
+export async function retryCall2(url: string, timeout: number = 170000, useStealth: boolean = false): Promise<{ html: string; galleryImages: string[]; duration: number }> {
+  const apiKey = process.env.FIRECRAWL_API_KEY
+  
+  if (!apiKey) {
+    throw new Error('FIRECRAWL_API_KEY is not configured')
+  }
+
+  console.log('🔵 [Retry Call 2] Scraping URL:', url, useStealth ? '(stealth mode)' : '(basic mode)')
+  const callStartTime = Date.now()
+  
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  
+  try {
+    const firecrawl = new Firecrawl({ apiKey })
+    const galleryActionsConfig = getFirecrawlActionsGallery(url)
+    
+    if (!galleryActionsConfig || !galleryActionsConfig.actions) {
+      throw new Error('No gallery actions configured for this URL')
+    }
+    
+    const baseScrapeOptions: any = {
+      formats: ['html'],
+      proxy: useStealth ? 'stealth' : 'basic',
+      actions: galleryActionsConfig.actions,
+    }
+    
+    console.log(`🔵 [Retry Call 2] Performing with ${galleryActionsConfig.actions.length} gallery actions`)
+    const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
+    
+    const galleryHtml = scrapeResponse.html || scrapeResponse.rawHtml
+    
+    if (!galleryHtml || galleryHtml.trim().length === 0) {
+      throw new Error('Call 2 returned empty HTML content')
+    }
+    
+    // Extract gallery images
+    const galleryExtractor = getGalleryImageExtractor(url)
+    let galleryImages: string[] = []
+    
+    if (galleryExtractor) {
+      galleryImages = galleryExtractor(galleryHtml)
+      console.log(`✅ [Retry Call 2] Extracted ${galleryImages.length} gallery images`)
+    } else {
+      console.warn('⚠️ [Retry Call 2] No gallery extractor found for this website')
+    }
+    
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    console.log(`✅ [Retry Call 2] Complete, HTML length: ${galleryHtml.length} (${callDuration}ms)`)
+    
+    return { html: galleryHtml, galleryImages, duration: callDuration }
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+    const callDuration = Date.now() - callStartTime
+    
+    if (error.name === 'AbortError' || error.message?.includes('aborted') || callDuration >= timeout) {
+      throw new Error(`Call 2 timeout after ${timeout / 1000} seconds`)
+    }
+    
+    throw new Error(`Call 2 error: ${error.message || 'Unknown error'}`)
+  }
 }
