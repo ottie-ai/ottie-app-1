@@ -46,7 +46,7 @@ export function getMainContentSelector(url: string): string | null {
 // Import website-specific processors
 export { processRealtorHtml, extractRealtorGalleryImages, removeRealtorSpecificSections } from './realtor'
 export { extractRedfinGalleryImages, removeRedfinSpecificSections } from './redfin'
-export { removeHomesSpecificSections } from './homes'
+export { extractHomesGalleryImages, removeHomesSpecificSections } from './homes'
 
 /**
  * Get the appropriate HTML processor for a URL
@@ -123,6 +123,10 @@ export function getGalleryImageExtractor(url: string): ((html: string) => string
     
     if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {
       return require('./redfin').extractRedfinGalleryImages
+    }
+    
+    if (hostname === 'homes.com' || hostname === 'www.homes.com') {
+      return require('./homes').extractHomesGalleryImages
     }
     
     return null
