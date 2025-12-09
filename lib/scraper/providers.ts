@@ -170,6 +170,8 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
     
     let html: string | undefined = undefined
     let galleryImages: string[] | undefined = undefined
+    let usedStealthForCall1 = false
+    let usedStealthForCall2 = false
     
     // Check if we need to do two calls (websites with gallery extraction)
     // Two calls are needed if galleryActionsConfig exists (even if actionsConfig is null)
@@ -177,44 +179,92 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
     
     if (needsTwoCalls) {
       // Call 1: Main content (with or without actions)
-      if (actionsConfig && actionsConfig.actions) {
-        console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions.length} actions for ${url}`)
-        
-        const scrapeOptions1 = {
-          ...baseScrapeOptions,
-          actions: actionsConfig.actions,
+      let call1Success = false
+      
+      try {
+        if (actionsConfig && actionsConfig.actions) {
+          console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 with ${actionsConfig.actions.length} actions for ${url}`)
+          
+          const scrapeOptions1 = {
+            ...baseScrapeOptions,
+            actions: actionsConfig.actions,
+          }
+          
+          const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
+          
+          if (scrapeResponse1.html) {
+            html = scrapeResponse1.html
+          } else if (scrapeResponse1.rawHtml) {
+            html = scrapeResponse1.rawHtml
+          }
+          
+          if (html && html.trim().length > 0) {
+            call1Success = true
+            console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
+          } else {
+            throw new Error('Firecrawl Call 1 returned empty HTML content')
+          }
+        } else {
+          // Call 1: No actions needed, just scrape main content
+          console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 (no actions) for ${url}`)
+          
+          const scrapeResponse1 = await firecrawl.scrape(url, baseScrapeOptions)
+          
+          if (scrapeResponse1.html) {
+            html = scrapeResponse1.html
+          } else if (scrapeResponse1.rawHtml) {
+            html = scrapeResponse1.rawHtml
+          }
+          
+          if (html && html.trim().length > 0) {
+            call1Success = true
+            console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
+          } else {
+            throw new Error('Firecrawl Call 1 returned empty HTML content')
+          }
         }
+      } catch (call1Error: any) {
+        console.warn(`⚠️ [Firecrawl] Call 1 failed: ${call1Error.message || 'Unknown error'}`)
         
-        const scrapeResponse1 = await firecrawl.scrape(url, scrapeOptions1)
-        
-        if (scrapeResponse1.html) {
-          html = scrapeResponse1.html
-        } else if (scrapeResponse1.rawHtml) {
-          html = scrapeResponse1.rawHtml
+        // Try fallback: Call 1 with stealth mode
+        if (!useStealth && process.env.FIRECRAWL_API_KEY) {
+          try {
+            console.log(`🔄 [Firecrawl] Trying Call 1 with stealth mode as fallback...`)
+            const stealthScrapeOptions1 = {
+              ...baseScrapeOptions,
+              proxy: 'stealth', // Use stealth mode for fallback
+              actions: actionsConfig?.actions,
+            }
+            
+            const stealthScrapeResponse1 = await firecrawl.scrape(url, stealthScrapeOptions1)
+            
+            if (stealthScrapeResponse1.html) {
+              html = stealthScrapeResponse1.html
+            } else if (stealthScrapeResponse1.rawHtml) {
+              html = stealthScrapeResponse1.rawHtml
+            }
+            
+            if (html && html.trim().length > 0) {
+              call1Success = true
+              usedStealthForCall1 = true
+              console.log(`✅ [Firecrawl] Call 1 stealth fallback succeeded, HTML length: ${html.length}`)
+            } else {
+              throw new Error('Firecrawl Call 1 stealth fallback returned empty HTML content')
+            }
+          } catch (stealthError: any) {
+            console.error(`❌ [Firecrawl] Call 1 stealth fallback also failed: ${stealthError.message || 'Unknown error'}`)
+            // Re-throw the original error if fallback also fails
+            throw call1Error
+          }
+        } else {
+          // No fallback available, re-throw the original error
+          throw call1Error
         }
-        
-        if (!html || html.trim().length === 0) {
-          throw new Error('Firecrawl Call 1 returned empty HTML content')
-        }
-        
-        console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
-      } else {
-        // Call 1: No actions needed, just scrape main content
-        console.log(`🔵 [Firecrawl] Website needs two calls, performing Call 1 (no actions) for ${url}`)
-        
-        const scrapeResponse1 = await firecrawl.scrape(url, baseScrapeOptions)
-        
-        if (scrapeResponse1.html) {
-          html = scrapeResponse1.html
-        } else if (scrapeResponse1.rawHtml) {
-          html = scrapeResponse1.rawHtml
-        }
-        
-        if (!html || html.trim().length === 0) {
-          throw new Error('Firecrawl Call 1 returned empty HTML content')
-        }
-        
-        console.log(`✅ [Firecrawl] Call 1 complete, HTML length: ${html.length}`)
+      }
+      
+      // If Call 1 failed and fallback also failed, throw error
+      if (!call1Success) {
+        throw new Error('Firecrawl Call 1 failed and fallback also failed')
       }
       
       // Call 2: Gallery images only (don't save raw HTML, just extract images)
@@ -273,6 +323,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
             
             if (galleryHtml && galleryHtml.trim().length > 0) {
               call2Success = true
+              usedStealthForCall2 = true
               // Extract gallery images from stealth Call 2 HTML
               const galleryExtractor = getGalleryImageExtractor(url)
               if (galleryExtractor) {
@@ -342,12 +393,18 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
       galleryImages ? `(${galleryImages.length} gallery images)` : '',
       `(${callDuration}ms)`)
     
+    // Determine actual provider based on what was used
+    let actualProvider = 'firecrawl'
+    if (useStealth || usedStealthForCall1 || usedStealthForCall2) {
+      actualProvider = 'firecrawl_stealth'
+    }
+    
     return {
       html: html, // HTML after actions (or normal HTML if no actions)
       provider: 'firecrawl',
       duration: callDuration,
       galleryImages: galleryImages, // Gallery images from Call 2 (for Realtor.com and Redfin.com)
-      actualProvider: useStealth ? 'firecrawl_stealth' : 'firecrawl',
+      actualProvider: actualProvider,
     }
   } catch (error: any) {
     clearTimeout(timeoutId)
@@ -399,58 +456,12 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
   }
   
   // PRIORITY 2: Use Firecrawl (basic proxy)
+  // Fallback logic is handled inside scrapeWithFirecrawl() for Call 1 and Call 2
   console.log(`🎯 [Routing] Using Firecrawl with basic proxy`)
   
-  try {
-    // Try Firecrawl with basic proxy first
-    const result = await scrapeWithFirecrawl(url, timeout, false)
-    result.actualProvider = 'firecrawl'
-    
-    // Check if result is blocked
-    if (result.html && isBlockedContent(result.html)) {
-      console.warn(`⚠️ [Routing] Firecrawl returned blocked content, trying stealth mode...`)
-      
-      // Try Firecrawl with stealth mode
-      try {
-        const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
-        
-        if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
-          console.log(`✅ [Routing] Firecrawl stealth succeeded`)
-          return stealthResult
-        }
-        
-        console.error(`❌ [Routing] Firecrawl stealth also blocked`)
-        result.actualProvider = 'firecrawl_blocked'
-        return result
-      } catch (stealthError) {
-        console.error(`❌ [Routing] Firecrawl stealth failed:`, stealthError)
-        result.actualProvider = 'firecrawl_blocked'
-        return result
-      }
-    }
-    
-    // Success - return result
-    return result
-    
-  } catch (error: any) {
-    console.error(`❌ [Routing] Firecrawl failed:`, error.message)
-    
-    // Try Firecrawl with stealth mode as fallback
-    if (process.env.FIRECRAWL_API_KEY) {
-      try {
-        console.log(`🔄 [Routing] Trying Firecrawl with stealth mode after error...`)
-        const stealthResult = await scrapeWithFirecrawl(url, timeout, true)
-        
-        if (stealthResult.html && !isBlockedContent(stealthResult.html)) {
-          console.log(`✅ [Routing] Firecrawl stealth succeeded after error`)
-          return stealthResult
-        }
-      } catch (stealthError) {
-        console.error(`❌ [Routing] Firecrawl stealth also failed:`, stealthError)
-      }
-    }
-    
-    // All attempts failed, throw original error
-    throw error
-  }
+  // Call Firecrawl - it will handle fallbacks internally for Call 1 and Call 2
+  const result = await scrapeWithFirecrawl(url, timeout, false)
+  result.actualProvider = result.actualProvider || 'firecrawl'
+  
+  return result
 }
