@@ -36,19 +36,33 @@ export function cleanRealtorJson(apifyJson: any): any {
 }
 
 /**
- * Clean a single Realtor.com Apify item by removing unnecessary fields
- * For now, we keep most fields as the scraper structure may vary
- * This can be refined once we see actual data structure
+ * Clean a single Realtor.com Apify item by removing only empty values
+ * Preserves all data structure - only removes null, undefined, empty strings, empty arrays, empty objects
+ * Very conservative approach - keeps everything that has any content
  */
 function cleanRealtorItem(item: any): any {
   if (!item || typeof item !== 'object') {
     return item
   }
 
+  // Handle arrays - clean each item but keep all non-empty items
+  if (Array.isArray(item)) {
+    const cleaned = item
+      .map(v => typeof v === 'object' && v !== null ? cleanRealtorItem(v) : v)
+      .filter(v => {
+        // Remove only truly empty values
+        if (v === null || v === undefined || v === '') return false
+        if (Array.isArray(v) && v.length === 0) return false
+        if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return false
+        return true
+      })
+    return cleaned
+  }
+
+  // Start with a copy of the object to preserve all fields
   const cleaned: any = {}
 
-  // Remove common unnecessary fields that might be present
-  // This list can be expanded based on actual scraper output
+  // Remove only specific technical fields that are not needed
   const fieldsToRemove = [
     'url', // Original URL is not needed in cleaned data
     'loadedUrl', // Loaded URL is not needed
@@ -56,55 +70,44 @@ function cleanRealtorItem(item: any): any {
     'requestQueueId', // Internal queue ID
   ]
 
-  // Iterate through all fields and only keep non-empty values
+  // Iterate through all fields and preserve everything except empty values
   for (const key in item) {
-    // Skip fields that should be removed
+    // Skip only the specific technical fields
     if (fieldsToRemove.includes(key)) {
       continue
     }
 
     const value = item[key]
 
-    // Skip null, undefined, and empty strings
+    // Skip only truly empty primitive values (null, undefined, empty string)
     if (value === null || value === undefined || value === '') {
       continue
     }
 
-    // Skip empty arrays
-    if (Array.isArray(value) && value.length === 0) {
-      continue
-    }
-
-    // Skip empty objects
-    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
-      continue
-    }
-
-    // Recursively clean nested objects and arrays
+    // For arrays - clean recursively but always keep if original had items
     if (Array.isArray(value)) {
-      const cleanedArray = value.map(v => 
-        typeof v === 'object' && v !== null ? cleanRealtorItem(v) : v
-      ).filter(v => {
-        // Remove null, undefined, empty strings, empty objects, empty arrays
-        if (v === null || v === undefined || v === '') return false
-        if (Array.isArray(v) && v.length === 0) return false
-        if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return false
-        return true
-      })
-      
-      // Only add array if it's not empty after cleaning
-      if (cleanedArray.length > 0) {
-        cleaned[key] = cleanedArray
+      if (value.length === 0) {
+        continue // Skip empty arrays
       }
-    } else if (typeof value === 'object' && value !== null) {
+      // Recursively clean array items
+      const cleanedArray = cleanRealtorItem(value)
+      // Always keep if original had items (preserve structure)
+      cleaned[key] = cleanedArray
+    } 
+    // For objects - clean recursively but always preserve if original had keys
+    else if (typeof value === 'object' && value !== null) {
+      // Skip only if object is completely empty (no keys at all)
+      const originalKeys = Object.keys(value)
+      if (originalKeys.length === 0) {
+        continue
+      }
       // Recursively clean nested objects
       const cleanedObject = cleanRealtorItem(value)
-      // Only add object if it's not empty after cleaning
-      if (Object.keys(cleanedObject).length > 0) {
-        cleaned[key] = cleanedObject
-      }
-    } else {
-      // Keep primitive values (string, number, boolean, etc.)
+      // Always keep if original had keys (preserve structure even if nested values were cleaned)
+      cleaned[key] = cleanedObject
+    } 
+    // For primitives - always keep (string, number, boolean, etc.)
+    else {
       cleaned[key] = value
     }
   }

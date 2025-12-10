@@ -10,7 +10,7 @@ export interface ApifyScraperConfig {
   name: string // Display name (e.g., 'Zillow Detail Scraper')
   actorId: string // Apify actor ID (e.g., 'maxcopell/zillow-detail-scraper')
   shouldHandle: (url: string) => boolean // Function to check if this scraper should handle the URL
-  buildInput: (url: string) => any // Function to build the input object for the actor
+  buildInput: (url: string, proxyGroups?: string[]) => any // Function to build the input object for the actor
   cleanJson?: ApifyJsonCleaner // Optional: Website-specific JSON cleaning function
 }
 
@@ -63,11 +63,12 @@ export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
         return false
       }
     },
-    buildInput: (url: string) => {
+    buildInput: (url: string, proxyGroups?: string[]) => {
       return {
         startUrls: [{ url }],
         proxy: {
           useApifyProxy: true,
+          ...(proxyGroups && proxyGroups.length > 0 && { apifyProxyGroups: proxyGroups }),
         },
       }
     },

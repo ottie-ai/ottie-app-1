@@ -226,46 +226,62 @@ function formatApifyPropertyItem(item: any, lines: string[]): void {
     }
   }
 
-  // Property specs
+  // Property specs - check both top-level and description object
   const specs: string[] = []
-  if (item.bedrooms || item.beds || item.bed) {
-    const beds = item.bedrooms || item.beds || item.bed
+  const beds = item.bedrooms || item.beds || item.bed || item.description?.beds || item.description?.bedrooms
+  const baths = item.bathrooms || item.baths || item.bath || item.description?.baths || item.description?.bathrooms || item.description?.bathsFull
+  
+  if (beds) {
     specs.push(`${beds} bed${beds !== 1 ? 's' : ''}`)
   }
-  if (item.bathrooms || item.baths || item.bath) {
-    const baths = item.bathrooms || item.baths || item.bath
+  if (baths) {
     specs.push(`${baths} bath${baths !== 1 ? 's' : ''}`)
   }
   if (specs.length > 0) {
-    const propType = item.propertyType || item.type || item.property_type || 'OTHER'
+    const propType = item.propertyType || item.type || item.property_type || item.description?.type || 'OTHER'
     lines.push(`Property: ${specs.join(', ')} - ${propType}`)
   }
 
-  // Square footage / Living area
-  if (item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area) {
-    const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area
+  // Square footage / Living area - check both top-level and description object
+  const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area || item.description?.sqft
+  if (area) {
     const unit = item.areaUnit || item.unit || 'sqft'
     lines.push(`Living Area: ${area} ${unit}`)
   }
 
-  // Lot size
-  if (item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size) {
-    const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size
+  // Lot size - check both top-level and description object
+  const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size || item.description?.lotSqft
+  if (lotSize) {
     const unit = item.lotSizeUnit || item.lot_size?.unit || 'sqft'
     lines.push(`Lot Size: ${lotSize} ${unit}`)
   }
 
-  // Year built
-  if (item.yearBuilt || item.year_built) {
-    lines.push(`Year Built: ${item.yearBuilt || item.year_built}`)
+  // Year built - check both top-level and description object
+  const yearBuilt = item.yearBuilt || item.year_built || item.description?.yearBuilt
+  if (yearBuilt) {
+    lines.push(`Year Built: ${yearBuilt}`)
   }
 
-  // Description
-  if (item.description || item.listingDescription || item.remarks || item.text) {
+  // Description - handle both string and object formats
+  let descText: string | null = null
+  if (item.description) {
+    // If description is an object, extract text property
+    if (typeof item.description === 'object' && item.description.text) {
+      descText = item.description.text
+    } else if (typeof item.description === 'string') {
+      descText = item.description
+    }
+  }
+  
+  // Fallback to other description fields
+  if (!descText) {
+    descText = item.listingDescription || item.remarks || item.text || null
+  }
+  
+  if (descText) {
     lines.push('')
     lines.push('Description:')
-    const desc = item.description || item.listingDescription || item.remarks || item.text
-    lines.push(desc)
+    lines.push(descText)
   }
 
   // Features and amenities

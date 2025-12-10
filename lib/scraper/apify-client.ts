@@ -19,12 +19,14 @@ export interface ApifyResult {
  * @param scraper - Apify scraper configuration
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
+ * @param proxyGroups - Optional proxy groups to use (e.g., ['DATACENTER', 'RESIDENTIAL'])
  * @returns ApifyResult with JSON data from the actor
  */
 export async function runApifyActor(
   scraper: ApifyScraperConfig,
   url: string,
-  timeout: number = 170000
+  timeout: number = 170000,
+  proxyGroups?: string[]
 ): Promise<ApifyResult> {
   const apiToken = process.env.APIFY_API_TOKEN
   
@@ -33,10 +35,13 @@ export async function runApifyActor(
   }
 
   console.log(`🔵 [Apify:${scraper.name}] Scraping URL:`, url)
+  if (proxyGroups && proxyGroups.length > 0) {
+    console.log(`🔵 [Apify:${scraper.name}] Using proxy groups:`, proxyGroups.join(', '))
+  }
   const callStartTime = Date.now()
 
   // Build input for the actor
-  const input = scraper.buildInput(url)
+  const input = scraper.buildInput(url, proxyGroups)
   
   console.log(`🔵 [Apify:${scraper.name}] Actor input:`, JSON.stringify(input, null, 2))
 

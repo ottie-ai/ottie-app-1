@@ -6,6 +6,7 @@ import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
+import { getApifyCleaner } from '@/lib/scraper/apify-cleaners'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
@@ -457,46 +458,62 @@ function formatApifyPropertyItem(item: any, lines: string[]): void {
     }
   }
 
-  // Property specs
+  // Property specs - check both top-level and description object
   const specs: string[] = []
-  if (item.bedrooms || item.beds || item.bed) {
-    const beds = item.bedrooms || item.beds || item.bed
+  const beds = item.bedrooms || item.beds || item.bed || item.description?.beds || item.description?.bedrooms
+  const baths = item.bathrooms || item.baths || item.bath || item.description?.baths || item.description?.bathrooms || item.description?.bathsFull
+  
+  if (beds) {
     specs.push(`${beds} bed${beds !== 1 ? 's' : ''}`)
   }
-  if (item.bathrooms || item.baths || item.bath) {
-    const baths = item.bathrooms || item.baths || item.bath
+  if (baths) {
     specs.push(`${baths} bath${baths !== 1 ? 's' : ''}`)
   }
   if (specs.length > 0) {
-    const propType = item.propertyType || item.type || item.property_type || 'OTHER'
+    const propType = item.propertyType || item.type || item.property_type || item.description?.type || 'OTHER'
     lines.push(`Property: ${specs.join(', ')} - ${propType}`)
   }
 
-  // Square footage / Living area
-  if (item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area) {
-    const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area
+  // Square footage / Living area - check both top-level and description object
+  const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area || item.description?.sqft
+  if (area) {
     const unit = item.areaUnit || item.unit || 'sqft'
     lines.push(`Living Area: ${area} ${unit}`)
   }
 
-  // Lot size
-  if (item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size) {
-    const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size
+  // Lot size - check both top-level and description object
+  const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size || item.description?.lotSqft
+  if (lotSize) {
     const unit = item.lotSizeUnit || item.lot_size?.unit || 'sqft'
     lines.push(`Lot Size: ${lotSize} ${unit}`)
   }
 
-  // Year built
-  if (item.yearBuilt || item.year_built) {
-    lines.push(`Year Built: ${item.yearBuilt || item.year_built}`)
+  // Year built - check both top-level and description object
+  const yearBuilt = item.yearBuilt || item.year_built || item.description?.yearBuilt
+  if (yearBuilt) {
+    lines.push(`Year Built: ${yearBuilt}`)
   }
 
-  // Description
-  if (item.description || item.listingDescription || item.remarks || item.text) {
+  // Description - handle both string and object formats
+  let descText: string | null = null
+  if (item.description) {
+    // If description is an object, extract text property
+    if (typeof item.description === 'object' && item.description.text) {
+      descText = item.description.text
+    } else if (typeof item.description === 'string') {
+      descText = item.description
+    }
+  }
+  
+  // Fallback to other description fields
+  if (!descText) {
+    descText = item.listingDescription || item.remarks || item.text || null
+  }
+  
+  if (descText) {
     lines.push('')
     lines.push('Description:')
-    const desc = item.description || item.listingDescription || item.remarks || item.text
-    lines.push(desc)
+    lines.push(descText)
   }
 
   // Features and amenities
@@ -1070,19 +1087,62 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     return { error: 'Preview not found or expired' }
   }
 
-  // Get raw HTML
-  const rawHtml = preview.default_raw_html || preview.raw_html
-  if (!rawHtml || rawHtml.trim().length === 0) {
+  // Get raw HTML/JSON
+  const rawData = preview.default_raw_html || preview.raw_html
+  if (!rawData || rawData.trim().length === 0) {
     return { error: 'This preview does not contain raw HTML data to process' }
   }
 
-  // Extract structured text content (remove HTML tags, preserve hierarchy)
+  // Check if this is Apify JSON (stored as JSON string in default_raw_html)
+  try {
+    // Try to parse as JSON
+    const parsedJson = JSON.parse(rawData)
+    
+    // If it's valid JSON and looks like Apify data (object or array)
+    if (parsedJson && (typeof parsedJson === 'object' || Array.isArray(parsedJson))) {
+      console.log('🔵 [removeHtmlTagsFromRawHtml] Detected Apify JSON, cleaning and converting to text...')
+      
+      // Get scraper ID from preview metadata
+      const scraperId = preview?.scraped_data?.apifyScraperId || preview?.source_domain?.replace('apify_', '')
+      const cleaner = scraperId ? getApifyCleaner(scraperId) : null
+      
+      // Clean the JSON using website-specific cleaner if available
+      const cleanedJson = cleaner ? cleaner(parsedJson) : parsedJson
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Cleaned Apify JSON using ${scraperId || 'default'} cleaner`)
+      
+      // Convert cleaned JSON to text format
+      const apifyText = formatApifyJsonToText(cleanedJson)
+      console.log(`🔵 [removeHtmlTagsFromRawHtml] Converted to text format (${apifyText.length} chars)`)
+      
+      // Update the preview with cleaned JSON (as string) and text format
+      const { error: updateError } = await supabase
+        .from('temp_previews')
+        .update({
+          default_raw_html: JSON.stringify(cleanedJson, null, 2), // Store cleaned JSON as string
+          default_markdown: apifyText, // Store text format
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', previewId)
+
+      if (updateError) {
+        console.error('🔴 [removeHtmlTagsFromRawHtml] Failed to update preview:', updateError)
+        return { error: 'Failed to clean and process JSON. Please try again.' }
+      }
+
+      return { success: true, textLength: apifyText.length }
+    }
+  } catch (e) {
+    // Not JSON, continue with HTML processing
+    console.log('🔵 [removeHtmlTagsFromRawHtml] Not JSON, processing as HTML...')
+  }
+
+  // Original HTML processing logic (for non-Apify previews)
   try {
     // Get website-specific main content selector
     const sourceUrl = preview.external_url || preview.source_url
     const mainContentSelector = sourceUrl ? (getMainContentSelector(sourceUrl) || 'main') : 'main' // Fallback to 'main' if not specified
     
-    const $ = load(rawHtml)
+    const $ = load(rawData)
     const mainElement = $(mainContentSelector)
     
     let textContent: string
@@ -1103,7 +1163,7 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
       console.log(`🔵 [removeHtmlTagsFromRawHtml] Extracted main content (selector: ${mainContentSelector}) and converted to structured text (${textContent.length} chars) for preview:`, previewId)
     } else {
       // Fallback: use entire HTML if main content element not found
-      textContent = extractStructuredText(rawHtml)
+      textContent = extractStructuredText(rawData)
       console.log(`⚠️ [removeHtmlTagsFromRawHtml] No main content element found (selector: ${mainContentSelector}), using entire HTML (${textContent.length} chars) for preview:`, previewId)
     }
 

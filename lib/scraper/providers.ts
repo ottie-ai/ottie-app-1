@@ -456,21 +456,59 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
   if (apifyScraper) {
     console.log(`🎯 [Routing] URL matched Apify scraper: ${apifyScraper.name}`)
     
-    try {
-      const apifyResult = await runApifyActor(apifyScraper, url, timeout)
-      
-      return {
-        json: apifyResult.data,
-        provider: 'apify',
-        duration: apifyResult.duration,
-        apifyScraperId: apifyScraper.id,
-        actualProvider: `apify_${apifyScraper.id}`,
+    // For Realtor scraper: Try DATACENTER first, fallback to RESIDENTIAL if it fails
+    // This provides cost optimization (datacenter is cheaper) with reliability fallback
+    if (apifyScraper.id === 'realtor') {
+      // Try datacenter proxy first (faster, cheaper)
+      try {
+        console.log(`🔄 [Apify:${apifyScraper.name}] Attempting with DATACENTER proxy...`)
+        const apifyResult = await runApifyActor(apifyScraper, url, timeout, ['DATACENTER'])
+        
+        return {
+          json: apifyResult.data,
+          provider: 'apify',
+          duration: apifyResult.duration,
+          apifyScraperId: apifyScraper.id,
+          actualProvider: `apify_${apifyScraper.id}`,
+        }
+      } catch (error: any) {
+        console.warn(`⚠️ [Apify:${apifyScraper.name}] DATACENTER proxy failed, retrying with RESIDENTIAL proxy...`)
+        console.warn(`⚠️ [Apify:${apifyScraper.name}] Error:`, error.message)
+        
+        // Retry with residential proxy (more reliable, less likely to be blocked)
+        try {
+          const apifyResult = await runApifyActor(apifyScraper, url, timeout, ['RESIDENTIAL'])
+          
+          return {
+            json: apifyResult.data,
+            provider: 'apify',
+            duration: apifyResult.duration,
+            apifyScraperId: apifyScraper.id,
+            actualProvider: `apify_${apifyScraper.id}`,
+          }
+        } catch (retryError) {
+          console.error(`❌ [Apify:${apifyScraper.name}] Both proxy attempts (DATACENTER and RESIDENTIAL) failed`)
+          throw retryError
+        }
       }
-    } catch (error) {
-      console.error(`❌ [Apify:${apifyScraper.name}] Failed:`, error)
-      // If Apify fails, throw error (don't fallback to general scraper)
-      // This ensures we get proper error messages for site-specific issues
-      throw error
+    } else {
+      // For other scrapers, use default proxy configuration
+      try {
+        const apifyResult = await runApifyActor(apifyScraper, url, timeout)
+        
+        return {
+          json: apifyResult.data,
+          provider: 'apify',
+          duration: apifyResult.duration,
+          apifyScraperId: apifyScraper.id,
+          actualProvider: `apify_${apifyScraper.id}`,
+        }
+      } catch (error) {
+        console.error(`❌ [Apify:${apifyScraper.name}] Failed:`, error)
+        // If Apify fails, throw error (don't fallback to general scraper)
+        // This ensures we get proper error messages for site-specific issues
+        throw error
+      }
     }
   }
   
