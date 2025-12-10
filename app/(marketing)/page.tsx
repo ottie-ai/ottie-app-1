@@ -353,10 +353,8 @@ export default function Home() {
             // Don't set loadingMessageIndex - queue message is shown separately
           } else if (status === 'scraping') {
             // Scraping in progress - show "Analyzing website" (job left queue)
-            // Reset animation phase to trigger smooth transition from queue message to "Analyzing website"
-            if (isInQueue) {
-              setLoadingPhase('entering') // Restart animation when transitioning from queue
-            }
+            // Animation will transition smoothly - when displayMessage changes, React re-renders
+            // and the existing animation cycle continues naturally (same as "Analyzing website" -> "Processing content")
             setIsInQueue(false)
             setQueuePosition(null)
             setLoadingMessageIndex(0) // "Analyzing website"
