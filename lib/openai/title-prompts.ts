@@ -43,77 +43,32 @@ export function getTitleGenerationPrompt(
 
   const iconJson = JSON.stringify(iconCategories, null, 2)
 
-  return `You generate a SINGLE lifestyle-focused title and 6 marketing highlights for a real estate property.
-
-LANGUAGE:
-
-- Use the same language as in propertyData.language.
-
-- All text (title + highlights) must be in this language.
-
-TITLE REQUIREMENTS:
-
-- Generate EXACTLY ONE title.
-
-- Max 60 characters.
-
-- Emotional, aspirational, and benefit-driven.
-
-- Focus on lifestyle, experience, and unique selling points (views, pool, location, privacy, design, investment).
-
-- Avoid dry spec-only titles like "3 Bedroom Apartment in X".
-
-- Avoid generic phrases like "Beautiful Home" or "Amazing Property".
-
-HIGHLIGHTS REQUIREMENTS:
-
-- Exactly 6 items in the "highlights" array.
-
-- Each highlight has: 
-
-  - title: very short (2–5 words),
-
-  - value: short, concrete benefit,
-
-  - icon: Phosphor icon name.
-
-- Use the property's strongest selling points (views, pool, outdoor space, location, luxury finishes, privacy, amenities).
-
-- Do NOT repeat the title text in highlights.
-
-- Match each highlight to the icon categories and choose the most appropriate icon.
-
-ICON CATEGORIES:
-
-${iconJson}
-
-${currentTitle ? `CURRENT TITLE (optional to improve):\n${currentTitle}\n\n` : ''}${currentHighlights && currentHighlights.length ? `CURRENT HIGHLIGHTS (optional to improve):\n${JSON.stringify(currentHighlights, null, 2)}\n\n` : ''}PROPERTY DATA (from first call, JSON):
-
-${propertyData}
-
-OUTPUT:
-
-Return ONLY a JSON object with this exact structure:
-
-{
-
-  "title": "final title here",
-
-  "highlights": [
-
-    {
-
-      "title": "highlight title",
-
-      "value": "highlight value",
-
-      "icon": "IconName"
-
+  // Parse propertyData to get language if available
+  let language = 'en' // default
+  try {
+    const parsed = JSON.parse(propertyData)
+    if (parsed.language) {
+      language = parsed.language
     }
+  } catch (e) {
+    // If parsing fails, use default
+  }
 
-  ]
+  return `Generate 1 lifestyle title (max 60 chars, emotional) + exactly 6 highlights in ${language}.
 
-}
+TITLE: Aspirational, benefit-focused (views/pool/location/privacy). No specs-only.
 
-No explanations, no markdown, no code fences. Only valid JSON.`
+HIGHLIGHTS: 
+- title (2-5 words), value (benefit), icon (from categories below)
+- Use strongest selling points, no title repeat
+
+ICON CATEGORIES: ${iconJson}
+
+PROPERTY DATA: ${propertyData}
+
+Return ONLY JSON:
+{
+  "title": "...",
+  "highlights": [{"title": "...", "value": "...", "icon": "..."}]
+}`
 }

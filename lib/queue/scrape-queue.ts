@@ -466,13 +466,30 @@ async function generateConfigFromData(
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Call 2: Generate improved title and highlights with higher temperature (0.8) for more creativity
-    // Use the generated JSON config from first call as input data
+    // Use only relevant parts from generated config (not the full JSON)
     let finalConfig = { ...generatedConfig }
     let call2Usage = undefined
     let call2Duration = 0
     try {
       console.log('🤖 [Queue Worker] Generating improved title and highlights...')
-      const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
+      
+      // Extract only relevant parts for title generation
+      const relevantData = {
+        language: generatedConfig.language || '',
+        photos: generatedConfig.photos || [],
+        address: {
+          city: generatedConfig.address?.city || '',
+          neighborhood: generatedConfig.address?.neighborhood || '',
+        },
+        beds: generatedConfig.beds || 0,
+        baths: generatedConfig.baths || 0,
+        property_type: generatedConfig.property_type || 'OTHER',
+        description: generatedConfig.description || '',
+        features_amenities: generatedConfig.features_amenities || {},
+        highlights: generatedConfig.highlights || [], // for improvement
+      }
+      
+      const configJsonForTitle = JSON.stringify(relevantData, null, 2)
       const titleResponse = await generateTitle(
         configJsonForTitle,
         generatedConfig.title,

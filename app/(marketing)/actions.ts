@@ -870,8 +870,24 @@ export async function generateTitleCall2(previewId: string) {
   try {
     const generatedConfig = preview.generated_config
     
+    // Extract only relevant parts for title generation (not the full config)
+    const relevantData = {
+      language: generatedConfig.language || '',
+      photos: generatedConfig.photos || [],
+      address: {
+        city: generatedConfig.address?.city || '',
+        neighborhood: generatedConfig.address?.neighborhood || '',
+      },
+      beds: generatedConfig.beds || 0,
+      baths: generatedConfig.baths || 0,
+      property_type: generatedConfig.property_type || 'OTHER',
+      description: generatedConfig.description || '',
+      features_amenities: generatedConfig.features_amenities || {},
+      highlights: generatedConfig.highlights || [], // for improvement
+    }
+    
     // Generate improved title and highlights
-    const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
+    const configJsonForTitle = JSON.stringify(relevantData, null, 2)
     const openaiResponse = await generateTitle(
       configJsonForTitle,
       generatedConfig.title,
