@@ -79,15 +79,21 @@ export async function generatePreview(url: string) {
       // Trigger worker to start processing (non-blocking)
       // Worker will self-trigger for remaining jobs, so we only need to start it once
       // This makes a POST request to our worker API endpoint
-      // In production, use VERCEL_URL if available, otherwise NEXT_PUBLIC_APP_URL, fallback to localhost
+      // Use production domain for worker URL to avoid Vercel Deployment Protection issues
+      // VERCEL_URL points to preview/deployment URLs which may have authentication enabled
       const getWorkerUrl = () => {
-        // Vercel automatically provides VERCEL_URL in production
-        if (process.env.VERCEL_URL) {
-          return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
-        }
-        // Use explicit NEXT_PUBLIC_APP_URL if set
+        // Priority 1: Use explicit production URL if set
         if (process.env.NEXT_PUBLIC_APP_URL) {
           return `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process-scrape`
+        }
+        // Priority 2: In production on Vercel, use the production domain directly
+        // This avoids Deployment Protection on preview URLs
+        if (process.env.VERCEL_ENV === 'production') {
+          return 'https://www.ottie.com/api/queue/process-scrape'
+        }
+        // Priority 3: For preview deployments, try VERCEL_URL (may fail with Deployment Protection)
+        if (process.env.VERCEL_URL) {
+          return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
         }
         // Fallback to localhost for local development
         return 'http://localhost:3000/api/queue/process-scrape'

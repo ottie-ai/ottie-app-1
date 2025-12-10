@@ -268,13 +268,16 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
         
         // Trigger next worker asynchronously (non-blocking)
         // This ensures each job triggers the next one immediately (concurrent processing)
-        // In production, use VERCEL_URL if available, otherwise NEXT_PUBLIC_APP_URL, fallback to localhost
+        // Use production domain to avoid Vercel Deployment Protection issues
         const getWorkerUrl = () => {
-          if (process.env.VERCEL_URL) {
-            return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
-          }
           if (process.env.NEXT_PUBLIC_APP_URL) {
             return `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process-scrape`
+          }
+          if (process.env.VERCEL_ENV === 'production') {
+            return 'https://www.ottie.com/api/queue/process-scrape'
+          }
+          if (process.env.VERCEL_URL) {
+            return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
           }
           return 'http://localhost:3000/api/queue/process-scrape'
         }
@@ -371,13 +374,16 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       if (stats.queueLength > 0 && stats.processingCount < maxConcurrent) {
         console.log(`🔄 [Queue Worker] ${stats.queueLength} job(s) remaining after error, ${stats.processingCount}/${maxConcurrent} processing, triggering next worker...`)
         
-        // In production, use VERCEL_URL if available, otherwise NEXT_PUBLIC_APP_URL, fallback to localhost
+        // Use production domain to avoid Vercel Deployment Protection issues
         const getWorkerUrl = () => {
-          if (process.env.VERCEL_URL) {
-            return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
-          }
           if (process.env.NEXT_PUBLIC_APP_URL) {
             return `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process-scrape`
+          }
+          if (process.env.VERCEL_ENV === 'production') {
+            return 'https://www.ottie.com/api/queue/process-scrape'
+          }
+          if (process.env.VERCEL_URL) {
+            return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
           }
           return 'http://localhost:3000/api/queue/process-scrape'
         }
