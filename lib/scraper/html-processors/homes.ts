@@ -27,6 +27,7 @@ export function removeHomesSpecificSections(mainElement: any): void {
     'suggested-listings-container',
     'breadcrumbs-container',
     'nearby-links-section-dt-v2',
+    'agent-bio-listings',
   ]
   
   // Build combined selector for all elements to remove
