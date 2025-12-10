@@ -34,7 +34,7 @@ export async function generateStructuredJSON(
   prompt: string,
   schema?: object,
   model: string = 'gpt-4o-mini'
-): Promise<any> {
+): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
   const client = getOpenAIClient()
   const callStartTime = Date.now()
 
@@ -68,12 +68,25 @@ export async function generateStructuredJSON(
       throw new Error('No content in OpenAI response')
     }
 
-    const duration = Date.now() - callStartTime
-    console.log(`✅ [OpenAI] Generated JSON (${duration}ms)`)
+    const callEndTime = Date.now()
+    const callDuration = callEndTime - callStartTime
+    console.log(`✅ [OpenAI] Generated JSON (${callDuration}ms)`)
+    
+    // Extract usage info
+    const usage = response.usage ? {
+      prompt_tokens: response.usage.prompt_tokens,
+      completion_tokens: response.usage.completion_tokens,
+      total_tokens: response.usage.total_tokens,
+    } : undefined
+
+    if (usage) {
+      console.log(`📊 [OpenAI] Usage: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total tokens`)
+    }
 
     // Parse JSON from response
     try {
-      return JSON.parse(content)
+      const data = JSON.parse(content)
+      return { data, usage, callDuration }
     } catch (parseError) {
       console.error('❌ [OpenAI] Failed to parse JSON:', parseError)
       throw new Error(`Invalid JSON in OpenAI response: ${parseError}`)
@@ -109,7 +122,7 @@ export async function generateTitle(
   currentTitle?: string,
   currentHighlights?: any[],
   model: string = 'gpt-4o-mini'
-): Promise<{ title: string; highlights: any[] }> {
+): Promise<{ title: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
   const { getTitleGenerationPrompt } = await import('./title-prompts')
   const prompt = getTitleGenerationPrompt(propertyData, currentTitle, currentHighlights)
   
@@ -138,6 +151,20 @@ export async function generateTitle(
       throw new Error('No content in OpenAI response')
     }
 
+    const callEndTime = Date.now()
+    const callDuration = callEndTime - callStartTime
+    
+    // Extract usage info
+    const usage = response.usage ? {
+      prompt_tokens: response.usage.prompt_tokens,
+      completion_tokens: response.usage.completion_tokens,
+      total_tokens: response.usage.total_tokens,
+    } : undefined
+
+    if (usage) {
+      console.log(`📊 [OpenAI] Usage: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total tokens`)
+    }
+
     // Parse JSON from response
     try {
       const result = JSON.parse(content)
@@ -150,12 +177,13 @@ export async function generateTitle(
         throw new Error('Invalid JSON: missing or invalid highlights field')
       }
 
-      const duration = Date.now() - callStartTime
-      console.log(`✅ [OpenAI] Generated title: "${result.title}" with ${result.highlights.length} highlights (${duration}ms)`)
+      console.log(`✅ [OpenAI] Generated title: "${result.title}" with ${result.highlights.length} highlights (${callDuration}ms)`)
 
       return {
         title: result.title.trim(),
         highlights: result.highlights,
+        usage,
+        callDuration,
       }
     } catch (parseError) {
       console.error('❌ [OpenAI] Failed to parse JSON:', parseError)

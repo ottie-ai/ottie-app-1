@@ -7,9 +7,23 @@ import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
+import * as PhosphorIcons from '@phosphor-icons/react'
 import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
+
+// Helper function to get Phosphor Icon component by name
+function getPhosphorIcon(iconName: string) {
+  if (!iconName) return null
+  
+  // Try to find the icon in PhosphorIcons
+  const IconComponent = (PhosphorIcons as any)[iconName]
+  if (IconComponent) {
+    return IconComponent
+  }
+  
+  return null
+}
 
 function PreviewContent() {
   const params = useParams()
@@ -41,9 +55,41 @@ function PreviewContent() {
     return `${(ms / 1000).toFixed(2)}s`
   }
 
-  // Calculate generation time for a step
-  // Since we don't have specific timestamps for each step, we use created_at as baseline
-  // This gives an approximate time from when the preview was created
+  // Calculate generation time for Call 1 (base config generation)
+  // Uses call1_duration_ms from metadata (pure OpenAI call time, no local operations)
+  const getCall1Time = (): string | null => {
+    if (!preview?.generated_config || Object.keys(preview.generated_config).length === 0) return null
+    
+    const metadata = preview.generated_config._metadata
+    if (metadata?.call1_duration_ms !== undefined) {
+      return formatTime(metadata.call1_duration_ms)
+    }
+    
+    return null
+  }
+
+  // Calculate generation time for Call 2 (title and highlights improvement)
+  // Uses call2_duration_ms from metadata (pure OpenAI call time, no local operations)
+  const getCall2Time = (): string | null => {
+    if (!preview?.unified_json || Object.keys(preview.unified_json).length === 0) return null
+    if (!preview?.generated_config || Object.keys(preview.generated_config).length === 0) return null
+    
+    // Check if unified_json has different title/highlights than generated_config (meaning Call 2 ran)
+    const hasCall2Data = 
+      preview.unified_json?.title !== preview.generated_config?.title ||
+      JSON.stringify(preview.unified_json?.highlights) !== JSON.stringify(preview.generated_config?.highlights)
+    
+    if (!hasCall2Data) return null
+    
+    const metadata = preview.unified_json._metadata
+    if (metadata?.call2_duration_ms !== undefined) {
+      return formatTime(metadata.call2_duration_ms)
+    }
+    
+    return null
+  }
+
+  // Legacy function for other steps (kept for backward compatibility)
   const getGenerationTime = (hasData: boolean): string | null => {
     if (!hasData || !preview?.created_at) return null
     
@@ -416,9 +462,16 @@ function PreviewContent() {
                         ({(JSON.stringify(preview.generated_config).length / 1024).toFixed(1)} KB)
                       </span>
                       {preview?.generated_config && Object.keys(preview.generated_config).length > 0 && (
-                        <span className="text-xs text-white/50 ml-2">
-                          • {getGenerationTime(true) || 'N/A'}
-                        </span>
+                        <>
+                          <span className="text-xs text-white/50 ml-2">
+                            • {getCall1Time() || 'N/A'}
+                          </span>
+                          {preview.generated_config._metadata?.call1_usage && (
+                            <span className="text-xs text-white/40 ml-2">
+                              • {preview.generated_config._metadata.call1_usage.prompt_tokens} prompt + {preview.generated_config._metadata.call1_usage.completion_tokens} completion = {preview.generated_config._metadata.call1_usage.total_tokens} tokens
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -469,9 +522,42 @@ function PreviewContent() {
                   </div>
                   
                   <div className="p-4">
+                    {/* OpenAI Usage Info */}
+                    {preview.generated_config._metadata?.call1_usage && (
+                      <div className="mb-4 p-3 bg-white/[0.05] rounded border border-white/10">
+                        <Typography variant="small" className="text-white/60 mb-2">
+                          OpenAI Usage (Call 1):
+                        </Typography>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-white/40">Prompt:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.generated_config._metadata.call1_usage.prompt_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Completion:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.generated_config._metadata.call1_usage.completion_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Total:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.generated_config._metadata.call1_usage.total_tokens.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {preview.generated_config._metadata?.call1_duration_ms && (
+                          <div className="mt-2 text-xs text-white/40">
+                            Call duration: {getCall1Time()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="max-h-[400px] overflow-auto">
                       <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                        {JSON.stringify(sortConfigToSampleOrder(preview.generated_config), null, 2)}
+                        {JSON.stringify(sortConfigToSampleOrder(
+                          (() => {
+                            const { _metadata, ...config } = preview.generated_config
+                            return config
+                          })()
+                        ), null, 2)}
                       </pre>
                     </div>
                   </div>
@@ -536,9 +622,16 @@ function PreviewContent() {
                         Title & Highlights (Call 2)
                       </Typography>
                       {preview?.unified_json && Object.keys(preview.unified_json).length > 0 && (
-                        <span className="text-xs text-white/50 ml-2">
-                          • {getGenerationTime(true) || 'N/A'}
-                        </span>
+                        <>
+                          <span className="text-xs text-white/50 ml-2">
+                            • {getCall2Time() || 'N/A'}
+                          </span>
+                          {preview.unified_json._metadata?.call2_usage && (
+                            <span className="text-xs text-white/40 ml-2">
+                              • {preview.unified_json._metadata.call2_usage.prompt_tokens} prompt + {preview.unified_json._metadata.call2_usage.completion_tokens} completion = {preview.unified_json._metadata.call2_usage.total_tokens} tokens
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -593,6 +686,34 @@ function PreviewContent() {
                   </div>
                   
                   <div className="p-4">
+                    {/* OpenAI Usage Info */}
+                    {preview.unified_json._metadata?.call2_usage && (
+                      <div className="mb-4 p-3 bg-white/[0.05] rounded border border-white/10">
+                        <Typography variant="small" className="text-white/60 mb-2">
+                          OpenAI Usage (Call 2):
+                        </Typography>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-white/40">Prompt:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.unified_json._metadata.call2_usage.prompt_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Completion:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.unified_json._metadata.call2_usage.completion_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Total:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.unified_json._metadata.call2_usage.total_tokens.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {preview.unified_json._metadata?.call2_duration_ms && (
+                          <div className="mt-2 text-xs text-white/40">
+                            Call duration: {getCall2Time()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="space-y-4">
                       {/* Title */}
                       <div>
@@ -613,35 +734,42 @@ function PreviewContent() {
                         </Typography>
                         <div className="space-y-3">
                           {preview.unified_json?.highlights && preview.unified_json.highlights.length > 0 ? (
-                            preview.unified_json.highlights.map((highlight: any, index: number) => (
-                              <div key={index} className="p-4 bg-white/[0.05] rounded-lg border border-white/10 hover:bg-white/[0.08] transition-colors">
-                                <div className="flex items-start gap-4">
-                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium text-white/80">
-                                    {index + 1}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="mb-2">
-                                      <Typography variant="small" className="text-white font-semibold text-base leading-tight">
-                                        {highlight.title || 'No title'}
-                                      </Typography>
+                            preview.unified_json.highlights.map((highlight: any, index: number) => {
+                              const IconComponent = highlight.icon ? getPhosphorIcon(highlight.icon) : null
+                              return (
+                                <div key={index} className="p-4 bg-white/[0.05] rounded-lg border border-white/10 hover:bg-white/[0.08] transition-colors">
+                                  <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                                      {IconComponent ? (
+                                        <IconComponent className="h-5 w-5 text-white/80" weight="fill" />
+                                      ) : (
+                                        <span className="text-sm font-medium text-white/80">{index + 1}</span>
+                                      )}
                                     </div>
-                                    <div className="mb-3">
-                                      <Typography variant="small" className="text-white/70 text-sm leading-relaxed">
-                                        {highlight.value || 'No value'}
-                                      </Typography>
-                                    </div>
-                                    {highlight.icon && (
-                                      <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded border border-white/10">
-                                        <Code className="h-3 w-3 text-white/50" />
-                                        <Typography variant="small" className="text-white/50 text-xs font-mono">
-                                          {highlight.icon}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="mb-2">
+                                        <Typography variant="small" className="text-white font-semibold text-base leading-tight">
+                                          {highlight.title || 'No title'}
                                         </Typography>
                                       </div>
-                                    )}
+                                      <div className="mb-2">
+                                        <Typography variant="small" className="text-white/70 text-sm leading-relaxed">
+                                          {highlight.value || 'No value'}
+                                        </Typography>
+                                      </div>
+                                      {highlight.icon && !IconComponent && (
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded border border-white/10">
+                                          <Code className="h-3 w-3 text-white/50" />
+                                          <Typography variant="small" className="text-white/50 text-xs font-mono">
+                                            {highlight.icon}
+                                          </Typography>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))
+                              )
+                            })
                           ) : (
                             <div className="p-4 bg-white/[0.05] rounded-lg border border-white/10">
                               <Typography variant="small" className="text-white/60">

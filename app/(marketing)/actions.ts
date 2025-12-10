@@ -344,22 +344,40 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
 
     // Call OpenAI - Call 1 only (base config generation)
     console.log('🔄 [generateConfigFromStructuredText] Starting Call 1 (base config generation only)')
-    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    
+    // Call OpenAI and get response with usage info
+    const openaiResponse = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = openaiResponse.data
+    const call1Usage = openaiResponse.usage
+    const call1Duration = openaiResponse.callDuration
 
-    // Sort config keys to match sample config order
+    // Sort config keys to match sample config order (this is local operation, not part of OpenAI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
+
+    // Record timestamps (using actual OpenAI call duration)
+    const call1StartTime = new Date(Date.now() - call1Duration).toISOString()
+    const call1EndTime = new Date().toISOString()
 
     // Update preview with generated config
     // When manually calling Call 1, reset unified_json to only contain Call 1 data
     // This allows Call 2 to be run separately later
     const supabase = await createClient()
+    
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
-        generated_config: generatedConfig,
+        generated_config: {
+          ...generatedConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+          }
+        },
         unified_json: generatedConfig, // Reset to Call 1 only (Call 2 will update this later)
         status: 'completed',
-        updated_at: new Date().toISOString(),
+        updated_at: call1EndTime,
       })
       .eq('id', previewId)
 
@@ -397,22 +415,40 @@ async function generateConfigFromApifyData(previewId: string, apifyData: any) {
 
     // Call OpenAI - Call 1 only (base config generation)
     console.log('🔄 [generateConfigFromApifyData] Starting Call 1 (base config generation only)')
-    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    
+    // Call OpenAI and get response with usage info
+    const openaiResponse = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = openaiResponse.data
+    const call1Usage = openaiResponse.usage
+    const call1Duration = openaiResponse.callDuration
 
-    // Sort config keys to match sample config order
+    // Sort config keys to match sample config order (this is local operation, not part of OpenAI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
+
+    // Record timestamps (using actual OpenAI call duration)
+    const call1StartTime = new Date(Date.now() - call1Duration).toISOString()
+    const call1EndTime = new Date().toISOString()
 
     // Update preview with generated config
     // When manually calling Call 1, reset unified_json to only contain Call 1 data
     // This allows Call 2 to be run separately later
     const supabase = await createClient()
+    
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
-        generated_config: generatedConfig,
+        generated_config: {
+          ...generatedConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+          }
+        },
         unified_json: generatedConfig, // Reset to Call 1 only (Call 2 will update this later)
         status: 'completed',
-        updated_at: new Date().toISOString(),
+        updated_at: call1EndTime,
       })
       .eq('id', previewId)
 
@@ -836,11 +872,22 @@ export async function generateTitleCall2(previewId: string) {
     
     // Generate improved title and highlights
     const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
-    const titleAndHighlights = await generateTitle(
+    const openaiResponse = await generateTitle(
       configJsonForTitle,
       generatedConfig.title,
       generatedConfig.highlights
     )
+    
+    const titleAndHighlights = {
+      title: openaiResponse.title,
+      highlights: openaiResponse.highlights,
+    }
+    const call2Usage = openaiResponse.usage
+    const call2Duration = openaiResponse.callDuration
+    
+    // Record timestamps (using actual OpenAI call duration)
+    const call2StartTime = new Date(Date.now() - call2Duration).toISOString()
+    const call2EndTime = new Date().toISOString()
     
     // Merge with existing config
     const finalConfig = {
@@ -853,8 +900,17 @@ export async function generateTitleCall2(previewId: string) {
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
-        unified_json: finalConfig,
-        updated_at: new Date().toISOString(),
+        unified_json: {
+          ...finalConfig,
+          _metadata: {
+            ...(generatedConfig._metadata || {}),
+            call2_started_at: call2StartTime,
+            call2_completed_at: call2EndTime,
+            call2_duration_ms: call2Duration,
+            call2_usage: call2Usage,
+          }
+        },
+        updated_at: call2EndTime,
       })
       .eq('id', previewId)
 

@@ -456,45 +456,81 @@ async function generateConfigFromData(
     const dataToProcess = type === 'apify' ? JSON.stringify(data, null, 2) : data
     const prompt = getRealEstateConfigPrompt(type, dataToProcess)
 
-    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    // Call 1: Generate base config
+    const openaiResponse1 = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = openaiResponse1.data
+    const call1Usage = openaiResponse1.usage
+    const call1Duration = openaiResponse1.callDuration
 
-    // Sort config keys to match sample config order
+    // Sort config keys to match sample config order (local operation, not part of OpenAI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
-    // Generate improved title and highlights with higher temperature (0.8) for more creativity
+    // Call 2: Generate improved title and highlights with higher temperature (0.8) for more creativity
     // Use the generated JSON config from first call as input data
     let finalConfig = { ...generatedConfig }
+    let call2Usage = undefined
+    let call2Duration = 0
     try {
       console.log('🤖 [Queue Worker] Generating improved title and highlights...')
       const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
-      const titleAndHighlights = await generateTitle(
+      const titleResponse = await generateTitle(
         configJsonForTitle,
         generatedConfig.title,
         generatedConfig.highlights
       )
       
+      call2Usage = titleResponse.usage
+      call2Duration = titleResponse.callDuration
+      
       // Update title and highlights in config
-      if (titleAndHighlights.title && titleAndHighlights.title.trim().length > 0) {
-        finalConfig.title = titleAndHighlights.title.trim()
-        console.log(`✅ [Queue Worker] Title improved: "${titleAndHighlights.title}"`)
+      if (titleResponse.title && titleResponse.title.trim().length > 0) {
+        finalConfig.title = titleResponse.title.trim()
+        console.log(`✅ [Queue Worker] Title improved: "${titleResponse.title}"`)
       }
-      if (titleAndHighlights.highlights && Array.isArray(titleAndHighlights.highlights)) {
-        finalConfig.highlights = titleAndHighlights.highlights
-        console.log(`✅ [Queue Worker] Highlights improved: ${titleAndHighlights.highlights.length} items`)
+      if (titleResponse.highlights && Array.isArray(titleResponse.highlights)) {
+        finalConfig.highlights = titleResponse.highlights
+        console.log(`✅ [Queue Worker] Highlights improved: ${titleResponse.highlights.length} items`)
       }
     } catch (titleError: any) {
       // Don't fail the whole job if title generation fails - use original title and highlights from config
       console.warn(`⚠️ [Queue Worker] Title/highlights generation failed, using original values:`, titleError.message)
     }
 
+    // Record timestamps (using actual OpenAI call durations)
+    const now = Date.now()
+    const call1StartTime = new Date(now - call1Duration - call2Duration).toISOString()
+    const call1EndTime = new Date(now - call2Duration).toISOString()
+    const call2StartTime = call1EndTime
+    const call2EndTime = new Date(now).toISOString()
+
     const supabase = createAdminClient()
     await supabase
       .from('temp_previews')
       .update({
-        generated_config: generatedConfig, // Keep original config
-        unified_json: finalConfig, // Save updated version with improved title and highlights
+        generated_config: {
+          ...generatedConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+          }
+        },
+        unified_json: {
+          ...finalConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+            call2_started_at: call2StartTime,
+            call2_completed_at: call2EndTime,
+            call2_duration_ms: call2Duration,
+            call2_usage: call2Usage,
+          }
+        },
         status: 'completed',
-        updated_at: new Date().toISOString(),
+        updated_at: call2EndTime,
       })
       .eq('id', previewId)
 
