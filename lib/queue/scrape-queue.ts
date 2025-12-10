@@ -307,23 +307,18 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     
     // OpenAI processing (if not disabled) - runs AFTER queue slot is freed
     // This is not part of queue processing, just post-processing
-    if (process.env.DISABLE_OPENAI_PROCESSING) {
-      console.log(`⏭️ [Queue Worker] OpenAI processing disabled via DISABLE_OPENAI_PROCESSING env var`)
-    } else {
+    if (!process.env.DISABLE_OPENAI_PROCESSING) {
       try {
         if (provider === 'apify' && cleanedJson) {
           console.log('🤖 [Queue Worker] Processing Apify data with OpenAI (async, queue slot already freed)...')
           await generateConfigFromData(job.id, cleanedJson, 'apify')
         } else if (provider === 'firecrawl' && rawHtml) {
           console.log('🤖 [Queue Worker] Processing Firecrawl HTML with OpenAI (async, queue slot already freed)...')
-          console.log(`🤖 [Queue Worker] Raw HTML length: ${rawHtml?.length || 0} chars`)
           
           // Extract structured text from HTML
           const $ = load(rawHtml)
           const mainContentSelector = getMainContentSelector(job.url) || 'main'
           const mainElement = $(mainContentSelector)
-          
-          console.log(`🤖 [Queue Worker] Main content selector: "${mainContentSelector}", found elements: ${mainElement.length}`)
           
           if (mainElement.length > 0) {
             const htmlCleaner = getHtmlCleaner(job.url)
@@ -334,8 +329,6 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
             const mainHtml = $.html(mainElement)
             const structuredText = extractStructuredText(mainHtml)
             
-            console.log(`🤖 [Queue Worker] Extracted structured text: ${structuredText?.length || 0} chars`)
-            
             // Update with structured text
             await supabase
               .from('temp_previews')
@@ -344,28 +337,12 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
               })
               .eq('id', job.id)
             
-            console.log(`🤖 [Queue Worker] Calling generateConfigFromData for job ${job.id}...`)
             await generateConfigFromData(job.id, structuredText, 'text')
-            console.log(`✅ [Queue Worker] OpenAI processing completed for job ${job.id}`)
-          } else {
-            console.warn(`⚠️ [Queue Worker] Main element not found for selector "${mainContentSelector}", skipping OpenAI processing`)
           }
-        } else {
-          console.warn(`⚠️ [Queue Worker] No data available for OpenAI processing (provider: ${provider}, hasHtml: ${!!rawHtml}, hasJson: ${!!cleanedJson})`)
         }
       } catch (openAiError: any) {
         console.error('⚠️ [Queue Worker] OpenAI processing failed:', openAiError)
-        console.error('⚠️ [Queue Worker] Error details:', openAiError?.message || openAiError)
         // Don't fail the whole job if OpenAI fails - scraping was successful
-        // But update status to error so frontend knows something went wrong
-        const supabase = createAdminClient()
-        await supabase
-          .from('temp_previews')
-          .update({
-            status: 'error',
-            error_message: `OpenAI processing failed: ${openAiError?.message || 'Unknown error'}`,
-          })
-          .eq('id', job.id)
       }
     }
     
