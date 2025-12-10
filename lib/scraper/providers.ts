@@ -143,17 +143,17 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
         if (scrapes.length >= 2) {
           // First scrape (raw HTML - pre-action)
           firstScrapeHtml = scrapes[0].html || scrapes[0].rawHtml
-          firstScrapeMarkdown = scrapes[0].markdown || scrapes[0].rawMarkdown
+          firstScrapeMarkdown = scrapes[0].markdown
           // Second scrape (gallery HTML - post-action)
           secondScrapeHtml = scrapes[1].html || scrapes[1].rawHtml
-          secondScrapeMarkdown = scrapes[1].markdown || scrapes[1].rawMarkdown
+          secondScrapeMarkdown = scrapes[1].markdown
           console.log(`✅ [Firecrawl] Got both scrapes from actions.scrapes array (${scrapes.length} scrapes)`)
         } else if (scrapes.length === 1) {
           // Only one scrape in array - use main response as second scrape
           firstScrapeHtml = scrapes[0].html || scrapes[0].rawHtml
-          firstScrapeMarkdown = scrapes[0].markdown || scrapes[0].rawMarkdown
+          firstScrapeMarkdown = scrapes[0].markdown
           secondScrapeHtml = scrapeResponse.html || scrapeResponse.rawHtml
-          secondScrapeMarkdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
+          secondScrapeMarkdown = scrapeResponse.markdown
           console.log(`⚠️ [Firecrawl] Only one scrape in actions.scrapes, using main response as second scrape`)
         }
       } else {
@@ -161,7 +161,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
         // This shouldn't happen if Firecrawl properly returns scrapes array
         console.warn('⚠️ [Firecrawl] actions.scrapes array not found in response, using main response as gallery HTML')
         secondScrapeHtml = scrapeResponse.html || scrapeResponse.rawHtml
-        secondScrapeMarkdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
+        secondScrapeMarkdown = scrapeResponse.markdown
         
         // Get first scrape HTML from separate call (fallback)
         const actionsConfig = getFirecrawlActions(url)
@@ -178,11 +178,11 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
           
           const firstScrapeResponse = await firecrawl.scrape(url, firstScrapeOptions)
           firstScrapeHtml = firstScrapeResponse.html || firstScrapeResponse.rawHtml
-          firstScrapeMarkdown = firstScrapeResponse.markdown || firstScrapeResponse.rawMarkdown
+          firstScrapeMarkdown = firstScrapeResponse.markdown
         } else {
           const initialScrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
           firstScrapeHtml = initialScrapeResponse.html || initialScrapeResponse.rawHtml
-          firstScrapeMarkdown = initialScrapeResponse.markdown || initialScrapeResponse.rawMarkdown
+          firstScrapeMarkdown = initialScrapeResponse.markdown
         }
       }
       
@@ -226,7 +226,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       } else if (scrapeResponse.rawHtml) {
         html = scrapeResponse.rawHtml
       }
-      markdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
+      markdown = scrapeResponse.markdown
       
       if (!html || html.trim().length === 0) {
         throw new Error('Firecrawl returned empty HTML content')
@@ -243,7 +243,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       } else if (scrapeResponse.rawHtml) {
         html = scrapeResponse.rawHtml
       }
-      markdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
+      markdown = scrapeResponse.markdown
       
       if (!html || html.trim().length === 0) {
         throw new Error('Firecrawl returned empty HTML content')
