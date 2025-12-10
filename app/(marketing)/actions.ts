@@ -10,10 +10,14 @@ import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryIma
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { addToQueue, getJobPosition, isJobProcessing, type ScrapeJob } from '@/lib/queue/scrape-queue'
 
 /**
  * Scrape a URL using Firecrawl (with Apify for specific sites like Zillow) and create anonymous preview
  * Returns preview_id for accessing the generated preview
+ * 
+ * NEW: Uses Redis queue to prevent rate limiting and manage concurrent scrapes
+ * Jobs are added to queue and processed by worker
  * 
  * Uses Firecrawl for general websites, automatically uses Apify for specific sites (e.g., Zillow)
  * Requires FIRECRAWL_API_KEY (and APIFY_API_TOKEN for Apify-supported sites)
@@ -37,238 +41,75 @@ export async function generatePreview(url: string) {
       }
     }
 
-    // Scrape URL using configured provider (170 seconds timeout)
-    // Returns either HTML (general scrapers) or JSON (Apify scrapers)
-    // For websites with actions: returns HTML after all actions are performed
-    const scrapeResult = await scrapeUrl(url, 170000)
-    const rawHtml = scrapeResult.html // HTML after actions (or normal HTML if no actions)
-    let html = scrapeResult.html // This will be processed if processor exists
-    const json = 'json' in scrapeResult ? scrapeResult.json : undefined
-    const provider: ScraperProvider = scrapeResult.provider
-    const callDuration = scrapeResult.duration
-
-    // Apply website-specific HTML processor if available (e.g., realtor.com)
-    let processedHtml: string | null = null
-    if (html) {
-      const htmlProcessor = getHtmlProcessor(url)
-      if (htmlProcessor) {
-        console.log(`🔵 [generatePreview] Applying website-specific HTML processor for ${url}`)
-        processedHtml = htmlProcessor(html)
-        html = processedHtml // Use processed HTML for further processing
-        console.log(`✅ [generatePreview] HTML processed, new length: ${html.length}`)
-      }
-    }
-
-    let structuredData: any = {}
-    let markdownResult: any = {}
-    let parallelDuration = 0
-    let cleanedJson: any = null // Store cleaned JSON for OpenAI processing
-
-    // Handle Apify results (structured JSON) differently from HTML results
-    if (provider === 'apify' && json) {
-      console.log('🔵 [generatePreview] Processing Apify JSON result...')
-      const parallelStart = Date.now()
-      
-      // Get scraper-specific cleaner if available
-      const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
-      const cleaner = scraper?.cleanJson
-      
-      // Clean the JSON using website-specific cleaner if available, otherwise use raw JSON
-      cleanedJson = cleaner ? cleaner(json) : json
-      console.log(`🔵 [generatePreview] Cleaned Apify JSON using ${scraper?.name || 'default'} cleaner`)
-      
-      // For Apify results, store the cleaned JSON as structured data
-      structuredData = {
-        apifyData: cleanedJson, // Store the cleaned Apify JSON
-        apifyScraperId: scrapeResult.apifyScraperId,
-      }
-      
-      // Create a simple markdown representation of the cleaned JSON
-      markdownResult = {
-        markdown: `# Scraped Data\n\n\`\`\`json\n${JSON.stringify(cleanedJson, null, 2)}\n\`\`\``,
-        title: (Array.isArray(cleanedJson) ? cleanedJson[0] : cleanedJson)?.address?.streetAddress || 'Apify Scraped Data',
-        excerpt: `Data scraped using Apify scraper: ${scrapeResult.apifyScraperId}`,
-        byline: null,
-        length: JSON.stringify(cleanedJson).length,
-        siteName: 'Apify',
-      }
-      
-      parallelDuration = Date.now() - parallelStart
-      console.log(`✅ [generatePreview] Apify processing complete in ${parallelDuration}ms`)
-    } else if (html) {
-      // Extract structured data from HTML
-      console.log('🔵 [generatePreview] Extracting structured data from HTML...')
-      const parallelStart = Date.now()
-      
-      structuredData = extractStructuredData(html)
-      
-      // Create minimal markdown result for backward compatibility (not used anymore)
-      markdownResult = {
-        markdown: '',
-        title: structuredData.metadata?.title || '',
-        excerpt: structuredData.metadata?.description || '',
-        byline: null,
-        length: html.length,
-        siteName: provider === 'firecrawl' ? 'Firecrawl' : provider === 'apify' ? 'Apify' : 'Unknown',
-      }
-      
-      parallelDuration = Date.now() - parallelStart
-      console.log(`✅ [generatePreview] Structured data extraction complete in ${parallelDuration}ms`)
-    } else {
-      throw new Error('Scraper returned neither HTML nor JSON')
-    }
-    
-    // Determine source_domain based on provider
-    let sourceDomain = 'unknown'
-    if (provider === 'apify' && scrapeResult.apifyScraperId === 'zillow') {
-      sourceDomain = 'apify_zillow'
-    } else if (provider === 'firecrawl') {
-      sourceDomain = 'firecrawl'
-    } else if (provider === 'apify') {
-      sourceDomain = `apify_${scrapeResult.apifyScraperId || 'unknown'}`
-    }
-
-    // Get gallery images from scrape result (extracted from Call 2 for Realtor.com)
-    // For Realtor.com, gallery images are extracted from the second Firecrawl call
-    // and returned in scrapeResult.galleryImages (not extracted from rawHtml)
-    const galleryImages: string[] = scrapeResult.galleryImages || []
-    if (galleryImages.length > 0) {
-      console.log(`🔵 [generatePreview] Using ${galleryImages.length} gallery images from scrape result (Call 2)`)
-    }
-
-    // Get gallery HTML from scrape result (from Call 2 for debugging)
-    const galleryHtml = scrapeResult.galleryHtml || null
-
-    // Build ai_ready_data: {html, apify_json, structuredData, readabilityMetadata, processed_html, gallery_images, gallery_html, actual_provider}
-    // structuredData and readabilityMetadata are included for backward compatibility with preview display
-    const aiReadyData: {
-      html: string
-      apify_json: any | null
-      structuredData?: any // For backward compatibility with preview page
-      readabilityMetadata?: any // For backward compatibility with preview page
-      processed_html?: string | null // Processed HTML (e.g., only <main> element for realtor.com)
-      gallery_images?: string[] // Extracted gallery images (e.g., from Realtor.com)
-      gallery_html?: string | null // Raw HTML from Call 2 (for debugging)
-      actual_provider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
-    } = {
-      html: '', // We don't store cleaned HTML anymore
-      apify_json: provider === 'apify' && json ? (() => {
-        const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
-        const cleaner = scraper?.cleanJson
-        return cleaner ? cleaner(json) : json
-      })() : null,
-      structuredData: structuredData, // Include for preview page display
-      readabilityMetadata: provider !== 'apify' ? {
-        title: markdownResult.title,
-        excerpt: markdownResult.excerpt,
-        byline: markdownResult.byline,
-        length: markdownResult.length,
-        siteName: markdownResult.siteName,
-      } : undefined,
-      processed_html: processedHtml || null, // Store processed HTML if processor was used
-      gallery_images: galleryImages.length > 0 ? galleryImages : undefined, // Store gallery images if extracted
-      gallery_html: galleryHtml !== undefined ? galleryHtml : null, // Store gallery HTML from Call 2 (for debugging, even if empty)
-      actual_provider: scrapeResult.actualProvider || provider, // Store actual provider used (including fallbacks)
-    }
-
-    // Save to temp_previews
+    // Create preview record first with 'queued' status
     const supabase = await createClient()
     const { data: preview, error: insertError } = await supabase
       .from('temp_previews')
       .insert({
         external_url: url,
-        source_domain: sourceDomain,
-        raw_html: rawHtml || null, // HTML after actions (or normal HTML if no actions)
-        ai_ready_data: aiReadyData,
-        unified_data: {}, // Empty for now - will be populated after LLM processing
-        status: 'pending',
+        status: 'queued', // New status: queued -> scraping -> pending -> completed/error
+        ai_ready_data: {},
+        unified_data: {},
       })
       .select('id')
       .single()
     
-    if (insertError) {
-      console.error('🔴 [generatePreview] Failed to save preview:', insertError)
+    if (insertError || !preview) {
+      console.error('🔴 [generatePreview] Failed to create preview:', insertError)
       return { 
-        error: 'Failed to save preview. Please try again.' 
-      }
-    }
-    
-    console.log('✅ [generatePreview] Preview created:', preview.id)
-
-    // If this is an Apify result, process it with OpenAI to generate config
-    // Can be disabled via DISABLE_OPENAI_PROCESSING env variable for debugging
-    if (provider === 'apify' && json && preview.id && !process.env.DISABLE_OPENAI_PROCESSING) {
-      try {
-        console.log('🤖 [generatePreview] Processing Apify data with OpenAI...')
-        await generateConfigFromApifyData(preview.id, cleanedJson)
-        console.log('✅ [generatePreview] OpenAI processing complete')
-      } catch (openAiError) {
-        console.error('⚠️ [generatePreview] OpenAI processing failed:', openAiError)
-        // Don't fail the whole request if OpenAI fails - preview is still created
-      }
-    } else if (provider === 'apify' && process.env.DISABLE_OPENAI_PROCESSING) {
-      console.log('⏭️ [generatePreview] OpenAI processing skipped (DISABLE_OPENAI_PROCESSING=true)')
-    }
-    
-    // If this is Firecrawl result (HTML), automatically extract structured text and process with OpenAI
-    // Works for any website that uses Firecrawl, not just Realtor.com
-    if (provider === 'firecrawl' && rawHtml && preview.id && !process.env.DISABLE_OPENAI_PROCESSING) {
-      try {
-        console.log('🤖 [generatePreview] Processing Firecrawl HTML with OpenAI...')
-        
-        // First, extract structured text (remove HTML tags and website-specific unwanted sections)
-        const $ = load(rawHtml)
-        
-        // Get website-specific main content selector
-        const mainContentSelector = getMainContentSelector(url) || 'main' // Fallback to 'main' if not specified
-        const mainElement = $(mainContentSelector)
-        
-        if (mainElement.length > 0) {
-          // Get website-specific HTML cleaner if available
-          const htmlCleaner = getHtmlCleaner(url)
-          if (htmlCleaner) {
-            htmlCleaner(mainElement)
-            console.log('🔵 [generatePreview] Applied website-specific HTML cleaner')
-          }
-          
-          // Extract structured text (universal function)
-          const mainHtml = $.html(mainElement)
-          const structuredText = extractStructuredText(mainHtml)
-          
-          // Update preview with structured text
-          const updatedAiReadyData = {
-            ...aiReadyData,
-            raw_html_text: structuredText,
-          }
-          
-          await supabase
-            .from('temp_previews')
-            .update({
-              ai_ready_data: updatedAiReadyData,
-            })
-            .eq('id', preview.id)
-          
-          // Process with OpenAI (universal function)
-          await generateConfigFromStructuredText(preview.id, structuredText)
-          console.log(`✅ [generatePreview] Firecrawl OpenAI processing complete (used selector: ${mainContentSelector})`)
-        } else {
-          console.warn(`⚠️ [generatePreview] No main content element found (selector: ${mainContentSelector}), skipping OpenAI processing`)
-        }
-      } catch (openAiError) {
-        console.error('⚠️ [generatePreview] Firecrawl OpenAI processing failed:', openAiError)
-        // Don't fail the whole request if OpenAI fails - preview is still created
+        error: 'Failed to create preview. Please try again.' 
       }
     }
 
-    return { 
-      success: true,
-      previewId: preview.id,
-      timing: {
-        scrapeCall: callDuration,
-        parallelProcessing: parallelDuration,
-        total: Date.now() - (Date.now() - callDuration - parallelDuration),
+    const previewId = preview.id
+    console.log(`✅ [generatePreview] Preview created: ${previewId}, adding to queue...`)
+
+    // Add job to Redis queue
+    const job: ScrapeJob = {
+      id: previewId,
+      url: url,
+      createdAt: Date.now(),
+    }
+
+    try {
+      const queuePosition = await addToQueue(job)
+      console.log(`✅ [generatePreview] Job added to queue at position ${queuePosition}`)
+      
+      // Trigger worker to start processing (non-blocking)
+      // Worker will self-trigger for remaining jobs, so we only need to start it once
+      // This makes a POST request to our worker API endpoint
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/queue/process-scrape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(err => {
+        console.error('⚠️ [generatePreview] Failed to trigger worker:', err)
+        // Non-critical error - cron will pick it up as fallback
+      })
+
+      return {
+        success: true,
+        previewId: previewId,
+        queuePosition: queuePosition,
+      }
+    } catch (queueError: any) {
+      console.error('🔴 [generatePreview] Failed to add to queue:', queueError)
+      
+      // Fallback: update status to error
+      await supabase
+        .from('temp_previews')
+        .update({
+          status: 'error',
+          error_message: 'Failed to add to processing queue',
+        })
+        .eq('id', previewId)
+      
+      return {
+        error: 'Failed to add to processing queue. Please try again.'
       }
     }
+
+    // All scraping and processing logic moved to queue worker
+    // See lib/queue/scrape-queue.ts for implementation
   } catch (error) {
     console.error('🔴 [generatePreview] Error:', error)
     
@@ -302,6 +143,45 @@ export async function getPreview(previewId: string) {
   }
   
   return { success: true, preview: data }
+}
+
+/**
+ * Get preview status with queue information
+ * Used by frontend to poll status while in queue
+ */
+export async function getPreviewStatus(previewId: string) {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('temp_previews')
+    .select('id, status, error_message, created_at')
+    .eq('id', previewId)
+    .single()
+  
+  if (error || !data) {
+    return { error: 'Preview not found or expired' }
+  }
+  
+  // Get queue position if still queued
+  let queuePosition: number | null = null
+  let processing = false
+  
+  if (data.status === 'queued') {
+    try {
+      queuePosition = await getJobPosition(previewId)
+      processing = await isJobProcessing(previewId)
+    } catch (err) {
+      console.error('Error getting queue position:', err)
+    }
+  }
+  
+  return {
+    success: true,
+    status: data.status,
+    queuePosition,
+    processing,
+    errorMessage: data.error_message,
+  }
 }
 
 /**

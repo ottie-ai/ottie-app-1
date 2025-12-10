@@ -18,7 +18,7 @@ import Navbar from '@/components/marketing/navbar'
 import { transformPlansToTiers } from '@/lib/pricing-data'
 import { createClient } from '@/lib/supabase/client'
 import type { Plan } from '@/types/database'
-import { generatePreview } from './actions'
+import { generatePreview, getPreviewStatus } from './actions'
 import '../sphere.css'
 
 const realEstateLinks = [
@@ -32,11 +32,14 @@ const realEstateLinks = [
 ]
 
 const loadingMessages = [
-  'Analysing website',
+  'Analyzing website',
   'Processing content',
   'Generating layout',
   'Finalizing your site',
 ]
+
+// Queue message shown before other messages when in queue
+const queueMessage = "You're in a queue"
 
 export default function Home() {
   const router = useRouter()
@@ -52,6 +55,8 @@ export default function Home() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
   const [error, setError] = useState<string | null>(null)
+  const [isInQueue, setIsInQueue] = useState(false) // Track if job is in queue
+  const [queuePosition, setQueuePosition] = useState<number | null>(null) // Queue position
   
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
@@ -297,7 +302,7 @@ export default function Home() {
     setLoadingPhase('waiting')
 
     try {
-      // Generate preview (scrape + parse + save to temp_previews)
+      // Add to queue and get preview ID
       const result = await generatePreview(link)
       
       if ('error' in result) {
@@ -306,12 +311,83 @@ export default function Home() {
         return
       }
 
-      // Calculate total generation time
-      const totalEndTime = Date.now()
-      const totalDuration = totalEndTime - totalStartTime
+      const previewId = result.previewId
+      const initialQueuePosition = result.queuePosition || 0
 
-      // Navigate to preview page
-      router.push(`/temp-preview/${result.previewId}?totalTime=${totalDuration}`)
+      console.log(`✅ Preview created: ${previewId}, queue position: ${initialQueuePosition}`)
+      
+      // Set initial queue state
+      setIsInQueue(true)
+      setQueuePosition(initialQueuePosition)
+
+      // Poll status until completed or error
+      let attempts = 0
+      const maxAttempts = 120 // 2 minutes max (1s interval)
+      
+      const pollStatus = async (): Promise<void> => {
+        if (attempts >= maxAttempts) {
+          setError('Request timed out. Please try again.')
+          setIsLoading(false)
+          return
+        }
+
+        attempts++
+        
+        try {
+          const statusResult = await getPreviewStatus(previewId)
+          
+          if ('error' in statusResult) {
+            setError(statusResult.error || 'Failed to get status')
+            setIsLoading(false)
+            return
+          }
+
+          const { status, queuePosition: currentQueuePosition, processing } = statusResult
+
+          // Update loading message based on status
+          // Queue is only for scraping, so we wait for 'completed' status (includes OpenAI processing)
+          if (status === 'queued') {
+            // Job is in queue - queue message will be shown before other messages
+            setIsInQueue(true)
+            setQueuePosition(currentQueuePosition)
+            setLoadingMessageIndex(0) // Show first message with queue prefix
+          } else if (status === 'scraping') {
+            // Scraping in progress - show "Analyzing website"
+            setIsInQueue(false)
+            setQueuePosition(null)
+            setLoadingMessageIndex(0) // "Analyzing website"
+          } else if (status === 'pending') {
+            // Scraping done, OpenAI processing - show processing messages
+            setIsInQueue(false)
+            setQueuePosition(null)
+            setLoadingMessageIndex(1) // "Processing content"
+          } else if (status === 'completed') {
+            // Everything done (scraping + OpenAI config) - Navigate to preview
+            setIsInQueue(false)
+            setQueuePosition(null)
+            const totalEndTime = Date.now()
+            const totalDuration = totalEndTime - totalStartTime
+            router.push(`/temp-preview/${previewId}?totalTime=${totalDuration}`)
+            return
+          } else if (status === 'error') {
+            setIsInQueue(false)
+            setQueuePosition(null)
+            setError(statusResult.errorMessage || 'An error occurred while processing')
+            setIsLoading(false)
+            return
+          }
+
+          // Continue polling
+          setTimeout(pollStatus, 1000) // Poll every 1 second
+        } catch (err) {
+          console.error('Error polling status:', err)
+          // Continue polling on error (network issues)
+          setTimeout(pollStatus, 2000) // Slower retry on error
+        }
+      }
+
+      // Start polling
+      pollStatus()
     } catch (err) {
       console.error('Error generating preview:', err)
       setError('An unexpected error occurred. Please try again.')
@@ -319,8 +395,12 @@ export default function Home() {
     }
   }
 
-  const currentLoadingMessage = loadingMessages[loadingMessageIndex]
-  const loadingWords = currentLoadingMessage.split(' ')
+  // Build loading message - prepend queue message if in queue
+  const baseMessage = loadingMessages[loadingMessageIndex] || loadingMessages[0]
+  const fullMessage = isInQueue 
+    ? `${queueMessage}. ${baseMessage}`
+    : baseMessage
+  const loadingWords = fullMessage.split(' ')
 
   return (
     <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
