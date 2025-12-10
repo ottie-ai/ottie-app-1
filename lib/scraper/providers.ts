@@ -95,6 +95,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     const baseScrapeOptions: any = {
       formats: ['html', 'markdown'], // Request HTML + Markdown in a single call
       proxy: 'auto', // Use auto proxy mode (Firecrawl automatically selects best proxy)
+      onlyMainContent: true, // Return only main content, excluding headers, navigation, footers
     }
     
     let html: string | undefined = undefined
