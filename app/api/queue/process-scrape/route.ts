@@ -26,7 +26,7 @@ export const maxDuration = 300 // 5 minutes max (Vercel Pro limit)
  */
 export async function POST(request: NextRequest) {
   try {
-    console.log(`🔵 [Worker API] POST request received`)
+    console.log(`🔵 [Worker API] POST request received from ${request.headers.get('host')}`)
     
     // Check for internal authentication token (bypasses Vercel/platform auth)
     // This allows server actions to call the worker API without authentication issues
@@ -34,21 +34,29 @@ export async function POST(request: NextRequest) {
     const expectedToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
     const isCronHeader = request.headers.get('x-vercel-cron') === '1'
     
-    // Debug logging for token validation
-    console.log(`🔵 [Worker API] Token check - received: ${internalToken ? 'present' : 'missing'}, expected: ${expectedToken ? 'set' : 'not set'}, isCron: ${isCronHeader}`)
+    // Debug logging for token validation - show actual values for debugging
+    console.log(`🔵 [Worker API] Token check:`)
+    console.log(`  - Received token: "${internalToken}"`)
+    console.log(`  - Expected token: "${expectedToken}"`)
+    console.log(`  - Token match: ${internalToken === expectedToken}`)
+    console.log(`  - Is cron: ${isCronHeader}`)
+    console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`)
+    console.log(`  - VERCEL_URL: ${process.env.VERCEL_URL || '(not set)'}`)
+    console.log(`  - INTERNAL_API_TOKEN: ${process.env.INTERNAL_API_TOKEN ? '(set)' : '(not set)'}`)
     
     // Allow if token matches OR if it's a cron job (Vercel cron has x-vercel-cron header)
     // In development, allow all requests
     const isValidInternalCall = internalToken === expectedToken || isCronHeader || process.env.NODE_ENV !== 'production'
     
     if (!isValidInternalCall) {
-      console.warn(`⚠️ [Worker API] Unauthorized request - missing or invalid internal token`)
-      console.warn(`⚠️ [Worker API] Token received: ${internalToken}, expected: ${expectedToken}`)
+      console.warn(`⚠️ [Worker API] Unauthorized request - token mismatch`)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
+    
+    console.log(`✅ [Worker API] Request authorized`)
     
     // Check if this is a cron job (batch processing) or single job trigger
     const body = await request.json().catch(() => ({}))
