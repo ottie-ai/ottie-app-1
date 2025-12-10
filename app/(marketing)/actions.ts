@@ -61,7 +61,7 @@ export async function generatePreview(url: string) {
         error: 'Failed to create preview. Please try again.' 
       }
     }
-
+    
     const previewId = preview.id
     console.log(`✅ [generatePreview] Preview created: ${previewId}, adding to queue...`)
 
@@ -72,20 +72,31 @@ export async function generatePreview(url: string) {
       createdAt: Date.now(),
     }
 
-    try {
+      try {
       const queuePosition = await addToQueue(job)
       console.log(`✅ [generatePreview] Job added to queue at position ${queuePosition}`)
       
       // Trigger worker to start processing (non-blocking)
       // Worker will self-trigger for remaining jobs, so we only need to start it once
       // This makes a POST request to our worker API endpoint
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/queue/process-scrape`, {
+      const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/queue/process-scrape`
+      console.log(`🔄 [generatePreview] Triggering worker at ${workerUrl}...`)
+      
+      fetch(workerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      }).catch(err => {
-        console.error('⚠️ [generatePreview] Failed to trigger worker:', err)
-        // Non-critical error - cron will pick it up as fallback
       })
+        .then(response => {
+          if (!response.ok) {
+            console.error(`⚠️ [generatePreview] Worker responded with status ${response.status}`)
+          } else {
+            console.log(`✅ [generatePreview] Worker triggered successfully`)
+          }
+        })
+        .catch(err => {
+          console.error('⚠️ [generatePreview] Failed to trigger worker:', err)
+          // Non-critical error - cron will pick it up as fallback
+        })
 
       return {
         success: true,
@@ -96,15 +107,15 @@ export async function generatePreview(url: string) {
       console.error('🔴 [generatePreview] Failed to add to queue:', queueError)
       
       // Fallback: update status to error
-      await supabase
-        .from('temp_previews')
-        .update({
+          await supabase
+            .from('temp_previews')
+            .update({
           status: 'error',
           error_message: 'Failed to add to processing queue',
         })
         .eq('id', previewId)
-      
-      return {
+
+    return { 
         error: 'Failed to add to processing queue. Please try again.'
       }
     }

@@ -26,10 +26,14 @@ export const maxDuration = 300 // 5 minutes max (Vercel Pro limit)
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log(`🔵 [Worker API] POST request received`)
+    
     // Check if this is a cron job (batch processing) or single job trigger
     const body = await request.json().catch(() => ({}))
     const batchSize = body.batch ? parseInt(body.batch) : 1
     const isCron = request.headers.get('x-vercel-cron') === '1' || body.cron === true
+    
+    console.log(`🔵 [Worker API] isCron: ${isCron}, batchSize: ${batchSize}`)
     
     // For cron: Check queue length and processing count first to avoid unnecessary processing
     if (isCron) {

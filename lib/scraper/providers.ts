@@ -117,12 +117,12 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
           }
           return action
         })
-        
+          
         const scrapeOptions = {
-          ...baseScrapeOptions,
+            ...baseScrapeOptions,
           actions: normalizedActions,
-        }
-        
+          }
+          
         const scrapeResponse: any = await firecrawl.scrape(url, scrapeOptions)
         
         // Firecrawl returns HTML from actions.scrapes array when multiple scrape actions are used
@@ -169,7 +169,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
             
             const firstScrapeResponse = await firecrawl.scrape(url, firstScrapeOptions)
             firstScrapeHtml = firstScrapeResponse.html || firstScrapeResponse.rawHtml
-          } else {
+            } else {
             const initialScrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
             firstScrapeHtml = initialScrapeResponse.html || initialScrapeResponse.rawHtml
           }
@@ -189,7 +189,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
         
         if (!html || html.trim().length === 0) {
           throw new Error('Firecrawl combined call returned empty HTML for first scrape')
-        }
+          }
         
         console.log(`✅ [Firecrawl] Combined call complete, raw HTML: ${html.length} chars, gallery HTML: ${galleryHtml?.length || 0} chars`)
       } catch (combinedError: any) {
@@ -251,7 +251,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
               } else {
                 const initialScrapeResponse = await firecrawl.scrape(url, { ...baseScrapeOptions, proxy: 'stealth' })
                 firstScrapeHtml = initialScrapeResponse.html || initialScrapeResponse.rawHtml
-              }
+            }
             }
             
             html = firstScrapeHtml
@@ -266,7 +266,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
             
             if (!html || html.trim().length === 0) {
               throw new Error('Firecrawl combined call (stealth) returned empty HTML for first scrape')
-            }
+              }
             
             console.log(`✅ [Firecrawl] Combined call (stealth) complete, raw HTML: ${html.length} chars, gallery HTML: ${galleryHtml?.length || 0} chars`)
           } catch (stealthError: any) {
@@ -285,39 +285,39 @@ async function scrapeWithFirecrawl(url: string, timeout: number, useStealth: boo
       
       if (actionsConfig && actionsConfig.actions) {
         // Single call with actions (websites with main content actions but no gallery)
-        console.log(`🔵 [Firecrawl] Website has actions, performing scrape with ${actionsConfig.actions.length} actions for ${url}`)
-        
-        const scrapeOptions = {
-          ...baseScrapeOptions,
-          actions: actionsConfig.actions,
-        }
-        
-        const scrapeResponse = await firecrawl.scrape(url, scrapeOptions)
-        
-        if (scrapeResponse.html) {
-          html = scrapeResponse.html
-        } else if (scrapeResponse.rawHtml) {
-          html = scrapeResponse.rawHtml
-        }
-        
-        if (!html || html.trim().length === 0) {
-          throw new Error('Firecrawl returned empty HTML content')
-        }
-        
-        console.log(`✅ [Firecrawl] Scrape complete with actions, HTML length: ${html.length}`)
-      } else {
-        // No actions: Single scrape (normal behavior)
-        console.log('🔵 [Firecrawl] No actions, performing single scrape...')
-        const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
-        
-        if (scrapeResponse.html) {
-          html = scrapeResponse.html
-        } else if (scrapeResponse.rawHtml) {
-          html = scrapeResponse.rawHtml
-        }
-        
-        if (!html || html.trim().length === 0) {
-          throw new Error('Firecrawl returned empty HTML content')
+      console.log(`🔵 [Firecrawl] Website has actions, performing scrape with ${actionsConfig.actions.length} actions for ${url}`)
+      
+      const scrapeOptions = {
+        ...baseScrapeOptions,
+        actions: actionsConfig.actions,
+      }
+      
+      const scrapeResponse = await firecrawl.scrape(url, scrapeOptions)
+      
+      if (scrapeResponse.html) {
+        html = scrapeResponse.html
+      } else if (scrapeResponse.rawHtml) {
+        html = scrapeResponse.rawHtml
+      }
+      
+      if (!html || html.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content')
+      }
+      
+      console.log(`✅ [Firecrawl] Scrape complete with actions, HTML length: ${html.length}`)
+    } else {
+      // No actions: Single scrape (normal behavior)
+      console.log('🔵 [Firecrawl] No actions, performing single scrape...')
+      const scrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
+      
+      if (scrapeResponse.html) {
+        html = scrapeResponse.html
+      } else if (scrapeResponse.rawHtml) {
+        html = scrapeResponse.rawHtml
+      }
+      
+      if (!html || html.trim().length === 0) {
+        throw new Error('Firecrawl returned empty HTML content')
         }
       }
     }

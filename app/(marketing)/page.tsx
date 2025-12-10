@@ -365,8 +365,8 @@ export default function Home() {
             // Everything done (scraping + OpenAI config) - Navigate to preview
             setIsInQueue(false)
             setQueuePosition(null)
-            const totalEndTime = Date.now()
-            const totalDuration = totalEndTime - totalStartTime
+      const totalEndTime = Date.now()
+      const totalDuration = totalEndTime - totalStartTime
             router.push(`/temp-preview/${previewId}?totalTime=${totalDuration}`)
             return
           } else if (status === 'error') {
