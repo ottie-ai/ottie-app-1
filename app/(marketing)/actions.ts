@@ -48,6 +48,7 @@ export async function generatePreview(url: string) {
       .insert({
         external_url: url,
         status: 'queued', // New status: queued -> scraping -> pending -> completed/error
+        source_domain: 'firecrawl', // Default to firecrawl, will be updated by queue worker if Apify is used
         ai_ready_data: {},
         unified_data: {},
       })
