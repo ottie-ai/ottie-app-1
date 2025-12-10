@@ -4,8 +4,5 @@
       "path": "/api/queue/process-scrape",
       "schedule": "* * * * *"
     }
-  ],
-  "comments": {
-    "cron": "Cron runs every minute as FALLBACK only. Checks queue length first - only processes if jobs exist. Worker self-triggers after each job completion for continuous processing."
-  }
+  ]
 }
