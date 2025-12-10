@@ -104,15 +104,15 @@ PRIORITY FIELDS (fill FIRST):
 
 6. beds, baths, living_area
 
-7. description, exaclty as in the listing text, usually the longest text
+7. description, exactly as in the listing text, usually the longest text
 
 8. highlights
 
-8. property address
+9. property address
 
-9. agent info
+10. agent info
 
-10. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
+11. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
 
 RULES:
 
