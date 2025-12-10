@@ -14,6 +14,7 @@ import { runApifyActor, type ApifyResult } from './apify-client'
 import { getFirecrawlActions, getFirecrawlActionsGallery, getFirecrawlActionsCombined } from './firecrawl-actions'
 import { getGalleryImageExtractor } from './html-processors'
 import { htmlToMarkdownUniversal } from './markdown-converter'
+import { load } from 'cheerio'
 
 export type ScraperProvider = 'firecrawl' | 'apify'
 
@@ -29,6 +30,131 @@ export interface ScrapeResult {
   galleryHtml?: string // Raw HTML from Call 2 (for debugging)
   galleryMarkdown?: string // Markdown from gallery scrape when available
   actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
+}
+
+/**
+ * Whitelist of known virtual tour platform domains
+ */
+const VIRTUAL_TOUR_DOMAINS = [
+  'matterport.com',
+  'my.matterport.com',
+  'kuula.co',
+  'cloudpano.com',
+  'youriguide.com',
+  'iguide',
+  'ricoh360.com',
+  'theta360.com',
+  'view.ricohtours.com',
+  'giraffe360.com',
+  'realisti.co',
+  'eyespy360.com',
+  'panoee.com',
+  '3dvista.com',
+  'immoviewer.com',
+  'nocknock.io',
+  'vieweet.com',
+  'zillow.com', // Specifically for /view-3d-home paths
+]
+
+/**
+ * Generic keywords that indicate virtual tours
+ * These are often used in custom subdomains (e.g., tours.realitka.sk)
+ */
+const VIRTUAL_TOUR_KEYWORDS = [
+  'virtualtour',
+  'virtual-tour',
+  '3dtour',
+  '3d-tour',
+  'walkthrough',
+  'panorama',
+  'pano',
+  '360view',
+  '360tour',
+  '360',
+  'spins',
+  'spin-v2',
+]
+
+/**
+ * Check if a URL is a virtual tour link
+ * @param url - URL to check
+ * @returns true if URL contains a virtual tour domain or keyword
+ */
+function isVirtualTourLink(url: string): boolean {
+  if (!url || url.trim().length === 0) {
+    return false
+  }
+
+  const lowerUrl = url.toLowerCase()
+
+  // Check for whitelist domains
+  for (const domain of VIRTUAL_TOUR_DOMAINS) {
+    if (lowerUrl.includes(domain.toLowerCase())) {
+      // Special case for Zillow - only match /view-3d-home paths
+      if (domain === 'zillow.com' && !lowerUrl.includes('/view-3d-home')) {
+        continue
+      }
+      return true
+    }
+  }
+
+  // Check for generic keywords
+  for (const keyword of VIRTUAL_TOUR_KEYWORDS) {
+    if (lowerUrl.includes(keyword.toLowerCase())) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Extract all virtual tour links from raw HTML using Cheerio
+ * Includes Matterport, Kuula, CloudPano, and other 3D tour platforms
+ * @param html - Raw HTML content
+ * @returns Array of unique virtual tour URLs
+ */
+function extractMatterportLinks(html: string): string[] {
+  if (!html || html.trim().length === 0) {
+    return []
+  }
+
+  const links: Set<string> = new Set()
+  const $ = load(html)
+  
+  // Find all elements with href attributes containing virtual tour links
+  $('[href]').each((_, element) => {
+    const href = $(element).attr('href')
+    if (href && isVirtualTourLink(href)) {
+      links.add(href.trim())
+    }
+  })
+  
+  // Find all elements with data-href attributes containing virtual tour links
+  $('[data-href]').each((_, element) => {
+    const dataHref = $(element).attr('data-href')
+    if (dataHref && isVirtualTourLink(dataHref)) {
+      links.add(dataHref.trim())
+    }
+  })
+  
+  // Find all elements with src attributes containing virtual tour links (iframes, images, etc.)
+  $('[src]').each((_, element) => {
+    const src = $(element).attr('src')
+    if (src && isVirtualTourLink(src)) {
+      links.add(src.trim())
+    }
+  })
+  
+  // Also check other common data attributes that might contain links
+  $('[data-url], [data-link], [data-src]').each((_, element) => {
+    const dataUrl = $(element).attr('data-url') || $(element).attr('data-link') || $(element).attr('data-src')
+    if (dataUrl && isVirtualTourLink(dataUrl)) {
+      links.add(dataUrl.trim())
+    }
+  })
+  
+  return Array.from(links).sort()
 }
 
 /**
@@ -266,6 +392,28 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     }
     if (!galleryMarkdown && galleryHtml) {
       galleryMarkdown = htmlToMarkdownUniversal(galleryHtml).markdown
+    }
+    
+    // Extract virtual tour links (Matterport, Kuula, CloudPano, etc.) from raw HTML and append to markdown
+    const virtualTourLinks = new Set<string>()
+    
+    if (html) {
+      const linksFromHtml = extractMatterportLinks(html)
+      linksFromHtml.forEach(link => virtualTourLinks.add(link))
+    }
+    
+    // Also check gallery HTML if available
+    if (galleryHtml) {
+      const linksFromGallery = extractMatterportLinks(galleryHtml)
+      linksFromGallery.forEach(link => virtualTourLinks.add(link))
+    }
+    
+    if (virtualTourLinks.size > 0 && markdown) {
+      markdown += '\n\n## Virtual Tour Links\n\n'
+      Array.from(virtualTourLinks).sort().forEach(link => {
+        markdown += `- ${link}\n`
+      })
+      console.log(`✅ [Firecrawl] Added ${virtualTourLinks.size} virtual tour links to markdown`)
     }
     
     return {
