@@ -347,12 +347,16 @@ export default function Home() {
           // Update loading message based on status
           // Queue is only for scraping, so we wait for 'completed' status (includes OpenAI processing)
           if (status === 'queued') {
-            // Job is in queue - queue message will be shown before other messages
+            // Job is in queue - show ONLY "You're in a queue" (separate step)
             setIsInQueue(true)
             setQueuePosition(currentQueuePosition)
-            setLoadingMessageIndex(0) // Show first message with queue prefix
+            // Don't set loadingMessageIndex - queue message is shown separately
           } else if (status === 'scraping') {
-            // Scraping in progress - show "Analyzing website"
+            // Scraping in progress - show "Analyzing website" (job left queue)
+            // Reset animation phase to trigger smooth transition from queue message to "Analyzing website"
+            if (isInQueue) {
+              setLoadingPhase('entering') // Restart animation when transitioning from queue
+            }
             setIsInQueue(false)
             setQueuePosition(null)
             setLoadingMessageIndex(0) // "Analyzing website"
@@ -395,12 +399,11 @@ export default function Home() {
     }
   }
 
-  // Build loading message - prepend queue message if in queue
-  const baseMessage = loadingMessages[loadingMessageIndex] || loadingMessages[0]
-  const fullMessage = isInQueue 
-    ? `${queueMessage}. ${baseMessage}`
-    : baseMessage
-  const loadingWords = fullMessage.split(' ')
+  // Build loading message - show queue message separately if in queue, otherwise show regular messages
+  const displayMessage = isInQueue 
+    ? queueMessage  // Show ONLY queue message when in queue (separate step)
+    : (loadingMessages[loadingMessageIndex] || loadingMessages[0])  // Show regular messages when processing
+  const loadingWords = displayMessage.split(' ')
 
   return (
     <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
