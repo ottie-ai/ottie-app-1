@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
+import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
 import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
+import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 
 function PreviewContent() {
   const params = useParams()
@@ -37,6 +39,21 @@ function PreviewContent() {
       return `${ms}ms`
     }
     return `${(ms / 1000).toFixed(2)}s`
+  }
+
+  // Calculate generation time for a step
+  // Since we don't have specific timestamps for each step, we use created_at as baseline
+  // This gives an approximate time from when the preview was created
+  const getGenerationTime = (hasData: boolean): string | null => {
+    if (!hasData || !preview?.created_at) return null
+    
+    // Use updated_at if available, otherwise use current time as fallback
+    const endTime = preview?.updated_at ? new Date(preview.updated_at).getTime() : Date.now()
+    const startTime = new Date(preview.created_at).getTime()
+    const diff = endTime - startTime
+    
+    if (diff < 0) return null
+    return formatTime(diff)
   }
 
   // Load preview
@@ -268,9 +285,12 @@ function PreviewContent() {
   if (loading) {
     return (
       <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
-        <Typography variant="h2" className="text-white">
-          Loading preview...
-        </Typography>
+        <div className="flex flex-col items-center gap-3">
+          <LottieSpinner size={32} />
+          <Typography variant="h2" className="text-white">
+            Loading preview...
+          </Typography>
+        </div>
       </div>
     )
   }
@@ -393,6 +413,11 @@ function PreviewContent() {
                       <span className="text-xs text-white/40">
                         ({(JSON.stringify(preview.generated_config).length / 1024).toFixed(1)} KB)
                       </span>
+                      {preview?.generated_config && Object.keys(preview.generated_config).length > 0 && (
+                        <span className="text-xs text-white/50 ml-2">
+                          • {getGenerationTime(true) || 'N/A'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -444,7 +469,7 @@ function PreviewContent() {
                   <div className="p-4">
                     <div className="max-h-[400px] overflow-auto">
                       <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                        {JSON.stringify(preview.generated_config, null, 2)}
+                        {JSON.stringify(sortConfigToSampleOrder(preview.generated_config), null, 2)}
                       </pre>
                     </div>
                   </div>
@@ -506,11 +531,13 @@ function PreviewContent() {
                     <div className="flex items-center gap-2">
                       <Code className="h-4 w-4 text-white/60" />
                       <Typography variant="small" className="text-white/80 font-medium">
-                        Final Config (Call 1 + Call 2)
+                        Title & Highlights (Call 2)
                       </Typography>
-                      <span className="text-xs text-white/40">
-                        ({(JSON.stringify(preview.unified_json).length / 1024).toFixed(1)} KB)
-                      </span>
+                      {preview?.unified_json && Object.keys(preview.unified_json).length > 0 && (
+                        <span className="text-xs text-white/50 ml-2">
+                          • {getGenerationTime(true) || 'N/A'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -534,7 +561,11 @@ function PreviewContent() {
                       </Button>
                       <Button
                         onClick={() => {
-                          navigator.clipboard.writeText(JSON.stringify(preview.unified_json, null, 2))
+                          const titleAndHighlights = {
+                            title: preview.unified_json?.title || '',
+                            highlights: preview.unified_json?.highlights || []
+                          }
+                          navigator.clipboard.writeText(JSON.stringify(titleAndHighlights, null, 2))
                           setCopiedFullJson(true)
                           setTimeout(() => {
                             setCopiedFullJson(false)
@@ -560,10 +591,57 @@ function PreviewContent() {
                   </div>
                   
                   <div className="p-4">
-                    <div className="max-h-[400px] overflow-auto">
-                      <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                        {JSON.stringify(preview.unified_json, null, 2)}
-                      </pre>
+                    <div className="space-y-4">
+                      {/* Title */}
+                      <div>
+                        <Typography variant="small" className="text-white/60 mb-2">
+                          Title:
+                        </Typography>
+                        <div className="p-3 bg-white/[0.05] rounded border border-white/10">
+                          <Typography variant="p" className="text-white">
+                            {preview.unified_json?.title || 'No title generated'}
+                          </Typography>
+                        </div>
+                      </div>
+
+                      {/* Highlights */}
+                      <div>
+                        <Typography variant="small" className="text-white/60 mb-2">
+                          Highlights ({preview.unified_json?.highlights?.length || 0}):
+                        </Typography>
+                        <div className="space-y-2">
+                          {preview.unified_json?.highlights && preview.unified_json.highlights.length > 0 ? (
+                            preview.unified_json.highlights.map((highlight: any, index: number) => (
+                              <div key={index} className="p-3 bg-white/[0.05] rounded border border-white/10">
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">
+                                    {index + 1}
+                                  </div>
+                                  <div className="flex-1">
+                                    <Typography variant="small" className="text-white/80 font-medium mb-1">
+                                      {highlight.title || 'No title'}
+                                    </Typography>
+                                    <Typography variant="small" className="text-white/60">
+                                      {highlight.value || 'No value'}
+                                    </Typography>
+                                    {highlight.icon && (
+                                      <Typography variant="small" className="text-white/40 mt-1">
+                                        Icon: {highlight.icon}
+                                      </Typography>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-3 bg-white/[0.05] rounded border border-white/10">
+                              <Typography variant="small" className="text-white/60">
+                                No highlights generated
+                              </Typography>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -634,6 +712,11 @@ function PreviewContent() {
                   <span className="text-xs text-white/40">
                     ({(((preview.default_raw_html || preview.raw_html)?.length || 0) / 1024).toFixed(1)} KB)
                   </span>
+                  {(preview?.default_raw_html || preview?.raw_html) && (
+                    <span className="text-xs text-white/50 ml-2">
+                      • {getGenerationTime(true) || 'N/A'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -695,6 +778,11 @@ function PreviewContent() {
                   <span className="text-xs text-white/40">
                     ({(preview.gallery_raw_html.length / 1024).toFixed(1)} KB)
                   </span>
+                  {preview?.gallery_raw_html && (
+                    <span className="text-xs text-white/50 ml-2">
+                      • {getGenerationTime(true) || 'N/A'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -764,6 +852,11 @@ function PreviewContent() {
                   <span className="text-xs text-white/40">
                     ({(preview.default_markdown.length / 1024).toFixed(1)} KB)
                   </span>
+                  {preview?.default_markdown && (
+                    <span className="text-xs text-white/50 ml-2">
+                      • {getGenerationTime(true) || 'N/A'}
+                    </span>
+                  )}
                 </div>
                 <Button
                   onClick={() => {
@@ -824,6 +917,11 @@ function PreviewContent() {
                   <Typography variant="small" className="text-white/80 font-medium">
                     Image URLs ({preview.gallery_image_urls.length} images)
                   </Typography>
+                  {preview?.gallery_image_urls && preview.gallery_image_urls.length > 0 && (
+                    <span className="text-xs text-white/50 ml-2">
+                      • {getGenerationTime(true) || 'N/A'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -977,9 +1075,12 @@ export default function PreviewPage() {
   return (
     <Suspense fallback={
       <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
-        <Typography variant="h2" className="text-white">
-          Loading...
-        </Typography>
+        <div className="flex flex-col items-center gap-3">
+          <LottieSpinner size={32} />
+          <Typography variant="h2" className="text-white">
+            Loading...
+          </Typography>
+        </div>
       </div>
     }>
       <PreviewContent />
