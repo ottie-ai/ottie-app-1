@@ -15,7 +15,8 @@
 export function getTitleGenerationPrompt(
   propertyData: string,
   currentTitle?: string,
-  currentHighlights?: any[]
+  currentHighlights?: any[],
+  language?: string
 ): string {
   const iconCategories = {
     location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "Signpost", "MapTrifold"] },
@@ -43,18 +44,24 @@ export function getTitleGenerationPrompt(
 
   const iconJson = JSON.stringify(iconCategories, null, 2)
 
-  // Parse propertyData to get language if available
-  let language = 'en' // default
-  try {
-    const parsed = JSON.parse(propertyData)
-    if (parsed.language) {
-      language = parsed.language
+  // Use provided language or try to parse from propertyData, default to 'en'
+  let detectedLanguage = language || 'en'
+  if (!language) {
+    try {
+      const parsed = JSON.parse(propertyData)
+      if (parsed.language) {
+        detectedLanguage = parsed.language
+      }
+    } catch (e) {
+      // If parsing fails, try to extract from text format
+      const languageMatch = propertyData.match(/Language:\s*(\w+)/i)
+      if (languageMatch) {
+        detectedLanguage = languageMatch[1]
+      }
     }
-  } catch (e) {
-    // If parsing fails, use default
   }
 
-  return `Generate 1 lifestyle title (max 60 chars, emotional) + exactly 6 highlights in ${language}.
+  return `Generate 1 lifestyle title (max 60 chars, emotional) + exactly 6 highlights in ${detectedLanguage} language (ISO code: ${detectedLanguage}).
 
 TITLE: Aspirational, benefit-focused (views/pool/location/privacy). No specs-only.
 

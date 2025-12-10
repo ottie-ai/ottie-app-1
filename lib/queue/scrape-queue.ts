@@ -549,7 +549,9 @@ async function generateConfigFromData(
       const titleResponse = await generateTitle(
         propertyText,
         generatedConfig.title,
-        generatedConfig.highlights
+        generatedConfig.highlights,
+        'gpt-4o-mini',
+        generatedConfig.language // Pass language explicitly
       )
       
       call2Usage = titleResponse.usage

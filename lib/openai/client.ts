@@ -121,10 +121,11 @@ export async function generateTitle(
   propertyData: string,
   currentTitle?: string,
   currentHighlights?: any[],
-  model: string = 'gpt-4o-mini'
+  model: string = 'gpt-4o-mini',
+  language?: string
 ): Promise<{ title: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
   const { getTitleGenerationPrompt } = await import('./title-prompts')
-  const prompt = getTitleGenerationPrompt(propertyData, currentTitle, currentHighlights)
+  const prompt = getTitleGenerationPrompt(propertyData, currentTitle, currentHighlights, language)
   
   const client = getOpenAIClient()
   const callStartTime = Date.now()
