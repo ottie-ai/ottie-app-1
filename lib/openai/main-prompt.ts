@@ -74,7 +74,7 @@ PRIORITY FIELDS (fill FIRST):
 
 11. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
 
-12. property_status: choose ONE from: FOR_SALE, FOR_RENT, SOLD, UNDER_CONTRACT, PENDING, OFF_MARKET, OTHER, Map portal labels like "available", "for sale", "à vendre" → FOR_SALE.
+12. property_status: choose ONE from: FOR_SALE, FOR_RENT, SOLD, UNDER_CONTRACT, PENDING, OFF_MARKET, OTHER.
 
 RULES:
 
