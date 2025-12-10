@@ -112,9 +112,11 @@ function isValidHostname(hostname: string): boolean {
     return false
   }
 
-  // Reject Vercel preview URLs in production (only allow in development)
-  if (process.env.NODE_ENV === 'production' && hostnameWithoutPort.includes('vercel.app')) {
-    return false
+  // Allow Vercel preview URLs (they're legitimate deployments)
+  // Note: We used to reject them, but they're needed for API routes and worker endpoints
+  // Vercel preview URLs are safe and legitimate
+  if (hostnameWithoutPort.includes('vercel.app')) {
+    return true
   }
 
   return true
