@@ -239,9 +239,9 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
     return null
   }
 
-  // Helper to process nested object
-  const processObject = (obj: any, label: string, currentDepth: number) => {
-    if (isEmpty(obj)) return
+  // Helper to process nested object and return lines
+  const processObject = (obj: any, currentDepth: number): string[] => {
+    if (isEmpty(obj)) return []
     
     const objLines: string[] = []
     const objIndent = '  '.repeat(currentDepth)
@@ -254,7 +254,8 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
       if (typeof value === 'object' && !Array.isArray(value)) {
         // Nested object
         objLines.push(`${objIndent}${fieldName}:`)
-        processObject(value, fieldName, currentDepth + 1)
+        const nestedLines = processObject(value, currentDepth + 1)
+        objLines.push(...nestedLines)
       } else if (Array.isArray(value)) {
         // Array
         if (value.length > 0) {
@@ -262,7 +263,8 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
           value.slice(0, 5).forEach((item: any, idx: number) => {
             if (typeof item === 'object') {
               objLines.push(`${objIndent}  ${idx + 1}.`)
-              processObject(item, `${fieldName} ${idx + 1}`, currentDepth + 2)
+              const nestedLines = processObject(item, currentDepth + 2)
+              objLines.push(...nestedLines)
             } else {
               const formatted = formatValue(item, key)
               if (formatted) {
@@ -283,15 +285,7 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
       }
     }
     
-    if (objLines.length > 0) {
-      if (currentDepth > 0) {
-        lines.push(...objLines)
-      } else {
-        lines.push('')
-        lines.push(`${label}:`)
-        lines.push(...objLines)
-      }
-    }
+    return objLines
   }
 
   // Process all top-level fields
@@ -308,7 +302,10 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
     
     if (typeof value === 'object' && !Array.isArray(value)) {
       // Object - process recursively
-      processObject(value, fieldName, 0)
+      lines.push('')
+      lines.push(`${fieldName}:`)
+      const objLines = processObject(value, 1)
+      lines.push(...objLines)
     } else if (Array.isArray(value)) {
       // Array
       if (value.length > 0) {
@@ -317,7 +314,8 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
         value.slice(0, 5).forEach((item: any, idx: number) => {
           if (typeof item === 'object') {
             lines.push(`  ${idx + 1}.`)
-            formatApifyPropertyItem(item, lines, 1)
+            const objLines = processObject(item, 2)
+            lines.push(...objLines)
           } else {
             const formatted = formatValue(item, key)
             if (formatted) {

@@ -415,332 +415,160 @@ function formatApifyJsonToText(apifyJson: any): string {
 
 /**
  * Format a single property item from Apify JSON
+ * Recursively includes all non-empty fields
  */
-function formatApifyPropertyItem(item: any, lines: string[]): void {
+function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0): void {
   if (!item || typeof item !== 'object') {
     return
   }
 
-  // Address information
-  if (item.address || item.streetAddress || item.city || item.state) {
-    const addressParts: string[] = []
+  const indent = '  '.repeat(depth)
+  const processedKeys = new Set<string>()
+
+  // Helper to check if value is empty
+  const isEmpty = (val: any): boolean => {
+    if (val === null || val === undefined || val === '') return true
+    if (Array.isArray(val) && val.length === 0) return true
+    if (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) return true
+    return false
+  }
+
+  // Helper to format field name
+  const formatFieldName = (key: string): string => {
+    return key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+      .trim()
+  }
+
+  // Helper to format value based on type
+  const formatValue = (val: any, key: string): string | null => {
+    if (isEmpty(val)) return null
     
-    if (item.streetAddress || item.address?.street || item.address?.streetAddress) {
-      addressParts.push(item.streetAddress || item.address?.street || item.address?.streetAddress)
-    }
-    if (item.city || item.address?.city) {
-      addressParts.push(item.city || item.address?.city)
-    }
-    if (item.neighborhood || item.address?.neighborhood) {
-      addressParts.push(item.neighborhood || item.address?.neighborhood)
-    }
-    if (item.state || item.address?.state || item.stateCode || item.address?.stateCode) {
-      addressParts.push(item.state || item.address?.state || item.stateCode || item.address?.stateCode)
-    }
-    if (item.zipCode || item.zipcode || item.address?.zipCode || item.address?.zipcode || item.postalCode || item.address?.postalCode) {
-      addressParts.push(item.zipCode || item.zipcode || item.address?.zipCode || item.address?.zipcode || item.postalCode || item.address?.postalCode)
-    }
-    if (item.country || item.address?.country) {
-      addressParts.push(item.country || item.address?.country)
+    // Numbers that look like prices
+    if (typeof val === 'number' && (key.toLowerCase().includes('price') || key.toLowerCase().includes('fee') || key.toLowerCase().includes('tax'))) {
+      return `$${val.toLocaleString()}`
     }
     
-    if (addressParts.length > 0) {
-      lines.push(`Address: ${addressParts.filter(Boolean).join(', ')}`)
+    // Regular numbers
+    if (typeof val === 'number') {
+      return val.toLocaleString()
     }
-  }
-
-  // Price
-  if (item.price || item.listPrice || item.rentPrice || item.priceHistory) {
-    const price = item.price || item.listPrice || item.rentPrice
-    if (price) {
-      const priceStr = typeof price === 'number' ? `$${price.toLocaleString()}` : price
-      lines.push(`Price: ${priceStr}`)
+    
+    // Booleans
+    if (typeof val === 'boolean') {
+      return val ? 'Yes' : 'No'
     }
-  }
-
-  // Property specs - check both top-level and description object
-  const specs: string[] = []
-  const beds = item.bedrooms || item.beds || item.bed || item.description?.beds || item.description?.bedrooms
-  const baths = item.bathrooms || item.baths || item.bath || item.description?.baths || item.description?.bathrooms || item.description?.bathsFull
-  
-  if (beds) {
-    specs.push(`${beds} bed${beds !== 1 ? 's' : ''}`)
-  }
-  if (baths) {
-    specs.push(`${baths} bath${baths !== 1 ? 's' : ''}`)
-  }
-  if (specs.length > 0) {
-    const propType = item.propertyType || item.type || item.property_type || item.description?.type || 'OTHER'
-    lines.push(`Property: ${specs.join(', ')} - ${propType}`)
-  }
-
-  // Square footage / Living area - check both top-level and description object
-  const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area || item.description?.sqft
-  if (area) {
-    const unit = item.areaUnit || item.unit || 'sqft'
-    lines.push(`Living Area: ${area} ${unit}`)
-  }
-
-  // Lot size - check both top-level and description object
-  const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size || item.description?.lotSqft
-  if (lotSize) {
-    const unit = item.lotSizeUnit || item.lot_size?.unit || 'sqft'
-    lines.push(`Lot Size: ${lotSize} ${unit}`)
-  }
-
-  // Year built - check both top-level and description object
-  const yearBuilt = item.yearBuilt || item.year_built || item.description?.yearBuilt
-  if (yearBuilt) {
-    lines.push(`Year Built: ${yearBuilt}`)
-  }
-
-  // Description - handle both string and object formats
-  let descText: string | null = null
-  if (item.description) {
-    // If description is an object, extract text property
-    if (typeof item.description === 'object' && item.description.text) {
-      descText = item.description.text
-    } else if (typeof item.description === 'string') {
-      descText = item.description
+    
+    // Strings
+    if (typeof val === 'string') {
+      return val
     }
-  }
-  
-  // Fallback to other description fields
-  if (!descText) {
-    descText = item.listingDescription || item.remarks || item.text || null
-  }
-  
-  if (descText) {
-    lines.push('')
-    lines.push('Description:')
-    lines.push(descText)
+    
+    return null
   }
 
-  // Features and amenities
-  const features: string[] = []
-  
-  // Pool
-  if (item.pool || item.hasPool || item.features?.pool) {
-    features.push('Pool')
-  }
-  
-  // Parking
-  if (item.parking || item.parkingSpaces || item.garage) {
-    const parking = item.parking || item.parkingSpaces || item.garage
-    features.push(`Parking: ${parking}`)
-  }
-  
-  // Fireplace
-  if (item.fireplace || item.hasFireplace || item.features?.fireplace) {
-    features.push('Fireplace')
-  }
-  
-  // Features array
-  if (item.features && Array.isArray(item.features)) {
-    features.push(...item.features)
-  }
-  
-  // Amenities array
-  if (item.amenities && Array.isArray(item.amenities)) {
-    features.push(...item.amenities)
-  }
-  
-  // Additional features from nested objects
-  if (item.features && typeof item.features === 'object' && !Array.isArray(item.features)) {
-    Object.keys(item.features).forEach(key => {
-      if (item.features[key] === true || (typeof item.features[key] === 'string' && item.features[key])) {
-        features.push(key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '))
-      }
-    })
-  }
-  
-  if (features.length > 0) {
-    lines.push('')
-    lines.push('Features & Amenities:')
-    features.forEach(feature => lines.push(`- ${feature}`))
-  }
-
-  // Photos/Images
-  if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
-    lines.push('')
-    lines.push(`Photos: ${item.photos.length} image(s)`)
-    // Optionally list first few photo URLs
-    item.photos.slice(0, 3).forEach((photo: any, i: number) => {
-      const url = typeof photo === 'string' ? photo : (photo.url || photo.src || photo.href)
-      if (url) {
-        lines.push(`  ${i + 1}. ${url}`)
-      }
-    })
-    if (item.photos.length > 3) {
-      lines.push(`  ... and ${item.photos.length - 3} more`)
-    }
-  } else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
-    lines.push('')
-    lines.push(`Images: ${item.images.length} image(s)`)
-    item.images.slice(0, 3).forEach((image: any, i: number) => {
-      const url = typeof image === 'string' ? image : (image.url || image.src || image.href)
-      if (url) {
-        lines.push(`  ${i + 1}. ${url}`)
-      }
-    })
-    if (item.images.length > 3) {
-      lines.push(`  ... and ${item.images.length - 3} more`)
-    }
-  }
-
-  // Agent information
-  if (item.agent || item.listingAgent || item.realtor) {
-    const agent = item.agent || item.listingAgent || item.realtor
-    if (agent.name || agent.firstName || agent.lastName) {
-      const name = agent.name || `${agent.firstName || ''} ${agent.lastName || ''}`.trim()
-      if (name) {
-        lines.push('')
-        lines.push(`Agent: ${name}`)
-        if (agent.phone) lines.push(`  Phone: ${agent.phone}`)
-        if (agent.email) lines.push(`  Email: ${agent.email}`)
-        if (agent.agency || agent.brokerage) {
-          lines.push(`  Agency: ${agent.agency || agent.brokerage}`)
+  // Helper to process nested object and return lines
+  const processObject = (obj: any, currentDepth: number): string[] => {
+    if (isEmpty(obj)) return []
+    
+    const objLines: string[] = []
+    const objIndent = '  '.repeat(currentDepth)
+    
+    for (const [key, value] of Object.entries(obj)) {
+      if (isEmpty(value)) continue
+      
+      const fieldName = formatFieldName(key)
+      
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        // Nested object
+        objLines.push(`${objIndent}${fieldName}:`)
+        const nestedLines = processObject(value, currentDepth + 1)
+        objLines.push(...nestedLines)
+      } else if (Array.isArray(value)) {
+        // Array
+        if (value.length > 0) {
+          objLines.push(`${objIndent}${fieldName}: (${value.length} items)`)
+          value.slice(0, 5).forEach((item: any, idx: number) => {
+            if (typeof item === 'object') {
+              objLines.push(`${objIndent}  ${idx + 1}.`)
+              const nestedLines = processObject(item, currentDepth + 2)
+              objLines.push(...nestedLines)
+            } else {
+              const formatted = formatValue(item, key)
+              if (formatted) {
+                objLines.push(`${objIndent}  - ${formatted}`)
+              }
+            }
+          })
+          if (value.length > 5) {
+            objLines.push(`${objIndent}  ... and ${value.length - 5} more`)
+          }
+        }
+      } else {
+        // Primitive value
+        const formatted = formatValue(value, key)
+        if (formatted) {
+          objLines.push(`${objIndent}${fieldName}: ${formatted}`)
         }
       }
     }
+    
+    return objLines
   }
 
-  // Location details (city, county, etc.)
-  if (item.location) {
-    const loc = item.location
-    if (loc.address?.line || loc.address?.city || loc.address?.state) {
+  // Process all top-level fields
+  for (const [key, value] of Object.entries(item)) {
+    if (isEmpty(value) || processedKeys.has(key)) continue
+    
+    // Skip technical fields
+    if (['__typename', 'url', 'loadedUrl', 'requestId', 'requestQueueId'].includes(key)) {
+      continue
+    }
+    
+    processedKeys.add(key)
+    const fieldName = formatFieldName(key)
+    
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      // Object - process recursively
       lines.push('')
-      lines.push('Location:')
-      if (loc.address?.line) lines.push(`  Address: ${loc.address.line}`)
-      if (loc.address?.city) lines.push(`  City: ${loc.address.city}`)
-      if (loc.address?.state) lines.push(`  State: ${loc.address.state}`)
-      if (loc.address?.postalCode) lines.push(`  ZIP: ${loc.address.postalCode}`)
-      if (loc.county?.name) lines.push(`  County: ${loc.county.name}`)
-    }
-  }
-
-  // Schools
-  if (item.schools?.schools && Array.isArray(item.schools.schools) && item.schools.schools.length > 0) {
-    lines.push('')
-    lines.push('Nearby Schools:')
-    item.schools.schools.slice(0, 5).forEach((school: any) => {
-      if (school.name) {
-        lines.push(`  - ${school.name}${school.rating ? ` (Rating: ${school.rating}/10)` : ''}`)
-        if (school.grades && Array.isArray(school.grades)) {
-          lines.push(`    Grades: ${school.grades.join(', ')}`)
-        }
-        if (school.distanceInMiles) {
-          lines.push(`    Distance: ${school.distanceInMiles} miles`)
-        }
-      }
-    })
-    if (item.schools.schools.length > 5) {
-      lines.push(`  ... and ${item.schools.schools.length - 5} more schools`)
-    }
-  } else if (item.nearbySchools?.schools && Array.isArray(item.nearbySchools.schools) && item.nearbySchools.schools.length > 0) {
-    lines.push('')
-    lines.push('Nearby Schools:')
-    item.nearbySchools.schools.slice(0, 5).forEach((school: any) => {
-      if (school.name) {
-        lines.push(`  - ${school.name}${school.rating ? ` (Rating: ${school.rating}/10)` : ''}`)
-        if (school.grades && Array.isArray(school.grades)) {
-          lines.push(`    Grades: ${school.grades.join(', ')}`)
-        }
-        if (school.distanceInMiles) {
-          lines.push(`    Distance: ${school.distanceInMiles} miles`)
-        }
-      }
-    })
-    if (item.nearbySchools.schools.length > 5) {
-      lines.push(`  ... and ${item.nearbySchools.schools.length - 5} more schools`)
-    }
-  }
-
-  // HOA fees
-  if (item.hoa?.fee) {
-    lines.push('')
-    lines.push(`HOA Fee: $${item.hoa.fee}/month`)
-  }
-
-  // Mortgage estimate
-  if (item.mortgage?.estimate?.monthlyPayment) {
-    lines.push('')
-    lines.push('Estimated Monthly Payment:')
-    lines.push(`  Total: $${item.mortgage.estimate.monthlyPayment.toLocaleString()}`)
-    if (item.mortgage.estimate.monthlyPaymentDetails && Array.isArray(item.mortgage.estimate.monthlyPaymentDetails)) {
-      item.mortgage.estimate.monthlyPaymentDetails.forEach((detail: any) => {
-        if (detail.displayName && detail.amount) {
-          lines.push(`  ${detail.displayName}: $${detail.amount.toLocaleString()}`)
-        }
-      })
-    }
-  }
-
-  // Tax history
-  if (item.taxHistory && Array.isArray(item.taxHistory) && item.taxHistory.length > 0) {
-    lines.push('')
-    lines.push('Tax History:')
-    item.taxHistory.slice(0, 3).forEach((tax: any) => {
-      if (tax.year && tax.tax != null) {
-        lines.push(`  ${tax.year}: $${tax.tax.toLocaleString()}`)
-      }
-    })
-    if (item.taxHistory.length > 3) {
-      lines.push(`  ... and ${item.taxHistory.length - 3} more years`)
-    }
-  }
-
-  // Property details (categories)
-  if (item.details && Array.isArray(item.details) && item.details.length > 0) {
-    lines.push('')
-    lines.push('Property Details:')
-    item.details.forEach((detail: any) => {
-      if (detail.category && detail.text && Array.isArray(detail.text) && detail.text.length > 0) {
-        lines.push(`  ${detail.category}:`)
-        detail.text.forEach((text: string) => {
-          if (text && text.trim()) {
-            lines.push(`    - ${text}`)
+      lines.push(`${fieldName}:`)
+      const objLines = processObject(value, 1)
+      lines.push(...objLines)
+    } else if (Array.isArray(value)) {
+      // Array
+      if (value.length > 0) {
+        lines.push('')
+        lines.push(`${fieldName}: (${value.length} items)`)
+        value.slice(0, 5).forEach((item: any, idx: number) => {
+          if (typeof item === 'object') {
+            lines.push(`  ${idx + 1}.`)
+            const objLines = processObject(item, 2)
+            lines.push(...objLines)
+          } else {
+            const formatted = formatValue(item, key)
+            if (formatted) {
+              lines.push(`  - ${formatted}`)
+            }
           }
         })
+        if (value.length > 5) {
+          lines.push(`  ... and ${value.length - 5} more`)
+        }
       }
-    })
-  }
-
-  // Property history
-  if (item.propertyHistory && Array.isArray(item.propertyHistory) && item.propertyHistory.length > 0) {
-    lines.push('')
-    lines.push('Property History:')
-    item.propertyHistory.slice(0, 5).forEach((history: any) => {
-      if (history.date && history.eventName) {
-        const price = history.price ? ` - $${history.price.toLocaleString()}` : ''
-        lines.push(`  ${history.date}: ${history.eventName}${price}`)
+    } else {
+      // Primitive value
+      const formatted = formatValue(value, key)
+      if (formatted) {
+        lines.push(`${fieldName}: ${formatted}`)
       }
-    })
-    if (item.propertyHistory.length > 5) {
-      lines.push(`  ... and ${item.propertyHistory.length - 5} more events`)
     }
   }
-
-  // Additional metadata (if useful)
-  if (item.status || item.listingStatus) {
-    lines.push('')
-    lines.push(`Status: ${item.status || item.listingStatus}`)
-  }
-  
-  if (item.mlsId || item.mlsNumber || item.listingId) {
-    lines.push(`MLS ID: ${item.mlsId || item.mlsNumber || item.listingId}`)
-  }
-
-  // Include any other top-level fields that might be useful
-  // This handles various Apify scraper formats
-  const otherFields = ['url', 'id', 'zpid', 'propertyId']
-  otherFields.forEach(field => {
-    const fieldValue = item[field]
-    if (fieldValue != null && typeof fieldValue !== 'object' && !lines.some(line => typeof line === 'string' && line.includes(field))) {
-      lines.push(`${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldValue}`)
-    }
-  })
 }
+
 
 /**
  * Format property data as text for title generation (Call 2)
