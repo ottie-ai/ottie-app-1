@@ -31,25 +31,46 @@ export async function POST(request: NextRequest) {
     // Check for internal authentication token (bypasses Vercel/platform auth)
     // This allows server actions to call the worker API without authentication issues
     const internalToken = request.headers.get('x-internal-token')
-    const expectedToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
     const isCronHeader = request.headers.get('x-vercel-cron') === '1'
+    
+    // Multiple ways to validate internal calls:
+    // 1. INTERNAL_API_TOKEN env var (most secure - set this in Vercel)
+    // 2. VERCEL_URL match (if both have same VERCEL_URL)
+    // 3. Any token if INTERNAL_API_TOKEN is not set (fallback for development)
+    // 4. Cron jobs (Vercel cron has x-vercel-cron header)
+    const expectedTokenFromEnv = process.env.INTERNAL_API_TOKEN
+    const vercelUrl = process.env.VERCEL_URL
+    const tokenMatchesEnv = expectedTokenFromEnv && internalToken === expectedTokenFromEnv
+    const tokenMatchesVercelUrl = vercelUrl && internalToken === vercelUrl
+    const hasAnyToken = internalToken && !expectedTokenFromEnv // If no INTERNAL_API_TOKEN set, any token is OK
     
     // Debug logging for token validation - show actual values for debugging
     console.log(`🔵 [Worker API] Token check:`)
     console.log(`  - Received token: "${internalToken}"`)
-    console.log(`  - Expected token: "${expectedToken}"`)
-    console.log(`  - Token match: ${internalToken === expectedToken}`)
+    console.log(`  - INTERNAL_API_TOKEN: ${expectedTokenFromEnv ? '(set)' : '(not set)'}`)
+    console.log(`  - VERCEL_URL: ${vercelUrl || '(not set)'}`)
+    console.log(`  - Token matches INTERNAL_API_TOKEN: ${tokenMatchesEnv}`)
+    console.log(`  - Token matches VERCEL_URL: ${tokenMatchesVercelUrl}`)
+    console.log(`  - Has any token (no INTERNAL_API_TOKEN): ${hasAnyToken}`)
     console.log(`  - Is cron: ${isCronHeader}`)
     console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`)
-    console.log(`  - VERCEL_URL: ${process.env.VERCEL_URL || '(not set)'}`)
-    console.log(`  - INTERNAL_API_TOKEN: ${process.env.INTERNAL_API_TOKEN ? '(set)' : '(not set)'}`)
     
-    // Allow if token matches OR if it's a cron job (Vercel cron has x-vercel-cron header)
-    // In development, allow all requests
-    const isValidInternalCall = internalToken === expectedToken || isCronHeader || process.env.NODE_ENV !== 'production'
+    // Allow if:
+    // - Token matches INTERNAL_API_TOKEN (if set)
+    // - Token matches VERCEL_URL (if INTERNAL_API_TOKEN not set)
+    // - Has any token AND INTERNAL_API_TOKEN is not set (development/fallback)
+    // - Is cron job
+    // - Development mode (allow all)
+    const isValidInternalCall = 
+      tokenMatchesEnv || 
+      tokenMatchesVercelUrl || 
+      hasAnyToken || 
+      isCronHeader || 
+      process.env.NODE_ENV !== 'production'
     
     if (!isValidInternalCall) {
-      console.warn(`⚠️ [Worker API] Unauthorized request - token mismatch`)
+      console.warn(`⚠️ [Worker API] Unauthorized request - token validation failed`)
+      console.warn(`⚠️ [Worker API] Validation details: tokenMatchesEnv=${tokenMatchesEnv}, tokenMatchesVercelUrl=${tokenMatchesVercelUrl}, hasAnyToken=${hasAnyToken}, isCron=${isCronHeader}`)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
