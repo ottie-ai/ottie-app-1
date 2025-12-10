@@ -3,15 +3,120 @@
  * Sorts generated config keys to match the order in sample config
  */
 
-import { readFileSync } from 'fs'
-import { join } from 'path'
-
 /**
- * Get sample config structure for ordering
+ * Sample config structure for ordering
+ * This is the reference structure that defines the key order
  */
-function getSampleConfig(): any {
-  const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
-  return JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
+const SAMPLE_CONFIG = {
+  "title": "",
+  "language": "",
+  "currency": "",
+  "currency_symbol": "",
+  "property_status": "",
+  "photos": [],
+  "address": {
+    "street": "",
+    "city": "",
+    "neighborhood": "",
+    "state": "",
+    "zipcode": "",
+    "country": "",
+    "subdivision": ""
+  },
+  "price_info": {
+    "price": 0,
+    "is_discounted": false,
+    "original_price": 0,
+    "price_per_unit": {
+      "amount": 0,
+      "unit": ""
+    }
+  },
+  "beds": 0,
+  "baths": 0,
+  "property_type": "OTHER",
+  "year_built": 0,
+  "is_new_construction": false,
+  "mls_id": "",
+  "living_area": {
+    "value": 0,
+    "unit": ""
+  },
+  "lot_size": {
+    "value": 0,
+    "unit": ""
+  },
+  "highlights": [
+    {
+      "title": "",
+      "value": "",
+      "icon": ""
+    }
+  ],
+  "description": "",
+  "features_amenities": {
+    "interior": {
+      "floor_covering": [],
+      "kitchen_features": [],
+      "heating": [],
+      "cooling": [],
+      "fireplace": false
+    },
+    "appliances": [],
+    "parking": {
+      "type": "",
+      "spaces": 0,
+      "covered": false
+    },
+    "outdoor": {
+      "amenities": [],
+      "pool": false,
+      "balcony_terrace": false,
+      "garden": false
+    },
+    "building": {
+      "architecture_style": "",
+      "exterior_type": "",
+      "elevator": false,
+      "security_features": []
+    },
+    "energy": {
+      "energy_rating": "",
+      "solar": false,
+      "ev_charger": false
+    }
+  },
+  "agent": {
+    "name": "",
+    "agency": "",
+    "phone": "",
+    "email": ""
+  },
+  "location": {
+    "latitude": 0,
+    "longitude": 0
+  },
+  "neighborhood": {
+    "schools": [],
+    "lifestyle": "",
+    "street_view_url": ""
+  },
+  "mortgage_info": {
+    "interest_rate": 0,
+    "property_tax": {
+      "amount": 0,
+      "period": "annual|monthly|unknown"
+    },
+    "hoa_fee": {
+      "amount": 0,
+      "period": "monthly|quarterly|annual|unknown"
+    }
+  },
+  "virtual_tour_url": "",
+  "floorplan_url": "",
+  "font": "",
+  "brand_color": "",
+  "completeness": 0
 }
 
 /**
@@ -63,8 +168,7 @@ function sortObjectKeys(obj: any, reference: any): any {
  */
 export function sortConfigToSampleOrder(generatedConfig: any): any {
   try {
-    const sampleConfig = getSampleConfig()
-    return sortObjectKeys(generatedConfig, sampleConfig)
+    return sortObjectKeys(generatedConfig, SAMPLE_CONFIG)
   } catch (error) {
     console.warn('⚠️ [Config Sorter] Failed to sort config, returning original:', error)
     return generatedConfig
