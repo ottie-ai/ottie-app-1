@@ -1,96 +1,125 @@
 {
-  "title": "Penthouse I-4 | 3 Bed | 4 Bath | 2,629 sqft | $950K",
-  "currency": "USD",
-  "property_status": "For Sale",
-  "font": "Inter",
-  "brand_color": "#000000",
-  "language": "en",
+  "title": "",
+  "language": "",
+  "currency": "",
+  "currency_symbol": "",
+  "property_status": "",
+  
   "photos": [],
+  
   "address": {
     "street": "",
     "city": "",
+    "neighborhood": "",
     "state": "",
     "zipcode": "",
     "country": "",
-    "neighborhood": "",
     "subdivision": ""
   },
-  "price": {
-    "amount": 950000
+  
+  "price_info": {
+    "price": 0,
+    "is_discounted": false,
+    "original_price": 0,
+    "price_per_unit": {
+      "amount": 0,
+      "unit": ""
+    }
   },
-  "price_per_unit": {
-    "amount": 361,
-    "unit": "sqft"
-  },
-  "beds": 3,
-  "baths": 4,
+  
+  "beds": 0,
+  "baths": 0,
+  "property_type": "OTHER",
+  "year_built": 0,
+  "mls_id": "",
+  
   "living_area": {
-    "value": 2629,
-    "unit": "sqft"
+    "value": 0,
+    "unit": ""
   },
   "lot_size": {
-    "value": 0.73,
-    "unit": "acres"
+    "value": 0,
+    "unit": ""
   },
+  
+  "highlights": [
+    {
+      "title": "",
+      "value": "",
+      "icon": ""
+    }
+  ],
+  
+  "description": "",
+    
+  "features_amenities": {
+    "interior": {
+      "floor_covering": [],
+      "kitchen_features": [],
+      "heating": [],
+      "cooling": [],
+      "fireplace": false
+    },
+    "appliances": [],
+    "parking": {
+      "type": "",
+      "spaces": 0,
+      "covered": false
+    },
+    "outdoor": {
+      "amenities": [],
+      "pool": false,
+      "balcony_terrace": false,
+      "garden": false
+    },
+    "building": {
+      "architecture_style": "",
+      "exterior_type": "",
+      "elevator": false,
+      "security_features": []
+    },
+    "energy": {
+      "energy_rating": "",
+      "solar": false,
+      "ev_charger": false
+    }
+  },
+
+  
   "agent": {
     "name": "",
     "agency": "",
     "phone": "",
     "email": ""
   },
-  "highlights": [
-    {
-      "title": "Views",
-      "value": "360° City & Ocean",
-      "icon": "view"
-    },
-    {
-      "title": "Parking",
-      "value": "2 Carport",
-      "icon": "car"
-    }
-  ],
-  "property_type": "Condo",
-  "year_built": 1978,
-  "mls_id": "PR9116157",
-  "description": "",
-  "features_amenities": {
-    "amenities": [
-      "Cable Ready",
-      "Security"
-    ],
-    "appliances": [
-      "Dishwasher",
-      "Microwave",
-      "Washer"
-    ],
-    "architecture_style": "New Traditional",
-    "exterior_type": "Brick",
-    "floor_covering": [
-      "Ceramic Tile"
-    ],
-    "cooling": [
-      "Ductless"
-    ],
-    "heating": [
-      "Electric"
-    ],
-    "parking": "Carport"
-  },
-  "mortgage_info": {
-    "interest_rate": "",
-    "property_tax": "$4,063",
-    "hoa_fee": "$488 monthly"
-  },
+  
   "location": {
-    "latitude": 18.442053,
-    "longitude": -66.06174
+    "latitude": 0,
+    "longitude": 0
   },
+  
   "neighborhood": {
     "schools": [],
     "lifestyle": "",
     "street_view_url": ""
   },
+  
+  "mortgage_info": {
+    "interest_rate": 0,
+    "property_tax": {
+      "amount": 0,
+      "period": "annual|monthly|unknown"
+    },
+    "hoa_fee": {
+      "amount": 0,
+      "period": "monthly|quarterly|annual|unknown"
+    }
+  },
+  
   "virtual_tour_url": "",
-  "original_price": 0
+  "floorplan_url": "",
+  
+  "font": "",
+  "brand_color": "",
+  "completeness": 0
 }

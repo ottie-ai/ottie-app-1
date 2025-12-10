@@ -8,6 +8,7 @@ import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scrape
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
+import { getRealEstateConfigPrompt } from '@/lib/openai/prompts'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { addToQueue, getJobPosition, isJobProcessing, type ScrapeJob } from '@/lib/queue/scrape-queue'
@@ -337,60 +338,8 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
  */
 async function generateConfigFromStructuredText(previewId: string, structuredText: string) {
   try {
-    // Load site-config-sample.json as example
-    const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
-    const sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
-
-    // Build prompt for text-based extraction (similar to Apify but for structured text)
-    const prompt = `Extract from provided real estate property text - exact structure below.
-
-**RULES (strict):**
-
-1. ONLY use explicit data from the text
-
-2. Detect language - set "language" (en, es, etc.) + use same language everywhere
-
-3. Missing = "" / 0 / []
-
-4. NEVER invent data
-
-5. **currency:** detect from country/city/price symbol → USD(EUR,GBP,CZK,etc.) NOT hardcoded
-
-6. title: lifestyle marketing hero title
-
-7. photos: extract ALL image URLs from the text
-
-8. highlights: max 6 - Phosphor icon names (Eye, Car, Building2, etc.)
-
-9. font: Inter/Playfair Display (luxury=Playfair, modern=Inter)
-
-10. brand_color: match property style
-
-11. description: EXACT from text
-
-12. original_price: ONLY if discounted
-
-**CURRENCY MAPPING:**
-
-- USA/PR → USD
-
-- Spain/EU → EUR
-
-- UK → GBP
-
-- CZ/SK → CZK
-
-- price symbol $ → USD, € → EUR, £ → GBP
-
-**STRUCTURE:**
-
-${JSON.stringify(sampleConfig, null, 2)}
-
-**OUTPUT:** JSON only
-
-**TEXT TO PROCESS:**
-
-${structuredText}`
+    // Get prompt from centralized prompts file
+    const prompt = getRealEstateConfigPrompt('text', structuredText)
 
     // Call OpenAI
     const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
@@ -436,60 +385,8 @@ ${structuredText}`
  */
 async function generateConfigFromApifyData(previewId: string, apifyData: any) {
   try {
-    // Load site-config-sample.json as example
-    const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
-    const sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
-
-    // Build prompt according to specification
-    const prompt = `Extract from provided real estate JSON - exact structure below.
-
-**RULES (strict):**
-
-1. ONLY use explicit JSON data
-
-2. Detect language - set "language" (en, es, etc.) + use same language everywhere
-
-3. Missing = "" / 0 / []
-
-4. NEVER invent data
-
-5. **currency:** detect from country/city/price symbol → USD(EUR,GBP,CZK,etc.) NOT hardcoded
-
-6. title: lifestyle marketing hero title
-
-7. photos: ALL jpeg from mixedSources
-
-8. highlights: max 6 - Phosphor icon names (Eye, Car, Building2, etc.)
-
-9. font: Inter/Playfair Display (luxury=Playfair, modern=Inter)
-
-10. brand_color: match property style
-
-11. description: EXACT from data
-
-12. original_price: ONLY if discounted
-
-**CURRENCY MAPPING:**
-
-- USA/PR → USD
-
-- Spain/EU → EUR
-
-- UK → GBP
-
-- CZ/SK → CZK
-
-- price symbol $ → USD, € → EUR, £ → GBP
-
-**STRUCTURE:**
-
-${JSON.stringify(sampleConfig, null, 2)}
-
-**OUTPUT:** JSON only
-
-**DATA TO PROCESS:**
-
-${JSON.stringify(apifyData, null, 2)}`
+    // Get prompt from centralized prompts file
+    const prompt = getRealEstateConfigPrompt('apify', JSON.stringify(apifyData, null, 2))
 
     // Call OpenAI
     const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')

@@ -4,6 +4,7 @@
  */
 
 import OpenAI from 'openai'
+import { getRealEstateConfigSystemMessage } from './prompts'
 
 /**
  * Get OpenAI client instance
@@ -49,17 +50,17 @@ export async function generateStructuredJSON(
           role: 'system',
           content: schema
             ? `You are a helpful assistant that generates valid JSON. Return only valid JSON matching the provided schema.`
-            : `You are a helpful assistant that generates valid JSON. Return only valid JSON, no additional text.`,
+            : getRealEstateConfigSystemMessage(),
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
+      temperature: 0.3, // Lower temperature for more consistent structured output
       response_format: schema
         ? { type: 'json_schema', json_schema: { name: 'response', schema: schema as any } }
         : { type: 'json_object' },
-      temperature: 0.3, // Lower temperature for more consistent structured output
     })
 
     const content = response.choices[0]?.message?.content

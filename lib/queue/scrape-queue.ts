@@ -14,8 +14,7 @@ import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/scraper/html-processors'
 import { load } from 'cheerio'
 import { generateStructuredJSON } from '@/lib/openai/client'
-import { readFileSync } from 'fs'
-import { join } from 'path'
+import { getRealEstateConfigPrompt } from '@/lib/openai/prompts'
 
 export interface ScrapeJob {
   id: string // preview_id from temp_previews
@@ -452,60 +451,11 @@ async function generateConfigFromData(
   type: 'apify' | 'text'
 ): Promise<void> {
   try {
-    const sampleConfigPath = join(process.cwd(), 'docs', 'site-config-sample.json')
-    const sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
+    // Get prompt from centralized prompts file
+    const dataToProcess = type === 'apify' ? JSON.stringify(data, null, 2) : data
+    const prompt = getRealEstateConfigPrompt(type, dataToProcess)
 
-    const basePrompt = `Extract from provided real estate ${type === 'apify' ? 'JSON' : 'property text'} - exact structure below.
-
-**RULES (strict):**
-
-1. ONLY use explicit data from the ${type === 'apify' ? 'JSON' : 'text'}
-
-2. Detect language - set "language" (en, es, etc.) + use same language everywhere
-
-3. Missing = "" / 0 / []
-
-4. NEVER invent data
-
-5. **currency:** detect from country/city/price symbol → USD(EUR,GBP,CZK,etc.) NOT hardcoded
-
-6. title: lifestyle marketing hero title
-
-7. photos: ${type === 'apify' ? 'ALL jpeg from mixedSources' : 'extract ALL image URLs from the text'}
-
-8. highlights: max 6 - Phosphor icon names (Eye, Car, Building2, etc.)
-
-9. font: Inter/Playfair Display (luxury=Playfair, modern=Inter)
-
-10. brand_color: match property style
-
-11. description: EXACT from ${type === 'apify' ? 'data' : 'text'}
-
-12. original_price: ONLY if discounted
-
-**CURRENCY MAPPING:**
-
-- USA/PR → USD
-
-- Spain/EU → EUR
-
-- UK → GBP
-
-- CZ/SK → CZK
-
-- price symbol $ → USD, € → EUR, £ → GBP
-
-**STRUCTURE:**
-
-${JSON.stringify(sampleConfig, null, 2)}
-
-**OUTPUT:** JSON only
-
-**${type === 'apify' ? 'DATA' : 'TEXT'} TO PROCESS:**
-
-${type === 'apify' ? JSON.stringify(data, null, 2) : data}`
-
-    const generatedConfig = await generateStructuredJSON(basePrompt, undefined, 'gpt-4o-mini')
+    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
 
     const supabase = createAdminClient()
     await supabase
