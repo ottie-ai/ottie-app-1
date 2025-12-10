@@ -8,7 +8,7 @@ import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scrape
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
-import { getRealEstateConfigPrompt } from '@/lib/openai/prompts'
+import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { addToQueue, getJobPosition, isJobProcessing, type ScrapeJob } from '@/lib/queue/scrape-queue'

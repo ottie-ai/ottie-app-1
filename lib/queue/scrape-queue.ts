@@ -13,8 +13,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/scraper/html-processors'
 import { load } from 'cheerio'
-import { generateStructuredJSON } from '@/lib/openai/client'
-import { getRealEstateConfigPrompt } from '@/lib/openai/prompts'
+import { generateStructuredJSON, generateTitle } from '@/lib/openai/client'
+import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
 
 export interface ScrapeJob {
   id: string // preview_id from temp_previews
@@ -457,12 +457,38 @@ async function generateConfigFromData(
 
     const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
 
+    // Generate improved title and highlights with higher temperature (0.8) for more creativity
+    // Use the generated JSON config from first call as input data
+    let finalConfig = { ...generatedConfig }
+    try {
+      console.log('🤖 [Queue Worker] Generating improved title and highlights...')
+      const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
+      const titleAndHighlights = await generateTitle(
+        configJsonForTitle,
+        generatedConfig.title,
+        generatedConfig.highlights
+      )
+      
+      // Update title and highlights in config
+      if (titleAndHighlights.title && titleAndHighlights.title.trim().length > 0) {
+        finalConfig.title = titleAndHighlights.title.trim()
+        console.log(`✅ [Queue Worker] Title improved: "${titleAndHighlights.title}"`)
+      }
+      if (titleAndHighlights.highlights && Array.isArray(titleAndHighlights.highlights)) {
+        finalConfig.highlights = titleAndHighlights.highlights
+        console.log(`✅ [Queue Worker] Highlights improved: ${titleAndHighlights.highlights.length} items`)
+      }
+    } catch (titleError: any) {
+      // Don't fail the whole job if title generation fails - use original title and highlights from config
+      console.warn(`⚠️ [Queue Worker] Title/highlights generation failed, using original values:`, titleError.message)
+    }
+
     const supabase = createAdminClient()
     await supabase
       .from('temp_previews')
       .update({
-        generated_config: generatedConfig,
-        unified_json: generatedConfig, // Until we add post-processing, mirror generated output
+        generated_config: generatedConfig, // Keep original config
+        unified_json: finalConfig, // Save updated version with improved title and highlights
         status: 'completed',
         updated_at: new Date().toISOString(),
       })

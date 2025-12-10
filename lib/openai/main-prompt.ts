@@ -1,6 +1,6 @@
 /**
- * OpenAI Prompts
- * Centralized prompts for OpenAI API calls
+ * OpenAI Main Prompt
+ * Centralized main prompt for first OpenAI call (JSON config generation)
  */
 
 import { readFileSync } from 'fs'
@@ -19,8 +19,6 @@ Role:
 
 - Produce clean, structured JSON configs that can be rendered directly into a one‑pager.
 
-- Create emotionally appealing, lifestyle‑focused titles and highlight cards with icons.
-
 Behavior rules:
 
 - Always respond with VALID JSON only, no explanations or extra text.
@@ -33,11 +31,7 @@ Behavior rules:
 
 - Ignore navigation menus, similar properties, recommendations, footer content, and portal boilerplate.
 
-- When assigning icons, use only the icon categories and icon names provided by the user. If unsure, use a neutral fallback as instructed.
-
 Style:
-
-- Titles must be short, memorable, and lifestyle‑oriented (focus on feelings, experience, and benefits, not just "3 bedroom apartment").
 
 - Highlights must be concise, punchy, and benefit‑driven.
 
@@ -62,39 +56,11 @@ export function getRealEstateConfigPrompt(
     sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
   }
 
-  const iconCategories = {
-    location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "SignpostTwo", "MapTrifold"] },
-    view: { label: "Views & Scenery", icons: ["Mountains", "SunHorizon", "Tree", "Wave", "Binoculars"] },
-    bedroom: { label: "Bedrooms", icons: ["Bed", "Door"] },
-    bathroom: { label: "Bathrooms", icons: ["Toilet", "Bathtub", "Shower", "Sink"] },
-    kitchen: { label: "Kitchen", icons: ["Fridge", "CookingPot", "KnifeFork", "Microwave"] },
-    luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "SparkleStar"] },
-    pool: { label: "Pool & Water", icons: ["SwimmingPool", "WaveSawtooth", "Water", "Droplet"] },
-    parking: { label: "Parking", icons: ["CarSimple", "Garage", "ParkingCircle", "Car"] },
-    outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Fence", "Gate"] },
-    security: { label: "Security & Safety", icons: ["ShieldCheck", "Lock", "Camera", "Alarm"] },
-    "heating_cooling": { label: "Climate Control", icons: ["Thermometer", "Fan", "AirVent", "Sun", "Snowflake"] },
-    energy: { label: "Energy & Utilities", icons: ["SolarPanel", "Lightning", "Battery", "Windmill"] },
-    price: { label: "Price & Financial", icons: ["CurrencyDollar", "CurrencyEur", "CurrencyPound", "Coin", "Receipt"] },
-    size: { label: "Size & Measurements", icons: ["Ruler", "Square", "Resize", "ArrowsOut"] },
-    elevator: { label: "Elevator & Accessibility", icons: ["Elevator", "Wheelchair", "Accessibility"] },
-    building: { label: "Building & Structure", icons: ["House", "Building", "Construction", "CastleTurret", "Skyscraper"] },
-    appliances: { label: "Appliances & Furniture", icons: ["Sofa", "Chair", "Table", "Lamp", "Desk"] },
-    storage: { label: "Storage & Space", icons: ["Wardrobe", "Bookshelf", "Box", "Folder"] },
-    distance: { label: "Proximity & Distance", icons: ["MapPin", "Distance", "NavigationArrow", "Signpost"] },
-    trending: { label: "Trending & Popular", icons: ["TrendingUp", "Fire", "Heart", "Star", "Bolt"] },
-    miscellaneous: { label: "General", icons: ["Check", "Plus", "Info", "CheckCircle"] }
-  }
-
-  const iconJson = JSON.stringify(iconCategories, null, 2)
-
   return `Analyze real estate listing. Fill JSON config for one-pager.
 
 PRIORITY FIELDS (fill FIRST):
 
 1. **language** (ISO 2-letter: en/es/de/cs/sk/fr/it) → ALL TEXT in this language
-
-2. title (lifestyle-focused, emotional, max 60 chars)
 
 3. currency (infer from symbol/location: $, €, £, Kč → USD/EUR/GBP/CZK)
 
@@ -114,6 +80,8 @@ PRIORITY FIELDS (fill FIRST):
 
 11. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
 
+12. property_status: choose ONE from: FOR_SALE, FOR_RENT, SOLD, UNDER_CONTRACT, PENDING, OFF_MARKET, OTHER, Map portal labels like "available", "for sale", "à vendre" → FOR_SALE.
+
 RULES:
 
 - Missing = "" / 0 / []
@@ -126,16 +94,29 @@ RULES:
 
 - brand_color: single HEX matching property style
 
-- **highlights exactly 6**: Match to categories → pick icon:
+- **highlights exactly 6**
 
 - floorplan_url:
    - Try to find a dedicated floor plan file or image for this listing.
    - Accept formats: PDF, SVG, JPG, JPEG, PNG, WEBP.
    - Look for buttons or links labeled "Floor plan", "Plans", "Grundriss", "Plano", etc., or gallery images that clearly show a 2D floor plan
 
-- completeness: percentage (0–100) of how many relevant fields in this JSON were successfully filled.
+- completeness: integer 0–100, conservative estimate of how many relevant fields were successfully filled.
 
-${iconJson}
+- language: detect from listing → set language field to ISO code (en/es/de/cs/sk/fr/it) and keep ALL text fields in this language.
+
+- agent.agency:
+  - If the listing is on an agency's own website, use the real estate agency / brokerage name from the site header, footer, url or contact/about section.
+  - If the listing is on a large portal (Zillow, Idealista, Rightmove, etc.), prefer the listing agent's brokerage/office name if shown; if only portal branding is visible and no brokerage is clearly indicated, leave agency as an empty string.
+
+- photo rules:
+  - only REAL property photos (interior/exterior, views, amenities).
+  - Prefer URLs that share the same base pattern / path as the main listing gallery images.
+  - If most photos come from e.g. "https://imgs.soukwportugal.pt/37734/properties/...", keep ONLY URLs that match this pattern.
+  - exclude:
+    - generic site images (e.g. "/images/photo-*.webp", stock backgrounds, logos, icons),
+    - images from different domains or paths that are not part of the listing gallery.
+  - Remove any duplicates.
 
 JSON STRUCTURE:
 

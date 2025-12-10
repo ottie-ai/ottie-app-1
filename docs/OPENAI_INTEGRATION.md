@@ -56,18 +56,6 @@ const json = await generateStructuredJSON(
 )
 ```
 
-#### Generate Text
-
-```typescript
-import { generateText } from '@/lib/openai/client'
-
-// Generate text completion
-const text = await generateText(
-  'Write a property description for...',
-  'gpt-4o-mini', // Optional model
-  0.7 // Optional temperature (0-2)
-)
-```
 
 ## Implementation Details
 
@@ -79,8 +67,8 @@ The OpenAI client is located in:
 ### Available Functions
 
 1. **`getOpenAIClient()`** - Get OpenAI client instance
-2. **`generateStructuredJSON(prompt, schema?, model?)`** - Generate structured JSON
-3. **`generateText(prompt, model?, temperature?)`** - Generate text completion
+2. **`generateStructuredJSON(prompt, schema?, model?)`** - Generate structured JSON (first call - config generation)
+3. **`generateTitle(propertyData, currentTitle?, currentHighlights?, model?)`** - Generate title and highlights (second call - creative generation)
 
 ### Error Handling
 

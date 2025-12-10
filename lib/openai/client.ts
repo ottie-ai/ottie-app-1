@@ -4,7 +4,7 @@
  */
 
 import OpenAI from 'openai'
-import { getRealEstateConfigSystemMessage } from './prompts'
+import { getRealEstateConfigSystemMessage } from './main-prompt'
 
 /**
  * Get OpenAI client instance
@@ -94,24 +94,31 @@ export async function generateStructuredJSON(
 }
 
 /**
- * Generate text completion using OpenAI
+ * Generate title and highlights for real estate listing using OpenAI
+ * Uses higher temperature (0.8) for more creative, lifestyle-focused titles
+ * Returns JSON with title and highlights
  * 
- * @param prompt - The prompt to send to OpenAI
+ * @param propertyData - The property data (JSON stringified config from first OpenAI call)
+ * @param currentTitle - Optional current title to improve/regenerate
+ * @param currentHighlights - Optional current highlights to improve/regenerate
  * @param model - Model to use (default: 'gpt-4o-mini')
- * @param temperature - Temperature for randomness (0-2, default: 0.7)
- * @returns Generated text
+ * @returns Generated JSON object with title and highlights
  */
-export async function generateText(
-  prompt: string,
-  model: string = 'gpt-4o-mini',
-  temperature: number = 0.7
-): Promise<string> {
+export async function generateTitle(
+  propertyData: string,
+  currentTitle?: string,
+  currentHighlights?: any[],
+  model: string = 'gpt-4o-mini'
+): Promise<{ title: string; highlights: any[] }> {
+  const { getTitleGenerationPrompt } = await import('./title-prompts')
+  const prompt = getTitleGenerationPrompt(propertyData, currentTitle, currentHighlights)
+  
   const client = getOpenAIClient()
   const callStartTime = Date.now()
 
-  console.log('🤖 [OpenAI] Generating text...')
+  console.log('🤖 [OpenAI] Generating title and highlights...')
   console.log('🤖 [OpenAI] Model:', model)
-  console.log('🤖 [OpenAI] Prompt length:', prompt.length)
+  console.log('🤖 [OpenAI] Temperature: 0.8')
 
   try {
     const response = await client.chat.completions.create({
@@ -122,7 +129,8 @@ export async function generateText(
           content: prompt,
         },
       ],
-      temperature,
+      temperature: 0.8, // Higher temperature for more creative titles
+      response_format: { type: 'json_object' },
     })
 
     const content = response.choices[0]?.message?.content
@@ -130,13 +138,32 @@ export async function generateText(
       throw new Error('No content in OpenAI response')
     }
 
-    const duration = Date.now() - callStartTime
-    console.log(`✅ [OpenAI] Generated text (${duration}ms)`)
+    // Parse JSON from response
+    try {
+      const result = JSON.parse(content)
+      
+      // Validate structure
+      if (!result.title || typeof result.title !== 'string') {
+        throw new Error('Invalid JSON: missing or invalid title field')
+      }
+      if (!result.highlights || !Array.isArray(result.highlights)) {
+        throw new Error('Invalid JSON: missing or invalid highlights field')
+      }
 
-    return content
+      const duration = Date.now() - callStartTime
+      console.log(`✅ [OpenAI] Generated title: "${result.title}" with ${result.highlights.length} highlights (${duration}ms)`)
+
+      return {
+        title: result.title.trim(),
+        highlights: result.highlights,
+      }
+    } catch (parseError) {
+      console.error('❌ [OpenAI] Failed to parse JSON:', parseError)
+      throw new Error(`Invalid JSON in OpenAI response: ${parseError}`)
+    }
   } catch (error: any) {
     const duration = Date.now() - callStartTime
-    console.error(`❌ [OpenAI] Error after ${duration}ms:`, error.message)
+    console.error(`❌ [OpenAI] Title generation error after ${duration}ms:`, error.message)
 
     if (error.status === 401) {
       throw new Error('OpenAI API key is invalid')
@@ -145,6 +172,6 @@ export async function generateText(
       throw new Error('OpenAI API rate limit exceeded')
     }
 
-    throw new Error(`OpenAI error: ${error.message || 'Unknown error'}`)
+    throw new Error(`OpenAI title generation error: ${error.message || 'Unknown error'}`)
   }
 }
