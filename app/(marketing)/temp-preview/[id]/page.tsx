@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -26,7 +26,8 @@ function PreviewContent() {
   const [copiedSection, setCopiedSection] = useState<string | null>(null) // Track which section was copied
   const [copiedFullJson, setCopiedFullJson] = useState(false) // Track if full JSON was copied
   const [processingJson, setProcessingJson] = useState(false) // Track JSON processing state
-  const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation
+  const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation (Call 1)
+  const [generatingTitle, setGeneratingTitle] = useState(false) // Track OpenAI title generation (Call 2)
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
   const [removingHtmlTags, setRemovingHtmlTags] = useState(false) // Track HTML tags removal state
 
@@ -157,8 +158,8 @@ function PreviewContent() {
     
     setGeneratingConfig(true)
     try {
-      // Use universal function that works for both Apify and Firecrawl
-      const result = await generateConfigManually(previewId)
+      // Call 1: Generate base config
+      const result = await generateConfigCall1(previewId)
       
       if ('error' in result) {
         setError(result.error || 'Failed to generate config')
@@ -177,6 +178,34 @@ function PreviewContent() {
       setError('Failed to generate config')
     } finally {
       setGeneratingConfig(false)
+    }
+  }
+
+  const handleGenerateTitle = async () => {
+    if (!previewId) return
+    
+    setGeneratingTitle(true)
+    try {
+      // Call 2: Generate improved title and highlights
+      const result = await generateTitleCall2(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to generate title and highlights')
+        setGeneratingTitle(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to generate title and highlights')
+    } finally {
+      setGeneratingTitle(false)
     }
   }
 
@@ -329,105 +358,255 @@ function PreviewContent() {
         </div>
       </div>
 
-      {/* Generated Config Display (OpenAI Result) */}
+      {/* OpenAI Calls Display */}
       <div className="border-t border-white/10 bg-white/[0.02] py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-6">
             <Typography variant="h3" className="text-white mb-2 border-none">
-              ✨ Generated Site Config (OpenAI)
+              ✨ OpenAI Generation
             </Typography>
             <Typography variant="small" className="text-white/60">
-              {preview?.generated_config && Object.keys(preview.generated_config).length > 0
-                ? 'AI-generated configuration ready for site building'
-                : 'AI-generated configuration will appear here after processing'}
+              Two-step process: First generate base config, then improve title and highlights
             </Typography>
           </div>
 
-          {preview?.generated_config && Object.keys(preview.generated_config).length > 0 ? (
-
-            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-white/60" />
-                  <Typography variant="small" className="text-white/80 font-medium">
-                    Generated Config (Step 3)
-                  </Typography>
-                  <span className="text-xs text-white/40">
-                    ({(JSON.stringify(preview.generated_config).length / 1024).toFixed(1)} KB)
-                  </span>
-                </div>
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(preview.generated_config, null, 2))
-                    setCopiedFullJson(true)
-                    setTimeout(() => {
-                      setCopiedFullJson(false)
-                    }, 2000)
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {copiedFullJson ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy JSON
-                    </>
-                  )}
-                </Button>
-              </div>
-              
-              <div className="p-4">
-                <div className="max-h-[600px] overflow-auto">
-                  <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                    {JSON.stringify(preview.generated_config, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-                <div className="flex items-center gap-2">
-                  <Code className="h-4 w-4 text-white/60" />
-                  <Typography variant="small" className="text-white/80 font-medium">
-                    Config Not Generated Yet
-                  </Typography>
-                </div>
-                <Button
-                  onClick={handleGenerateConfig}
-                  disabled={generatingConfig}
-                  variant="ghost"
-                  size="sm"
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  {generatingConfig ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Generate Config
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="p-4">
+          <div className="space-y-6">
+            {/* Call 1: Base Config */}
+            <div>
+              <div className="mb-3">
+                <Typography variant="h4" className="text-white mb-1 border-none">
+                  Call 1: Base Config Generation
+                </Typography>
                 <Typography variant="small" className="text-white/60">
-                  {isApifyResult
-                    ? 'Click "Generate Config" to process data with OpenAI (or wait for automatic processing)'
-                    : 'Click "Generate Config" to process markdown with OpenAI (or wait for automatic processing)'}
+                  Generates JSON config from property data (temperature: 0.3)
                 </Typography>
               </div>
+
+              {preview?.generated_config && Object.keys(preview.generated_config).length > 0 ? (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Generated Config (Call 1)
+                      </Typography>
+                      <span className="text-xs text-white/40">
+                        ({(JSON.stringify(preview.generated_config).length / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleGenerateConfig}
+                        disabled={generatingConfig}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {generatingConfig ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Regenerating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(preview.generated_config, null, 2))
+                          setCopiedFullJson(true)
+                          setTimeout(() => {
+                            setCopiedFullJson(false)
+                          }, 2000)
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {copiedFullJson ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    <div className="max-h-[400px] overflow-auto">
+                      <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                        {JSON.stringify(preview.generated_config, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Config Not Generated Yet
+                      </Typography>
+                    </div>
+                    <Button
+                      onClick={handleGenerateConfig}
+                      disabled={generatingConfig}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {generatingConfig ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Generate Config (Call 1)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="p-4">
+                    <Typography variant="small" className="text-white/60">
+                      {isApifyResult
+                        ? 'Click to generate base config from Apify data'
+                        : 'Click to generate base config from markdown'}
+                    </Typography>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Call 2: Title & Highlights */}
+            <div>
+              <div className="mb-3">
+                <Typography variant="h4" className="text-white mb-1 border-none">
+                  Call 2: Title & Highlights Improvement
+                </Typography>
+                <Typography variant="small" className="text-white/60">
+                  Improves title and highlights using base config (temperature: 0.8)
+                </Typography>
+              </div>
+
+              {preview?.unified_json && Object.keys(preview.unified_json).length > 0 ? (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Final Config (Call 1 + Call 2)
+                      </Typography>
+                      <span className="text-xs text-white/40">
+                        ({(JSON.stringify(preview.unified_json).length / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleGenerateTitle}
+                        disabled={generatingTitle || !preview?.generated_config || Object.keys(preview.generated_config).length === 0}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {generatingTitle ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Regenerating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(preview.unified_json, null, 2))
+                          setCopiedFullJson(true)
+                          setTimeout(() => {
+                            setCopiedFullJson(false)
+                          }, 2000)
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {copiedFullJson ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    <div className="max-h-[400px] overflow-auto">
+                      <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
+                        {JSON.stringify(preview.unified_json, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Title & Highlights Not Generated Yet
+                      </Typography>
+                    </div>
+                    <Button
+                      onClick={handleGenerateTitle}
+                      disabled={generatingTitle || !preview?.generated_config || Object.keys(preview.generated_config).length === 0}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {generatingTitle ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Generate Title & Highlights (Call 2)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="p-4">
+                    <Typography variant="small" className="text-white/60">
+                      {!preview?.generated_config || Object.keys(preview.generated_config).length === 0
+                        ? 'Please run Call 1 first to generate base config'
+                        : 'Click to improve title and highlights from base config'}
+                    </Typography>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

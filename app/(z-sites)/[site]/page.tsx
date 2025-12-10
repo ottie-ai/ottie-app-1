@@ -1,10 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-// import { SectionRenderer } from '@/components/templates/SectionRenderer'
-// import { FontLoader } from '@/components/builder/FontLoader'
-// import { FontTransition } from '@/components/builder/FontTransition'
-// import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import type { PageConfig, Section } from '@/types/builder'
 import { PasswordCheck } from './password-check'
 

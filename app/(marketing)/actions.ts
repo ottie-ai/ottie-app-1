@@ -737,8 +737,131 @@ export async function generateConfigFromApify(previewId: string) {
 }
 
 /**
+ * Generate config - Call 1 only (JSON config generation)
+ * This generates the base JSON config without title/highlights improvements
+ */
+export async function generateConfigCall1(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  try {
+    // Check if this is an Apify result
+    const apifyJson = preview?.generated_config?.apify_json || preview?.unified_json?.apify_json
+    if (apifyJson) {
+      // Apify result - use Apify data
+      const result = await generateConfigFromApifyData(previewId, apifyJson)
+      return result
+    }
+
+    // Firecrawl result - use markdown or extract from HTML
+    let structuredText = preview.default_markdown || null
+
+    if (!structuredText && preview.raw_html) {
+      const $ = load(preview.raw_html)
+      const mainContentSelector = getMainContentSelector(preview.external_url) || 'main'
+      const mainElement = $(mainContentSelector)
+      
+      if (mainElement.length > 0) {
+        const htmlCleaner = getHtmlCleaner(preview.external_url)
+        if (htmlCleaner) {
+          htmlCleaner(mainElement)
+        }
+        
+        const mainHtml = $.html(mainElement)
+        structuredText = extractStructuredText(mainHtml)
+      }
+    }
+
+    if (!structuredText) {
+      return { error: 'No markdown or HTML content available to generate config' }
+    }
+
+    // Generate config from structured text (Call 1 only)
+    const result = await generateConfigFromStructuredText(previewId, structuredText)
+    return result
+  } catch (error: any) {
+    return { error: error.message || 'Failed to generate config' }
+  }
+}
+
+/**
+ * Generate title and highlights - Call 2 only
+ * This improves title and highlights using the generated_config from Call 1
+ */
+export async function generateTitleCall2(previewId: string) {
+  const supabase = await createClient()
+  const { generateTitle } = await import('@/lib/openai/client')
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  // Check if generated_config exists (from Call 1)
+  if (!preview.generated_config || Object.keys(preview.generated_config).length === 0) {
+    return { error: 'Please run Call 1 (Generate Config) first to generate base config' }
+  }
+
+  try {
+    const generatedConfig = preview.generated_config
+    
+    // Generate improved title and highlights
+    const configJsonForTitle = JSON.stringify(generatedConfig, null, 2)
+    const titleAndHighlights = await generateTitle(
+      configJsonForTitle,
+      generatedConfig.title,
+      generatedConfig.highlights
+    )
+    
+    // Merge with existing config
+    const finalConfig = {
+      ...generatedConfig,
+      title: titleAndHighlights.title.trim(),
+      highlights: titleAndHighlights.highlights,
+    }
+
+    // Update unified_json with improved title and highlights
+    const { error: updateError } = await supabase
+      .from('temp_previews')
+      .update({
+        unified_json: finalConfig,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('🔴 [generateTitleCall2] Failed to update preview:', updateError)
+      throw new Error('Failed to save improved title and highlights')
+    }
+
+    console.log('✅ [generateTitleCall2] Title and highlights improved and saved')
+    return { success: true, config: finalConfig }
+  } catch (error: any) {
+    console.error('🔴 [generateTitleCall2] Error:', error)
+    return { error: error.message || 'Failed to generate title and highlights' }
+  }
+}
+
+/**
  * Generate site config manually (universal - works for both Apify and Firecrawl)
  * This can be called manually if automatic processing failed or to regenerate
+ * Runs both calls sequentially
  */
 export async function generateConfigManually(previewId: string) {
   const supabase = await createClient()
