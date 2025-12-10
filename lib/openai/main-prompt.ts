@@ -84,15 +84,9 @@ RULES:
 
 - Ignore: similar properties, navigation, footers
 
-- font: "Inter" (modern) or "Playfair Display" (luxury) based on property style
-
-- brand_color: single HEX matching property style
-
 - **highlights exactly 6**
 
 - floorplan_url: Find a dedicated floor plan (PDF/SVG/image). Look for "Floor plan"/"Plans"/"Grundriss" links or gallery images clearly showing a 2D layout.
-
-- completeness: integer 0–100, conservative estimate of how many relevant fields were successfully filled.
 
 - language: detect from listing → set language field to ISO code (en/es/de/cs/sk/fr/it) and keep ALL text fields in this language.
 

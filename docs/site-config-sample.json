@@ -85,24 +85,12 @@
       "ev_charger": false
     }
   },
-
   
   "agent": {
     "name": "",
     "agency": "",
     "phone": "",
     "email": ""
-  },
-  
-  "location": {
-    "latitude": 0,
-    "longitude": 0
-  },
-  
-  "neighborhood": {
-    "schools": [],
-    "lifestyle": "",
-    "street_view_url": ""
   },
   
   "mortgage_info": {
@@ -118,9 +106,5 @@
   },
   
   "virtual_tour_url": "",
-  "floorplan_url": "",
-  
-  "font": "",
-  "brand_color": "",
-  "completeness": 0
+  "floorplan_url": ""
 }
