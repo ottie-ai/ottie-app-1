@@ -18,17 +18,17 @@ export function getTitleGenerationPrompt(
   currentHighlights?: any[]
 ): string {
   const iconCategories = {
-    location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "SignpostTwo", "MapTrifold"] },
+    location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "Signpost", "MapTrifold"] },
     view: { label: "Views & Scenery", icons: ["Mountains", "SunHorizon", "Tree", "Wave", "Binoculars"] },
     bedroom: { label: "Bedrooms", icons: ["Bed", "Door"] },
     bathroom: { label: "Bathrooms", icons: ["Toilet", "Bathtub", "Shower", "Sink"] },
-    kitchen: { label: "Kitchen", icons: ["Fridge", "CookingPot", "KnifeFork", "Microwave"] },
-    luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "SparkleStar"] },
-    pool: { label: "Pool & Water", icons: ["SwimmingPool", "WaveSawtooth", "Water", "Droplet"] },
+    kitchen: { label: "Kitchen", icons: ["Fridge", "CookingPot", "ForkKnife", "Microwave"] },
+    luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "Star"] },
+    pool: { label: "Pool & Water", icons: ["SwimmingPool", "Wave", "Water", "Droplet"] },
     parking: { label: "Parking", icons: ["CarSimple", "Garage", "ParkingCircle", "Car"] },
     outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Fence", "Gate"] },
     security: { label: "Security & Safety", icons: ["ShieldCheck", "Lock", "Camera", "Alarm"] },
-    heating_cooling: { label: "Climate Control", icons: ["Thermometer", "Fan", "AirVent", "Sun", "Snowflake"] },
+    heating_cooling: { label: "Climate Control", icons: ["Thermometer", "Fan", "Sun", "Snowflake"] },
     energy: { label: "Energy & Utilities", icons: ["SolarPanel", "Lightning", "Battery", "Windmill"] },
     price: { label: "Price & Financial", icons: ["CurrencyDollar", "CurrencyEur", "CurrencyPound", "Coin", "Receipt"] },
     size: { label: "Size & Measurements", icons: ["Ruler", "Square", "Resize", "ArrowsOut"] },
@@ -36,7 +36,7 @@ export function getTitleGenerationPrompt(
     building: { label: "Building & Structure", icons: ["House", "Building", "Construction", "CastleTurret", "Skyscraper"] },
     appliances: { label: "Appliances & Furniture", icons: ["Sofa", "Chair", "Table", "Lamp", "Desk"] },
     storage: { label: "Storage & Space", icons: ["Wardrobe", "Bookshelf", "Box", "Folder"] },
-    distance: { label: "Proximity & Distance", icons: ["MapPin", "Distance", "NavigationArrow", "Signpost"] },
+    distance: { label: "Proximity & Distance", icons: ["MapPin", "NavigationArrow", "Signpost", "Compass"] },
     trending: { label: "Trending & Popular", icons: ["TrendingUp", "Fire", "Heart", "Star", "Bolt"] },
     miscellaneous: { label: "General", icons: ["Check", "Plus", "Info", "CheckCircle"] }
   }

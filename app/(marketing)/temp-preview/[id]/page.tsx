@@ -35,6 +35,7 @@ function PreviewContent() {
   const [preview, setPreview] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isRevealing, setIsRevealing] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [workspace, setWorkspace] = useState<any>(null)
@@ -102,7 +103,7 @@ function PreviewContent() {
     return formatTime(diff)
   }
 
-  // Load preview
+  // Load preview with smooth reveal
   useEffect(() => {
     const loadPreview = async () => {
       try {
@@ -113,7 +114,14 @@ function PreviewContent() {
           return
         }
         setPreview(result.preview)
-        setLoading(false)
+        
+        // Start reveal animation
+        setIsRevealing(true)
+        
+        // After a short delay, hide loading and show content
+        setTimeout(() => {
+          setLoading(false)
+        }, 600) // Match animation duration
       } catch (err) {
         setError('Failed to load preview')
         setLoading(false)
@@ -330,13 +338,13 @@ function PreviewContent() {
 
   if (loading) {
     return (
-      <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
+      <div className={`dark bg-[#08000d] min-h-screen flex items-center justify-center transition-opacity duration-[600ms] ${isRevealing ? 'opacity-0' : 'opacity-100'}`}>
         <div className="flex flex-col items-center gap-3">
           <div className="flex-shrink-0 w-8 h-8">
             <LottieSpinner size={32} />
           </div>
           <Typography variant="h2" className="text-white">
-            Loading preview...
+            Assembling your website
           </Typography>
         </div>
       </div>
@@ -377,7 +385,7 @@ function PreviewContent() {
                         preview?.scraped_data?.provider === 'apify'
 
   return (
-    <div className="dark bg-[#08000d] min-h-screen">
+    <div className={`dark bg-[#08000d] min-h-screen transition-opacity duration-[600ms] ${isRevealing ? 'opacity-100' : 'opacity-0'}`}>
       {/* Header Bar */}
       <div className="sticky top-0 z-50 border-b border-white/10 bg-[#08000d]/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -741,7 +749,7 @@ function PreviewContent() {
                                   <div className="flex items-start gap-4">
                                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                                       {IconComponent ? (
-                                        <IconComponent className="h-5 w-5 text-white/80" weight="fill" />
+                                        <IconComponent className="h-5 w-5 text-white/80" weight="light" />
                                       ) : (
                                         <span className="text-sm font-medium text-white/80">{index + 1}</span>
                                       )}
@@ -1217,7 +1225,7 @@ export default function PreviewPage() {
             <LottieSpinner size={32} />
           </div>
           <Typography variant="h2" className="text-white">
-            Loading preview...
+            Assembling your website
           </Typography>
         </div>
       </div>

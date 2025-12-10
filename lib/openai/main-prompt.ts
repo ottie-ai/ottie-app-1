@@ -94,9 +94,14 @@ RULES:
   - On agency sites: use agency name from header/footer/contact.
   - On portals (Zillow, Idealista, etc.): use the listing agent's brokerage name if shown. Do NOT use the portal name (e.g. "Zillow") as the agency; if unknown, leave empty.
 
-- photos: List ONLY real property photos (interior, exterior, amenities) without duplicates.
-  - Keep URLs matching the main gallery pattern (e.g. same base path/domain as majority of images).
-  - Exclude generic assets (logos, icons, stock backgrounds) and images from unrelated paths.
+- photo rules:
+  - only REAL property photos (interior/exterior, views, amenities).
+  - Prefer URLs that share the same base pattern / path as the main listing gallery images.
+  - If most photos come from e.g. "https://imgs.soukwportugal.pt/37734/properties/...", keep ONLY URLs that match this pattern.
+  - exclude:
+    - generic site images (e.g. "/images/photo-*.webp", stock backgrounds, logos, icons),
+    - images from different domains or paths that are not part of the listing gallery.
+  - Remove any duplicates.
 
 
 JSON STRUCTURE:

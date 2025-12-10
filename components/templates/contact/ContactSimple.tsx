@@ -63,7 +63,7 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
                   <MapPin 
                     className="size-5 flex-shrink-0 mt-0.5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                     style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
-                    weight="fill" 
+                    weight="light" 
                   />
                   <p 
                     className="transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
@@ -77,7 +77,7 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
                   <Phone 
                     className="size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                     style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
-                    weight="fill" 
+                    weight="light" 
                   />
                   <a 
                     href={`tel:${phone}`} 
@@ -100,7 +100,7 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
                   <Envelope 
                     className="size-5 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                     style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
-                    weight="fill" 
+                    weight="light" 
                   />
                   <a 
                     href={`mailto:${email}`} 

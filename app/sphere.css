@@ -214,23 +214,23 @@
 .loading-word-home {
   display: inline-block;
   opacity: 0;
-  filter: blur(8px);
-  transform: translateY(8px);
-  animation: wordRevealInHome 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  filter: blur(20px);
+  transform: translateY(12px);
+  animation: wordRevealInHome 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .loading-word-home.exiting {
   opacity: 1;
   filter: blur(0);
   transform: translateY(0);
-  animation: wordRevealOutHome 0.8s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: wordRevealOutHome 1s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
 @keyframes wordRevealInHome {
   0% {
     opacity: 0;
-    filter: blur(8px);
-    transform: translateY(8px);
+    filter: blur(20px);
+    transform: translateY(12px);
   }
   100% {
     opacity: 1;
@@ -247,8 +247,8 @@
   }
   100% {
     opacity: 0;
-    filter: blur(8px);
-    transform: translateY(-8px);
+    filter: blur(20px);
+    transform: translateY(-12px);
   }
 }
 

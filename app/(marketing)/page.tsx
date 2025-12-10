@@ -31,15 +31,28 @@ const realEstateLinks = [
   'homes.com/654-Pine-Drive',
 ]
 
-const loadingMessages = [
-  'Analyzing website',
-  'Processing content',
-  'Generating layout',
-  'Finalizing your site',
-]
-
-// Queue message shown before other messages when in queue
-const queueMessage = "You're in a queue"
+// Phase-based loading messages tied to actual process
+const getLoadingMessage = (phase: string, queuePosition: number | null): string => {
+  switch (phase) {
+    case 'queue':
+      if (queuePosition !== null && queuePosition > 0) {
+        return `Waiting for available agent... (${queuePosition} ahead)`
+      }
+      return 'Waiting for available agent...'
+    case 'scraping':
+      return 'Reading property details'
+    case 'gallery':
+      return 'Curating photo gallery'
+    case 'call1':
+      return 'Extracting key data points'
+    case 'call2':
+      return 'Polishing marketing copy'
+    case 'assembling':
+      return 'Assembling your website'
+    default:
+      return 'Processing...'
+  }
+}
 
 export default function Home() {
   const router = useRouter()
@@ -52,11 +65,12 @@ export default function Home() {
   
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
-  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
-  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting'>('waiting')
+  const [currentPhase, setCurrentPhase] = useState<string>('queue')
+  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [error, setError] = useState<string | null>(null)
-  const [isInQueue, setIsInQueue] = useState(false) // Track if job is in queue
   const [queuePosition, setQueuePosition] = useState<number | null>(null) // Queue position
+  const [currentMessage, setCurrentMessage] = useState<string>('')
+  const [previousMessage, setPreviousMessage] = useState<string>('')
   
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
@@ -149,41 +163,63 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
-  // Loading message animation
+  // Smooth message transition when phase changes
+  // Sequence: exiting -> hidden -> entering -> visible
   useEffect(() => {
-    if (!isLoading) return
+    if (!isLoading) {
+      // Reset when loading stops
+      setCurrentMessage('')
+      setPreviousMessage('')
+      setLoadingPhase('waiting')
+      return
+    }
 
-    // Initial delay before showing first message
-    if (loadingPhase === 'waiting') {
-      const timer = setTimeout(() => {
+    const newMessage = getLoadingMessage(currentPhase, queuePosition)
+    
+    // If message changed, trigger smooth transition
+    if (newMessage !== currentMessage && currentMessage !== '') {
+      // Step 1: Start exit animation - stará správa sa zmizne
+      setLoadingPhase('exiting')
+      setPreviousMessage(currentMessage)
+      
+        // Step 2: After exit animation completes, hide everything
+        const exitTimer = setTimeout(() => {
+          setLoadingPhase('hidden')
+          setCurrentMessage('') // Clear message during hidden phase
+          
+          // Step 3: After brief pause, show new message
+          const hiddenTimer = setTimeout(() => {
+            setCurrentMessage(newMessage)
+            setLoadingPhase('entering')
+            
+            // Step 4: After enter animation, make it fully visible
+            const enterTimer = setTimeout(() => {
+              setLoadingPhase('visible')
+            }, 1800) // Match animation duration (1.8s)
+            
+            return () => clearTimeout(enterTimer)
+          }, 200) // Brief pause between exit and enter
+          
+          return () => clearTimeout(hiddenTimer)
+        }, 1000) // Exit animation duration (1s)
+      
+      return () => clearTimeout(exitTimer)
+    } else if (currentMessage === '' && newMessage !== '') {
+      // First message - wait for sphere to expand, then show message
+      const initialDelay = setTimeout(() => {
+        setCurrentMessage(newMessage)
         setLoadingPhase('entering')
-      }, 1000) // Wait for content to fade out and sphere to scale
-      return () => clearTimeout(timer)
+        
+        const enterTimer = setTimeout(() => {
+          setLoadingPhase('visible')
+        }, 1800) // Match animation duration (1.8s)
+        
+        return () => clearTimeout(enterTimer)
+      }, 1000) // Wait 1s for sphere expansion
+      
+      return () => clearTimeout(initialDelay)
     }
-
-    if (loadingPhase === 'entering') {
-      const timer = setTimeout(() => {
-        setLoadingPhase('visible')
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
-
-    if (loadingPhase === 'visible') {
-      const timer = setTimeout(() => {
-        setLoadingPhase('exiting')
-      }, 2000)
-      return () => clearTimeout(timer)
-            }
-
-    if (loadingPhase === 'exiting') {
-      const timer = setTimeout(() => {
-        // Loop through messages
-        setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
-        setLoadingPhase('entering')
-      }, 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [isLoading, loadingPhase, loadingMessageIndex])
+  }, [isLoading, currentPhase, queuePosition, currentMessage])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -298,8 +334,11 @@ export default function Home() {
     const totalStartTime = Date.now()
     
     setIsLoading(true)
-    setLoadingMessageIndex(0)
+    setCurrentPhase('queue')
+    setCurrentMessage('')
+    setPreviousMessage('')
     setLoadingPhase('waiting')
+    setQueuePosition(null)
 
     try {
       // Add to queue and get preview ID
@@ -316,9 +355,15 @@ export default function Home() {
 
       console.log(`✅ Preview created: ${previewId}, queue position: ${initialQueuePosition}`)
       
-      // Set initial queue state
-      setIsInQueue(true)
-      setQueuePosition(initialQueuePosition)
+      // Set initial queue state - only if actually in queue
+      if (initialQueuePosition > 0) {
+        setCurrentPhase('queue')
+        setQueuePosition(initialQueuePosition)
+      } else {
+        // Not in queue, start with scraping phase
+        setCurrentPhase('scraping')
+        setQueuePosition(null)
+      }
 
       // Poll status until completed or error
       let attempts = 0
@@ -342,38 +387,32 @@ export default function Home() {
             return
           }
 
-          const { status, queuePosition: currentQueuePosition, processing } = statusResult
+          const { status, phase, queuePosition: currentQueuePosition } = statusResult
 
-          // Update loading message based on status
-          // Queue is only for scraping, so we wait for 'completed' status (includes OpenAI processing)
-          if (status === 'queued') {
-            // Job is in queue - show ONLY "You're in a queue" (separate step)
-            setIsInQueue(true)
+          // Update phase and queue position - this will trigger smooth message transition
+          // Only show queue phase if we have a valid queue position > 0
+          if (phase === 'queue' && currentQueuePosition !== null && currentQueuePosition > 0) {
+            // Actually in queue with valid position
+            setCurrentPhase('queue')
             setQueuePosition(currentQueuePosition)
-            // Don't set loadingMessageIndex - queue message is shown separately
-          } else if (status === 'scraping') {
-            // Scraping in progress - show "Analyzing website" (job left queue)
-            // Animation will transition smoothly - when displayMessage changes, React re-renders
-            // and the existing animation cycle continues naturally (same as "Analyzing website" -> "Processing content")
-            setIsInQueue(false)
-            setQueuePosition(null)
-            setLoadingMessageIndex(0) // "Analyzing website"
-          } else if (status === 'pending') {
-            // Scraping done, OpenAI processing - show processing messages
-            setIsInQueue(false)
-            setQueuePosition(null)
-            setLoadingMessageIndex(1) // "Processing content"
-          } else if (status === 'completed') {
-            // Everything done (scraping + OpenAI config) - Navigate to preview
-            setIsInQueue(false)
-            setQueuePosition(null)
-      const totalEndTime = Date.now()
-      const totalDuration = totalEndTime - totalStartTime
+          } else {
+            // Not in queue or position is 0/null - use the phase from API
+            setCurrentPhase(phase)
+            // Only keep queue position if we're actually in queue phase
+            if (phase === 'queue' && currentQueuePosition !== null && currentQueuePosition > 0) {
+              setQueuePosition(currentQueuePosition)
+            } else {
+              setQueuePosition(null)
+            }
+          }
+
+          if (status === 'completed') {
+            // Everything done - Navigate to preview
+            const totalEndTime = Date.now()
+            const totalDuration = totalEndTime - totalStartTime
             router.push(`/temp-preview/${previewId}?totalTime=${totalDuration}`)
             return
           } else if (status === 'error') {
-            setIsInQueue(false)
-            setQueuePosition(null)
             setError(statusResult.errorMessage || 'An error occurred while processing')
             setIsLoading(false)
             return
@@ -397,10 +436,8 @@ export default function Home() {
     }
   }
 
-  // Build loading message - show queue message separately if in queue, otherwise show regular messages
-  const displayMessage = isInQueue 
-    ? queueMessage  // Show ONLY queue message when in queue (separate step)
-    : (loadingMessages[loadingMessageIndex] || loadingMessages[0])  // Show regular messages when processing
+  // Get current message based on phase
+  const displayMessage = currentMessage || getLoadingMessage(currentPhase, queuePosition)
   const loadingWords = displayMessage.split(' ')
 
   return (
@@ -421,28 +458,30 @@ export default function Home() {
         </div>
 
       {/* Loading Text Overlay */}
-      {isLoading && loadingPhase !== 'waiting' && (
+      {isLoading && loadingPhase !== 'waiting' && loadingPhase !== 'hidden' && currentMessage && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <p className="loading-text-home">
               {loadingWords.map((word, index) => (
                 <span
-                  key={`${loadingMessageIndex}-${index}`}
+                  key={`${currentPhase}-${displayMessage}-${index}`}
                   className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
                   style={{
                     animationDelay: loadingPhase === 'exiting'
-                      ? `${(loadingWords.length - 1 - index) * 0.15}s`
-                      : `${index * 0.18}s`,
+                      ? `${(loadingWords.length - 1 - index) * 0.1}s`
+                      : `${index * 0.12}s`,
                   }}
-        >
+                >
                   {word}
                   {index < loadingWords.length - 1 && '\u00A0'}
                 </span>
               ))}
             </p>
-            <p className="loading-duration-home">
-              <span className="shimmer-text-home">Expected duration ~30 seconds</span>
-            </p>
+            {currentPhase !== 'queue' && loadingPhase === 'visible' && (
+              <p className="loading-duration-home">
+                <span className="shimmer-text-home">Expected duration ~30 seconds</span>
+              </p>
+            )}
           </div>
         </div>
       )}

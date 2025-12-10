@@ -45,11 +45,11 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
     const iconClass = cn('size-6 md:size-10', iconColor)
     switch (type) {
       case 'whatsapp':
-        return <WhatsappLogo className={iconClass} weight="fill" />
+        return <WhatsappLogo className={iconClass} weight="light" />
       case 'phone':
-        return <Phone className={iconClass} weight="fill" />
+        return <Phone className={iconClass} weight="light" />
       case 'email':
-        return <Envelope className={iconClass} weight="fill" />
+        return <Envelope className={iconClass} weight="light" />
       default:
         return null
     }

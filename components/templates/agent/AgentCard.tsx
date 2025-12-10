@@ -94,7 +94,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                       e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
                     }}
                   >
-                    <Phone className="size-4" weight="fill" />
+                    <Phone className="size-4" weight="light" />
                     {phone}
                   </a>
                 )}
@@ -116,7 +116,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                       e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
                     }}
                   >
-                    <Envelope className="size-4" weight="fill" />
+                    <Envelope className="size-4" weight="light" />
                     {email}
                   </a>
                 )}

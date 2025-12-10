@@ -70,6 +70,7 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
                   >
                     <IconComponent 
                       className="w-6 h-6" 
+                      weight="light"
                       style={theme?.primaryColor ? { 
                         color: theme.primaryColor 
                       } : { 

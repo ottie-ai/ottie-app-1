@@ -188,15 +188,15 @@ export async function getPreview(previewId: string) {
 }
 
 /**
- * Get preview status with queue information
- * Used by frontend to poll status while in queue
+ * Get preview status with queue information and granular phase tracking
+ * Used by frontend to poll status while in queue and show accurate loading messages
  */
 export async function getPreviewStatus(previewId: string) {
   const supabase = await createClient()
   
   const { data, error } = await supabase
     .from('temp_previews')
-    .select('id, status, error_message, created_at')
+    .select('id, status, error_message, created_at, generated_config, unified_json, gallery_raw_html, gallery_image_urls')
     .eq('id', previewId)
     .single()
   
@@ -217,9 +217,51 @@ export async function getPreviewStatus(previewId: string) {
     }
   }
   
+  // Determine granular phase based on status and metadata
+  let phase: 'queue' | 'scraping' | 'gallery' | 'call1' | 'call2' | 'assembling' | 'completed' | 'error' = 'queue'
+  
+  if (data.status === 'queued') {
+    phase = 'queue'
+  } else if (data.status === 'scraping') {
+    // Check if gallery scraping is happening (has gallery_html but no gallery_images yet)
+    if (data.gallery_raw_html && (!data.gallery_image_urls || data.gallery_image_urls.length === 0)) {
+      phase = 'gallery'
+    } else {
+      phase = 'scraping'
+    }
+  } else if (data.status === 'pending') {
+    // Check OpenAI call phases using metadata
+    const unifiedMetadata = data.unified_json?._metadata
+    const generatedMetadata = data.generated_config?._metadata
+    
+    if (unifiedMetadata?.call2_started_at) {
+      // Call 2 is in progress or completed
+      if (unifiedMetadata.call2_completed_at) {
+        phase = 'assembling' // Both calls done, assembling final result
+      } else {
+        phase = 'call2' // Call 2 in progress
+      }
+    } else if (generatedMetadata?.call1_started_at) {
+      // Call 1 is in progress or completed
+      if (generatedMetadata.call1_completed_at) {
+        phase = 'call2' // Call 1 done, starting call 2
+      } else {
+        phase = 'call1' // Call 1 in progress
+      }
+    } else {
+      // Scraping done, waiting for OpenAI to start
+      phase = 'call1'
+    }
+  } else if (data.status === 'completed') {
+    phase = 'completed'
+  } else if (data.status === 'error') {
+    phase = 'error'
+  }
+  
   return {
     success: true,
     status: data.status,
+    phase,
     queuePosition,
     processing,
     errorMessage: data.error_message,

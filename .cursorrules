@@ -21,7 +21,7 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 - **Role:** User-generated content (Hero, Gallery, Features).
 - **Styling:** ISOLATED component styling.
 - **Theme:** IGNORES global theme/dark mode. Controlled solely by `colorScheme` prop (`'light' | 'dark'`).
-- **Icons:** `@phosphor-icons/react` (Use `weight="fill"` where appropriate).
+- **Icons:** `@phosphor-icons/react` (Always use `weight="light"`).
 - **Rule:** Never apply `bg-background` or global theme classes here. These sections must look identical regardless of the Admin UI theme.
 
 ### 3. 🟣 MARKETING HOMEPAGE

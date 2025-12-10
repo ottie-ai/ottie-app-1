@@ -73,6 +73,7 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
                   {IconComponent && (
                     <IconComponent 
                       className="w-8 h-8 mb-3 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                      weight="light"
                       style={{ 
                         color: isDark ? 'rgba(255,255,255,0.7)' : (theme?.primaryColor || '#3b82f6')
                       }}
