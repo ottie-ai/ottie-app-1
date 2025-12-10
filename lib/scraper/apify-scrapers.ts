@@ -15,6 +15,7 @@ export interface ApifyScraperConfig {
 }
 
 import { cleanZillowJson } from './apify-cleaners/zillow'
+import { cleanRealtorJson } from './apify-cleaners/realtor'
 
 /**
  * List of configured Apify scrapers
@@ -48,6 +49,26 @@ export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
       }
     },
     cleanJson: cleanZillowJson, // Zillow-specific JSON cleaning
+  },
+  {
+    id: 'realtor',
+    name: 'Realtor.com Search Scraper',
+    actorId: 'memo23~realtor-search-cheerio',
+    shouldHandle: (url: string) => {
+      try {
+        const urlObj = new URL(url)
+        const hostname = urlObj.hostname.toLowerCase()
+        return hostname === 'realtor.com' || hostname === 'www.realtor.com'
+      } catch {
+        return false
+      }
+    },
+    buildInput: (url: string) => {
+      return {
+        startUrls: [{ url }],
+      }
+    },
+    cleanJson: cleanRealtorJson, // Realtor.com-specific JSON cleaning
   },
 ]
 

@@ -481,5 +481,55 @@ function cleanZillowItem(item: any): any {
     }
   }
 
-  return cleaned
+  // Remove empty values (null, undefined, empty strings, empty arrays, empty objects)
+  const finalCleaned: any = {}
+  for (const key in cleaned) {
+    const value = cleaned[key]
+    
+    // Skip null, undefined, and empty strings
+    if (value === null || value === undefined || value === '') {
+      continue
+    }
+    
+    // Skip empty arrays
+    if (Array.isArray(value) && value.length === 0) {
+      continue
+    }
+    
+    // Skip empty objects
+    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+      continue
+    }
+    
+    // Clean arrays - remove empty items
+    if (Array.isArray(value)) {
+      const cleanedArray = value.filter(v => {
+        if (v === null || v === undefined || v === '') return false
+        if (Array.isArray(v) && v.length === 0) return false
+        if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return false
+        return true
+      })
+      if (cleanedArray.length > 0) {
+        finalCleaned[key] = cleanedArray
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      // Clean nested objects - remove empty properties
+      const cleanedObject: any = {}
+      for (const nestedKey in value) {
+        const nestedValue = value[nestedKey]
+        if (nestedValue === null || nestedValue === undefined || nestedValue === '') continue
+        if (Array.isArray(nestedValue) && nestedValue.length === 0) continue
+        if (typeof nestedValue === 'object' && !Array.isArray(nestedValue) && Object.keys(nestedValue).length === 0) continue
+        cleanedObject[nestedKey] = nestedValue
+      }
+      if (Object.keys(cleanedObject).length > 0) {
+        finalCleaned[key] = cleanedObject
+      }
+    } else {
+      // Keep primitive values (string, number, boolean, etc.)
+      finalCleaned[key] = value
+    }
+  }
+
+  return finalCleaned
 }

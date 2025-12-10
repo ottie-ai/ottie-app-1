@@ -23,8 +23,6 @@ export interface FirecrawlActionsConfig {
  * Get Firecrawl actions for a specific URL (Call 1 - main content)
  * Returns null if no actions are needed for this website
  * 
- * For Realtor.com: Returns property details actions only
- * 
  * @param url - The URL to check
  * @returns FirecrawlActionsConfig with actions, or null if no actions needed
  */
@@ -33,12 +31,8 @@ export function getFirecrawlActions(url: string): FirecrawlActionsConfig | null 
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
     
-    // Realtor.com: Property details actions only (Call 1)
-    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-      return {
-        actions: require('./realtor').getRealtorActionsPropertyDetails(),
-      }
-    }
+    // Realtor.com: Now uses Apify scraper (memo23/realtor-search-cheerio)
+    // No longer uses Firecrawl actions
     
     // Redfin.com: No actions needed - uses universal Firecrawl scraping
     // (hostname === 'redfin.com' || hostname === 'www.redfin.com') - no actions required
@@ -147,8 +141,6 @@ export function getFirecrawlActionsCombined(url: string): FirecrawlAction[] | nu
  * Get Firecrawl actions for gallery extraction (Call 2 - images only)
  * Returns null if no gallery actions are needed for this website
  * 
- * For Realtor.com: Returns gallery expansion actions only
- * 
  * @deprecated Use getFirecrawlActionsCombined() for single call with multiple scrapes
  * @param url - The URL to check
  * @returns FirecrawlActionsConfig with gallery actions, or null if no gallery actions needed
@@ -158,12 +150,8 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
     
-    // Realtor.com: Gallery actions only (Call 2)
-    if (hostname === 'realtor.com' || hostname === 'www.realtor.com') {
-      return {
-        actions: require('./realtor').getRealtorActionsGallery(),
-      }
-    }
+    // Realtor.com: Now uses Apify scraper (memo23/realtor-search-cheerio)
+    // No longer uses Firecrawl gallery actions
     
     // Redfin.com: Gallery actions (Call 2)
     if (hostname === 'redfin.com' || hostname === 'www.redfin.com') {

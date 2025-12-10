@@ -383,6 +383,231 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
 }
 
 /**
+ * Format Apify JSON to readable text format (for Call 1)
+ * Converts Apify JSON structure to text similar to formatPropertyDataForTitle
+ * This makes Apify JSON more readable for OpenAI, similar to how Call 2 processes data
+ */
+function formatApifyJsonToText(apifyJson: any): string {
+  if (!apifyJson) {
+    return ''
+  }
+
+  const lines: string[] = []
+  
+  // Handle array of items (common in Apify responses)
+  const items = Array.isArray(apifyJson) ? apifyJson : [apifyJson]
+  
+  // Process each item
+  items.forEach((item, index) => {
+    if (index > 0) {
+      lines.push('') // Add separator between multiple items
+      lines.push(`--- Property ${index + 1} ---`)
+      lines.push('')
+    }
+    
+    // Extract and format common property fields
+    formatApifyPropertyItem(item, lines)
+  })
+  
+  return lines.join('\n')
+}
+
+/**
+ * Format a single property item from Apify JSON
+ */
+function formatApifyPropertyItem(item: any, lines: string[]): void {
+  if (!item || typeof item !== 'object') {
+    return
+  }
+
+  // Address information
+  if (item.address || item.streetAddress || item.city || item.state) {
+    const addressParts: string[] = []
+    
+    if (item.streetAddress || item.address?.street || item.address?.streetAddress) {
+      addressParts.push(item.streetAddress || item.address?.street || item.address?.streetAddress)
+    }
+    if (item.city || item.address?.city) {
+      addressParts.push(item.city || item.address?.city)
+    }
+    if (item.neighborhood || item.address?.neighborhood) {
+      addressParts.push(item.neighborhood || item.address?.neighborhood)
+    }
+    if (item.state || item.address?.state || item.stateCode || item.address?.stateCode) {
+      addressParts.push(item.state || item.address?.state || item.stateCode || item.address?.stateCode)
+    }
+    if (item.zipCode || item.zipcode || item.address?.zipCode || item.address?.zipcode || item.postalCode || item.address?.postalCode) {
+      addressParts.push(item.zipCode || item.zipcode || item.address?.zipCode || item.address?.zipcode || item.postalCode || item.address?.postalCode)
+    }
+    if (item.country || item.address?.country) {
+      addressParts.push(item.country || item.address?.country)
+    }
+    
+    if (addressParts.length > 0) {
+      lines.push(`Address: ${addressParts.filter(Boolean).join(', ')}`)
+    }
+  }
+
+  // Price
+  if (item.price || item.listPrice || item.rentPrice || item.priceHistory) {
+    const price = item.price || item.listPrice || item.rentPrice
+    if (price) {
+      const priceStr = typeof price === 'number' ? `$${price.toLocaleString()}` : price
+      lines.push(`Price: ${priceStr}`)
+    }
+  }
+
+  // Property specs
+  const specs: string[] = []
+  if (item.bedrooms || item.beds || item.bed) {
+    const beds = item.bedrooms || item.beds || item.bed
+    specs.push(`${beds} bed${beds !== 1 ? 's' : ''}`)
+  }
+  if (item.bathrooms || item.baths || item.bath) {
+    const baths = item.bathrooms || item.baths || item.bath
+    specs.push(`${baths} bath${baths !== 1 ? 's' : ''}`)
+  }
+  if (specs.length > 0) {
+    const propType = item.propertyType || item.type || item.property_type || 'OTHER'
+    lines.push(`Property: ${specs.join(', ')} - ${propType}`)
+  }
+
+  // Square footage / Living area
+  if (item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area) {
+    const area = item.livingArea || item.squareFeet || item.sqft || item.area || item.living_area
+    const unit = item.areaUnit || item.unit || 'sqft'
+    lines.push(`Living Area: ${area} ${unit}`)
+  }
+
+  // Lot size
+  if (item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size) {
+    const lotSize = item.lotSize || item.lotSquareFeet || item.lotSqft || item.lot_size
+    const unit = item.lotSizeUnit || item.lot_size?.unit || 'sqft'
+    lines.push(`Lot Size: ${lotSize} ${unit}`)
+  }
+
+  // Year built
+  if (item.yearBuilt || item.year_built) {
+    lines.push(`Year Built: ${item.yearBuilt || item.year_built}`)
+  }
+
+  // Description
+  if (item.description || item.listingDescription || item.remarks || item.text) {
+    lines.push('')
+    lines.push('Description:')
+    const desc = item.description || item.listingDescription || item.remarks || item.text
+    lines.push(desc)
+  }
+
+  // Features and amenities
+  const features: string[] = []
+  
+  // Pool
+  if (item.pool || item.hasPool || item.features?.pool) {
+    features.push('Pool')
+  }
+  
+  // Parking
+  if (item.parking || item.parkingSpaces || item.garage) {
+    const parking = item.parking || item.parkingSpaces || item.garage
+    features.push(`Parking: ${parking}`)
+  }
+  
+  // Fireplace
+  if (item.fireplace || item.hasFireplace || item.features?.fireplace) {
+    features.push('Fireplace')
+  }
+  
+  // Features array
+  if (item.features && Array.isArray(item.features)) {
+    features.push(...item.features)
+  }
+  
+  // Amenities array
+  if (item.amenities && Array.isArray(item.amenities)) {
+    features.push(...item.amenities)
+  }
+  
+  // Additional features from nested objects
+  if (item.features && typeof item.features === 'object' && !Array.isArray(item.features)) {
+    Object.keys(item.features).forEach(key => {
+      if (item.features[key] === true || (typeof item.features[key] === 'string' && item.features[key])) {
+        features.push(key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '))
+      }
+    })
+  }
+  
+  if (features.length > 0) {
+    lines.push('')
+    lines.push('Features & Amenities:')
+    features.forEach(feature => lines.push(`- ${feature}`))
+  }
+
+  // Photos/Images
+  if (item.photos && Array.isArray(item.photos) && item.photos.length > 0) {
+    lines.push('')
+    lines.push(`Photos: ${item.photos.length} image(s)`)
+    // Optionally list first few photo URLs
+    item.photos.slice(0, 3).forEach((photo: any, i: number) => {
+      const url = typeof photo === 'string' ? photo : (photo.url || photo.src || photo.href)
+      if (url) {
+        lines.push(`  ${i + 1}. ${url}`)
+      }
+    })
+    if (item.photos.length > 3) {
+      lines.push(`  ... and ${item.photos.length - 3} more`)
+    }
+  } else if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+    lines.push('')
+    lines.push(`Images: ${item.images.length} image(s)`)
+    item.images.slice(0, 3).forEach((image: any, i: number) => {
+      const url = typeof image === 'string' ? image : (image.url || image.src || image.href)
+      if (url) {
+        lines.push(`  ${i + 1}. ${url}`)
+      }
+    })
+    if (item.images.length > 3) {
+      lines.push(`  ... and ${item.images.length - 3} more`)
+    }
+  }
+
+  // Agent information
+  if (item.agent || item.listingAgent || item.realtor) {
+    const agent = item.agent || item.listingAgent || item.realtor
+    if (agent.name || agent.firstName || agent.lastName) {
+      const name = agent.name || `${agent.firstName || ''} ${agent.lastName || ''}`.trim()
+      if (name) {
+        lines.push('')
+        lines.push(`Agent: ${name}`)
+        if (agent.phone) lines.push(`  Phone: ${agent.phone}`)
+        if (agent.email) lines.push(`  Email: ${agent.email}`)
+        if (agent.agency || agent.brokerage) {
+          lines.push(`  Agency: ${agent.agency || agent.brokerage}`)
+        }
+      }
+    }
+  }
+
+  // Additional metadata (if useful)
+  if (item.status || item.listingStatus) {
+    lines.push(`Status: ${item.status || item.listingStatus}`)
+  }
+  
+  if (item.mlsId || item.mlsNumber || item.listingId) {
+    lines.push(`MLS ID: ${item.mlsId || item.mlsNumber || item.listingId}`)
+  }
+
+  // Include any other top-level fields that might be useful
+  // This handles various Apify scraper formats
+  const otherFields = ['url', 'id', 'zpid', 'propertyId']
+  otherFields.forEach(field => {
+    if (item[field] && !lines.some(line => line.includes(field))) {
+      lines.push(`${field.charAt(0).toUpperCase() + field.slice(1)}: ${item[field]}`)
+    }
+  })
+}
+
+/**
  * Format property data as text for title generation (Call 2)
  * Converts relevant data object to readable text format
  */
@@ -557,7 +782,9 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
 async function generateConfigFromApifyData(previewId: string, apifyData: any) {
   try {
     // Get prompt from centralized prompts file
-    const prompt = getRealEstateConfigPrompt('apify', JSON.stringify(apifyData, null, 2))
+    // Convert Apify JSON to text format (similar to Call 2) for better readability
+    const apifyText = formatApifyJsonToText(apifyData)
+    const prompt = getRealEstateConfigPrompt('text', apifyText)
 
     // Call OpenAI - Call 1 only (base config generation)
     console.log('🔄 [generateConfigFromApifyData] Starting Call 1 (base config generation only)')
