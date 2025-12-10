@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -157,7 +157,8 @@ function PreviewContent() {
     
     setGeneratingConfig(true)
     try {
-      const result = await generateConfigFromApify(previewId)
+      // Use universal function that works for both Apify and Firecrawl
+      const result = await generateConfigManually(previewId)
       
       if ('error' in result) {
         setError(result.error || 'Failed to generate config')
@@ -398,33 +399,31 @@ function PreviewContent() {
                     Config Not Generated Yet
                   </Typography>
                 </div>
-                {isApifyResult && (
-                  <Button
-                    onClick={handleGenerateConfig}
-                    disabled={generatingConfig}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {generatingConfig ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Generate Config
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  onClick={handleGenerateConfig}
+                  disabled={generatingConfig}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white/60 hover:text-white hover:bg-white/10"
+                >
+                  {generatingConfig ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Generate Config
+                    </>
+                  )}
+                </Button>
               </div>
               <div className="p-4">
                 <Typography variant="small" className="text-white/60">
                   {isApifyResult
-                    ? 'Click "Generate Config" to process Apify data with OpenAI'
-                    : 'Config generation is only available for Apify results'}
+                    ? 'Click "Generate Config" to process data with OpenAI (or wait for automatic processing)'
+                    : 'Click "Generate Config" to process markdown with OpenAI (or wait for automatic processing)'}
                 </Typography>
               </div>
             </div>

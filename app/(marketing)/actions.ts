@@ -736,4 +736,62 @@ export async function generateConfigFromApify(previewId: string) {
   }
 }
 
+/**
+ * Generate site config manually (universal - works for both Apify and Firecrawl)
+ * This can be called manually if automatic processing failed or to regenerate
+ */
+export async function generateConfigManually(previewId: string) {
+  const supabase = await createClient()
+  
+  // Get preview
+  const { data: preview, error: previewError } = await supabase
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+  
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  try {
+    // Check if this is an Apify result
+    const apifyJson = preview?.generated_config?.apify_json || preview?.unified_json?.apify_json
+    if (apifyJson) {
+      // Apify result - use Apify data
+      const result = await generateConfigFromApifyData(previewId, apifyJson)
+      return result
+    }
+
+    // Firecrawl result - use markdown or extract from HTML
+    let structuredText = preview.default_markdown || null
+
+    if (!structuredText && preview.raw_html) {
+      const $ = load(preview.raw_html)
+      const mainContentSelector = getMainContentSelector(preview.external_url) || 'main'
+      const mainElement = $(mainContentSelector)
+      
+      if (mainElement.length > 0) {
+        const htmlCleaner = getHtmlCleaner(preview.external_url)
+        if (htmlCleaner) {
+          htmlCleaner(mainElement)
+        }
+        
+        const mainHtml = $.html(mainElement)
+        structuredText = extractStructuredText(mainHtml)
+      }
+    }
+
+    if (!structuredText) {
+      return { error: 'No markdown or HTML content available to generate config' }
+    }
+
+    // Generate config from structured text
+    const result = await generateConfigFromStructuredText(previewId, structuredText)
+    return result
+  } catch (error: any) {
+    return { error: error.message || 'Failed to generate config' }
+  }
+}
+
 
