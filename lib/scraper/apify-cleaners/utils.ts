@@ -1,23 +1,22 @@
 /**
- * Utility functions for Apify JSON cleaners
- * Shared functions used across different website-specific cleaners
+ * Utility functions for cleaning Apify JSON
+ * Universal helper for removing empty values from any Apify scraper output
  */
 
 /**
- * Remove empty values from an object recursively
- * Removes: null, undefined, empty strings, empty arrays, empty objects
- * 
- * @param obj - Object to clean
- * @returns Cleaned object with empty values removed
+ * Recursively remove empty values from an object
+ * Removes null, undefined, empty strings, empty arrays, and empty objects
+ * This is the FIRST step in any Apify cleaner - removes empty values before any other processing
  */
 export function removeEmptyValues(obj: any): any {
-  if (!obj || typeof obj !== 'object') {
-    return obj
+  if (obj === null || obj === undefined) {
+    return undefined
   }
 
+  // Handle arrays
   if (Array.isArray(obj)) {
     const cleaned = obj
-      .map(item => typeof item === 'object' && item !== null ? removeEmptyValues(item) : item)
+      .map(item => removeEmptyValues(item))
       .filter(item => {
         if (item === null || item === undefined || item === '') return false
         if (Array.isArray(item) && item.length === 0) return false
@@ -27,41 +26,53 @@ export function removeEmptyValues(obj: any): any {
     return cleaned.length > 0 ? cleaned : undefined
   }
 
-  const cleaned: any = {}
-  for (const key in obj) {
-    const value = obj[key]
+  // Handle objects
+  if (typeof obj === 'object') {
+    const cleaned: any = {}
     
-    // Skip null, undefined, and empty strings
-    if (value === null || value === undefined || value === '') {
-      continue
-    }
-    
-    // Skip empty arrays
-    if (Array.isArray(value) && value.length === 0) {
-      continue
-    }
-    
-    // Skip empty objects
-    if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
-      continue
-    }
-    
-    // Recursively clean nested objects and arrays
-    if (Array.isArray(value)) {
-      const cleanedArray = removeEmptyValues(value)
-      if (cleanedArray && cleanedArray.length > 0) {
-        cleaned[key] = cleanedArray
+    for (const key in obj) {
+      const value = obj[key]
+      
+      // Skip null, undefined, empty strings
+      if (value === null || value === undefined || value === '') {
+        continue
       }
-    } else if (typeof value === 'object' && value !== null) {
-      const cleanedObject = removeEmptyValues(value)
-      if (cleanedObject && Object.keys(cleanedObject).length > 0) {
-        cleaned[key] = cleanedObject
+      
+      // Skip empty arrays
+      if (Array.isArray(value) && value.length === 0) {
+        continue
       }
-    } else {
-      // Keep primitive values (string, number, boolean, etc.)
-      cleaned[key] = value
+      
+      // Skip empty objects (but check after recursion for nested objects)
+      if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+        continue
+      }
+      
+      // Recursively clean nested values
+      if (typeof value === 'object') {
+        const cleanedValue = removeEmptyValues(value)
+        
+        // Only add if not empty after cleaning
+        if (cleanedValue !== undefined) {
+          if (Array.isArray(cleanedValue) && cleanedValue.length === 0) {
+            // Skip empty arrays
+            continue
+          } else if (!Array.isArray(cleanedValue) && typeof cleanedValue === 'object' && Object.keys(cleanedValue).length === 0) {
+            // Skip empty objects
+            continue
+          } else {
+            cleaned[key] = cleanedValue
+          }
+        }
+      } else {
+        // Keep primitive values
+        cleaned[key] = value
+      }
     }
+    
+    return Object.keys(cleaned).length > 0 ? cleaned : undefined
   }
 
-  return cleaned
+  // Return primitive values as-is
+  return obj
 }

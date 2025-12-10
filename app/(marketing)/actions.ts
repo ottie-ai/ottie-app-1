@@ -6,7 +6,7 @@ import { extractStructuredData, extractText } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { scrapeUrl, type ScrapeResult, type ScraperProvider } from '@/lib/scraper/providers'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
-import { getApifyCleaner } from '@/lib/scraper/apify-cleaners'
+import { getApifyCleaner, removeEmptyValues } from '@/lib/scraper/apify-cleaners'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
@@ -605,8 +605,125 @@ function formatApifyPropertyItem(item: any, lines: string[]): void {
     }
   }
 
+  // Location details (city, county, etc.)
+  if (item.location) {
+    const loc = item.location
+    if (loc.address?.line || loc.address?.city || loc.address?.state) {
+      lines.push('')
+      lines.push('Location:')
+      if (loc.address?.line) lines.push(`  Address: ${loc.address.line}`)
+      if (loc.address?.city) lines.push(`  City: ${loc.address.city}`)
+      if (loc.address?.state) lines.push(`  State: ${loc.address.state}`)
+      if (loc.address?.postalCode) lines.push(`  ZIP: ${loc.address.postalCode}`)
+      if (loc.county?.name) lines.push(`  County: ${loc.county.name}`)
+    }
+  }
+
+  // Schools
+  if (item.schools?.schools && Array.isArray(item.schools.schools) && item.schools.schools.length > 0) {
+    lines.push('')
+    lines.push('Nearby Schools:')
+    item.schools.schools.slice(0, 5).forEach((school: any) => {
+      if (school.name) {
+        lines.push(`  - ${school.name}${school.rating ? ` (Rating: ${school.rating}/10)` : ''}`)
+        if (school.grades && Array.isArray(school.grades)) {
+          lines.push(`    Grades: ${school.grades.join(', ')}`)
+        }
+        if (school.distanceInMiles) {
+          lines.push(`    Distance: ${school.distanceInMiles} miles`)
+        }
+      }
+    })
+    if (item.schools.schools.length > 5) {
+      lines.push(`  ... and ${item.schools.schools.length - 5} more schools`)
+    }
+  } else if (item.nearbySchools?.schools && Array.isArray(item.nearbySchools.schools) && item.nearbySchools.schools.length > 0) {
+    lines.push('')
+    lines.push('Nearby Schools:')
+    item.nearbySchools.schools.slice(0, 5).forEach((school: any) => {
+      if (school.name) {
+        lines.push(`  - ${school.name}${school.rating ? ` (Rating: ${school.rating}/10)` : ''}`)
+        if (school.grades && Array.isArray(school.grades)) {
+          lines.push(`    Grades: ${school.grades.join(', ')}`)
+        }
+        if (school.distanceInMiles) {
+          lines.push(`    Distance: ${school.distanceInMiles} miles`)
+        }
+      }
+    })
+    if (item.nearbySchools.schools.length > 5) {
+      lines.push(`  ... and ${item.nearbySchools.schools.length - 5} more schools`)
+    }
+  }
+
+  // HOA fees
+  if (item.hoa?.fee) {
+    lines.push('')
+    lines.push(`HOA Fee: $${item.hoa.fee}/month`)
+  }
+
+  // Mortgage estimate
+  if (item.mortgage?.estimate?.monthlyPayment) {
+    lines.push('')
+    lines.push('Estimated Monthly Payment:')
+    lines.push(`  Total: $${item.mortgage.estimate.monthlyPayment.toLocaleString()}`)
+    if (item.mortgage.estimate.monthlyPaymentDetails && Array.isArray(item.mortgage.estimate.monthlyPaymentDetails)) {
+      item.mortgage.estimate.monthlyPaymentDetails.forEach((detail: any) => {
+        if (detail.displayName && detail.amount) {
+          lines.push(`  ${detail.displayName}: $${detail.amount.toLocaleString()}`)
+        }
+      })
+    }
+  }
+
+  // Tax history
+  if (item.taxHistory && Array.isArray(item.taxHistory) && item.taxHistory.length > 0) {
+    lines.push('')
+    lines.push('Tax History:')
+    item.taxHistory.slice(0, 3).forEach((tax: any) => {
+      if (tax.year && tax.tax != null) {
+        lines.push(`  ${tax.year}: $${tax.tax.toLocaleString()}`)
+      }
+    })
+    if (item.taxHistory.length > 3) {
+      lines.push(`  ... and ${item.taxHistory.length - 3} more years`)
+    }
+  }
+
+  // Property details (categories)
+  if (item.details && Array.isArray(item.details) && item.details.length > 0) {
+    lines.push('')
+    lines.push('Property Details:')
+    item.details.forEach((detail: any) => {
+      if (detail.category && detail.text && Array.isArray(detail.text) && detail.text.length > 0) {
+        lines.push(`  ${detail.category}:`)
+        detail.text.forEach((text: string) => {
+          if (text && text.trim()) {
+            lines.push(`    - ${text}`)
+          }
+        })
+      }
+    })
+  }
+
+  // Property history
+  if (item.propertyHistory && Array.isArray(item.propertyHistory) && item.propertyHistory.length > 0) {
+    lines.push('')
+    lines.push('Property History:')
+    item.propertyHistory.slice(0, 5).forEach((history: any) => {
+      if (history.date && history.eventName) {
+        const price = history.price ? ` - $${history.price.toLocaleString()}` : ''
+        lines.push(`  ${history.date}: ${history.eventName}${price}`)
+      }
+    })
+    if (item.propertyHistory.length > 5) {
+      lines.push(`  ... and ${item.propertyHistory.length - 5} more events`)
+    }
+  }
+
   // Additional metadata (if useful)
   if (item.status || item.listingStatus) {
+    lines.push('')
     lines.push(`Status: ${item.status || item.listingStatus}`)
   }
   

@@ -3,36 +3,48 @@
  * Removes unnecessary fields from Zillow Apify JSON responses
  */
 
+import { removeEmptyValues } from './utils'
+
 /**
  * Clean Zillow Apify JSON by removing unnecessary fields
+ * Step 1: Remove empty values (universal for all Apify scrapers)
+ * Step 2: Remove technical fields specific to Zillow
  * 
  * @param apifyJson - The raw Apify JSON response from Zillow scraper
- * @returns Cleaned JSON with unnecessary fields removed
+ * @returns Cleaned JSON with empty values and unnecessary fields removed
  */
 export function cleanZillowJson(apifyJson: any): any {
   if (!apifyJson) {
     return apifyJson
   }
 
+  // STEP 1: Remove empty values first (universal cleaning)
+  let cleaned = removeEmptyValues(apifyJson)
+  
+  if (!cleaned) {
+    return cleaned
+  }
+
+  // STEP 2: Remove technical fields
   // Handle the case where JSON has apifyData wrapper (like sample file format)
-  if (apifyJson.apifyData && Array.isArray(apifyJson.apifyData)) {
+  if (cleaned.apifyData && Array.isArray(cleaned.apifyData)) {
     return {
-      ...apifyJson,
-      apifyData: apifyJson.apifyData.map((item: any) => cleanZillowItem(item))
+      ...cleaned,
+      apifyData: cleaned.apifyData.map((item: any) => cleanZillowItem(item))
     }
   }
 
   // If it's an array (direct Apify response), clean each item
-  if (Array.isArray(apifyJson)) {
-    return apifyJson.map(item => cleanZillowItem(item))
+  if (Array.isArray(cleaned)) {
+    return cleaned.map(item => cleanZillowItem(item))
   }
 
   // If it's a single object, clean it
-  if (typeof apifyJson === 'object') {
-    return cleanZillowItem(apifyJson)
+  if (typeof cleaned === 'object') {
+    return cleanZillowItem(cleaned)
   }
 
-  return apifyJson
+  return cleaned
 }
 
 /**
