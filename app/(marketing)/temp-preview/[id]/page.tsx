@@ -286,7 +286,9 @@ function PreviewContent() {
     return (
       <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <LottieSpinner size={32} />
+          <div className="flex-shrink-0 w-8 h-8">
+            <LottieSpinner size={32} />
+          </div>
           <Typography variant="h2" className="text-white">
             Loading preview...
           </Typography>
@@ -606,35 +608,42 @@ function PreviewContent() {
 
                       {/* Highlights */}
                       <div>
-                        <Typography variant="small" className="text-white/60 mb-2">
+                        <Typography variant="small" className="text-white/60 mb-3">
                           Highlights ({preview.unified_json?.highlights?.length || 0}):
                         </Typography>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {preview.unified_json?.highlights && preview.unified_json.highlights.length > 0 ? (
                             preview.unified_json.highlights.map((highlight: any, index: number) => (
-                              <div key={index} className="p-3 bg-white/[0.05] rounded border border-white/10">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">
+                              <div key={index} className="p-4 bg-white/[0.05] rounded-lg border border-white/10 hover:bg-white/[0.08] transition-colors">
+                                <div className="flex items-start gap-4">
+                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-medium text-white/80">
                                     {index + 1}
                                   </div>
-                                  <div className="flex-1">
-                                    <Typography variant="small" className="text-white/80 font-medium mb-1">
-                                      {highlight.title || 'No title'}
-                                    </Typography>
-                                    <Typography variant="small" className="text-white/60">
-                                      {highlight.value || 'No value'}
-                                    </Typography>
-                                    {highlight.icon && (
-                                      <Typography variant="small" className="text-white/40 mt-1">
-                                        Icon: {highlight.icon}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="mb-2">
+                                      <Typography variant="small" className="text-white font-semibold text-base leading-tight">
+                                        {highlight.title || 'No title'}
                                       </Typography>
+                                    </div>
+                                    <div className="mb-3">
+                                      <Typography variant="small" className="text-white/70 text-sm leading-relaxed">
+                                        {highlight.value || 'No value'}
+                                      </Typography>
+                                    </div>
+                                    {highlight.icon && (
+                                      <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded border border-white/10">
+                                        <Code className="h-3 w-3 text-white/50" />
+                                        <Typography variant="small" className="text-white/50 text-xs font-mono">
+                                          {highlight.icon}
+                                        </Typography>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
                               </div>
                             ))
                           ) : (
-                            <div className="p-3 bg-white/[0.05] rounded border border-white/10">
+                            <div className="p-4 bg-white/[0.05] rounded-lg border border-white/10">
                               <Typography variant="small" className="text-white/60">
                                 No highlights generated
                               </Typography>
@@ -1076,9 +1085,11 @@ export default function PreviewPage() {
     <Suspense fallback={
       <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <LottieSpinner size={32} />
+          <div className="flex-shrink-0 w-8 h-8">
+            <LottieSpinner size={32} />
+          </div>
           <Typography variant="h2" className="text-white">
-            Loading...
+            Loading preview...
           </Typography>
         </div>
       </div>

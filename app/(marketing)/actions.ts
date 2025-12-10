@@ -342,19 +342,22 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
     // Get prompt from centralized prompts file
     const prompt = getRealEstateConfigPrompt('text', structuredText)
 
-    // Call OpenAI
+    // Call OpenAI - Call 1 only (base config generation)
+    console.log('🔄 [generateConfigFromStructuredText] Starting Call 1 (base config generation only)')
     let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
 
     // Sort config keys to match sample config order
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Update preview with generated config
+    // When manually calling Call 1, reset unified_json to only contain Call 1 data
+    // This allows Call 2 to be run separately later
     const supabase = await createClient()
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
         generated_config: generatedConfig,
-        unified_json: generatedConfig,
+        unified_json: generatedConfig, // Reset to Call 1 only (Call 2 will update this later)
         status: 'completed',
         updated_at: new Date().toISOString(),
       })
@@ -392,19 +395,22 @@ async function generateConfigFromApifyData(previewId: string, apifyData: any) {
     // Get prompt from centralized prompts file
     const prompt = getRealEstateConfigPrompt('apify', JSON.stringify(apifyData, null, 2))
 
-    // Call OpenAI
+    // Call OpenAI - Call 1 only (base config generation)
+    console.log('🔄 [generateConfigFromApifyData] Starting Call 1 (base config generation only)')
     let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
 
     // Sort config keys to match sample config order
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Update preview with generated config
+    // When manually calling Call 1, reset unified_json to only contain Call 1 data
+    // This allows Call 2 to be run separately later
     const supabase = await createClient()
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
         generated_config: generatedConfig,
-        unified_json: generatedConfig,
+        unified_json: generatedConfig, // Reset to Call 1 only (Call 2 will update this later)
         status: 'completed',
         updated_at: new Date().toISOString(),
       })

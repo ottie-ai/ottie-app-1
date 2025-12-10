@@ -122,7 +122,12 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
   }, [isMounted])
 
   if (!isMounted) {
-    return <div className={className} style={{ width: size, height: size }} />
+    // Show a simple placeholder spinner while mounting
+    return (
+      <div className={className} style={{ width: size, height: size }} role="status" aria-label="Loading">
+        <div className="w-full h-full border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
