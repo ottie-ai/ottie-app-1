@@ -64,7 +64,8 @@ export async function getNextJob(): Promise<ScrapeJob | null> {
     return null
   }
   
-  const job: ScrapeJob = JSON.parse(jobData as string)
+  // Upstash Redis automatically deserializes JSON, so jobData might already be an object
+  const job: ScrapeJob = typeof jobData === 'string' ? JSON.parse(jobData) : (jobData as ScrapeJob)
   
   // Add to processing set with TTL (expires after 5 minutes if not completed)
   await redis.setex(
@@ -123,8 +124,11 @@ export async function getJobPosition(jobId: string): Promise<number | null> {
   }
   
   // Find job position
+  // Upstash Redis automatically deserializes JSON, so jobData might already be an object
   const position = queueJobs.findIndex((jobData) => {
-    const job: ScrapeJob = JSON.parse(jobData as string)
+    const job: ScrapeJob = typeof jobData === 'string' 
+      ? JSON.parse(jobData) 
+      : (jobData as ScrapeJob)
     return job.id === jobId
   })
   
