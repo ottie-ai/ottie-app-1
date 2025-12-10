@@ -451,19 +451,54 @@ async function generateConfigFromData(
   data: any,
   type: 'apify' | 'text'
 ): Promise<void> {
+  const supabase = createAdminClient()
+  
   try {
+    // Update status to pending before starting OpenAI calls
+    await supabase
+      .from('temp_previews')
+      .update({
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', previewId)
+
     // Get prompt from centralized prompts file
     const dataToProcess = type === 'apify' ? JSON.stringify(data, null, 2) : data
     const prompt = getRealEstateConfigPrompt(type, dataToProcess)
 
     // Call 1: Generate base config
+    const call1StartTime = new Date().toISOString()
+    console.log('🤖 [Queue Worker] Starting Call 1 (base config generation)...')
+    
     const openaiResponse1 = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
     let generatedConfig = openaiResponse1.data
     const call1Usage = openaiResponse1.usage
     const call1Duration = openaiResponse1.callDuration
+    const call1EndTime = new Date().toISOString()
 
     // Sort config keys to match sample config order (local operation, not part of OpenAI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
+
+    // Update with Call 1 results immediately (so frontend can see Call 1 is done)
+    await supabase
+      .from('temp_previews')
+      .update({
+        generated_config: {
+          ...generatedConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+          }
+        },
+        unified_json: generatedConfig, // Set initial unified_json with Call 1 data
+        updated_at: call1EndTime,
+      })
+      .eq('id', previewId)
+    
+    console.log(`✅ [Queue Worker] Call 1 completed for ${previewId}`)
 
     // Call 2: Generate improved title and highlights with higher temperature (0.8) for more creativity
     // Use only relevant parts from generated config (not the full JSON)
@@ -471,7 +506,26 @@ async function generateConfigFromData(
     let call2Usage = undefined
     let call2Duration = 0
     try {
-      console.log('🤖 [Queue Worker] Generating improved title and highlights...')
+      const call2StartTime = new Date().toISOString()
+      console.log('🤖 [Queue Worker] Starting Call 2 (title and highlights improvement)...')
+      
+      // Update status to show Call 2 is starting
+      await supabase
+        .from('temp_previews')
+        .update({
+          unified_json: {
+            ...generatedConfig,
+            _metadata: {
+              call1_started_at: call1StartTime,
+              call1_completed_at: call1EndTime,
+              call1_duration_ms: call1Duration,
+              call1_usage: call1Usage,
+              call2_started_at: call2StartTime,
+            }
+          },
+          updated_at: call2StartTime,
+        })
+        .eq('id', previewId)
       
       // Extract only relevant parts for title generation
       const relevantData = {
@@ -500,6 +554,7 @@ async function generateConfigFromData(
       
       call2Usage = titleResponse.usage
       call2Duration = titleResponse.callDuration
+      const call2EndTime = new Date().toISOString()
       
       // Update title and highlights in config
       if (titleResponse.title && titleResponse.title.trim().length > 0) {
@@ -510,48 +565,52 @@ async function generateConfigFromData(
         finalConfig.highlights = titleResponse.highlights
         console.log(`✅ [Queue Worker] Highlights improved: ${titleResponse.highlights.length} items`)
       }
+
+      // Update with Call 2 results and mark as completed
+      await supabase
+        .from('temp_previews')
+        .update({
+          unified_json: {
+            ...finalConfig,
+            _metadata: {
+              call1_started_at: call1StartTime,
+              call1_completed_at: call1EndTime,
+              call1_duration_ms: call1Duration,
+              call1_usage: call1Usage,
+              call2_started_at: call2StartTime,
+              call2_completed_at: call2EndTime,
+              call2_duration_ms: call2Duration,
+              call2_usage: call2Usage,
+            }
+          },
+          status: 'completed',
+          updated_at: call2EndTime,
+        })
+        .eq('id', previewId)
+      
+      console.log(`✅ [Queue Worker] Call 2 completed for ${previewId}`)
     } catch (titleError: any) {
       // Don't fail the whole job if title generation fails - use original title and highlights from config
       console.warn(`⚠️ [Queue Worker] Title/highlights generation failed, using original values:`, titleError.message)
+      
+      // Still mark as completed with Call 1 data only
+      await supabase
+        .from('temp_previews')
+        .update({
+          unified_json: {
+            ...generatedConfig,
+            _metadata: {
+              call1_started_at: call1StartTime,
+              call1_completed_at: call1EndTime,
+              call1_duration_ms: call1Duration,
+              call1_usage: call1Usage,
+            }
+          },
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', previewId)
     }
-
-    // Record timestamps (using actual OpenAI call durations)
-    const now = Date.now()
-    const call1StartTime = new Date(now - call1Duration - call2Duration).toISOString()
-    const call1EndTime = new Date(now - call2Duration).toISOString()
-    const call2StartTime = call1EndTime
-    const call2EndTime = new Date(now).toISOString()
-
-    const supabase = createAdminClient()
-    await supabase
-      .from('temp_previews')
-      .update({
-        generated_config: {
-          ...generatedConfig,
-          _metadata: {
-            call1_started_at: call1StartTime,
-            call1_completed_at: call1EndTime,
-            call1_duration_ms: call1Duration,
-            call1_usage: call1Usage,
-          }
-        },
-        unified_json: {
-          ...finalConfig,
-          _metadata: {
-            call1_started_at: call1StartTime,
-            call1_completed_at: call1EndTime,
-            call1_duration_ms: call1Duration,
-            call1_usage: call1Usage,
-            call2_started_at: call2StartTime,
-            call2_completed_at: call2EndTime,
-            call2_duration_ms: call2Duration,
-            call2_usage: call2Usage,
-          }
-        },
-        status: 'completed',
-        updated_at: call2EndTime,
-      })
-      .eq('id', previewId)
 
     console.log(`✅ [Queue Worker] Config generated for ${previewId}`)
   } catch (error: any) {
