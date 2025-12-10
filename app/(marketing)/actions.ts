@@ -79,7 +79,21 @@ export async function generatePreview(url: string) {
       // Trigger worker to start processing (non-blocking)
       // Worker will self-trigger for remaining jobs, so we only need to start it once
       // This makes a POST request to our worker API endpoint
-      const workerUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/queue/process-scrape`
+      // In production, use VERCEL_URL if available, otherwise NEXT_PUBLIC_APP_URL, fallback to localhost
+      const getWorkerUrl = () => {
+        // Vercel automatically provides VERCEL_URL in production
+        if (process.env.VERCEL_URL) {
+          return `https://${process.env.VERCEL_URL}/api/queue/process-scrape`
+        }
+        // Use explicit NEXT_PUBLIC_APP_URL if set
+        if (process.env.NEXT_PUBLIC_APP_URL) {
+          return `${process.env.NEXT_PUBLIC_APP_URL}/api/queue/process-scrape`
+        }
+        // Fallback to localhost for local development
+        return 'http://localhost:3000/api/queue/process-scrape'
+      }
+      
+      const workerUrl = getWorkerUrl()
       console.log(`🔄 [generatePreview] Triggering worker at ${workerUrl}...`)
       
       fetch(workerUrl, {
