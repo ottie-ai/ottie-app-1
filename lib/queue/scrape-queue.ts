@@ -370,8 +370,9 @@ function formatApifyPropertyItem(item: any, lines: string[]): void {
   // This handles various Apify scraper formats
   const otherFields = ['url', 'id', 'zpid', 'propertyId']
   otherFields.forEach(field => {
-    if (item[field] && !lines.some(line => line.includes(field))) {
-      lines.push(`${field.charAt(0).toUpperCase() + field.slice(1)}: ${item[field]}`)
+    const fieldValue = item[field]
+    if (fieldValue != null && typeof fieldValue !== 'object' && !lines.some(line => typeof line === 'string' && line.includes(field))) {
+      lines.push(`${field.charAt(0).toUpperCase() + field.slice(1)}: ${fieldValue}`)
     }
   })
 }
