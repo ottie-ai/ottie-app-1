@@ -278,9 +278,15 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
           }
           return 'http://localhost:3000/api/queue/process-scrape'
         }
+        // Use internal token for authentication (bypasses Vercel/platform auth)
+        const internalToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
+        
         fetch(getWorkerUrl(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-internal-token': internalToken,
+          },
           // Don't wait for response - fire and forget
         }).catch(err => {
           console.error('⚠️ [Queue Worker] Failed to trigger next worker:', err)
@@ -375,9 +381,15 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
           }
           return 'http://localhost:3000/api/queue/process-scrape'
         }
+        // Use internal token for authentication (bypasses Vercel/platform auth)
+        const internalToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
+        
         fetch(getWorkerUrl(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-internal-token': internalToken,
+          },
         }).catch(err => {
           console.error('⚠️ [Queue Worker] Failed to trigger next worker after error:', err)
         })

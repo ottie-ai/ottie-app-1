@@ -28,10 +28,27 @@ export async function POST(request: NextRequest) {
   try {
     console.log(`🔵 [Worker API] POST request received`)
     
+    // Check for internal authentication token (bypasses Vercel/platform auth)
+    // This allows server actions to call the worker API without authentication issues
+    const internalToken = request.headers.get('x-internal-token')
+    const expectedToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
+    
+    // Allow if token matches OR if it's a cron job (Vercel cron has x-vercel-cron header)
+    const isCronHeader = request.headers.get('x-vercel-cron') === '1'
+    const isValidInternalCall = internalToken === expectedToken || isCronHeader
+    
+    if (!isValidInternalCall && process.env.NODE_ENV === 'production') {
+      console.warn(`⚠️ [Worker API] Unauthorized request - missing or invalid internal token`)
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
     // Check if this is a cron job (batch processing) or single job trigger
     const body = await request.json().catch(() => ({}))
     const batchSize = body.batch ? parseInt(body.batch) : 1
-    const isCron = request.headers.get('x-vercel-cron') === '1' || body.cron === true
+    const isCron = isCronHeader || body.cron === true
     
     console.log(`🔵 [Worker API] isCron: ${isCron}, batchSize: ${batchSize}`)
     
