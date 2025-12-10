@@ -58,23 +58,23 @@ PRIORITY FIELDS (fill FIRST):
 
 1. **language** (ISO 2-letter: en/es/de/cs/sk/fr/it) → ALL TEXT in this language
 
-3. currency (infer from symbol/location: $, €, £, Kč → USD/EUR/GBP/CZK)
+2. currency (infer from symbol/location: $, €, £, Kč → USD/EUR/GBP/CZK)
 
-4. price info extract number only
+3. price info extract number only
 
-5. photos: list of main property photos, ideally JPEG or WebP and largest size you can find, no duplicates
+4. photos
 
-6. beds, baths, living_area
+5. beds, baths, living_area
 
-7. description, exactly as in the listing text, usually the longest text
+6. description, exactly as in the listing text, usually the longest text
 
-9. property address
+7. property address
 
-10. agent info
+8. agent info
 
-11. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
+9. property type: Choose ONE from: HOUSE, TOWNHOUSE, CONDO, LAND, MULTI_FAMILY, MOBILE_HOME, APARTMENT, FARM_RANCH, OTHER
 
-12. property_status: choose ONE from: FOR_SALE, FOR_RENT, SOLD, UNDER_CONTRACT, PENDING, OFF_MARKET, OTHER.
+10. property_status: choose ONE from: FOR_SALE, FOR_RENT, SOLD, UNDER_CONTRACT, PENDING, OFF_MARKET, OTHER.
 
 RULES:
 
@@ -94,14 +94,12 @@ RULES:
   - On agency sites: use agency name from header/footer/contact.
   - On portals (Zillow, Idealista, etc.): use the listing agent's brokerage name if shown. Do NOT use the portal name (e.g. "Zillow") as the agency; if unknown, leave empty.
 
-- photo rules:
-  - only REAL property photos (interior/exterior, views, amenities).
+- photos:
+  - Select the HIGHEST resolution available.
+  - If an image appears in both src (thumbnail) and href (lightbox/zoom), ALWAYS use the URL from href.
+  - Look for patterns indicating size like ".w1200.", "full", "large" over ".w425.", "thumb", "small".
   - Prefer URLs that share the same base pattern / path as the main listing gallery images.
   - If most photos come from e.g. "https://imgs.soukwportugal.pt/37734/properties/...", keep ONLY URLs that match this pattern.
-  - exclude:
-    - generic site images (e.g. "/images/photo-*.webp", stock backgrounds, logos, icons),
-    - images from different domains or paths that are not part of the listing gallery.
-  - Remove any duplicates.
 
 
 JSON STRUCTURE:
