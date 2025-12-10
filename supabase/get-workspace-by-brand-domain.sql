@@ -28,4 +28,3 @@ GRANT EXECUTE ON FUNCTION get_workspace_by_brand_domain(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_workspace_by_brand_domain(TEXT) TO anon;
 
 COMMENT ON FUNCTION get_workspace_by_brand_domain(TEXT) IS 'Get workspace by verified brand domain. Returns workspace only if domain is verified.';
-ako by sme mali riesit to, ak clovek prida do custom domain domenu bez alebo s www, ja som teraz dala domenu bez www a teraz napr ked zadam site url s www vyhodi chybu, takto vyzera vercel nastavenie  navrhni riesenie ako to riesit

@@ -279,3 +279,6 @@ Po aplikovaní všetkých zmien máte:
 **Status:** ✅ READY FOR PRODUCTION (po spustení SQL)
 
 
+
+
+

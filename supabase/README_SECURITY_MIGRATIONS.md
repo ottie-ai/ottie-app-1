@@ -291,3 +291,6 @@ LIMIT 10;
 ---
 
 **Posledná aktualizácia:** 2025-12-09
+
+
+

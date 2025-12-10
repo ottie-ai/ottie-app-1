@@ -409,3 +409,6 @@ Implementovaných **8 z 9** bezpečnostných opráv (SSRF vynechaný podľa pož
 
 **Audit dokončený:** 2025-12-09  
 **Status:** ✅ PRODUCTION READY (po spustení SQL)
+
+
+
