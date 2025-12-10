@@ -9,6 +9,7 @@ import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector, getGalleryImageExtractor } from '@/lib/scraper/html-processors'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
+import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { addToQueue, getJobPosition, isJobProcessing, type ScrapeJob } from '@/lib/queue/scrape-queue'
@@ -342,7 +343,10 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
     const prompt = getRealEstateConfigPrompt('text', structuredText)
 
     // Call OpenAI
-    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+
+    // Sort config keys to match sample config order
+    generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Update preview with generated config
     const supabase = await createClient()
@@ -389,7 +393,10 @@ async function generateConfigFromApifyData(previewId: string, apifyData: any) {
     const prompt = getRealEstateConfigPrompt('apify', JSON.stringify(apifyData, null, 2))
 
     // Call OpenAI
-    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+
+    // Sort config keys to match sample config order
+    generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Update preview with generated config
     const supabase = await createClient()

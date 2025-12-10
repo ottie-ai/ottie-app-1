@@ -15,6 +15,7 @@ import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/
 import { load } from 'cheerio'
 import { generateStructuredJSON, generateTitle } from '@/lib/openai/client'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
+import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 
 export interface ScrapeJob {
   id: string // preview_id from temp_previews
@@ -455,7 +456,10 @@ async function generateConfigFromData(
     const dataToProcess = type === 'apify' ? JSON.stringify(data, null, 2) : data
     const prompt = getRealEstateConfigPrompt(type, dataToProcess)
 
-    const generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+
+    // Sort config keys to match sample config order
+    generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
     // Generate improved title and highlights with higher temperature (0.8) for more creativity
     // Use the generated JSON config from first call as input data
