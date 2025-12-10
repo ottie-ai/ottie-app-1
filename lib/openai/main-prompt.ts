@@ -84,7 +84,7 @@ RULES:
 
 - Ignore: similar properties, navigation, footers
 
-- **highlights exactly 6**, do not use the same words in both title and value
+- **highlights exactly 6**, do not use the same words in both title and value, make sure the highlights are diverse
 
 - floorplan_url: Find a dedicated floor plan (PDF/SVG/image url). Look for "Floor plan"/"Plans"/"Grundriss" links in all languages.
 
