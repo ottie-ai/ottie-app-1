@@ -12,7 +12,6 @@ import { scrapeUrl, type ScrapeResult } from '@/lib/scraper/providers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/scraper/html-processors'
-import { extractStructuredData } from '@/lib/scraper/html-parser'
 import { load } from 'cheerio'
 import { generateStructuredJSON } from '@/lib/openai/client'
 import { readFileSync } from 'fs'
@@ -184,6 +183,9 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     // Process result (same logic as in old generatePreview)
     const rawHtml = scrapeResult.html
     let html = scrapeResult.html
+    let markdown = scrapeResult.markdown
+    const galleryHtml = scrapeResult.galleryHtml || null
+    let galleryMarkdown = scrapeResult.galleryMarkdown || null
     const json = 'json' in scrapeResult ? scrapeResult.json : undefined
     const provider = scrapeResult.provider
     
@@ -199,35 +201,16 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     }
     
     // Extract structured data
-    let structuredData: any = {}
     let cleanedJson: any = null
     
     if (provider === 'apify' && json) {
       const scraper = scrapeResult.apifyScraperId ? findApifyScraperById(scrapeResult.apifyScraperId) : null
       const cleaner = scraper?.cleanJson
       cleanedJson = cleaner ? cleaner(json) : json
-      structuredData = {
-        apifyData: cleanedJson,
-        apifyScraperId: scrapeResult.apifyScraperId,
-      }
-    } else if (html) {
-      structuredData = extractStructuredData(html)
     }
     
     // Get gallery images
     const galleryImages: string[] = scrapeResult.galleryImages || []
-    const galleryHtml = scrapeResult.galleryHtml || null
-    
-    // Build ai_ready_data
-    const aiReadyData: any = {
-      html: '',
-      apify_json: provider === 'apify' && json ? cleanedJson : null,
-      structuredData: structuredData,
-      processed_html: processedHtml || null,
-      gallery_images: galleryImages.length > 0 ? galleryImages : undefined,
-      gallery_html: galleryHtml,
-      actual_provider: scrapeResult.actualProvider || provider,
-    }
     
     // Determine source_domain
     let sourceDomain = 'unknown'
@@ -240,14 +223,26 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     // Determine final status based on OpenAI processing availability
     const finalStatus = process.env.DISABLE_OPENAI_PROCESSING ? 'completed' : 'pending'
     
+    // Ensure markdown fallbacks for downstream steps
+    if (!markdown && html) {
+      markdown = extractStructuredText(html)
+    }
+    if (!galleryMarkdown && galleryHtml) {
+      galleryMarkdown = extractStructuredText(galleryHtml)
+    }
+    
     // Update preview with scraped data
     await supabase
       .from('temp_previews')
       .update({
-        raw_html: rawHtml || null,
-        ai_ready_data: aiReadyData,
+        default_raw_html: rawHtml || null,
+        default_markdown: markdown || null,
+        gallery_raw_html: galleryHtml,
+        gallery_markdown: galleryMarkdown,
+        gallery_image_urls: galleryImages && galleryImages.length > 0 ? galleryImages : [],
         status: finalStatus, // 'completed' if OpenAI disabled, 'pending' if OpenAI will process
         source_domain: sourceDomain,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', job.id)
     
@@ -315,27 +310,32 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       try {
         if (provider === 'apify' && cleanedJson) {
           await generateConfigFromData(job.id, cleanedJson, 'apify')
-        } else if (provider === 'firecrawl' && rawHtml) {
-          
-          // Extract structured text from HTML
-          const $ = load(rawHtml)
-          const mainContentSelector = getMainContentSelector(job.url) || 'main'
-          const mainElement = $(mainContentSelector)
-          
-          if (mainElement.length > 0) {
-            const htmlCleaner = getHtmlCleaner(job.url)
-            if (htmlCleaner) {
-              htmlCleaner(mainElement)
+        } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
+          let structuredText = markdown || null
+
+          if (!structuredText && rawHtml) {
+            const $ = load(rawHtml)
+            const mainContentSelector = getMainContentSelector(job.url) || 'main'
+            const mainElement = $(mainContentSelector)
+            
+            if (mainElement.length > 0) {
+              const htmlCleaner = getHtmlCleaner(job.url)
+              if (htmlCleaner) {
+                htmlCleaner(mainElement)
+              }
+              
+              const mainHtml = $.html(mainElement)
+              structuredText = extractStructuredText(mainHtml)
             }
-            
-            const mainHtml = $.html(mainElement)
-            const structuredText = extractStructuredText(mainHtml)
-            
-            // Update with structured text
+          }
+
+          if (structuredText) {
+            // Persist updated markdown for debugging
             await supabase
               .from('temp_previews')
               .update({
-                ai_ready_data: { ...aiReadyData, raw_html_text: structuredText },
+                default_markdown: structuredText,
+                updated_at: new Date().toISOString(),
               })
               .eq('id', job.id)
             
@@ -512,7 +512,9 @@ ${type === 'apify' ? JSON.stringify(data, null, 2) : data}`
       .from('temp_previews')
       .update({
         generated_config: generatedConfig,
+        unified_json: generatedConfig, // Until we add post-processing, mirror generated output
         status: 'completed',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', previewId)
 

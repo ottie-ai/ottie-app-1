@@ -49,8 +49,9 @@ export async function generatePreview(url: string) {
         external_url: url,
         status: 'queued', // New status: queued -> scraping -> pending -> completed/error
         source_domain: 'firecrawl', // Default to firecrawl, will be updated by queue worker if Apify is used
-        ai_ready_data: {},
-        unified_data: {},
+        generated_config: {},
+        unified_json: {},
+        gallery_image_urls: [],
       })
       .select('id')
       .single()
@@ -263,17 +264,15 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
     return { error: 'You do not have access to this workspace' }
   }
   
-  // Extract title from ai_ready_data (markdown title) or use default
-  // The markdown in ai_ready_data was generated with Readability, which includes title
-  // For now, we'll try to extract it or use a default
+  // Extract title from generated/unified config or markdown fallback
   let title = 'Imported Property'
   
-  // Try to get title from generated_config or markdown
-  if (preview.generated_config?.title) {
+  if (preview.unified_json?.title) {
+    title = preview.unified_json.title
+  } else if (preview.generated_config?.title) {
     title = preview.generated_config.title
-  } else if (preview.ai_ready_data?.markdown) {
-    const markdown = preview.ai_ready_data.markdown
-    const titleMatch = markdown.match(/^#\s+(.+)$/m)
+  } else if (preview.default_markdown) {
+    const titleMatch = preview.default_markdown.match(/^#\s+(.+)$/m)
     if (titleMatch) {
       title = titleMatch[1].trim()
     }
@@ -305,11 +304,11 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
       title: title,
       slug: finalSlug,
       status: 'draft',
-      config: preview.generated_config || {}, // Use generated_config from AI processing
+      config: preview.unified_json || preview.generated_config || {}, // Use unified_json as production config
       metadata: {
         external_url: preview.external_url, // Use external_url instead of source_url
         source_domain: preview.source_domain,
-        ai_ready_data: preview.ai_ready_data,
+        generated_config: preview.generated_config,
         imported_from_preview: true,
         preview_id: previewId,
       },
@@ -402,7 +401,9 @@ ${structuredText}`
       .from('temp_previews')
       .update({
         generated_config: generatedConfig,
+        unified_json: generatedConfig,
         status: 'completed',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', previewId)
 
@@ -499,7 +500,9 @@ ${JSON.stringify(apifyData, null, 2)}`
       .from('temp_previews')
       .update({
         generated_config: generatedConfig,
+        unified_json: generatedConfig,
         status: 'completed',
+        updated_at: new Date().toISOString(),
       })
       .eq('id', previewId)
 
@@ -546,9 +549,9 @@ export async function processApifyJson(previewId: string) {
   }
 
   // Check if this is an Apify result
-  const apifyJson = preview?.ai_ready_data?.apify_json
+  const apifyJson = preview?.generated_config?.apify_json || preview?.unified_json?.apify_json
   if (!apifyJson) {
-    return { error: 'This preview does not contain Apify JSON data' }
+    return { error: 'This preview does not contain Apify JSON data in the new schema' }
   }
 
   // Get scraper ID from preview metadata
@@ -560,20 +563,11 @@ export async function processApifyJson(previewId: string) {
   const cleanedJson = cleaner ? cleaner(apifyJson) : apifyJson
   console.log(`🔵 [processApifyJson] Cleaned Apify JSON using ${scraper?.name || 'default'} cleaner for preview:`, previewId)
 
-  // Update the preview with cleaned JSON
-  const updatedAiReadyData = {
-    ...preview.ai_ready_data,
-    apify_json: cleanedJson,
-    structuredData: {
-      ...preview.ai_ready_data?.structuredData,
-      apifyData: cleanedJson,
-    },
-  }
-
   const { error: updateError } = await supabase
     .from('temp_previews')
     .update({
-      ai_ready_data: updatedAiReadyData,
+      generated_config: { ...(preview.generated_config || {}), apify_json: cleanedJson },
+      updated_at: new Date().toISOString(),
     })
     .eq('id', previewId)
 
@@ -609,8 +603,8 @@ export async function extractGalleryImages(previewId: string) {
     return { error: 'Source URL not found in preview' }
   }
 
-  // Use gallery_html if available (from Call 2), otherwise fallback to raw_html
-  const htmlToExtract = preview.ai_ready_data?.gallery_html || preview.raw_html
+  // Use gallery_html if available (from Call 2), otherwise fallback to default_raw_html
+  const htmlToExtract = preview.gallery_raw_html || preview.default_raw_html || preview.raw_html
   
   if (!htmlToExtract) {
     return { error: 'This preview does not contain HTML data to extract images from' }
@@ -629,16 +623,11 @@ export async function extractGalleryImages(previewId: string) {
     const galleryImages = galleryExtractor(htmlToExtract)
     console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
 
-    // Update the preview with extracted images
-    const updatedAiReadyData = {
-      ...preview.ai_ready_data,
-      gallery_images: galleryImages,
-    }
-
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
-        ai_ready_data: updatedAiReadyData,
+        gallery_image_urls: galleryImages,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', previewId)
 
@@ -762,7 +751,7 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
   }
 
   // Get raw HTML
-  const rawHtml = preview.raw_html
+  const rawHtml = preview.default_raw_html || preview.raw_html
   if (!rawHtml || rawHtml.trim().length === 0) {
     return { error: 'This preview does not contain raw HTML data to process' }
   }
@@ -798,16 +787,11 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
       console.log(`⚠️ [removeHtmlTagsFromRawHtml] No main content element found (selector: ${mainContentSelector}), using entire HTML (${textContent.length} chars) for preview:`, previewId)
     }
 
-    // Update the preview with text content
-    const updatedAiReadyData = {
-      ...preview.ai_ready_data || {},
-      raw_html_text: textContent,
-    }
-
+    // Update the preview with text content (store as markdown/text for debugging)
     const { error: updateError } = await supabase
       .from('temp_previews')
       .update({
-        ai_ready_data: updatedAiReadyData,
+        default_markdown: textContent,
       })
       .eq('id', previewId)
 
@@ -842,9 +826,9 @@ export async function generateConfigFromApify(previewId: string) {
   }
 
   // Check if this is an Apify result
-  const apifyJson = preview?.ai_ready_data?.apify_json
+  const apifyJson = preview?.generated_config?.apify_json || preview?.unified_json?.apify_json
   if (!apifyJson) {
-    return { error: 'This preview does not contain Apify JSON data' }
+    return { error: 'This preview does not contain Apify JSON data in the new schema' }
   }
 
   try {

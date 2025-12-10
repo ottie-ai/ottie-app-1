@@ -13,18 +13,21 @@ import { findApifyScraperForUrl, type ApifyScraperConfig } from './apify-scraper
 import { runApifyActor, type ApifyResult } from './apify-client'
 import { getFirecrawlActions, getFirecrawlActionsGallery, getFirecrawlActionsCombined } from './firecrawl-actions'
 import { getGalleryImageExtractor } from './html-processors'
+import { htmlToMarkdownUniversal } from './markdown-converter'
 
 export type ScraperProvider = 'firecrawl' | 'apify'
 
 export interface ScrapeResult {
   html?: string // Raw HTML - general providers return this (or HTML after actions if actions were used)
   htmlBeforeActions?: string // Original HTML before actions (only if actions were used)
+  markdown?: string // Markdown representation of the default scrape (if provided by Firecrawl)
   json?: any // Structured JSON - Apify scrapers return this
   provider: ScraperProvider
   duration: number
   apifyScraperId?: string // Only for Apify results
   galleryImages?: string[] // Gallery images extracted from second call (only for Realtor.com)
   galleryHtml?: string // Raw HTML from Call 2 (for debugging)
+  galleryMarkdown?: string // Markdown from gallery scrape when available
   actualProvider?: string // Actual provider used (e.g., 'firecrawl_stealth', 'apify_fallback')
 }
 
@@ -90,13 +93,15 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
     
     // Base scrape options
     const baseScrapeOptions: any = {
-      formats: ['html'], // Request only HTML
+      formats: ['html', 'markdown'], // Request HTML + Markdown in a single call
       proxy: 'auto', // Use auto proxy mode (Firecrawl automatically selects best proxy)
     }
     
     let html: string | undefined = undefined
     let galleryImages: string[] | undefined = undefined
     let galleryHtml: string | undefined = undefined
+    let markdown: string | undefined = undefined
+    let galleryMarkdown: string | undefined = undefined
     
     // Try to get combined actions (single call with multiple scrapes)
     // Format: [scrape1, wait, click, wait, scrape2]
@@ -128,6 +133,8 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       
       let firstScrapeHtml: string | undefined = undefined
       let secondScrapeHtml: string | undefined = undefined
+      let firstScrapeMarkdown: string | undefined = undefined
+      let secondScrapeMarkdown: string | undefined = undefined
       
       // Check if response has actions.scrapes array (multiple scrapes)
       if (scrapeResponse.actions?.scrapes && Array.isArray(scrapeResponse.actions.scrapes)) {
@@ -136,13 +143,17 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
         if (scrapes.length >= 2) {
           // First scrape (raw HTML - pre-action)
           firstScrapeHtml = scrapes[0].html || scrapes[0].rawHtml
+          firstScrapeMarkdown = scrapes[0].markdown || scrapes[0].rawMarkdown
           // Second scrape (gallery HTML - post-action)
           secondScrapeHtml = scrapes[1].html || scrapes[1].rawHtml
+          secondScrapeMarkdown = scrapes[1].markdown || scrapes[1].rawMarkdown
           console.log(`✅ [Firecrawl] Got both scrapes from actions.scrapes array (${scrapes.length} scrapes)`)
         } else if (scrapes.length === 1) {
           // Only one scrape in array - use main response as second scrape
           firstScrapeHtml = scrapes[0].html || scrapes[0].rawHtml
+          firstScrapeMarkdown = scrapes[0].markdown || scrapes[0].rawMarkdown
           secondScrapeHtml = scrapeResponse.html || scrapeResponse.rawHtml
+          secondScrapeMarkdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
           console.log(`⚠️ [Firecrawl] Only one scrape in actions.scrapes, using main response as second scrape`)
         }
       } else {
@@ -150,6 +161,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
         // This shouldn't happen if Firecrawl properly returns scrapes array
         console.warn('⚠️ [Firecrawl] actions.scrapes array not found in response, using main response as gallery HTML')
         secondScrapeHtml = scrapeResponse.html || scrapeResponse.rawHtml
+        secondScrapeMarkdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
         
         // Get first scrape HTML from separate call (fallback)
         const actionsConfig = getFirecrawlActions(url)
@@ -166,14 +178,18 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
           
           const firstScrapeResponse = await firecrawl.scrape(url, firstScrapeOptions)
           firstScrapeHtml = firstScrapeResponse.html || firstScrapeResponse.rawHtml
+          firstScrapeMarkdown = firstScrapeResponse.markdown || firstScrapeResponse.rawMarkdown
         } else {
           const initialScrapeResponse = await firecrawl.scrape(url, baseScrapeOptions)
           firstScrapeHtml = initialScrapeResponse.html || initialScrapeResponse.rawHtml
+          firstScrapeMarkdown = initialScrapeResponse.markdown || initialScrapeResponse.rawMarkdown
         }
       }
       
       html = firstScrapeHtml
       galleryHtml = secondScrapeHtml
+      markdown = firstScrapeMarkdown
+      galleryMarkdown = secondScrapeMarkdown
       
       if (galleryHtml && galleryHtml.trim().length > 0) {
         // Extract gallery images from gallery HTML
@@ -210,6 +226,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       } else if (scrapeResponse.rawHtml) {
         html = scrapeResponse.rawHtml
       }
+      markdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
       
       if (!html || html.trim().length === 0) {
         throw new Error('Firecrawl returned empty HTML content')
@@ -226,6 +243,7 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       } else if (scrapeResponse.rawHtml) {
         html = scrapeResponse.rawHtml
       }
+      markdown = scrapeResponse.markdown || scrapeResponse.rawMarkdown
       
       if (!html || html.trim().length === 0) {
         throw new Error('Firecrawl returned empty HTML content')
@@ -241,12 +259,22 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
       galleryImages ? `(${galleryImages.length} gallery images)` : '',
       `(${callDuration}ms)`)
     
+    // Ensure markdown fallbacks so callers always get both representations
+    if (!markdown && html) {
+      markdown = htmlToMarkdownUniversal(html).markdown
+    }
+    if (!galleryMarkdown && galleryHtml) {
+      galleryMarkdown = htmlToMarkdownUniversal(galleryHtml).markdown
+    }
+    
     return {
       html: html, // HTML after actions (or normal HTML if no actions)
+      markdown: markdown,
       provider: 'firecrawl',
       duration: callDuration,
       galleryImages: galleryImages, // Gallery images from Call 2 (for Realtor.com and Redfin.com)
       galleryHtml: galleryHtml, // Raw HTML from Call 2 (for debugging)
+      galleryMarkdown: galleryMarkdown,
       actualProvider: 'firecrawl_auto',
     }
   } catch (error: any) {

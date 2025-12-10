@@ -110,8 +110,9 @@ function PreviewContent() {
   }
 
   const handleCopyRawHtml = () => {
-    if (preview?.raw_html) {
-      navigator.clipboard.writeText(preview.raw_html)
+    const rawHtml = preview?.default_raw_html || preview?.raw_html
+    if (rawHtml) {
+      navigator.clipboard.writeText(rawHtml)
       setCopiedSection('raw')
       setCopied(true)
       setTimeout(() => {
@@ -273,7 +274,8 @@ function PreviewContent() {
 
   // Check if this is an Apify result (structured JSON, not HTML parsing)
   const isApifyResult = preview?.source_domain?.startsWith('apify_') || 
-                        preview?.ai_ready_data?.apify_json !== null ||
+                        !!preview?.generated_config?.apify_json ||
+                        !!preview?.unified_json?.apify_json ||
                         preview?.scraped_data?.provider === 'apify'
 
   return (
@@ -443,7 +445,7 @@ function PreviewContent() {
 
         <div className="space-y-6">
           {/* Step 1: Raw HTML (from Firecrawl call) */}
-          {preview?.raw_html && (
+          {(preview?.default_raw_html || preview?.raw_html) && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
@@ -452,7 +454,7 @@ function PreviewContent() {
                     Step 1: Raw HTML (from Firecrawl)
                   </Typography>
                   <span className="text-xs text-white/40">
-                    ({(preview.raw_html.length / 1024).toFixed(1)} KB)
+                    ({(((preview.default_raw_html || preview.raw_html)?.length || 0) / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -497,14 +499,14 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.raw_html}
+                  {preview.default_raw_html || preview.raw_html}
                 </pre>
               </div>
             </div>
           )}
 
           {/* Step 2: Gallery HTML (from Call 2) */}
-          {preview?.ai_ready_data?.gallery_html && (
+          {preview?.gallery_raw_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
@@ -513,7 +515,7 @@ function PreviewContent() {
                     Step 2: Gallery HTML (from Firecrawl Call 2)
                   </Typography>
                   <span className="text-xs text-white/40">
-                    ({(preview.ai_ready_data.gallery_html.length / 1024).toFixed(1)} KB)
+                    ({(preview.gallery_raw_html.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -538,7 +540,7 @@ function PreviewContent() {
                   </Button>
                   <Button
                     onClick={() => {
-                      navigator.clipboard.writeText(preview.ai_ready_data.gallery_html)
+                      navigator.clipboard.writeText(preview.gallery_raw_html)
                       setCopiedSection('gallery-html')
                       setCopied(true)
                       setTimeout(() => {
@@ -566,28 +568,28 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.ai_ready_data.gallery_html}
+                  {preview.gallery_raw_html}
                 </pre>
               </div>
             </div>
           )}
 
-          {/* Raw HTML Text Display (if HTML tags removed) */}
-          {preview?.ai_ready_data?.raw_html_text && (
+          {/* Markdown / Structured Text (if available) */}
+          {preview?.default_markdown && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    Raw HTML → Text (No Tags)
+                    Markdown / Structured Text
                   </Typography>
                   <span className="text-xs text-white/40">
-                    ({(preview.ai_ready_data.raw_html_text.length / 1024).toFixed(1)} KB)
+                    ({(preview.default_markdown.length / 1024).toFixed(1)} KB)
                   </span>
                 </div>
                 <Button
                   onClick={() => {
-                    navigator.clipboard.writeText(preview.ai_ready_data.raw_html_text)
+                    navigator.clipboard.writeText(preview.default_markdown)
                     setCopiedSection('raw-text')
                     setCopied(true)
                     setTimeout(() => {
@@ -614,7 +616,7 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.ai_ready_data.raw_html_text}
+                  {preview.default_markdown}
                 </pre>
               </div>
             </div>
@@ -635,14 +637,14 @@ function PreviewContent() {
             </Typography>
           </div>
 
-          {preview?.ai_ready_data?.gallery_images && preview.ai_ready_data.gallery_images.length > 0 ? (
+          {preview?.gallery_image_urls && preview.gallery_image_urls.length > 0 ? (
 
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    Image URLs ({preview.ai_ready_data.gallery_images.length} images)
+                    Image URLs ({preview.gallery_image_urls.length} images)
                   </Typography>
                 </div>
                 <div className="flex items-center gap-2">
@@ -667,7 +669,7 @@ function PreviewContent() {
                   </Button>
                   <Button
                     onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(preview.ai_ready_data.gallery_images, null, 2))
+                      navigator.clipboard.writeText(JSON.stringify(preview.gallery_image_urls, null, 2))
                       setCopiedSection('gallery-images')
                       setCopied(true)
                       setTimeout(() => {
@@ -695,7 +697,7 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <div className="space-y-2">
-                  {preview.ai_ready_data.gallery_images.map((url: string, index: number) => (
+                  {preview.gallery_image_urls.map((url: string, index: number) => (
                     <div key={index} className="flex items-center gap-2 p-2 bg-white/[0.02] rounded border border-white/10">
                       <span className="text-xs text-white/40 w-8">{index + 1}.</span>
                       <a
