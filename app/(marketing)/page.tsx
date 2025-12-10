@@ -355,15 +355,10 @@ export default function Home() {
 
       console.log(`✅ Preview created: ${previewId}, queue position: ${initialQueuePosition}`)
       
-      // Set initial queue state - only if actually in queue
-      if (initialQueuePosition > 0) {
-        setCurrentPhase('queue')
-        setQueuePosition(initialQueuePosition)
-      } else {
-        // Not in queue, start with scraping phase
-        setCurrentPhase('scraping')
-        setQueuePosition(null)
-      }
+      // Don't set queue phase immediately - wait for first poll to get accurate status
+      // This prevents showing incorrect queue position if job starts processing immediately
+      setCurrentPhase('scraping') // Start with scraping as default, will update on first poll
+      setQueuePosition(null)
 
       // Poll status until completed or error
       let attempts = 0
@@ -398,12 +393,7 @@ export default function Home() {
           } else {
             // Not in queue or position is 0/null - use the phase from API
             setCurrentPhase(phase)
-            // Only keep queue position if we're actually in queue phase
-            if (phase === 'queue' && currentQueuePosition !== null && currentQueuePosition > 0) {
-              setQueuePosition(currentQueuePosition)
-            } else {
-              setQueuePosition(null)
-            }
+            setQueuePosition(null) // Always clear queue position when not in queue phase
           }
 
           if (status === 'completed') {

@@ -133,6 +133,7 @@ function PreviewContent() {
     }
   }, [previewId])
 
+
   // Check if user is logged in
   useEffect(() => {
     const checkAuth = async () => {
@@ -334,7 +335,58 @@ function PreviewContent() {
     }
   }
 
+  // Automatically trigger OpenAI calls if preview is loaded but doesn't have generated_config
+  useEffect(() => {
+    const autoTriggerOpenAI = async () => {
+      // Only auto-trigger if:
+      // 1. Preview is loaded
+      // 2. No generated_config exists (or it's empty)
+      // 3. Not already generating
+      // 4. Has scraped data (markdown, raw_html, or apify_json)
+      if (
+        !preview ||
+        generatingConfig ||
+        generatingTitle ||
+        !previewId
+      ) {
+        return
+      }
 
+      const hasGeneratedConfig = 
+        preview.generated_config && 
+        Object.keys(preview.generated_config).length > 0 &&
+        preview.generated_config.title !== undefined
+
+      const hasScrapedData = 
+        preview.default_markdown ||
+        preview.raw_html ||
+        preview.apify_json ||
+        preview.gallery_raw_html
+
+      // If we have scraped data but no generated config, auto-trigger Call 1
+      if (hasScrapedData && !hasGeneratedConfig) {
+        console.log('🔄 [Auto-trigger] Starting Call 1 automatically...')
+        handleGenerateConfig()
+      }
+      // If we have generated_config but no unified_json with Call 2 data, auto-trigger Call 2
+      else if (
+        hasGeneratedConfig &&
+        preview.unified_json &&
+        (!preview.unified_json._metadata?.call2_completed_at)
+      ) {
+        console.log('🔄 [Auto-trigger] Starting Call 2 automatically...')
+        handleGenerateTitle()
+      }
+    }
+
+    // Small delay to ensure preview state is set
+    const timer = setTimeout(() => {
+      autoTriggerOpenAI()
+    }, 1000)
+
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, previewId, generatingConfig, generatingTitle])
 
   if (loading) {
     return (

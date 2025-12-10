@@ -210,8 +210,14 @@ export async function getPreviewStatus(previewId: string) {
   
   if (data.status === 'queued') {
     try {
-      queuePosition = await getJobPosition(previewId)
       processing = await isJobProcessing(previewId)
+      // Only get queue position if not already processing
+      if (!processing) {
+        queuePosition = await getJobPosition(previewId)
+      } else {
+        // Job is processing, not in queue anymore
+        queuePosition = null
+      }
     } catch (err) {
       console.error('Error getting queue position:', err)
     }
@@ -220,7 +226,8 @@ export async function getPreviewStatus(previewId: string) {
   // Determine granular phase based on status and metadata
   let phase: 'queue' | 'scraping' | 'gallery' | 'call1' | 'call2' | 'assembling' | 'completed' | 'error' = 'queue'
   
-  if (data.status === 'queued') {
+  if (data.status === 'queued' && !processing && queuePosition !== null && queuePosition > 0) {
+    // Only show queue phase if actually in queue (not processing and has valid position)
     phase = 'queue'
   } else if (data.status === 'scraping') {
     // Check if gallery scraping is happening (has gallery_html but no gallery_images yet)

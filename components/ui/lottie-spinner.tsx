@@ -18,6 +18,7 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
   const { resolvedTheme } = useTheme()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
 
   // Determine if dark mode is active
   const isDark = useMemo(() => {
@@ -121,30 +122,54 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
     lottieInstance.play()
   }, [isMounted])
 
-  if (!isMounted) {
-    // Show a simple placeholder spinner while mounting
-    return (
-      <div className={className} style={{ width: size, height: size }} role="status" aria-label="Loading">
-        <div className="w-full h-full border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-      </div>
-    )
-  }
-
   return (
     <div
       className={className}
       style={{ 
         width: size, 
         height: size,
+        position: 'relative',
       }}
     >
-      <Lottie
-        lottieRef={lottieRef}
-        animationData={themedAnimationData}
-        style={{ width: size, height: size }}
-        loop={true}
-        autoplay={true}
-      />
+      {/* Placeholder spinner - hidden once Lottie is loaded */}
+      {!isLoaded && (
+        <div 
+          className="absolute inset-0"
+          style={{ 
+            width: size, 
+            height: size,
+            opacity: isLoaded ? 0 : 1,
+            transition: 'opacity 0.2s ease-out'
+          }} 
+          role="status" 
+          aria-label="Loading"
+        >
+          <div className="w-full h-full border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+        </div>
+      )}
+      
+      {/* Lottie animation - shown once mounted */}
+      {isMounted && (
+        <div
+          style={{ 
+            width: size, 
+            height: size,
+            opacity: isLoaded ? 1 : 0,
+            transition: 'opacity 0.2s ease-in'
+          }}
+        >
+          <Lottie
+            lottieRef={lottieRef}
+            animationData={themedAnimationData}
+            style={{ width: size, height: size }}
+            loop={true}
+            autoplay={true}
+            onLoadedData={() => {
+              setIsLoaded(true)
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
