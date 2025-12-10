@@ -334,6 +334,103 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
 }
 
 /**
+ * Format property data as text for title generation (Call 2)
+ * Converts relevant data object to readable text format
+ */
+function formatPropertyDataForTitle(data: any): string {
+  const lines: string[] = []
+  
+  if (data.language) {
+    lines.push(`Language: ${data.language}`)
+  }
+  
+  if (data.title) {
+    lines.push(`Current Title: ${data.title}`)
+  }
+  
+  if (data.address) {
+    const addressParts = []
+    if (data.address.street) addressParts.push(data.address.street)
+    if (data.address.city) addressParts.push(data.address.city)
+    if (data.address.neighborhood) addressParts.push(data.address.neighborhood)
+    if (data.address.state) addressParts.push(data.address.state)
+    if (data.address.zipcode) addressParts.push(data.address.zipcode)
+    if (data.address.country) addressParts.push(data.address.country)
+    if (data.address.subdivision) addressParts.push(data.address.subdivision)
+    if (addressParts.length > 0) {
+      lines.push(`Address: ${addressParts.filter(Boolean).join(', ')}`)
+    }
+  }
+  
+  if (data.beds || data.baths) {
+    const specs = []
+    if (data.beds) specs.push(`${data.beds} bed${data.beds !== 1 ? 's' : ''}`)
+    if (data.baths) specs.push(`${data.baths} bath${data.baths !== 1 ? 's' : ''}`)
+    if (specs.length > 0) {
+      lines.push(`Property: ${specs.join(', ')} - ${data.property_type || 'OTHER'}`)
+    }
+  }
+  
+  if (data.year_built && data.year_built > 0) {
+    lines.push(`Year Built: ${data.year_built}`)
+  }
+  
+  if (data.living_area?.value && data.living_area.value > 0) {
+    lines.push(`Living Area: ${data.living_area.value} ${data.living_area.unit || 'sqft'}`)
+  }
+  
+  if (data.lot_size?.value && data.lot_size.value > 0) {
+    lines.push(`Lot Size: ${data.lot_size.value} ${data.lot_size.unit || 'sqft'}`)
+  }
+  
+  if (data.description) {
+    lines.push('')
+    lines.push('Description:')
+    lines.push(data.description)
+  }
+  
+  if (data.features_amenities) {
+    const features: string[] = []
+    const fa = data.features_amenities
+    
+    if (fa.pool) features.push('Pool')
+    if (fa.outdoor?.pool) features.push('Pool')
+    if (fa.outdoor?.balcony_terrace) features.push('Balcony/Terrace')
+    if (fa.outdoor?.garden) features.push('Garden')
+    if (fa.outdoor?.amenities && Array.isArray(fa.outdoor.amenities) && fa.outdoor.amenities.length > 0) {
+      features.push(...fa.outdoor.amenities)
+    }
+    if (fa.interior?.fireplace) features.push('Fireplace')
+    if (fa.interior?.kitchen_features && Array.isArray(fa.interior.kitchen_features) && fa.interior.kitchen_features.length > 0) {
+      features.push(...fa.interior.kitchen_features)
+    }
+    if (fa.appliances && Array.isArray(fa.appliances) && fa.appliances.length > 0) {
+      features.push(...fa.appliances)
+    }
+    if (fa.parking?.type) features.push(`Parking: ${fa.parking.type}`)
+    if (fa.building?.elevator) features.push('Elevator')
+    if (fa.energy?.solar) features.push('Solar')
+    if (fa.energy?.ev_charger) features.push('EV Charger')
+    
+    if (features.length > 0) {
+      lines.push('')
+      lines.push('Features & Amenities:')
+      features.forEach(feature => lines.push(`- ${feature}`))
+    }
+  }
+  
+  if (data.highlights && Array.isArray(data.highlights) && data.highlights.length > 0) {
+    lines.push('')
+    lines.push('Current Highlights (for improvement):')
+    data.highlights.forEach((h: any, i: number) => {
+      lines.push(`${i + 1}. ${h.title || ''}: ${h.value || ''}`)
+    })
+  }
+  
+  return lines.join('\n')
+}
+
+/**
  * Generate site config from structured text using OpenAI
  * Universal function - works with any structured text extracted from HTML
  */
@@ -873,23 +970,25 @@ export async function generateTitleCall2(previewId: string) {
     // Extract only relevant parts for title generation (not the full config)
     const relevantData = {
       language: generatedConfig.language || '',
-      photos: generatedConfig.photos || [],
-      address: {
-        city: generatedConfig.address?.city || '',
-        neighborhood: generatedConfig.address?.neighborhood || '',
-      },
+      title: generatedConfig.title || '',
+      address: generatedConfig.address || {},
       beds: generatedConfig.beds || 0,
       baths: generatedConfig.baths || 0,
       property_type: generatedConfig.property_type || 'OTHER',
+      year_built: generatedConfig.year_built || 0,
+      living_area: generatedConfig.living_area || {},
+      lot_size: generatedConfig.lot_size || {},
       description: generatedConfig.description || '',
       features_amenities: generatedConfig.features_amenities || {},
       highlights: generatedConfig.highlights || [], // for improvement
     }
     
+    // Convert relevant data to text format (not JSON)
+    const propertyText = formatPropertyDataForTitle(relevantData)
+    
     // Generate improved title and highlights
-    const configJsonForTitle = JSON.stringify(relevantData, null, 2)
     const openaiResponse = await generateTitle(
-      configJsonForTitle,
+      propertyText,
       generatedConfig.title,
       generatedConfig.highlights
     )
