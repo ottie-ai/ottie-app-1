@@ -32,13 +32,18 @@ export async function POST(request: NextRequest) {
     // This allows server actions to call the worker API without authentication issues
     const internalToken = request.headers.get('x-internal-token')
     const expectedToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
+    const isCronHeader = request.headers.get('x-vercel-cron') === '1'
+    
+    // Debug logging for token validation
+    console.log(`🔵 [Worker API] Token check - received: ${internalToken ? 'present' : 'missing'}, expected: ${expectedToken ? 'set' : 'not set'}, isCron: ${isCronHeader}`)
     
     // Allow if token matches OR if it's a cron job (Vercel cron has x-vercel-cron header)
-    const isCronHeader = request.headers.get('x-vercel-cron') === '1'
-    const isValidInternalCall = internalToken === expectedToken || isCronHeader
+    // In development, allow all requests
+    const isValidInternalCall = internalToken === expectedToken || isCronHeader || process.env.NODE_ENV !== 'production'
     
-    if (!isValidInternalCall && process.env.NODE_ENV === 'production') {
+    if (!isValidInternalCall) {
       console.warn(`⚠️ [Worker API] Unauthorized request - missing or invalid internal token`)
+      console.warn(`⚠️ [Worker API] Token received: ${internalToken}, expected: ${expectedToken}`)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

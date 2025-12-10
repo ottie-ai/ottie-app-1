@@ -94,10 +94,11 @@ export async function generatePreview(url: string) {
       }
       
       const workerUrl = getWorkerUrl()
-      console.log(`🔄 [generatePreview] Triggering worker at ${workerUrl}...`)
-      
       // Use internal token for authentication (bypasses Vercel/platform auth)
       const internalToken = process.env.INTERNAL_API_TOKEN || process.env.VERCEL_URL || 'internal'
+      
+      console.log(`🔄 [generatePreview] Triggering worker at ${workerUrl}...`)
+      console.log(`🔄 [generatePreview] Using token: ${internalToken ? 'set' : 'not set'} (${process.env.INTERNAL_API_TOKEN ? 'INTERNAL_API_TOKEN' : process.env.VERCEL_URL ? 'VERCEL_URL' : 'fallback'})`)
       
       fetch(workerUrl, {
         method: 'POST',
