@@ -86,7 +86,7 @@ RULES:
 
 - **highlights exactly 6**
 
-- floorplan_url: Find a dedicated floor plan (PDF/SVG/image). Look for "Floor plan"/"Plans"/"Grundriss" links.
+- floorplan_url: Find a dedicated floor plan (PDF/SVG/image url). Look for "Floor plan"/"Plans"/"Grundriss" links in all languages.
 
 - language: detect from listing → set language field to ISO code (en/es/de/cs/sk/fr/it) and keep ALL text fields in this language.
 
