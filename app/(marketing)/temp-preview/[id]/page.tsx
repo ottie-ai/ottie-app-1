@@ -339,14 +339,7 @@ function PreviewContent() {
   if (loading) {
     return (
       <div className={`dark bg-[#08000d] min-h-screen flex items-center justify-center transition-opacity duration-[600ms] ${isRevealing ? 'opacity-0' : 'opacity-100'}`}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex-shrink-0 w-8 h-8">
-            <LottieSpinner size={32} />
-          </div>
-          <Typography variant="h2" className="text-white">
-            Assembling your website
-          </Typography>
-        </div>
+        <LottieSpinner size={32} />
       </div>
     )
   }
