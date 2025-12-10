@@ -6,7 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { Typography } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, extractGalleryImages, removeHtmlTagsFromRawHtml, retryPreviewCall1, retryPreviewCall2 } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 
 function PreviewContent() {
@@ -29,8 +29,6 @@ function PreviewContent() {
   const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
   const [removingHtmlTags, setRemovingHtmlTags] = useState(false) // Track HTML tags removal state
-  const [retryingCall1, setRetryingCall1] = useState(false) // Track Call 1 retry state
-  const [retryingCall2, setRetryingCall2] = useState(false) // Track Call 2 retry state
 
   // Format milliseconds to readable time
   const formatTime = (ms: number): string => {
@@ -234,61 +232,6 @@ function PreviewContent() {
     }
   }
 
-  const handleRetryCall1 = async () => {
-    if (!previewId) return
-    
-    setRetryingCall1(true)
-    setError(null)
-    try {
-      const result = await retryPreviewCall1(previewId, false)
-      
-      if ('error' in result) {
-        setError(result.error || 'Failed to retry Call 1')
-        setRetryingCall1(false)
-        return
-      }
-      
-      // Reload preview to show updated data
-      const reloadResult = await getPreview(previewId)
-      if ('error' in reloadResult) {
-        setError(reloadResult.error || 'Failed to reload preview')
-      } else {
-        setPreview(reloadResult.preview)
-      }
-    } catch (err) {
-      setError('Failed to retry Call 1')
-    } finally {
-      setRetryingCall1(false)
-    }
-  }
-
-  const handleRetryCall2 = async () => {
-    if (!previewId) return
-    
-    setRetryingCall2(true)
-    setError(null)
-    try {
-      const result = await retryPreviewCall2(previewId, false)
-      
-      if ('error' in result) {
-        setError(result.error || 'Failed to retry Call 2')
-        setRetryingCall2(false)
-        return
-      }
-      
-      // Reload preview to show updated data
-      const reloadResult = await getPreview(previewId)
-      if ('error' in reloadResult) {
-        setError(reloadResult.error || 'Failed to reload preview')
-      } else {
-        setPreview(reloadResult.preview)
-      }
-    } catch (err) {
-      setError('Failed to retry Call 2')
-    } finally {
-      setRetryingCall2(false)
-    }
-  }
 
 
   if (loading) {
@@ -514,25 +457,6 @@ function PreviewContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={handleRetryCall1}
-                    disabled={retryingCall1}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {retryingCall1 ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Retrying...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Retry Call 1
-                      </>
-                    )}
-                  </Button>
-                  <Button
                     onClick={handleRemoveHtmlTags}
                     disabled={removingHtmlTags}
                     variant="ghost"
@@ -593,25 +517,6 @@ function PreviewContent() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleRetryCall2}
-                    disabled={retryingCall2}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white/60 hover:text-white hover:bg-white/10"
-                  >
-                    {retryingCall2 ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Retrying...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Retry Call 2
-                      </>
-                    )}
-                  </Button>
                   <Button
                     onClick={handleExtractGalleryImages}
                     disabled={extractingImages}

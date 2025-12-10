@@ -237,13 +237,16 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       sourceDomain = 'firecrawl'
     }
     
+    // Determine final status based on OpenAI processing availability
+    const finalStatus = process.env.DISABLE_OPENAI_PROCESSING ? 'completed' : 'pending'
+    
     // Update preview with scraped data
     await supabase
       .from('temp_previews')
       .update({
         raw_html: rawHtml || null,
         ai_ready_data: aiReadyData,
-        status: 'pending', // Will be set to 'completed' after OpenAI processing
+        status: finalStatus, // 'completed' if OpenAI disabled, 'pending' if OpenAI will process
         source_domain: sourceDomain,
       })
       .eq('id', job.id)
@@ -253,7 +256,7 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     // Once we have scraped data, job is "done" from queue perspective
     await markJobCompleted(job.id, true)
     
-    console.log(`✅ [Queue Worker] Scraping completed for job ${job.id}, queue slot freed (OpenAI processing continues asynchronously)`)
+    console.log(`✅ [Queue Worker] Scraping completed for job ${job.id}, status: ${finalStatus}, queue slot freed`)
     
     // Self-trigger: Check if there are more jobs in queue and we're under concurrent limit
     // Each job sends self-trigger immediately after scraping (doesn't wait for OpenAI)
@@ -308,12 +311,11 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     // OpenAI processing (if not disabled) - runs AFTER queue slot is freed
     // This is not part of queue processing, just post-processing
     if (!process.env.DISABLE_OPENAI_PROCESSING) {
+      console.log('🤖 [Queue Worker] Starting OpenAI processing (async, queue slot already freed)...')
       try {
         if (provider === 'apify' && cleanedJson) {
-          console.log('🤖 [Queue Worker] Processing Apify data with OpenAI (async, queue slot already freed)...')
           await generateConfigFromData(job.id, cleanedJson, 'apify')
         } else if (provider === 'firecrawl' && rawHtml) {
-          console.log('🤖 [Queue Worker] Processing Firecrawl HTML with OpenAI (async, queue slot already freed)...')
           
           // Extract structured text from HTML
           const $ = load(rawHtml)
@@ -343,7 +345,17 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       } catch (openAiError: any) {
         console.error('⚠️ [Queue Worker] OpenAI processing failed:', openAiError)
         // Don't fail the whole job if OpenAI fails - scraping was successful
+        // Update status to completed even if OpenAI fails (scraping was successful)
+        await supabase
+          .from('temp_previews')
+          .update({
+            status: 'completed',
+            error_message: `OpenAI processing failed: ${openAiError.message}`,
+          })
+          .eq('id', job.id)
       }
+    } else {
+      console.log('✅ [Queue Worker] OpenAI processing disabled, preview marked as completed')
     }
     
     return { success: true, jobId: job.id }

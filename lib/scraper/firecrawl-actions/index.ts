@@ -172,13 +172,12 @@ export function getFirecrawlActionsGallery(url: string): FirecrawlActionsConfig 
       }
     }
     
-    // Homes.com: Gallery actions disabled - selector doesn't work reliably with basic proxy
-    // Only works with stealth mode, which will be used automatically if needed
-    // if (hostname === 'homes.com' || hostname === 'www.homes.com') {
-    //   return {
-    //     actions: require('./homes').getHomesActionsGallery(),
-    //   }
-    // }
+    // Homes.com: Gallery actions (Call 2)
+    if (hostname === 'homes.com' || hostname === 'www.homes.com') {
+      return {
+        actions: require('./homes').getHomesActionsGallery(),
+      }
+    }
     
     // Add more websites here as needed
     

@@ -18,12 +18,12 @@ function randomDelay(min: number, max: number): number {
 
 /**
  * Get actions for Homes.com gallery expansion (Call 2)
- * Clicks hero carousel item to expand gallery and extract all image URLs
+ * Clicks primary carousel slide image to expand gallery and extract all image URLs
  * 
  * Flow with human-like behavior:
  * 1. Wait for page to load (variable delay)
  * 2. Scroll down slightly (human-like reading behavior)
- * 3. Click .hero-carousel-item to expand gallery
+ * 3. Click .primary-carousel-slide-img to expand gallery
  * 4. Wait for gallery to load (variable delay)
  * 5. Scroll to ensure gallery is fully loaded (human-like behavior)
  * 6. Scrape the page with gallery expanded
@@ -41,10 +41,10 @@ export function getHomesActionsGallery(): FirecrawlAction[] {
     // Step 3: Small delay before clicking (human-like: reading time)
     { type: 'wait', milliseconds: randomDelay(500, 1000) },
     
-    // Step 4: Click .hero-carousel-item to expand gallery
+    // Step 4: Click .primary-carousel-slide-img to expand gallery
     {
       type: 'click',
-      selector: '.hero-carousel-item',
+      selector: '.primary-carousel-slide-img',
     },
     
     // Step 5: Wait for gallery to load (human-like: 2.5-3.5 seconds)
