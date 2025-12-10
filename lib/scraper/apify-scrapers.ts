@@ -66,6 +66,9 @@ export const APIFY_SCRAPERS: ApifyScraperConfig[] = [
     buildInput: (url: string) => {
       return {
         startUrls: [{ url }],
+        proxy: {
+          useApifyProxy: true,
+        },
       }
     },
     cleanJson: cleanRealtorJson, // Realtor.com-specific JSON cleaning
