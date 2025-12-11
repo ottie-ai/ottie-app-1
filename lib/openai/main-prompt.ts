@@ -107,12 +107,6 @@ RULES:
   - Prefer URLs that share the same base pattern / path as the main listing gallery images.
   - If most photos come from e.g. "https://imgs.soukwportugal.pt/37734/properties/...", keep ONLY URLs that match this pattern.
 
-- When generating the final JSON output, include only fields that contain actual extracted data. 
-  - If a field is empty, null, an empty string, an empty array, or an empty object, do not return it at all. 
-  - Preserve the overall structure, but omit any sections for which no values were found.
-  - Do not return placeholder values. Omit fields instead of filling them with null or empty content.
-  - Do not include any fields that are not in the sample config.
-
 JSON STRUCTURE:
 
 ${JSON.stringify(sampleConfig, null, 2)}
