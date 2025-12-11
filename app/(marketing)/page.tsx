@@ -169,9 +169,19 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
+  // Refs to store timers
+  const transitionTimersRef = useRef<NodeJS.Timeout[]>([])
+  
+  // Clear all transition timers
+  const clearTransitionTimers = () => {
+    transitionTimersRef.current.forEach(timer => clearTimeout(timer))
+    transitionTimersRef.current = []
+  }
+
   // Watch for phase changes from API
   useEffect(() => {
     if (!isLoading) {
+      clearTransitionTimers()
       setCurrentMessage('')
       setDisplayedPhase('queue')
       setPendingPhase(null)
@@ -183,21 +193,19 @@ export default function Home() {
     // Initial message when loading starts (no phase change yet)
     if (currentMessage === '' && !isTransitioning) {
       const targetMessage = getLoadingMessage(displayedPhase)
-      let timer1: NodeJS.Timeout | null = null
-      let timer2: NodeJS.Timeout | null = null
       setIsTransitioning(true)
-      timer1 = setTimeout(() => {
+      
+      transitionTimersRef.current.push(setTimeout(() => {
         setCurrentMessage(targetMessage)
         setLoadingPhase('entering')
-        timer2 = setTimeout(() => {
+        
+        transitionTimersRef.current.push(setTimeout(() => {
           setLoadingPhase('visible')
           setIsTransitioning(false)
-        }, 1500)
-      }, 800)
-      return () => {
-        if (timer1) clearTimeout(timer1)
-        if (timer2) clearTimeout(timer2)
-      }
+        }, 1500))
+      }, 800))
+      
+      return
     }
 
     // If new phase arrived and it's different from what we're showing
@@ -209,36 +217,28 @@ export default function Home() {
       }
       
       // Start transition immediately
+      clearTransitionTimers()
       const targetMessage = getLoadingMessage(currentPhase)
-      let timer1: NodeJS.Timeout | null = null
-      let timer2: NodeJS.Timeout | null = null
-      let timer3: NodeJS.Timeout | null = null
       
       // Normal transition: exit → enter
       setIsTransitioning(true)
       setLoadingPhase('exiting')
       
-      timer1 = setTimeout(() => {
+      transitionTimersRef.current.push(setTimeout(() => {
         setLoadingPhase('hidden')
         setCurrentMessage('')
         
-        timer2 = setTimeout(() => {
+        transitionTimersRef.current.push(setTimeout(() => {
           setCurrentMessage(targetMessage)
           setLoadingPhase('entering')
           
-          timer3 = setTimeout(() => {
+          transitionTimersRef.current.push(setTimeout(() => {
             setLoadingPhase('visible')
             setDisplayedPhase(currentPhase)
             setIsTransitioning(false)
-          }, 1500)
-        }, 150)
-      }, 800)
-      
-      return () => {
-        if (timer1) clearTimeout(timer1)
-        if (timer2) clearTimeout(timer2)
-        if (timer3) clearTimeout(timer3)
-      }
+          }, 1500))
+        }, 150))
+      }, 800))
     }
   }, [isLoading, currentPhase, displayedPhase, isTransitioning, currentMessage])
 
