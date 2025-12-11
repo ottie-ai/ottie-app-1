@@ -467,11 +467,11 @@ export default function Home() {
                 </span>
               ))}
             </p>
-            {currentPhase !== 'queue' && loadingPhase === 'visible' && (
-              <p className="loading-duration-home">
-                <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
-              </p>
-            )}
+          {isLoading && (
+            <p className="loading-duration-home">
+              <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
+            </p>
+          )}
           </div>
         </div>
       )}
