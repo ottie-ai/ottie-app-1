@@ -180,6 +180,26 @@ export default function Home() {
       return
     }
 
+    // Initial message when loading starts (no phase change yet)
+    if (currentMessage === '' && !isTransitioning) {
+      const targetMessage = getLoadingMessage(displayedPhase)
+      let timer1: NodeJS.Timeout | null = null
+      let timer2: NodeJS.Timeout | null = null
+      setIsTransitioning(true)
+      timer1 = setTimeout(() => {
+        setCurrentMessage(targetMessage)
+        setLoadingPhase('entering')
+        timer2 = setTimeout(() => {
+          setLoadingPhase('visible')
+          setIsTransitioning(false)
+        }, 1500)
+      }, 800)
+      return () => {
+        if (timer1) clearTimeout(timer1)
+        if (timer2) clearTimeout(timer2)
+      }
+    }
+
     // If new phase arrived and it's different from what we're showing
     if (currentPhase !== displayedPhase) {
       if (isTransitioning) {
@@ -193,26 +213,6 @@ export default function Home() {
       let timer1: NodeJS.Timeout | null = null
       let timer2: NodeJS.Timeout | null = null
       let timer3: NodeJS.Timeout | null = null
-      
-      // First message - initial appearance
-      if (currentMessage === '') {
-        setIsTransitioning(true)
-        timer1 = setTimeout(() => {
-          setCurrentMessage(targetMessage)
-          setLoadingPhase('entering')
-          
-          timer2 = setTimeout(() => {
-            setLoadingPhase('visible')
-            setDisplayedPhase(currentPhase)
-            setIsTransitioning(false)
-          }, 1500)
-        }, 800)
-        
-        return () => {
-          if (timer1) clearTimeout(timer1)
-          if (timer2) clearTimeout(timer2)
-        }
-      }
       
       // Normal transition: exit → enter
       setIsTransitioning(true)
