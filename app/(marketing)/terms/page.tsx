@@ -28,7 +28,7 @@ export default function TermsPage() {
                   <ArrowLeft className="h-5 w-5 text-foreground" />
                 </Link>
                 <Typography variant="h1" className="mb-0">
-                  OTTIE - TERMS OF SERVICE
+                  Ottie - Terms of Service
                 </Typography>
               </div>
               <Typography variant="muted" className="text-muted-foreground">
@@ -42,7 +42,7 @@ export default function TermsPage() {
             {/* Section 1 */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                1. ACCEPTANCE OF TERMS
+                1. Acceptance of Terms
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 By accessing and using the Ottie platform (the "Service"), including all features, functions, and tools (the "Platform"), you ("User" or "you") accept and agree to be bound by these Terms of Service ("Terms"), our Privacy Policy, and all additional terms incorporated by reference. If you do not agree to these Terms, you may not use the Service.
@@ -68,7 +68,7 @@ export default function TermsPage() {
             {/* Section 2 */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                2. DESCRIPTION OF SERVICE
+                2. Description of Service
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 Ottie is a Software-as-a-Service (SaaS) platform designed to assist real estate professionals, property managers, and related businesses in creating and managing property marketing materials and client communications. The Service includes, but is not limited to:
@@ -91,7 +91,7 @@ export default function TermsPage() {
             {/* Section 3 */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                3. USER ACCOUNTS AND RESPONSIBILITIES
+                3. User Accounts and Responsibilities
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -126,7 +126,7 @@ export default function TermsPage() {
             {/* Section 4 */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                4. USER-GENERATED CONTENT AND INTELLECTUAL PROPERTY RIGHTS
+                4. User-Generated Content and Intellectual Property Rights
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -176,7 +176,7 @@ export default function TermsPage() {
             {/* Section 5 - URL Import */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                5. URL IMPORT AND WEB SCRAPING ACKNOWLEDGMENT
+                5. URL Import and Web Scraping Acknowledgment
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -256,7 +256,7 @@ export default function TermsPage() {
             {/* Section 6 - Acceptable Use */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                6. ACCEPTABLE USE POLICY
+                6. Acceptable Use Policy
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -368,7 +368,7 @@ export default function TermsPage() {
             {/* Section 7 - Content Generation */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                7. CONTENT GENERATION AND LIABILITY
+                7. Content Generation and Liability
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -420,7 +420,7 @@ export default function TermsPage() {
             {/* Section 8 - Third Party Services */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                8. THIRD-PARTY SERVICES AND INTEGRATIONS
+                8. Third-Party Services and Integrations
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -451,7 +451,7 @@ export default function TermsPage() {
             {/* Section 9 - Limitation of Liability */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                9. LIMITATION OF LIABILITY AND WARRANTIES
+                9. Limitation of Liability and Warranties
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -519,7 +519,7 @@ export default function TermsPage() {
             {/* Section 10 - Indemnification */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                10. INDEMNIFICATION
+                10. Indemnification
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -602,7 +602,7 @@ export default function TermsPage() {
             {/* Section 11 - Data Protection */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                11. DATA PROTECTION AND PRIVACY
+                11. Data Protection and Privacy
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -639,7 +639,7 @@ export default function TermsPage() {
             {/* Section 12 - Payment */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                12. PAYMENT TERMS AND BILLING
+                12. Payment Terms and Billing
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -687,7 +687,7 @@ export default function TermsPage() {
             {/* Section 13 - Service Availability */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                13. SERVICE AVAILABILITY AND MAINTENANCE
+                13. Service Availability and Maintenance
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -715,7 +715,7 @@ export default function TermsPage() {
             {/* Section 14 - Export Controls */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                14. EXPORT CONTROLS AND SANCTIONS
+                14. Export Controls and Sanctions
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 You agree not to use the Service in violation of U.S. export control laws, including the Export Administration Regulations (EAR) and International Traffic in Arms Regulations (ITAR). The Service is not available to individuals or entities located in countries subject to U.S. sanctions, including Cuba, Iran, North Korea, Syria, and the Crimea region.
@@ -727,7 +727,7 @@ export default function TermsPage() {
             {/* Section 15 - Dispute Resolution */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                15. DISPUTE RESOLUTION
+                15. Dispute Resolution
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -773,7 +773,7 @@ export default function TermsPage() {
             {/* Section 16 - Export Compliance */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                16. EXPORT COMPLIANCE AND SANCTIONS
+                16. Export Compliance and Sanctions
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 The Service may not be accessed, used, or exported by or to:
@@ -793,7 +793,7 @@ export default function TermsPage() {
             {/* Section 17 - Termination */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                17. TERMINATION
+                17. Termination
               </Typography>
               
               <Typography variant="h3" className="mt-6 mb-3">
@@ -836,7 +836,7 @@ export default function TermsPage() {
             {/* Section 18 - Severability */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                18. SEVERABILITY
+                18. Severability
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 If any provision of these Terms is found to be invalid, illegal, or unenforceable, that provision shall be modified to the minimum extent necessary to make it enforceable, or if such modification is not possible, the provision shall be severed. The remaining provisions shall continue in full force and effect.
@@ -848,7 +848,7 @@ export default function TermsPage() {
             {/* Section 19 - Entire Agreement */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                19. ENTIRE AGREEMENT
+                19. Entire Agreement
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 These Terms, together with our Privacy Policy and any additional terms posted on the Platform, constitute the entire agreement between you and Ottie regarding the Service and supersede all prior negotiations, representations, and agreements, whether written or oral.
@@ -860,7 +860,7 @@ export default function TermsPage() {
             {/* Section 20 - Contact */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                20. CONTACT INFORMATION
+                20. Contact Information
               </Typography>
               <Typography variant="p" className="text-muted-foreground">
                 <strong>For questions about these Terms, please contact:</strong>
@@ -883,7 +883,7 @@ export default function TermsPage() {
             {/* Schedules */}
             <div className="space-y-3">
               <Typography variant="h2" className="mt-8 mb-4">
-                SCHEDULES AND ATTACHMENTS
+                Schedules and Attachments
               </Typography>
               <ul className="space-y-2 ml-6 list-disc text-muted-foreground">
                 <li><strong>Schedule A:</strong> Data Processing Addendum (DPA) - for GDPR compliance</li>
