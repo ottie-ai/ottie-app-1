@@ -62,7 +62,7 @@ PRIORITY FIELDS (fill FIRST):
 
 3. price info extract number only
 
-4. photos: include all available largest
+4. photos
 
 5. beds, baths, living_area
 
@@ -93,6 +93,8 @@ RULES:
 - interest_rate: in percent
 
 - do not use currency in unit
+
+- photos: EXHAUSTIVE LIST. You MUST extract EVERY single photo URL found in the input. Do not truncate the array. If there are 50 photos, return 50 URLs.
 
 - agent.agency: 
   - On agency sites: use agency name from header/footer/contact.
