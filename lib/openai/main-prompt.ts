@@ -92,6 +92,8 @@ RULES:
 
 - interest_rate: in percent
 
+- do not use currency in unit
+
 - agent.agency: 
   - On agency sites: use agency name from header/footer/contact.
   - On portals (Zillow, Idealista, etc.): use the listing agent's brokerage name if shown. Do NOT use the portal name (e.g. "Zillow") as the agency; if unknown, leave empty.
