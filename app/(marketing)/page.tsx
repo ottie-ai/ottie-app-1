@@ -224,7 +224,9 @@ export default function Home() {
     if (currentPhase !== displayedPhase && currentPhase !== lastAnimatedPhaseRef.current) {
       if (isTransitioningRef.current) {
         // Queue it - will be processed after current transition
-        setPendingPhase(currentPhase !== pendingPhase ? currentPhase : pendingPhase)
+        if (pendingPhase !== currentPhase) {
+          setPendingPhase(currentPhase)
+        }
         return
       }
       
@@ -232,6 +234,9 @@ export default function Home() {
       clearTransitionTimers()
       const targetPhase = currentPhase
       const targetMessage = getLoadingMessage(targetPhase)
+      
+      // Mark as animated BEFORE starting to prevent duplicate triggers
+      lastAnimatedPhaseRef.current = targetPhase
       isTransitioningRef.current = true
       setIsTransitioning(true)
       setLoadingPhase('exiting')
@@ -247,7 +252,6 @@ export default function Home() {
           transitionTimersRef.current.push(setTimeout(() => {
             setLoadingPhase('visible')
             setDisplayedPhase(targetPhase)
-            lastAnimatedPhaseRef.current = targetPhase
             setIsTransitioning(false)
             isTransitioningRef.current = false
           }, 1500))
@@ -496,25 +500,27 @@ export default function Home() {
       {isLoading && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
-            {/* Status message - only show when not waiting/hidden */}
-            {loadingPhase !== 'waiting' && loadingPhase !== 'hidden' && currentMessage && (
-              <p className="loading-text-home">
-                {loadingWords.map((word, index) => (
-                  <span
-                      key={`${displayedPhase}-${displayMessage}-${index}`}
-                    className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
-                    style={{
-                      animationDelay: loadingPhase === 'exiting'
-                        ? `${(loadingWords.length - 1 - index) * 0.1}s`
-                        : `${index * 0.12}s`,
-                    }}
-                  >
-                    {word}
-                    {index < loadingWords.length - 1 && '\u00A0'}
-                  </span>
-                ))}
-              </p>
-            )}
+            {/* Status message - with min-height to prevent duration jumping */}
+            <div className="min-h-[3rem] flex items-center justify-center">
+              {loadingPhase !== 'waiting' && loadingPhase !== 'hidden' && currentMessage && (
+                <p className="loading-text-home">
+                  {loadingWords.map((word, index) => (
+                    <span
+                        key={`${displayedPhase}-${displayMessage}-${index}`}
+                      className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
+                      style={{
+                        animationDelay: loadingPhase === 'exiting'
+                          ? `${(loadingWords.length - 1 - index) * 0.1}s`
+                          : `${index * 0.12}s`,
+                      }}
+                    >
+                      {word}
+                      {index < loadingWords.length - 1 && '\u00A0'}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
             {/* Duration - always visible during loading */}
             <p className="loading-duration-home">
               <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
