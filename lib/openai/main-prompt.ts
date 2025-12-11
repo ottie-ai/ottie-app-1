@@ -90,6 +90,8 @@ RULES:
 
 - language: detect from listing → set language field to ISO code (en/es/de/cs/sk/fr/it) and keep ALL text fields in this language.
 
+- interest_rate: in percent
+
 - agent.agency: 
   - On agency sites: use agency name from header/footer/contact.
   - On portals (Zillow, Idealista, etc.): use the listing agent's brokerage name if shown. Do NOT use the portal name (e.g. "Zillow") as the agency; if unknown, leave empty.
