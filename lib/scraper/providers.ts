@@ -544,8 +544,18 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
       const apifyResult = await runApifyActor(fallbackConfig, url, timeout)
       console.log('✅ [Apify Fallback] Successful scrape via generic actor')
 
+      // Try to extract HTML from common Apify result shapes and convert to markdown
+      const fallbackHtml =
+        apifyResult.data?.html ||
+        apifyResult.data?.pageFunctionResult?.html ||
+        apifyResult.data?.pageFunctionResult?.content ||
+        apifyResult.data?.content
+      const fallbackMarkdown = fallbackHtml ? htmlToMarkdownUniversal(fallbackHtml) : undefined
+
       return {
         json: apifyResult.data,
+        html: fallbackHtml,
+        markdown: fallbackMarkdown,
         provider: 'apify',
         duration: apifyResult.duration,
         apifyScraperId: fallbackConfig.id,
