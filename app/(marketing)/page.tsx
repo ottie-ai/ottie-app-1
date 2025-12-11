@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -63,12 +63,13 @@ export default function Home() {
   
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
-  const [currentPhase, setCurrentPhase] = useState<string>('queue')
+  const [currentPhase, setCurrentPhase] = useState<string>('queue') // Latest phase from API
+  const [displayedPhase, setDisplayedPhase] = useState<string>('queue') // Phase currently shown in UI
+  const [pendingPhase, setPendingPhase] = useState<string | null>(null) // Phase waiting to be shown
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [error, setError] = useState<string | null>(null)
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const [currentMessage, setCurrentMessage] = useState<string>('')
-  const [previousMessage, setPreviousMessage] = useState<string>('')
   const [isTransitioning, setIsTransitioning] = useState(false)
   
   // Plans from database
@@ -168,86 +169,88 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
-  // Ref to track the latest phase for use in timeouts
-  const latestPhaseRef = useRef(currentPhase)
-  useEffect(() => {
-    latestPhaseRef.current = currentPhase
-  }, [currentPhase])
-
-  // Smooth message transition when phase changes
-  // Sequence: exiting -> hidden -> entering -> visible
-  // During transition, phase changes are queued and applied after transition completes
+  // Watch for phase changes from API
   useEffect(() => {
     if (!isLoading) {
-      // Reset when loading stops
       setCurrentMessage('')
-      setPreviousMessage('')
+      setDisplayedPhase('queue')
+      setPendingPhase(null)
       setLoadingPhase('waiting')
       setIsTransitioning(false)
       return
     }
 
-    const newMessage = getLoadingMessage(currentPhase)
-    
-    // If we're transitioning, ignore all phase changes - they'll be picked up after
-    if (isTransitioning) {
-      return
-    }
-    
-    // If message changed, trigger smooth transition
-    if (newMessage !== currentMessage && currentMessage !== '') {
-      setIsTransitioning(true)
-      // Step 1: Start exit animation - stará správa sa zmizne
-      setLoadingPhase('exiting')
+    // If new phase arrived and it's different from what we're showing
+    if (currentPhase !== displayedPhase) {
+      if (isTransitioning) {
+        // Queue it - will be processed after current transition
+        setPendingPhase(currentPhase)
+        return
+      }
       
-      // Step 2: After exit animation completes, hide everything
-      const exitTimer = setTimeout(() => {
-        setLoadingPhase('hidden')
-        setCurrentMessage('') // Clear message during hidden phase
-        
-        // Step 3: After brief pause, get LATEST phase and show its message
-        const hiddenTimer = setTimeout(() => {
-          // Use ref to get the most current phase (may have changed during transition)
-          const latestMessage = getLoadingMessage(latestPhaseRef.current)
-          setCurrentMessage(latestMessage)
-          setPreviousMessage(latestMessage)
+      // Start transition immediately
+      const targetMessage = getLoadingMessage(currentPhase)
+      let timer1: NodeJS.Timeout | null = null
+      let timer2: NodeJS.Timeout | null = null
+      let timer3: NodeJS.Timeout | null = null
+      
+      // First message - initial appearance
+      if (currentMessage === '') {
+        setIsTransitioning(true)
+        timer1 = setTimeout(() => {
+          setCurrentMessage(targetMessage)
           setLoadingPhase('entering')
           
-          // Step 4: After enter animation, make it fully visible
-          const enterTimer = setTimeout(() => {
+          timer2 = setTimeout(() => {
             setLoadingPhase('visible')
+            setDisplayedPhase(currentPhase)
             setIsTransitioning(false)
-            // After transition ends, check if phase changed again and trigger new transition
-          }, 1500) // Faster enter animation
-          
-          return () => clearTimeout(enterTimer)
-        }, 150) // Shorter pause
+          }, 1500)
+        }, 800)
         
-        return () => clearTimeout(hiddenTimer)
-      }, 800) // Faster exit animation
+        return () => {
+          if (timer1) clearTimeout(timer1)
+          if (timer2) clearTimeout(timer2)
+        }
+      }
       
-      return () => clearTimeout(exitTimer)
-    } else if (currentMessage === '' && newMessage !== '') {
-      // First message - wait for sphere to expand, then show message
+      // Normal transition: exit → enter
       setIsTransitioning(true)
-      const initialDelay = setTimeout(() => {
-        // Use ref to get the most current phase
-        const latestMessage = getLoadingMessage(latestPhaseRef.current)
-        setCurrentMessage(latestMessage)
-        setPreviousMessage(latestMessage)
-        setLoadingPhase('entering')
-        
-        const enterTimer = setTimeout(() => {
-          setLoadingPhase('visible')
-          setIsTransitioning(false)
-        }, 1500) // Faster enter animation
-        
-        return () => clearTimeout(enterTimer)
-      }, 800) // Shorter initial delay
+      setLoadingPhase('exiting')
       
-      return () => clearTimeout(initialDelay)
+      timer1 = setTimeout(() => {
+        setLoadingPhase('hidden')
+        setCurrentMessage('')
+        
+        timer2 = setTimeout(() => {
+          setCurrentMessage(targetMessage)
+          setLoadingPhase('entering')
+          
+          timer3 = setTimeout(() => {
+            setLoadingPhase('visible')
+            setDisplayedPhase(currentPhase)
+            setIsTransitioning(false)
+          }, 1500)
+        }, 150)
+      }, 800)
+      
+      return () => {
+        if (timer1) clearTimeout(timer1)
+        if (timer2) clearTimeout(timer2)
+        if (timer3) clearTimeout(timer3)
+      }
     }
-  }, [isLoading, currentPhase, currentMessage, isTransitioning])
+  }, [isLoading, currentPhase, displayedPhase, isTransitioning, currentMessage])
+
+  // When transition completes and there's a pending phase, trigger it
+  useEffect(() => {
+    if (!isTransitioning && pendingPhase && pendingPhase !== displayedPhase) {
+      // Clear pending and let the main effect handle the transition
+      const nextPhase = pendingPhase
+      setPendingPhase(null)
+      setCurrentPhase(nextPhase) // This will trigger the main effect
+    }
+  }, [isTransitioning, pendingPhase, displayedPhase])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -450,8 +453,8 @@ export default function Home() {
     }
   }
 
-  // Get current message based on phase
-  const displayMessage = currentMessage || getLoadingMessage(currentPhase)
+  // Get current message based on what's being displayed
+  const displayMessage = currentMessage || getLoadingMessage(displayedPhase)
   const loadingWords = displayMessage.split(' ')
 
   return (
@@ -478,7 +481,7 @@ export default function Home() {
             <p className="loading-text-home">
               {loadingWords.map((word, index) => (
                 <span
-                    key={`${currentPhase}-${displayMessage}-${index}`}
+                    key={`${displayedPhase}-${displayMessage}-${index}`}
                   className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
                   style={{
                     animationDelay: loadingPhase === 'exiting'
