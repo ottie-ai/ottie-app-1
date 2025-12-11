@@ -32,12 +32,10 @@ const realEstateLinks = [
 ]
 
 // Phase-based loading messages tied to actual process
-const getLoadingMessage = (phase: string, queuePosition: number | null): string => {
+// Queue position is NOT included in message to avoid flicker during queue phase
+const getLoadingMessage = (phase: string): string => {
   switch (phase) {
     case 'queue':
-      if (queuePosition !== null && queuePosition > 0) {
-        return `Waiting for available agent... (${queuePosition} ahead)`
-      }
       return 'Waiting for available agent...'
     case 'scraping':
       return 'Reading property details'
@@ -170,8 +168,15 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
+  // Ref to track the latest phase for use in timeouts
+  const latestPhaseRef = useRef(currentPhase)
+  useEffect(() => {
+    latestPhaseRef.current = currentPhase
+  }, [currentPhase])
+
   // Smooth message transition when phase changes
   // Sequence: exiting -> hidden -> entering -> visible
+  // During transition, phase changes are queued and applied after transition completes
   useEffect(() => {
     if (!isLoading) {
       // Reset when loading stops
@@ -182,10 +187,10 @@ export default function Home() {
       return
     }
 
-    const newMessage = getLoadingMessage(currentPhase, queuePosition)
+    const newMessage = getLoadingMessage(currentPhase)
     
-    // Ignore if we're already transitioning to this message
-    if (isTransitioning && newMessage === previousMessage) {
+    // If we're transitioning, ignore all phase changes - they'll be picked up after
+    if (isTransitioning) {
       return
     }
     
@@ -194,48 +199,55 @@ export default function Home() {
       setIsTransitioning(true)
       // Step 1: Start exit animation - stará správa sa zmizne
       setLoadingPhase('exiting')
-      setPreviousMessage(newMessage) // Store target message for transition check
       
       // Step 2: After exit animation completes, hide everything
       const exitTimer = setTimeout(() => {
         setLoadingPhase('hidden')
         setCurrentMessage('') // Clear message during hidden phase
         
-        // Step 3: After brief pause, show new message
+        // Step 3: After brief pause, get LATEST phase and show its message
         const hiddenTimer = setTimeout(() => {
-          setCurrentMessage(newMessage)
+          // Use ref to get the most current phase (may have changed during transition)
+          const latestMessage = getLoadingMessage(latestPhaseRef.current)
+          setCurrentMessage(latestMessage)
+          setPreviousMessage(latestMessage)
           setLoadingPhase('entering')
           
           // Step 4: After enter animation, make it fully visible
           const enterTimer = setTimeout(() => {
             setLoadingPhase('visible')
             setIsTransitioning(false)
-          }, 1800) // Match animation duration (1.8s)
+            // After transition ends, check if phase changed again and trigger new transition
+          }, 1500) // Faster enter animation
           
           return () => clearTimeout(enterTimer)
-        }, 200) // Brief pause between exit and enter
+        }, 150) // Shorter pause
         
         return () => clearTimeout(hiddenTimer)
-      }, 1000) // Exit animation duration (1s)
+      }, 800) // Faster exit animation
       
       return () => clearTimeout(exitTimer)
     } else if (currentMessage === '' && newMessage !== '') {
       // First message - wait for sphere to expand, then show message
+      setIsTransitioning(true)
       const initialDelay = setTimeout(() => {
-        setCurrentMessage(newMessage)
+        // Use ref to get the most current phase
+        const latestMessage = getLoadingMessage(latestPhaseRef.current)
+        setCurrentMessage(latestMessage)
+        setPreviousMessage(latestMessage)
         setLoadingPhase('entering')
-        setPreviousMessage(newMessage)
         
         const enterTimer = setTimeout(() => {
           setLoadingPhase('visible')
-        }, 1800) // Match animation duration (1.8s)
+          setIsTransitioning(false)
+        }, 1500) // Faster enter animation
         
         return () => clearTimeout(enterTimer)
-      }, 1000) // Wait 1s for sphere expansion
+      }, 800) // Shorter initial delay
       
       return () => clearTimeout(initialDelay)
     }
-  }, [isLoading, currentPhase, queuePosition, currentMessage, isTransitioning, previousMessage])
+  }, [isLoading, currentPhase, currentMessage, isTransitioning])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -439,7 +451,7 @@ export default function Home() {
   }
 
   // Get current message based on phase
-  const displayMessage = currentMessage || getLoadingMessage(currentPhase, queuePosition)
+  const displayMessage = currentMessage || getLoadingMessage(currentPhase)
   const loadingWords = displayMessage.split(' ')
 
   return (
