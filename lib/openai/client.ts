@@ -1,9 +1,10 @@
 /**
- * OpenAI API Client
- * Handles communication with OpenAI API for AI-powered features
+ * OpenAI & Groq API Client
+ * Handles communication with OpenAI and Groq APIs for AI-powered features
  */
 
 import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { getRealEstateConfigSystemMessage } from './main-prompt'
 
 /**
@@ -23,14 +24,50 @@ export function getOpenAIClient(): OpenAI {
 }
 
 /**
- * Generate structured JSON from text using OpenAI
+ * Get Groq client instance
+ * Throws error if GROQ_API_KEY is not configured
+ */
+export function getGroqClient(): Groq {
+  const apiKey = process.env.GROQ_API_KEY
+
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY is not configured')
+  }
+
+  return new Groq({
+    apiKey,
+  })
+}
+
+/**
+ * Generate structured JSON from text using OpenAI or Groq
+ * Provider is determined by CALL1_AI_PROVIDER env variable (default: 'openai')
  * 
- * @param prompt - The prompt to send to OpenAI
+ * @param prompt - The prompt to send to AI
  * @param schema - Optional JSON schema for structured output
- * @param model - Model to use (default: 'gpt-4o-mini')
+ * @param model - Model to use (default: 'gpt-4o-mini' for OpenAI, 'llama-3.1-8b-instant' for Groq)
  * @returns Generated JSON object
  */
 export async function generateStructuredJSON(
+  prompt: string,
+  schema?: object,
+  model?: string
+): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+  // Determine provider from env variable (default: 'openai')
+  // Options: 'openai' or 'groq'
+  const provider = (process.env.CALL1_AI_PROVIDER || 'openai').toLowerCase()
+  
+  if (provider === 'groq') {
+    return generateStructuredJSONWithGroq(prompt, schema, model)
+  } else {
+    return generateStructuredJSONWithOpenAI(prompt, schema, model)
+  }
+}
+
+/**
+ * Generate structured JSON using OpenAI
+ */
+async function generateStructuredJSONWithOpenAI(
   prompt: string,
   schema?: object,
   model: string = 'gpt-4o-mini'
@@ -103,6 +140,83 @@ export async function generateStructuredJSON(
     }
 
     throw new Error(`OpenAI error: ${error.message || 'Unknown error'}`)
+  }
+}
+
+/**
+ * Generate structured JSON using Groq
+ */
+async function generateStructuredJSONWithGroq(
+  prompt: string,
+  schema?: object,
+  model: string = 'llama-3.1-8b-instant'
+): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+  const client = getGroqClient()
+  const callStartTime = Date.now()
+
+  console.log('🤖 [Groq] Generating structured JSON...')
+  console.log('🤖 [Groq] Model:', model)
+  console.log('🤖 [Groq] Prompt length:', prompt.length)
+
+  try {
+    const response = await client.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content: schema
+            ? `You are a helpful assistant that generates valid JSON. Return only valid JSON matching the provided schema.`
+            : getRealEstateConfigSystemMessage(),
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.3, // Lower temperature for more consistent structured output
+      response_format: { type: 'json_object' },
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('No content in Groq response')
+    }
+
+    const callEndTime = Date.now()
+    const callDuration = callEndTime - callStartTime
+    console.log(`✅ [Groq] Generated JSON (${callDuration}ms)`)
+    
+    // Extract usage info
+    const usage = response.usage ? {
+      prompt_tokens: response.usage.prompt_tokens,
+      completion_tokens: response.usage.completion_tokens,
+      total_tokens: response.usage.total_tokens,
+    } : undefined
+
+    if (usage) {
+      console.log(`📊 [Groq] Usage: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total tokens`)
+    }
+
+    // Parse JSON from response
+    try {
+      const data = JSON.parse(content)
+      return { data, usage, callDuration }
+    } catch (parseError) {
+      console.error('❌ [Groq] Failed to parse JSON:', parseError)
+      throw new Error(`Invalid JSON in Groq response: ${parseError}`)
+    }
+  } catch (error: any) {
+    const duration = Date.now() - callStartTime
+    console.error(`❌ [Groq] Error after ${duration}ms:`, error.message)
+
+    if (error.status === 401) {
+      throw new Error('Groq API key is invalid')
+    }
+    if (error.status === 429) {
+      throw new Error('Groq API rate limit exceeded')
+    }
+
+    throw new Error(`Groq error: ${error.message || 'Unknown error'}`)
   }
 }
 
