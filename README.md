@@ -69,9 +69,6 @@ GROQ_API_KEY=gsk-your_groq_api_key_here
 # AI Provider Selection for Call 1 (JSON config generation)
 # Options: 'openai' (default) or 'groq'
 CALL1_AI_PROVIDER=openai
-
-# Optional: Disable OpenAI processing for debugging
-# DISABLE_OPENAI_PROCESSING=true
 ```
 
 **Note**: 
@@ -80,7 +77,6 @@ CALL1_AI_PROVIDER=openai
   - **Call 1** (JSON generation): Supports OpenAI (GPT-4o-mini) or Groq (Llama-3.1-8b-instant). Configure via `CALL1_AI_PROVIDER`.
   - **Call 2** (Title/highlights): Always uses OpenAI (GPT-4o-mini).
 - See [AI Providers Documentation](./docs/AI_PROVIDERS.md) for detailed configuration and provider comparison.
-- Set `DISABLE_OPENAI_PROCESSING=true` to skip AI processing (useful for debugging scraping without AI costs).
 
 ## Project Structure
 

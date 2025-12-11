@@ -406,8 +406,8 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       sourceDomain = 'firecrawl'
     }
     
-    // Determine final status based on OpenAI processing availability
-    const finalStatus = process.env.DISABLE_OPENAI_PROCESSING ? 'completed' : 'pending'
+    // Set status to pending - OpenAI processing will run after scraping
+    const finalStatus = 'pending'
     
     // Ensure markdown fallbacks for downstream steps
     if (!markdown && html) {
@@ -503,59 +503,55 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       // Non-critical - cron will pick up remaining jobs
     }
     
-    // OpenAI processing (if not disabled) - runs AFTER queue slot is freed
+    // OpenAI/Groq processing - runs AFTER queue slot is freed
     // This is not part of queue processing, just post-processing
-    if (!process.env.DISABLE_OPENAI_PROCESSING) {
-      console.log('🤖 [Queue Worker] Starting OpenAI processing (async, queue slot already freed)...')
-      try {
-        if (provider === 'apify' && cleanedJson) {
-          await generateConfigFromData(job.id, cleanedJson, 'apify')
-        } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
-          let structuredText = markdown || null
+    console.log('🤖 [Queue Worker] Starting AI processing (async, queue slot already freed)...')
+    try {
+      if (provider === 'apify' && cleanedJson) {
+        await generateConfigFromData(job.id, cleanedJson, 'apify')
+      } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
+        let structuredText = markdown || null
 
-          if (!structuredText && rawHtml) {
-            const $ = load(rawHtml)
-            const mainContentSelector = getMainContentSelector(job.url) || 'main'
-            const mainElement = $(mainContentSelector)
-            
-            if (mainElement.length > 0) {
-              const htmlCleaner = getHtmlCleaner(job.url)
-              if (htmlCleaner) {
-                htmlCleaner(mainElement)
-              }
-              
-              const mainHtml = $.html(mainElement)
-              structuredText = extractStructuredText(mainHtml)
+        if (!structuredText && rawHtml) {
+          const $ = load(rawHtml)
+          const mainContentSelector = getMainContentSelector(job.url) || 'main'
+          const mainElement = $(mainContentSelector)
+          
+          if (mainElement.length > 0) {
+            const htmlCleaner = getHtmlCleaner(job.url)
+            if (htmlCleaner) {
+              htmlCleaner(mainElement)
             }
-          }
-
-          if (structuredText) {
-            // Persist updated markdown for debugging
-            await supabase
-              .from('temp_previews')
-              .update({
-                default_markdown: structuredText,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', job.id)
             
-            await generateConfigFromData(job.id, structuredText, 'text')
+            const mainHtml = $.html(mainElement)
+            structuredText = extractStructuredText(mainHtml)
           }
         }
-      } catch (openAiError: any) {
-        console.error('⚠️ [Queue Worker] OpenAI processing failed:', openAiError)
-        // Don't fail the whole job if OpenAI fails - scraping was successful
-        // Update status to completed even if OpenAI fails (scraping was successful)
-        await supabase
-          .from('temp_previews')
-          .update({
-            status: 'completed',
-            error_message: `OpenAI processing failed: ${openAiError.message}`,
-          })
-          .eq('id', job.id)
+
+        if (structuredText) {
+          // Persist updated markdown for debugging
+          await supabase
+            .from('temp_previews')
+            .update({
+              default_markdown: structuredText,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', job.id)
+          
+          await generateConfigFromData(job.id, structuredText, 'text')
+        }
       }
-    } else {
-      console.log('✅ [Queue Worker] OpenAI processing disabled, preview marked as completed')
+    } catch (aiError: any) {
+      console.error('⚠️ [Queue Worker] AI processing failed:', aiError)
+      // Don't fail the whole job if AI fails - scraping was successful
+      // Update status to completed even if AI fails (scraping was successful)
+      await supabase
+        .from('temp_previews')
+        .update({
+          status: 'completed',
+          error_message: `AI processing failed: ${aiError.message}`,
+        })
+        .eq('id', job.id)
     }
     
     return { success: true, jobId: job.id }
