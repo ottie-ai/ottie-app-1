@@ -506,52 +506,85 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     // OpenAI/Groq processing - runs AFTER queue slot is freed
     // This is not part of queue processing, just post-processing
     console.log('🤖 [Queue Worker] Starting AI processing (async, queue slot already freed)...')
+    console.log('🤖 [Queue Worker] Provider:', provider)
+    console.log('🤖 [Queue Worker] Has cleanedJson:', !!cleanedJson)
+    console.log('🤖 [Queue Worker] Has markdown:', !!markdown, markdown ? `(${markdown.length} chars)` : '')
+    console.log('🤖 [Queue Worker] Has rawHtml:', !!rawHtml, rawHtml ? `(${rawHtml.length} chars)` : '')
+    
     try {
       if (provider === 'apify' && cleanedJson) {
-        await generateConfigFromData(job.id, cleanedJson, 'apify')
-      } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
-        let structuredText = markdown || null
+          await generateConfigFromData(job.id, cleanedJson, 'apify')
+        } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
+          let structuredText = markdown || null
 
-        if (!structuredText && rawHtml) {
-          const $ = load(rawHtml)
-          const mainContentSelector = getMainContentSelector(job.url) || 'main'
-          const mainElement = $(mainContentSelector)
-          
-          if (mainElement.length > 0) {
-            const htmlCleaner = getHtmlCleaner(job.url)
-            if (htmlCleaner) {
-              htmlCleaner(mainElement)
-            }
+          if (!structuredText && rawHtml) {
+            const $ = load(rawHtml)
+            const mainContentSelector = getMainContentSelector(job.url) || 'main'
+            const mainElement = $(mainContentSelector)
             
-            const mainHtml = $.html(mainElement)
-            structuredText = extractStructuredText(mainHtml)
+            if (mainElement.length > 0) {
+              const htmlCleaner = getHtmlCleaner(job.url)
+              if (htmlCleaner) {
+                htmlCleaner(mainElement)
+              }
+              
+              const mainHtml = $.html(mainElement)
+              structuredText = extractStructuredText(mainHtml)
+            }
           }
-        }
 
-        if (structuredText) {
-          // Persist updated markdown for debugging
+          if (structuredText && structuredText.trim().length > 0) {
+            // Persist updated markdown for debugging
+            await supabase
+              .from('temp_previews')
+              .update({
+                default_markdown: structuredText,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', job.id)
+            
+            await generateConfigFromData(job.id, structuredText, 'text')
+          } else {
+            // No content extracted - cannot proceed with AI processing
+            console.error('⚠️ [Queue Worker] No structured text extracted from scraped content')
+            console.error('⚠️ [Queue Worker] Markdown length:', markdown?.length || 0)
+            console.error('⚠️ [Queue Worker] Raw HTML length:', rawHtml?.length || 0)
+            
+            await supabase
+              .from('temp_previews')
+              .update({
+                status: 'error',
+                error_message: 'Failed to extract content from the scraped page. The page may be empty or protected.',
+              })
+              .eq('id', job.id)
+          }
+        } else {
+          // No data available for AI processing
+          console.error('⚠️ [Queue Worker] No data available for AI processing')
+          console.error('⚠️ [Queue Worker] Provider:', provider)
+          console.error('⚠️ [Queue Worker] Has cleanedJson:', !!cleanedJson)
+          console.error('⚠️ [Queue Worker] Has markdown:', !!markdown)
+          console.error('⚠️ [Queue Worker] Has rawHtml:', !!rawHtml)
+          
           await supabase
             .from('temp_previews')
             .update({
-              default_markdown: structuredText,
-              updated_at: new Date().toISOString(),
+              status: 'error',
+              error_message: 'No scraped content available for AI processing.',
             })
             .eq('id', job.id)
-          
-          await generateConfigFromData(job.id, structuredText, 'text')
         }
-      }
     } catch (aiError: any) {
       console.error('⚠️ [Queue Worker] AI processing failed:', aiError)
       // Don't fail the whole job if AI fails - scraping was successful
       // Update status to completed even if AI fails (scraping was successful)
-      await supabase
-        .from('temp_previews')
-        .update({
-          status: 'completed',
+        await supabase
+          .from('temp_previews')
+          .update({
+            status: 'completed',
           error_message: `AI processing failed: ${aiError.message}`,
-        })
-        .eq('id', job.id)
+          })
+          .eq('id', job.id)
     }
     
     return { success: true, jobId: job.id }
