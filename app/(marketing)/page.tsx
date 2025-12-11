@@ -65,15 +65,13 @@ export default function Home() {
   
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
-  const [currentPhase, setCurrentPhase] = useState<string>('queue') // raw phase from API
-  const [displayPhase, setDisplayPhase] = useState<string>('queue') // smoothed phase for UI
-  const [pendingPhase, setPendingPhase] = useState<string | null>(null)
-  const [pendingSince, setPendingSince] = useState<number | null>(null)
+  const [currentPhase, setCurrentPhase] = useState<string>('queue')
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [error, setError] = useState<string | null>(null)
-  const [queuePosition, setQueuePosition] = useState<number | null>(null) // Queue position
+  const [queuePosition, setQueuePosition] = useState<number | null>(null)
   const [currentMessage, setCurrentMessage] = useState<string>('')
   const [previousMessage, setPreviousMessage] = useState<string>('')
+  const [isTransitioning, setIsTransitioning] = useState(false)
   
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
@@ -203,37 +201,45 @@ export default function Home() {
       setCurrentMessage('')
       setPreviousMessage('')
       setLoadingPhase('waiting')
+      setIsTransitioning(false)
       return
     }
 
     const newMessage = getLoadingMessage(currentPhase, queuePosition)
     
+    // Ignore if we're already transitioning to this message
+    if (isTransitioning && newMessage === previousMessage) {
+      return
+    }
+    
     // If message changed, trigger smooth transition
     if (newMessage !== currentMessage && currentMessage !== '') {
+      setIsTransitioning(true)
       // Step 1: Start exit animation - stará správa sa zmizne
       setLoadingPhase('exiting')
-      setPreviousMessage(currentMessage)
+      setPreviousMessage(newMessage) // Store target message for transition check
       
-        // Step 2: After exit animation completes, hide everything
-        const exitTimer = setTimeout(() => {
-          setLoadingPhase('hidden')
-          setCurrentMessage('') // Clear message during hidden phase
+      // Step 2: After exit animation completes, hide everything
+      const exitTimer = setTimeout(() => {
+        setLoadingPhase('hidden')
+        setCurrentMessage('') // Clear message during hidden phase
+        
+        // Step 3: After brief pause, show new message
+        const hiddenTimer = setTimeout(() => {
+          setCurrentMessage(newMessage)
+          setLoadingPhase('entering')
           
-          // Step 3: After brief pause, show new message
-          const hiddenTimer = setTimeout(() => {
-            setCurrentMessage(newMessage)
-            setLoadingPhase('entering')
-            
-            // Step 4: After enter animation, make it fully visible
-            const enterTimer = setTimeout(() => {
-              setLoadingPhase('visible')
-            }, 1800) // Match animation duration (1.8s)
-            
-            return () => clearTimeout(enterTimer)
-          }, 200) // Brief pause between exit and enter
+          // Step 4: After enter animation, make it fully visible
+          const enterTimer = setTimeout(() => {
+            setLoadingPhase('visible')
+            setIsTransitioning(false)
+          }, 1800) // Match animation duration (1.8s)
           
-          return () => clearTimeout(hiddenTimer)
-        }, 1000) // Exit animation duration (1s)
+          return () => clearTimeout(enterTimer)
+        }, 200) // Brief pause between exit and enter
+        
+        return () => clearTimeout(hiddenTimer)
+      }, 1000) // Exit animation duration (1s)
       
       return () => clearTimeout(exitTimer)
     } else if (currentMessage === '' && newMessage !== '') {
@@ -241,6 +247,7 @@ export default function Home() {
       const initialDelay = setTimeout(() => {
         setCurrentMessage(newMessage)
         setLoadingPhase('entering')
+        setPreviousMessage(newMessage)
         
         const enterTimer = setTimeout(() => {
           setLoadingPhase('visible')
@@ -251,7 +258,7 @@ export default function Home() {
       
       return () => clearTimeout(initialDelay)
     }
-  }, [isLoading, displayPhase, queuePosition, currentMessage])
+  }, [isLoading, currentPhase, queuePosition, currentMessage, isTransitioning, previousMessage])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -367,13 +374,11 @@ export default function Home() {
     
     setIsLoading(true)
     setCurrentPhase('queue')
-    setDisplayPhase('queue')
-    setPendingPhase(null)
-    setPendingSince(null)
     setCurrentMessage('')
     setPreviousMessage('')
     setLoadingPhase('waiting')
     setQueuePosition(null)
+    setIsTransitioning(false)
 
     try {
       // Add to queue and get preview ID
@@ -390,13 +395,9 @@ export default function Home() {
 
       console.log(`✅ Preview created: ${previewId}, queue position: ${initialQueuePosition}`)
       
-      // Don't set queue phase immediately - wait for first poll to get accurate status
-      // This prevents showing incorrect queue position if job starts processing immediately
-      setCurrentPhase('scraping') // raw
-      setDisplayPhase('queue') // UI starts at queue
-      setPendingPhase(null)
-      setPendingSince(null)
-      setQueuePosition(null)
+      // Start with queue phase - will update on first poll
+      setCurrentPhase('queue')
+      setQueuePosition(initialQueuePosition || null)
 
       // Poll status until completed or error
       let attempts = 0
