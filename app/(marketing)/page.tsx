@@ -82,32 +82,9 @@ export default function Home() {
   const sphereWrapperRef = useRef<HTMLDivElement>(null)
 
   // Smooth phase transitions to avoid flicker
-  const MIN_PHASE_STICK_MS = 1200
   const updatePhases = (nextPhase: string, nextQueuePosition: number | null) => {
-    const now = Date.now()
-
-    // Always update raw phase
     setCurrentPhase(nextPhase)
-
-    // Queue position updates always apply
     setQueuePosition(nextQueuePosition)
-
-    if (nextPhase === displayPhase) {
-      setPendingPhase(null)
-      setPendingSince(null)
-      return
-    }
-
-    if (pendingPhase === nextPhase && pendingSince) {
-      if (now - pendingSince >= MIN_PHASE_STICK_MS) {
-        setDisplayPhase(nextPhase)
-        setPendingPhase(null)
-        setPendingSince(null)
-      }
-    } else {
-      setPendingPhase(nextPhase)
-      setPendingSince(now)
-    }
   }
 
   // Load plans from database (public access)
@@ -462,7 +439,7 @@ export default function Home() {
   }
 
   // Get current message based on phase
-  const displayMessage = currentMessage || getLoadingMessage(displayPhase, queuePosition)
+  const displayMessage = currentMessage || getLoadingMessage(currentPhase, queuePosition)
   const loadingWords = displayMessage.split(' ')
 
   return (
@@ -489,7 +466,7 @@ export default function Home() {
             <p className="loading-text-home">
               {loadingWords.map((word, index) => (
                 <span
-                  key={`${displayPhase}-${displayMessage}-${index}`}
+                    key={`${currentPhase}-${displayMessage}-${index}`}
                   className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
                   style={{
                     animationDelay: loadingPhase === 'exiting'
