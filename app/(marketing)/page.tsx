@@ -169,9 +169,10 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
-  // Refs to store timers and track initial load
+  // Refs to store timers and track state
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([])
   const hasShownInitialMessageRef = useRef(false)
+  const transitionTargetRef = useRef<string | null>(null) // Track what we're transitioning TO
   
   // Clear all transition timers
   const clearTransitionTimers = () => {
@@ -189,6 +190,7 @@ export default function Home() {
       setLoadingPhase('waiting')
       setIsTransitioning(false)
       hasShownInitialMessageRef.current = false
+      transitionTargetRef.current = null
       return
     }
 
@@ -211,8 +213,8 @@ export default function Home() {
       return
     }
 
-    // If new phase arrived and it's different from what we're showing
-    if (currentPhase !== displayedPhase) {
+    // If new phase arrived and it's different from what we're showing AND what we're transitioning to
+    if (currentPhase !== displayedPhase && currentPhase !== transitionTargetRef.current) {
       if (isTransitioning) {
         // Queue it - will be processed after current transition
         setPendingPhase(currentPhase)
@@ -221,7 +223,9 @@ export default function Home() {
       
       // Start transition immediately
       clearTransitionTimers()
-      const targetMessage = getLoadingMessage(currentPhase)
+      const targetPhase = currentPhase // Capture for closure
+      const targetMessage = getLoadingMessage(targetPhase)
+      transitionTargetRef.current = targetPhase
       
       // Normal transition: exit → enter
       setIsTransitioning(true)
@@ -237,8 +241,9 @@ export default function Home() {
           
           transitionTimersRef.current.push(setTimeout(() => {
             setLoadingPhase('visible')
-            setDisplayedPhase(currentPhase)
+            setDisplayedPhase(targetPhase) // Use captured value
             setIsTransitioning(false)
+            transitionTargetRef.current = null
           }, 1500))
         }, 150))
       }, 800))
