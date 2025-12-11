@@ -178,6 +178,7 @@ async function generateStructuredJSONWithGroq(
       ],
       temperature: 0.3, // Lower temperature for more consistent structured output
       response_format: { type: 'json_object' },
+      max_tokens: 8192, // 8k tokens for large JSON responses
     })
 
     const content = response.choices[0]?.message?.content
