@@ -367,7 +367,6 @@ export default function Home() {
     setIsLoading(true)
     setCurrentPhase('queue')
     setCurrentMessage('')
-    setPreviousMessage('')
     setLoadingPhase('waiting')
     setQueuePosition(null)
     setIsTransitioning(false)
