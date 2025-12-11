@@ -5,7 +5,12 @@
   "currency_symbol": "",
   "property_status": "",
   
-  "photos": [],
+  "photos": [
+    {
+      "url": "",
+      "label": ""
+    }
+  ],
   
   "address": {
     "street": "",
