@@ -175,47 +175,12 @@ export default function Home() {
   const isTransitioningRef = useRef(false) // Sync ref for transition state
   const lastAnimatedPhaseRef = useRef<string>('queue') // Last phase we fully animated to
   const transitionTargetRef = useRef<string | null>(null) // Phase we're animating towards
-  const phasesQueueRef = useRef<string[]>([]) // queue of incoming phases
-  
+
   // Clear all transition timers
   const clearTransitionTimers = () => {
     transitionTimersRef.current.forEach(timer => clearTimeout(timer))
     transitionTimersRef.current = []
   }
-
-  // Run next transition from queue
-  const runNextTransition = useCallback(() => {
-    if (isTransitioningRef.current) return
-    const nextPhase = phasesQueueRef.current.shift()
-    if (!nextPhase) return
-
-    const targetMessage = getLoadingMessage(nextPhase)
-    transitionTargetRef.current = nextPhase
-    lastAnimatedPhaseRef.current = nextPhase
-    isTransitioningRef.current = true
-    setIsTransitioning(true)
-    setLoadingPhase('exiting')
-
-    transitionTimersRef.current.push(setTimeout(() => {
-      setLoadingPhase('hidden')
-      setCurrentMessage('')
-
-      transitionTimersRef.current.push(setTimeout(() => {
-        setCurrentMessage(targetMessage)
-        setLoadingPhase('entering')
-
-        transitionTimersRef.current.push(setTimeout(() => {
-          setLoadingPhase('visible')
-          setDisplayedPhase(nextPhase)
-          isTransitioningRef.current = false
-          setIsTransitioning(false)
-          transitionTargetRef.current = null
-          // Process next in queue
-          runNextTransition()
-        }, 1500))
-      }, 150))
-    }, 800))
-  }, [])
 
   // Handle initial message display
   useEffect(() => {
@@ -230,7 +195,6 @@ export default function Home() {
       hasShownInitialMessageRef.current = false
       isTransitioningRef.current = false
       transitionTargetRef.current = null
-      phasesQueueRef.current = []
       return
     }
 
@@ -254,39 +218,48 @@ export default function Home() {
     }
   }, [isLoading, displayedPhase])
 
-  // Handle phase transitions via queue
+  // Handle phase transitions - direct and simple
   useEffect(() => {
     if (!isLoading || !hasShownInitialMessageRef.current) return
 
-    // Enqueue new phase if it's different from what we show or have queued
+    // Only transition if phase is different and we're not already handling this exact phase
     if (
       currentPhase !== displayedPhase &&
-      currentPhase !== lastAnimatedPhaseRef.current &&
-      currentPhase !== transitionTargetRef.current
-    ) {
-      const queue = phasesQueueRef.current
-      if (queue[queue.length - 1] !== currentPhase) {
-        queue.push(currentPhase)
-      }
-      runNextTransition()
-    }
-  }, [isLoading, currentPhase, displayedPhase, runNextTransition])
-
-  // If pendingPhase was set earlier, enqueue it when transition ends
-  useEffect(() => {
-    if (
-      !isTransitioning &&
-      pendingPhase &&
-      pendingPhase !== displayedPhase &&
-      pendingPhase !== lastAnimatedPhaseRef.current &&
-      pendingPhase !== transitionTargetRef.current &&
+      currentPhase !== transitionTargetRef.current &&
       !isTransitioningRef.current
     ) {
-      phasesQueueRef.current.push(pendingPhase)
-      setPendingPhase(null)
-      runNextTransition()
+      console.log(`🎬 [Transition] Start: ${displayedPhase} → ${currentPhase}`)
+
+      // Mark this phase as being animated
+      transitionTargetRef.current = currentPhase
+      isTransitioningRef.current = true
+      setIsTransitioning(true)
+      setLoadingPhase('exiting')
+      clearTransitionTimers()
+
+      const targetMessage = getLoadingMessage(currentPhase)
+
+      transitionTimersRef.current.push(setTimeout(() => {
+        setLoadingPhase('hidden')
+        setCurrentMessage('')
+
+        transitionTimersRef.current.push(setTimeout(() => {
+          setCurrentMessage(targetMessage)
+          setLoadingPhase('entering')
+
+          transitionTimersRef.current.push(setTimeout(() => {
+            setLoadingPhase('visible')
+            setDisplayedPhase(currentPhase)
+            lastAnimatedPhaseRef.current = currentPhase
+            transitionTargetRef.current = null
+            setIsTransitioning(false)
+            isTransitioningRef.current = false
+            console.log(`✅ [Transition] Complete: ${currentPhase}`)
+          }, 1500))
+        }, 150))
+      }, 800))
     }
-  }, [isTransitioning, pendingPhase, displayedPhase, runNextTransition])
+  }, [isLoading, currentPhase, displayedPhase])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
