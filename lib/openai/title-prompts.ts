@@ -61,21 +61,43 @@ export function getTitleGenerationPrompt(
     }
   }
 
-  return `Generate 1 lifestyle title (max 60 chars, emotional) + exactly 6 highlights in ${detectedLanguage} language (ISO code: ${detectedLanguage}).
+  return `You are a copywriter for a high-end real estate agency.
 
-TITLE: Aspirational, benefit-focused (views/pool/location/privacy). No specs-only.
+TASK: Generate 1 emotional title + exactly 6 UNIQUE highlights in ${detectedLanguage}.
 
-HIGHLIGHTS: 
-- title (2-5 words), value (benefit), icon (from categories below)
-- Use strongest selling points, no title repeat
+INPUT DATA: ${propertyData}
+
+STRICT RULES FOR HIGHLIGHTS:
+
+1. **BE SPECIFIC:** Never say "Large Garden". Say "17,000m² Palm Garden". Never say "Good Views". Say "180° Atlantic Ocean View".
+
+2. **USE DATA:** Extract numbers, brand names (Miele, Bosch), materials (Marble, Oak), or specific locations from the input.
+
+3. **NO FLUFF:** Banned words: "Beautiful", "Stunning", "Amazing", "Perfect", "Nice". Use descriptive words instead.
+
+4. **DIVERSITY:** Do not generate 2 highlights about the same thing (e.g., don't have "Pool" and "Exterior" if they mean the same).
+
+EXAMPLES:
+
+❌ BAD: "Modern Kitchen - Fully equipped kitchen"
+
+✅ GOOD: "Gourmet Chef's Kitchen - Miele appliances & granite island"
+
+❌ BAD: "Great Location - Close to shops"
+
+✅ GOOD: "Walkable Lifestyle - 5 min stroll to San Juan Center"
 
 ICON CATEGORIES: ${iconJson}
 
-PROPERTY DATA: ${propertyData}
-
 Return ONLY JSON:
 {
-  "title": "...",
-  "highlights": [{"title": "...", "value": "...", "icon": "..."}]
+  "title": "...", 
+  "highlights": [
+    {
+      "title": "...", // Max 4 words, punchy
+      "value": "...", // Max 10 words, specific details
+      "icon": "..." // Exact icon name from categories
+    }
+  ]
 }`
 }
