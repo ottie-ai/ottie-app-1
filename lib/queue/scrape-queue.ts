@@ -572,20 +572,20 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     console.log('🤖 [Queue Worker] Has markdown:', !!markdown, markdown ? `(${markdown.length} chars)` : '')
     console.log('🤖 [Queue Worker] Has rawHtml:', !!rawHtml, rawHtml ? `(${rawHtml.length} chars)` : '')
     
-    try {
-      if (provider === 'apify' && cleanedJson) {
+      try {
+        if (provider === 'apify' && cleanedJson) {
           await generateConfigFromData(job.id, cleanedJson, 'apify')
         } else if (provider === 'firecrawl' && markdown) {
           // Content was already validated earlier, so markdown should have content
-          // Persist updated markdown for debugging
-          await supabase
-            .from('temp_previews')
-            .update({
+            // Persist updated markdown for debugging
+            await supabase
+              .from('temp_previews')
+              .update({
               default_markdown: markdown,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', job.id)
-          
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', job.id)
+            
           await generateConfigFromData(job.id, markdown, 'text')
         } else {
           // This should not happen as we check content earlier, but keep as safety fallback
