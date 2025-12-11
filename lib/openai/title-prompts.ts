@@ -37,7 +37,7 @@ export function getTitleGenerationPrompt(
     building: { label: "Building & Structure", icons: ["House", "Building", "Buildings", "CastleTurret", "BuildingApartment"] },
     appliances: { label: "Appliances & Furniture", icons: ["Couch", "Chair", "Table", "Lamp", "Desk"] },
     storage: { label: "Storage & Space", icons: ["Dresser", "Books", "Cube", "Folder", "Archive"] },
-    distance: { label: "Proximity & Distance", icons: ["MapPin", "NavigationArrow", "Signpost", "Compass"] },
+    distance: { label: "Proximity & Distance", icons: ["MapPin", "Signpost", "Compass", "MapTrifold", "ArrowRight"] },
     trending: { label: "Trending & Popular", icons: ["TrendUp", "Fire", "Heart", "Star", "Lightning"] },
     miscellaneous: { label: "General", icons: ["Check", "Plus", "Info", "CheckCircle"] }
   }
@@ -91,7 +91,7 @@ ICON CATEGORIES: ${iconJson}
 
 Return ONLY JSON:
 {
-  "title": "...", 
+  "title": "...",
   "highlights": [
     {
       "title": "...", // Max 4 words, punchy
