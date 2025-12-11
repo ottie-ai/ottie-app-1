@@ -66,7 +66,7 @@ PRIORITY FIELDS (fill FIRST):
 
 5. beds, baths, living_area
 
-6. description, exactly as in the listing text, usually the longest text
+6. description, exactly as in the listing text
 
 7. property address
 
