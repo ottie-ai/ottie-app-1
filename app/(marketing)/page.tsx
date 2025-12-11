@@ -169,8 +169,9 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoading])
 
-  // Refs to store timers
+  // Refs to store timers and track initial load
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([])
+  const hasShownInitialMessageRef = useRef(false)
   
   // Clear all transition timers
   const clearTransitionTimers = () => {
@@ -187,11 +188,13 @@ export default function Home() {
       setPendingPhase(null)
       setLoadingPhase('waiting')
       setIsTransitioning(false)
+      hasShownInitialMessageRef.current = false
       return
     }
 
-    // Initial message when loading starts (no phase change yet)
-    if (currentMessage === '' && !isTransitioning) {
+    // Initial message when loading starts (only once)
+    if (!hasShownInitialMessageRef.current && !isTransitioning) {
+      hasShownInitialMessageRef.current = true
       const targetMessage = getLoadingMessage(displayedPhase)
       setIsTransitioning(true)
       
@@ -240,7 +243,7 @@ export default function Home() {
         }, 150))
       }, 800))
     }
-  }, [isLoading, currentPhase, displayedPhase, isTransitioning, currentMessage])
+  }, [isLoading, currentPhase, displayedPhase, isTransitioning])
 
   // When transition completes and there's a pending phase, trigger it
   useEffect(() => {
