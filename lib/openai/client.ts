@@ -60,7 +60,7 @@ export async function generateStructuredJSON(
   if (provider === 'groq') {
     // If Groq provider, ignore passed model and use Groq default model
     // This prevents passing OpenAI model names (like 'gpt-4o-mini') to Groq
-    return generateStructuredJSONWithGroq(prompt, schema, 'llama-3.1-8b-instant')
+    return generateStructuredJSONWithGroq(prompt, schema, 'llama-3.3-70b-versatile')
   } else {
     // For OpenAI, use passed model or default to 'gpt-4o-mini'
     return generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
@@ -152,7 +152,7 @@ async function generateStructuredJSONWithOpenAI(
 async function generateStructuredJSONWithGroq(
   prompt: string,
   schema?: object,
-  model: string = 'llama-3.1-8b-instant'
+  model: string = 'llama-3.3-70b-versatile'
 ): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
   const client = getGroqClient()
   const callStartTime = Date.now()
