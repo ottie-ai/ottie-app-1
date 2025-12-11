@@ -41,7 +41,7 @@ export default function TermsPage() {
 
             {/* Section 1 */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 1. Acceptance of Terms
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -67,7 +67,7 @@ export default function TermsPage() {
 
             {/* Section 2 */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 2. Description of Service
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -90,7 +90,7 @@ export default function TermsPage() {
 
             {/* Section 3 */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 3. User Accounts and Responsibilities
               </Typography>
               
@@ -125,7 +125,7 @@ export default function TermsPage() {
 
             {/* Section 4 */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 4. User-Generated Content and Intellectual Property Rights
               </Typography>
               
@@ -175,7 +175,7 @@ export default function TermsPage() {
 
             {/* Section 5 - URL Import */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 5. URL Import and Web Scraping Acknowledgment
               </Typography>
               
@@ -255,7 +255,7 @@ export default function TermsPage() {
 
             {/* Section 6 - Acceptable Use */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 6. Acceptable Use Policy
               </Typography>
               
@@ -367,7 +367,7 @@ export default function TermsPage() {
 
             {/* Section 7 - Content Generation */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 7. Content Generation and Liability
               </Typography>
               
@@ -419,7 +419,7 @@ export default function TermsPage() {
 
             {/* Section 8 - Third Party Services */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 8. Third-Party Services and Integrations
               </Typography>
               
@@ -450,7 +450,7 @@ export default function TermsPage() {
 
             {/* Section 9 - Limitation of Liability */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 9. Limitation of Liability and Warranties
               </Typography>
               
@@ -518,7 +518,7 @@ export default function TermsPage() {
 
             {/* Section 10 - Indemnification */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 10. Indemnification
               </Typography>
               
@@ -601,7 +601,7 @@ export default function TermsPage() {
 
             {/* Section 11 - Data Protection */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 11. Data Protection and Privacy
               </Typography>
               
@@ -638,7 +638,7 @@ export default function TermsPage() {
 
             {/* Section 12 - Payment */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 12. Payment Terms and Billing
               </Typography>
               
@@ -686,7 +686,7 @@ export default function TermsPage() {
 
             {/* Section 13 - Service Availability */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 13. Service Availability and Maintenance
               </Typography>
               
@@ -714,7 +714,7 @@ export default function TermsPage() {
 
             {/* Section 14 - Export Controls */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 14. Export Controls and Sanctions
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -726,7 +726,7 @@ export default function TermsPage() {
 
             {/* Section 15 - Dispute Resolution */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 15. Dispute Resolution
               </Typography>
               
@@ -772,7 +772,7 @@ export default function TermsPage() {
 
             {/* Section 16 - Export Compliance */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 16. Export Compliance and Sanctions
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -792,7 +792,7 @@ export default function TermsPage() {
 
             {/* Section 17 - Termination */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 17. Termination
               </Typography>
               
@@ -835,7 +835,7 @@ export default function TermsPage() {
 
             {/* Section 18 - Severability */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 18. Severability
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -847,7 +847,7 @@ export default function TermsPage() {
 
             {/* Section 19 - Entire Agreement */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 19. Entire Agreement
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -859,7 +859,7 @@ export default function TermsPage() {
 
             {/* Section 20 - Contact */}
             <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
+              <Typography variant="h2" className="mt-8 mb-4 border-b-0 pb-0">
                 20. Contact Information
               </Typography>
               <Typography variant="p" className="text-white/80">
@@ -879,18 +879,6 @@ export default function TermsPage() {
             </div>
 
             <hr className="border-white/10" />
-
-            {/* Schedules */}
-            <div className="space-y-3">
-              <Typography variant="h2" className="mt-8 mb-4">
-                Schedules and Attachments
-              </Typography>
-              <ul className="space-y-2 ml-6 list-disc text-white/80">
-                <li><strong>Schedule A:</strong> Data Processing Addendum (DPA) - for GDPR compliance</li>
-                <li><strong>Schedule B:</strong> Acceptable Use Policy (detailed)</li>
-                <li><strong>Schedule C:</strong> Service Level Agreement (SLA) - optional for enterprise customers</li>
-              </ul>
-            </div>
 
             {/* Back Button */}
             <div className="flex justify-center mt-12 pt-8 border-t border-white/10">
