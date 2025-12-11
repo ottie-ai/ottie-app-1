@@ -107,6 +107,9 @@ RULES:
   - Prefer URLs that share the same base pattern / path as the main listing gallery images.
   - If most photos come from e.g. "https://imgs.soukwportugal.pt/37734/properties/...", keep ONLY URLs that match this pattern.
 
+- when returning json, do not include empty items or items without updated value
+
+
 JSON STRUCTURE:
 
 ${JSON.stringify(sampleConfig, null, 2)}
