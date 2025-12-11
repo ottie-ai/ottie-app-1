@@ -175,11 +175,51 @@ export default function Home() {
   const isTransitioningRef = useRef(false) // Sync ref for transition state
   const lastAnimatedPhaseRef = useRef<string>('queue') // Last phase we fully animated to
   const transitionTargetRef = useRef<string | null>(null) // Phase we're animating towards
-
+  const phasesQueueRef = useRef<string[]>([]) // queue of incoming phases
+  
   // Clear all transition timers
   const clearTransitionTimers = () => {
     transitionTimersRef.current.forEach(timer => clearTimeout(timer))
     transitionTimersRef.current = []
+  }
+
+  // Run next transition from queue - atomic check-and-set to prevent duplicates
+  const runNextTransitionRef = useRef<() => void>()
+  runNextTransitionRef.current = () => {
+    // Atomic check - if already transitioning, return immediately
+    if (isTransitioningRef.current) return
+    
+    const nextPhase = phasesQueueRef.current.shift()
+    if (!nextPhase) return
+
+    // Set transitioning flag IMMEDIATELY to prevent concurrent calls
+    isTransitioningRef.current = true
+    
+    const targetMessage = getLoadingMessage(nextPhase)
+    transitionTargetRef.current = nextPhase
+    lastAnimatedPhaseRef.current = nextPhase
+    setIsTransitioning(true)
+    setLoadingPhase('exiting')
+
+    transitionTimersRef.current.push(setTimeout(() => {
+      setLoadingPhase('hidden')
+      setCurrentMessage('')
+
+      transitionTimersRef.current.push(setTimeout(() => {
+        setCurrentMessage(targetMessage)
+        setLoadingPhase('entering')
+
+        transitionTimersRef.current.push(setTimeout(() => {
+          setLoadingPhase('visible')
+          setDisplayedPhase(nextPhase)
+          isTransitioningRef.current = false
+          setIsTransitioning(false)
+          transitionTargetRef.current = null
+          // Process next in queue
+          runNextTransitionRef.current?.()
+        }, 1500))
+      }, 150))
+    }, 800))
   }
 
   // Handle initial message display
@@ -195,6 +235,7 @@ export default function Home() {
       hasShownInitialMessageRef.current = false
       isTransitioningRef.current = false
       transitionTargetRef.current = null
+      phasesQueueRef.current = []
       return
     }
 
@@ -205,60 +246,52 @@ export default function Home() {
       setIsTransitioning(true)
       const targetMessage = getLoadingMessage(displayedPhase)
       
-      // Show immediately when loading starts
-      setCurrentMessage(targetMessage)
-      setLoadingPhase('entering')
-
       transitionTimersRef.current.push(setTimeout(() => {
-        setLoadingPhase('visible')
-        setIsTransitioning(false)
-        isTransitioningRef.current = false
-      }, 1500))
+        setCurrentMessage(targetMessage)
+        setLoadingPhase('entering')
+        
+        transitionTimersRef.current.push(setTimeout(() => {
+          setLoadingPhase('visible')
+          setIsTransitioning(false)
+          isTransitioningRef.current = false
+        }, 1500))
+      }, 800))
     }
   }, [isLoading, displayedPhase])
 
-  // Handle phase transitions - direct and simple
+  // Handle phase transitions via queue
   useEffect(() => {
     if (!isLoading || !hasShownInitialMessageRef.current) return
 
-    // Only transition if phase is different and we're not already handling this exact phase
+    // Enqueue new phase if it's different from what we show or have queued
     if (
       currentPhase !== displayedPhase &&
-      currentPhase !== transitionTargetRef.current &&
-      !isTransitioningRef.current
+      currentPhase !== lastAnimatedPhaseRef.current &&
+      currentPhase !== transitionTargetRef.current
     ) {
-      console.log(`🎬 [Transition] Start: ${displayedPhase} → ${currentPhase}`)
-
-      // Mark this phase as being animated
-      transitionTargetRef.current = currentPhase
-      isTransitioningRef.current = true
-      setIsTransitioning(true)
-      setLoadingPhase('exiting')
-      clearTransitionTimers()
-
-      const targetMessage = getLoadingMessage(currentPhase)
-
-      transitionTimersRef.current.push(setTimeout(() => {
-        setLoadingPhase('hidden')
-        setCurrentMessage('')
-
-        transitionTimersRef.current.push(setTimeout(() => {
-          setCurrentMessage(targetMessage)
-          setLoadingPhase('entering')
-
-          transitionTimersRef.current.push(setTimeout(() => {
-            setLoadingPhase('visible')
-            setDisplayedPhase(currentPhase)
-            lastAnimatedPhaseRef.current = currentPhase
-            transitionTargetRef.current = null
-            setIsTransitioning(false)
-            isTransitioningRef.current = false
-            console.log(`✅ [Transition] Complete: ${currentPhase}`)
-          }, 1500))
-        }, 150))
-      }, 800))
+      const queue = phasesQueueRef.current
+      if (queue[queue.length - 1] !== currentPhase) {
+        queue.push(currentPhase)
+      }
+      runNextTransitionRef.current?.()
     }
   }, [isLoading, currentPhase, displayedPhase])
+
+  // If pendingPhase was set earlier, enqueue it when transition ends
+  useEffect(() => {
+    if (
+      !isTransitioning &&
+      pendingPhase &&
+      pendingPhase !== displayedPhase &&
+      pendingPhase !== lastAnimatedPhaseRef.current &&
+      pendingPhase !== transitionTargetRef.current &&
+      !isTransitioningRef.current
+    ) {
+      phasesQueueRef.current.push(pendingPhase)
+      setPendingPhase(null)
+      runNextTransitionRef.current?.()
+    }
+  }, [isTransitioning, pendingPhase, displayedPhase])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -482,7 +515,7 @@ export default function Home() {
         </div>
 
       {/* Loading Text Overlay */}
-      {isLoading && hasShownInitialMessageRef.current && (
+      {isLoading && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             {/* Status message - keep height stable */}
@@ -515,7 +548,7 @@ export default function Home() {
 
       <Navbar />
       {/* Hero Section */}
-      <div className={`relative min-h-screen overflow-hidden transition-all duration-300 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+      <div className={`relative min-h-screen overflow-hidden transition-all duration-1000 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="relative z-20 min-h-screen flex flex-col">
           {/* Main content - centered */}
           <div className="flex-1 flex items-center justify-center">
@@ -681,7 +714,7 @@ export default function Home() {
       {/* Feature Points Section - Below the fold */}
       <section 
         ref={secondSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-4xl px-4 text-center">
           <Typography variant="h2" className="mb-12 text-white border-none">
@@ -743,7 +776,7 @@ export default function Home() {
       {/* Third Section - CTA */}
       <section 
         ref={thirdSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-2xl px-4 text-center">
           <Typography variant="h2" className="mb-6 text-white border-none">
@@ -808,7 +841,7 @@ function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[
 
   return (
     <section 
-      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
     >
       <div className="w-full max-w-6xl mx-auto px-4">
         {/* Header */}
