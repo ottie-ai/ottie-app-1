@@ -516,10 +516,50 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
   // Uses single call with combined actions when gallery extraction is needed
   console.log(`🎯 [Routing] Using Firecrawl with auto proxy`)
   
-  // Call Firecrawl - uses combined actions (single call) or fallback to simple scrape
-  const result = await scrapeWithFirecrawl(url, timeout)
-  result.actualProvider = result.actualProvider || 'firecrawl_auto'
-  
-  return result
+  try {
+    // Call Firecrawl - uses combined actions (single call) or fallback to simple scrape
+    const result = await scrapeWithFirecrawl(url, timeout)
+    result.actualProvider = result.actualProvider || 'firecrawl_auto'
+    
+    return result
+  } catch (error: any) {
+    console.error('❌ [Firecrawl] Failed, attempting Apify fallback...', error?.message || error)
+    const fallbackActorId = process.env.APIFY_FALLBACK_ACTOR_ID
+    if (!fallbackActorId) {
+      // No fallback configured, rethrow original error
+      throw error
+    }
+
+    try {
+      const fallbackConfig: ApifyScraperConfig = {
+        id: 'apify_generic_fallback',
+        name: 'Apify Generic Fallback',
+        actorId: fallbackActorId,
+        shouldHandle: () => true,
+        buildInput: (inputUrl: string, proxyGroups?: string[]) => ({
+          startUrls: [{ url: inputUrl }],
+          proxy: {
+            useApifyProxy: true,
+            ...(proxyGroups && proxyGroups.length > 0 && { apifyProxyGroups: proxyGroups }),
+          },
+        }),
+      }
+
+      const apifyResult = await runApifyActor(fallbackConfig, url, timeout)
+      console.log('✅ [Apify Fallback] Successful scrape via generic actor')
+
+      return {
+        json: apifyResult.data,
+        provider: 'apify',
+        duration: apifyResult.duration,
+        apifyScraperId: fallbackConfig.id,
+        actualProvider: `apify_${fallbackConfig.id}`,
+      }
+    } catch (fallbackError: any) {
+      console.error('❌ [Apify Fallback] Failed:', fallbackError?.message || fallbackError)
+      // Rethrow the original Firecrawl error to preserve context
+      throw error
+    }
+  }
 }
 
