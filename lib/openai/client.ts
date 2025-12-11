@@ -161,8 +161,14 @@ async function generateStructuredJSONWithGroq(
   console.log('🤖 [Groq] Model:', model)
   console.log('🤖 [Groq] Prompt length:', prompt.length)
 
+  // Timeout wrapper - 60 seconds max
+  const timeoutMs = 60000
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Groq API timeout after ${timeoutMs}ms`)), timeoutMs)
+  })
+
   try {
-    const response = await client.chat.completions.create({
+    const apiCall = client.chat.completions.create({
       model,
       messages: [
         {
@@ -180,6 +186,8 @@ async function generateStructuredJSONWithGroq(
       response_format: { type: 'json_object' },
       max_tokens: 8192, // 8k tokens for large JSON responses
     })
+
+    const response = await Promise.race([apiCall, timeoutPromise])
 
     const content = response.choices[0]?.message?.content
     if (!content) {
@@ -211,16 +219,30 @@ async function generateStructuredJSONWithGroq(
     }
   } catch (error: any) {
     const duration = Date.now() - callStartTime
-    console.error(`❌ [Groq] Error after ${duration}ms:`, error.message)
+    console.error(`❌ [Groq] Error after ${duration}ms:`)
+    console.error(`❌ [Groq] Error type:`, error?.constructor?.name)
+    console.error(`❌ [Groq] Error message:`, error?.message)
+    console.error(`❌ [Groq] Error status:`, error?.status)
+    console.error(`❌ [Groq] Error code:`, error?.code)
+    console.error(`❌ [Groq] Full error:`, error)
 
-    if (error.status === 401) {
+    if (error?.message?.includes('timeout')) {
+      throw new Error(`Groq API timeout after ${duration}ms. The model may be overloaded or the request is too large.`)
+    }
+    if (error?.status === 401) {
       throw new Error('Groq API key is invalid')
     }
-    if (error.status === 429) {
-      throw new Error('Groq API rate limit exceeded')
+    if (error?.status === 429) {
+      throw new Error('Groq API rate limit exceeded. Please try again in a moment.')
+    }
+    if (error?.status === 500 || error?.status === 503) {
+      throw new Error(`Groq API server error (${error.status}). The service may be temporarily unavailable.`)
+    }
+    if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
+      throw new Error(`Groq API connection error: ${error.message}`)
     }
 
-    throw new Error(`Groq error: ${error.message || 'Unknown error'}`)
+    throw new Error(`Groq error: ${error?.message || error?.toString() || 'Unknown error'}`)
   }
 }
 
