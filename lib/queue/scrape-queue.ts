@@ -417,6 +417,17 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       galleryMarkdown = extractStructuredText(galleryHtml)
     }
     
+    // Prepare scraped_data for Apify JSON (saved to same column as markdown for Firecrawl)
+    let scrapedData: any = null
+    if (provider === 'apify' && cleanedJson) {
+      // Save Apify JSON to scraped_data column (same as where markdown would be saved for Firecrawl)
+      scrapedData = {
+        provider: 'apify',
+        apifyScraperId: scrapeResult.apifyScraperId,
+        data: cleanedJson,
+      }
+    }
+    
     // Check if we have any content to process
     // For Apify: check if we have cleanedJson
     // For Firecrawl: check if we have markdown or can extract from rawHtml
@@ -476,17 +487,6 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       await markJobCompleted(job.id, false)
       console.log(`❌ [Queue Worker] Job ${job.id} failed - no content extracted`)
       return { success: false, jobId: job.id, error: 'No content extracted from scraped page' }
-    }
-    
-    // Prepare scraped_data for Apify JSON (saved to same column as markdown for Firecrawl)
-    let scrapedData: any = null
-    if (provider === 'apify' && cleanedJson) {
-      // Save Apify JSON to scraped_data column (same as where markdown would be saved for Firecrawl)
-      scrapedData = {
-        provider: 'apify',
-        apifyScraperId: scrapeResult.apifyScraperId,
-        data: cleanedJson,
-      }
     }
     
     // Update preview with scraped data
