@@ -260,7 +260,7 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
         // Array
         if (value.length > 0) {
           objLines.push(`${objIndent}${fieldName}: (${value.length} items)`)
-          value.slice(0, 5).forEach((item: any, idx: number) => {
+          value.forEach((item: any, idx: number) => {
             if (typeof item === 'object') {
               objLines.push(`${objIndent}  ${idx + 1}.`)
               const nestedLines = processObject(item, currentDepth + 2)
@@ -272,9 +272,6 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
               }
             }
           })
-          if (value.length > 5) {
-            objLines.push(`${objIndent}  ... and ${value.length - 5} more`)
-          }
         }
       } else {
         // Primitive value
@@ -311,7 +308,7 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
       if (value.length > 0) {
         lines.push('')
         lines.push(`${fieldName}: (${value.length} items)`)
-        value.slice(0, 5).forEach((item: any, idx: number) => {
+        value.forEach((item: any, idx: number) => {
           if (typeof item === 'object') {
             lines.push(`  ${idx + 1}.`)
             const objLines = processObject(item, 2)
@@ -323,9 +320,6 @@ function formatApifyPropertyItem(item: any, lines: string[], depth: number = 0):
             }
           }
         })
-        if (value.length > 5) {
-          lines.push(`  ... and ${value.length - 5} more`)
-        }
       }
     } else {
       // Primitive value
