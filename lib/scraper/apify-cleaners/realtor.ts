@@ -69,6 +69,7 @@ function cleanRealtorItem(item: any): any {
     'loadedUrl', // Loaded URL is not needed
     'requestId', // Internal request ID
     'requestQueueId', // Internal queue ID
+    'taxHistory', // Tax history is not needed
   ]
 
   // Iterate through all fields and remove only technical fields
