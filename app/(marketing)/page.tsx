@@ -65,7 +65,10 @@ export default function Home() {
   
   // Loading state
   const [isLoading, setIsLoading] = useState(false)
-  const [currentPhase, setCurrentPhase] = useState<string>('queue')
+  const [currentPhase, setCurrentPhase] = useState<string>('queue') // raw phase from API
+  const [displayPhase, setDisplayPhase] = useState<string>('queue') // smoothed phase for UI
+  const [pendingPhase, setPendingPhase] = useState<string | null>(null)
+  const [pendingSince, setPendingSince] = useState<number | null>(null)
   const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [error, setError] = useState<string | null>(null)
   const [queuePosition, setQueuePosition] = useState<number | null>(null) // Queue position
@@ -79,6 +82,35 @@ export default function Home() {
   const secondSectionRef = useRef<HTMLElement>(null)
   const thirdSectionRef = useRef<HTMLElement>(null)
   const sphereWrapperRef = useRef<HTMLDivElement>(null)
+
+  // Smooth phase transitions to avoid flicker
+  const MIN_PHASE_STICK_MS = 1200
+  const updatePhases = (nextPhase: string, nextQueuePosition: number | null) => {
+    const now = Date.now()
+
+    // Always update raw phase
+    setCurrentPhase(nextPhase)
+
+    // Queue position updates always apply
+    setQueuePosition(nextQueuePosition)
+
+    if (nextPhase === displayPhase) {
+      setPendingPhase(null)
+      setPendingSince(null)
+      return
+    }
+
+    if (pendingPhase === nextPhase && pendingSince) {
+      if (now - pendingSince >= MIN_PHASE_STICK_MS) {
+        setDisplayPhase(nextPhase)
+        setPendingPhase(null)
+        setPendingSince(null)
+      }
+    } else {
+      setPendingPhase(nextPhase)
+      setPendingSince(now)
+    }
+  }
 
   // Load plans from database (public access)
   useEffect(() => {
@@ -219,7 +251,7 @@ export default function Home() {
       
       return () => clearTimeout(initialDelay)
     }
-  }, [isLoading, currentPhase, queuePosition, currentMessage])
+  }, [isLoading, displayPhase, queuePosition, currentMessage])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -335,6 +367,9 @@ export default function Home() {
     
     setIsLoading(true)
     setCurrentPhase('queue')
+    setDisplayPhase('queue')
+    setPendingPhase(null)
+    setPendingSince(null)
     setCurrentMessage('')
     setPreviousMessage('')
     setLoadingPhase('waiting')
@@ -357,7 +392,10 @@ export default function Home() {
       
       // Don't set queue phase immediately - wait for first poll to get accurate status
       // This prevents showing incorrect queue position if job starts processing immediately
-      setCurrentPhase('scraping') // Start with scraping as default, will update on first poll
+      setCurrentPhase('scraping') // raw
+      setDisplayPhase('queue') // UI starts at queue
+      setPendingPhase(null)
+      setPendingSince(null)
       setQueuePosition(null)
 
       // Poll status until completed or error
@@ -387,13 +425,9 @@ export default function Home() {
           // Update phase and queue position - this will trigger smooth message transition
           // Only show queue phase if we have a valid queue position > 0
           if (phase === 'queue' && currentQueuePosition !== null && currentQueuePosition > 0) {
-            // Actually in queue with valid position
-            setCurrentPhase('queue')
-            setQueuePosition(currentQueuePosition)
+            updatePhases('queue', currentQueuePosition)
           } else {
-            // Not in queue or position is 0/null - use the phase from API
-            setCurrentPhase(phase)
-            setQueuePosition(null) // Always clear queue position when not in queue phase
+            updatePhases(phase, null)
           }
 
           if (status === 'completed') {
@@ -427,7 +461,7 @@ export default function Home() {
   }
 
   // Get current message based on phase
-  const displayMessage = currentMessage || getLoadingMessage(currentPhase, queuePosition)
+  const displayMessage = currentMessage || getLoadingMessage(displayPhase, queuePosition)
   const loadingWords = displayMessage.split(' ')
 
   return (
@@ -454,7 +488,7 @@ export default function Home() {
             <p className="loading-text-home">
               {loadingWords.map((word, index) => (
                 <span
-                  key={`${currentPhase}-${displayMessage}-${index}`}
+                  key={`${displayPhase}-${displayMessage}-${index}`}
                   className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
                   style={{
                     animationDelay: loadingPhase === 'exiting'
