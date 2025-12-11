@@ -173,6 +173,7 @@ export default function Home() {
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([])
   const hasShownInitialMessageRef = useRef(false)
   const isTransitioningRef = useRef(false) // Sync ref for transition state
+  const lastAnimatedPhaseRef = useRef<string>('queue') // Last phase we fully animated to
   
   // Clear all transition timers
   const clearTransitionTimers = () => {
@@ -186,6 +187,7 @@ export default function Home() {
       clearTransitionTimers()
       setCurrentMessage('')
       setDisplayedPhase('queue')
+      lastAnimatedPhaseRef.current = 'queue'
       setPendingPhase(null)
       setLoadingPhase('waiting')
       setIsTransitioning(false)
@@ -219,10 +221,10 @@ export default function Home() {
     if (!isLoading || !hasShownInitialMessageRef.current) return
 
     // If new phase arrived and it's different from what we're showing
-    if (currentPhase !== displayedPhase) {
+    if (currentPhase !== displayedPhase && currentPhase !== lastAnimatedPhaseRef.current) {
       if (isTransitioningRef.current) {
         // Queue it - will be processed after current transition
-        setPendingPhase(currentPhase)
+        setPendingPhase(currentPhase !== pendingPhase ? currentPhase : pendingPhase)
         return
       }
       
@@ -245,17 +247,24 @@ export default function Home() {
           transitionTimersRef.current.push(setTimeout(() => {
             setLoadingPhase('visible')
             setDisplayedPhase(targetPhase)
+            lastAnimatedPhaseRef.current = targetPhase
             setIsTransitioning(false)
             isTransitioningRef.current = false
           }, 1500))
         }, 150))
       }, 800))
     }
-  }, [isLoading, currentPhase, displayedPhase])
+  }, [isLoading, currentPhase, displayedPhase, pendingPhase])
 
   // When transition completes and there's a pending phase, trigger it
   useEffect(() => {
-    if (!isTransitioning && pendingPhase && pendingPhase !== displayedPhase && !isTransitioningRef.current) {
+    if (
+      !isTransitioning &&
+      pendingPhase &&
+      pendingPhase !== displayedPhase &&
+      pendingPhase !== lastAnimatedPhaseRef.current &&
+      !isTransitioningRef.current
+    ) {
       const nextPhase = pendingPhase
       setPendingPhase(null)
       setCurrentPhase(nextPhase)
