@@ -205,16 +205,15 @@ export default function Home() {
       setIsTransitioning(true)
       const targetMessage = getLoadingMessage(displayedPhase)
       
+      // Show immediately when loading starts
+      setCurrentMessage(targetMessage)
+      setLoadingPhase('entering')
+
       transitionTimersRef.current.push(setTimeout(() => {
-        setCurrentMessage(targetMessage)
-        setLoadingPhase('entering')
-        
-        transitionTimersRef.current.push(setTimeout(() => {
-          setLoadingPhase('visible')
-          setIsTransitioning(false)
-          isTransitioningRef.current = false
-        }, 1500))
-      }, 800))
+        setLoadingPhase('visible')
+        setIsTransitioning(false)
+        isTransitioningRef.current = false
+      }, 1500))
     }
   }, [isLoading, displayedPhase])
 
@@ -483,7 +482,7 @@ export default function Home() {
         </div>
 
       {/* Loading Text Overlay */}
-      {isLoading && (
+      {isLoading && hasShownInitialMessageRef.current && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             {/* Status message - keep height stable */}
@@ -516,7 +515,7 @@ export default function Home() {
 
       <Navbar />
       {/* Hero Section */}
-      <div className={`relative min-h-screen overflow-hidden transition-all duration-1000 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+      <div className={`relative min-h-screen overflow-hidden transition-all duration-300 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="relative z-20 min-h-screen flex flex-col">
           {/* Main content - centered */}
           <div className="flex-1 flex items-center justify-center">
@@ -682,7 +681,7 @@ export default function Home() {
       {/* Feature Points Section - Below the fold */}
       <section 
         ref={secondSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-4xl px-4 text-center">
           <Typography variant="h2" className="mb-12 text-white border-none">
@@ -744,7 +743,7 @@ export default function Home() {
       {/* Third Section - CTA */}
       <section 
         ref={thirdSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-2xl px-4 text-center">
           <Typography variant="h2" className="mb-6 text-white border-none">
@@ -809,7 +808,7 @@ function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[
 
   return (
     <section 
-      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
     >
       <div className="w-full max-w-6xl mx-auto px-4">
         {/* Header */}
