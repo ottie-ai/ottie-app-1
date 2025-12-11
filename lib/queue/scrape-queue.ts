@@ -417,6 +417,67 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       galleryMarkdown = extractStructuredText(galleryHtml)
     }
     
+    // Check if we have any content to process
+    // For Apify: check if we have cleanedJson
+    // For Firecrawl: check if we have markdown or can extract from rawHtml
+    let hasContent = false
+    if (provider === 'apify' && cleanedJson) {
+      hasContent = true
+    } else if (provider === 'firecrawl') {
+      // Check if markdown has content
+      if (markdown && markdown.trim().length > 0) {
+        hasContent = true
+      } else if (rawHtml) {
+        // Try to extract structured text from rawHtml as fallback
+        const $ = load(rawHtml)
+        const mainContentSelector = getMainContentSelector(job.url) || 'main'
+        const mainElement = $(mainContentSelector)
+        
+        if (mainElement.length > 0) {
+          const htmlCleaner = getHtmlCleaner(job.url)
+          if (htmlCleaner) {
+            htmlCleaner(mainElement)
+          }
+          
+          const mainHtml = $.html(mainElement)
+          const extractedText = extractStructuredText(mainHtml)
+          if (extractedText && extractedText.trim().length > 0) {
+            markdown = extractedText
+            hasContent = true
+          }
+        }
+      }
+    }
+    
+    // If no content, set error status immediately and stop processing
+    if (!hasContent) {
+      console.error('❌ [Queue Worker] No content extracted from scraped page')
+      console.error('❌ [Queue Worker] Provider:', provider)
+      console.error('❌ [Queue Worker] Markdown length:', markdown?.length || 0)
+      console.error('❌ [Queue Worker] Raw HTML length:', rawHtml?.length || 0)
+      console.error('❌ [Queue Worker] Has cleanedJson:', !!cleanedJson)
+      
+      await supabase
+        .from('temp_previews')
+        .update({
+          default_raw_html: provider === 'apify' ? apifyJsonString : (rawHtml || null),
+          default_markdown: provider === 'apify' ? apifyTextFormat : (markdown || null),
+          gallery_raw_html: galleryHtml,
+          gallery_markdown: galleryMarkdown,
+          gallery_image_urls: galleryImages && galleryImages.length > 0 ? galleryImages : [],
+          scraped_data: scrapedData || undefined,
+          status: 'error',
+          error_message: 'Túto webstránku nemožno scrapnúť. Skúste inú URL.',
+          source_domain: sourceDomain,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', job.id)
+      
+      await markJobCompleted(job.id, false)
+      console.log(`❌ [Queue Worker] Job ${job.id} failed - no content extracted`)
+      return { success: false, jobId: job.id, error: 'No content extracted from scraped page' }
+    }
+    
     // Prepare scraped_data for Apify JSON (saved to same column as markdown for Firecrawl)
     let scrapedData: any = null
     if (provider === 'apify' && cleanedJson) {
@@ -514,63 +575,30 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     try {
       if (provider === 'apify' && cleanedJson) {
           await generateConfigFromData(job.id, cleanedJson, 'apify')
-        } else if (provider === 'firecrawl' && (markdown || rawHtml)) {
-          let structuredText = markdown || null
-
-          if (!structuredText && rawHtml) {
-            const $ = load(rawHtml)
-            const mainContentSelector = getMainContentSelector(job.url) || 'main'
-            const mainElement = $(mainContentSelector)
-            
-            if (mainElement.length > 0) {
-              const htmlCleaner = getHtmlCleaner(job.url)
-              if (htmlCleaner) {
-                htmlCleaner(mainElement)
-              }
-              
-              const mainHtml = $.html(mainElement)
-              structuredText = extractStructuredText(mainHtml)
-            }
-          }
-
-          if (structuredText && structuredText.trim().length > 0) {
-            // Persist updated markdown for debugging
-            await supabase
-              .from('temp_previews')
-              .update({
-                default_markdown: structuredText,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', job.id)
-            
-            await generateConfigFromData(job.id, structuredText, 'text')
-          } else {
-            // No content extracted - cannot proceed with AI processing
-            console.error('⚠️ [Queue Worker] No structured text extracted from scraped content')
-            console.error('⚠️ [Queue Worker] Markdown length:', markdown?.length || 0)
-            console.error('⚠️ [Queue Worker] Raw HTML length:', rawHtml?.length || 0)
-            
-            await supabase
-              .from('temp_previews')
-              .update({
-                status: 'error',
-                error_message: 'Failed to extract content from the scraped page. The page may be empty or protected.',
-              })
-              .eq('id', job.id)
-          }
+        } else if (provider === 'firecrawl' && markdown) {
+          // Content was already validated earlier, so markdown should have content
+          // Persist updated markdown for debugging
+          await supabase
+            .from('temp_previews')
+            .update({
+              default_markdown: markdown,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', job.id)
+          
+          await generateConfigFromData(job.id, markdown, 'text')
         } else {
-          // No data available for AI processing
-          console.error('⚠️ [Queue Worker] No data available for AI processing')
+          // This should not happen as we check content earlier, but keep as safety fallback
+          console.error('⚠️ [Queue Worker] Unexpected: No data available for AI processing')
           console.error('⚠️ [Queue Worker] Provider:', provider)
           console.error('⚠️ [Queue Worker] Has cleanedJson:', !!cleanedJson)
           console.error('⚠️ [Queue Worker] Has markdown:', !!markdown)
-          console.error('⚠️ [Queue Worker] Has rawHtml:', !!rawHtml)
           
           await supabase
             .from('temp_previews')
             .update({
               status: 'error',
-              error_message: 'No scraped content available for AI processing.',
+              error_message: 'Túto webstránku nemožno scrapnúť. Skúste inú URL.',
             })
             .eq('id', job.id)
         }
