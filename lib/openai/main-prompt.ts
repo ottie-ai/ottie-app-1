@@ -62,7 +62,7 @@ PRIORITY FIELDS (fill FIRST):
 
 3. price info extract number only
 
-4. photos
+4. photos: include all available largest
 
 5. beds, baths, living_area
 
