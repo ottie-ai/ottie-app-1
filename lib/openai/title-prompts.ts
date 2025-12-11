@@ -27,7 +27,7 @@ export function getTitleGenerationPrompt(
     luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "Star"] },
     pool: { label: "Pool & Water", icons: ["SwimmingPool", "Waves", "Drop"] },
     parking: { label: "Parking", icons: ["CarSimple", "Garage", "Car"] },
-    outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Plant", "Park"] },
+    outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Plant", "Park", "Fire", "Campfire"] },
     security: { label: "Security & Safety", icons: ["ShieldCheck", "Lock", "Camera", "Alarm"] },
     heating_cooling: { label: "Climate Control", icons: ["Thermometer", "Fan", "Sun", "Snowflake"] },
     energy: { label: "Energy & Utilities", icons: ["SolarPanel", "Lightning", "BatteryFull", "Windmill", "Plug"] },
