@@ -174,12 +174,48 @@ export default function Home() {
   const hasShownInitialMessageRef = useRef(false)
   const isTransitioningRef = useRef(false) // Sync ref for transition state
   const lastAnimatedPhaseRef = useRef<string>('queue') // Last phase we fully animated to
+  const transitionTargetRef = useRef<string | null>(null) // Phase we're animating towards
+  const phasesQueueRef = useRef<string[]>([]) // queue of incoming phases
   
   // Clear all transition timers
   const clearTransitionTimers = () => {
     transitionTimersRef.current.forEach(timer => clearTimeout(timer))
     transitionTimersRef.current = []
   }
+
+  // Run next transition from queue
+  const runNextTransition = useCallback(() => {
+    if (isTransitioningRef.current) return
+    const nextPhase = phasesQueueRef.current.shift()
+    if (!nextPhase) return
+
+    const targetMessage = getLoadingMessage(nextPhase)
+    transitionTargetRef.current = nextPhase
+    lastAnimatedPhaseRef.current = nextPhase
+    isTransitioningRef.current = true
+    setIsTransitioning(true)
+    setLoadingPhase('exiting')
+
+    transitionTimersRef.current.push(setTimeout(() => {
+      setLoadingPhase('hidden')
+      setCurrentMessage('')
+
+      transitionTimersRef.current.push(setTimeout(() => {
+        setCurrentMessage(targetMessage)
+        setLoadingPhase('entering')
+
+        transitionTimersRef.current.push(setTimeout(() => {
+          setLoadingPhase('visible')
+          setDisplayedPhase(nextPhase)
+          isTransitioningRef.current = false
+          setIsTransitioning(false)
+          transitionTargetRef.current = null
+          // Process next in queue
+          runNextTransition()
+        }, 1500))
+      }, 150))
+    }, 800))
+  }, [])
 
   // Handle initial message display
   useEffect(() => {
@@ -193,6 +229,8 @@ export default function Home() {
       setIsTransitioning(false)
       hasShownInitialMessageRef.current = false
       isTransitioningRef.current = false
+      transitionTargetRef.current = null
+      phasesQueueRef.current = []
       return
     }
 
@@ -216,64 +254,39 @@ export default function Home() {
     }
   }, [isLoading, displayedPhase])
 
-  // Handle phase transitions
+  // Handle phase transitions via queue
   useEffect(() => {
     if (!isLoading || !hasShownInitialMessageRef.current) return
 
-    // If new phase arrived and it's different from what we're showing
-    if (currentPhase !== displayedPhase && currentPhase !== lastAnimatedPhaseRef.current) {
-      if (isTransitioningRef.current) {
-        // Queue it - will be processed after current transition
-        if (pendingPhase !== currentPhase) {
-          setPendingPhase(currentPhase)
-        }
-        return
+    // Enqueue new phase if it's different from what we show or have queued
+    if (
+      currentPhase !== displayedPhase &&
+      currentPhase !== lastAnimatedPhaseRef.current &&
+      currentPhase !== transitionTargetRef.current
+    ) {
+      const queue = phasesQueueRef.current
+      if (queue[queue.length - 1] !== currentPhase) {
+        queue.push(currentPhase)
       }
-      
-      // Start transition immediately
-      clearTransitionTimers()
-      const targetPhase = currentPhase
-      const targetMessage = getLoadingMessage(targetPhase)
-      
-      // Mark as animated BEFORE starting to prevent duplicate triggers
-      lastAnimatedPhaseRef.current = targetPhase
-      isTransitioningRef.current = true
-      setIsTransitioning(true)
-      setLoadingPhase('exiting')
-      
-      transitionTimersRef.current.push(setTimeout(() => {
-        setLoadingPhase('hidden')
-        setCurrentMessage('')
-        
-        transitionTimersRef.current.push(setTimeout(() => {
-          setCurrentMessage(targetMessage)
-          setLoadingPhase('entering')
-          
-          transitionTimersRef.current.push(setTimeout(() => {
-            setLoadingPhase('visible')
-            setDisplayedPhase(targetPhase)
-            setIsTransitioning(false)
-            isTransitioningRef.current = false
-          }, 1500))
-        }, 150))
-      }, 800))
+      runNextTransition()
     }
-  }, [isLoading, currentPhase, displayedPhase, pendingPhase])
+  }, [isLoading, currentPhase, displayedPhase, runNextTransition])
 
-  // When transition completes and there's a pending phase, trigger it
+  // If pendingPhase was set earlier, enqueue it when transition ends
   useEffect(() => {
     if (
       !isTransitioning &&
       pendingPhase &&
       pendingPhase !== displayedPhase &&
       pendingPhase !== lastAnimatedPhaseRef.current &&
+      pendingPhase !== transitionTargetRef.current &&
       !isTransitioningRef.current
     ) {
-      const nextPhase = pendingPhase
+      phasesQueueRef.current.push(pendingPhase)
       setPendingPhase(null)
-      setCurrentPhase(nextPhase)
+      runNextTransition()
     }
-  }, [isTransitioning, pendingPhase, displayedPhase])
+  }, [isTransitioning, pendingPhase, displayedPhase, runNextTransition])
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
@@ -500,27 +513,26 @@ export default function Home() {
       {isLoading && (
         <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="text-center">
-            {/* Status message - with min-height to prevent duration jumping */}
-            <div className="min-h-[3rem] flex items-center justify-center">
-              {loadingPhase !== 'waiting' && loadingPhase !== 'hidden' && currentMessage && (
-                <p className="loading-text-home">
-                  {loadingWords.map((word, index) => (
-                    <span
-                        key={`${displayedPhase}-${displayMessage}-${index}`}
-                      className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''}`}
-                      style={{
-                        animationDelay: loadingPhase === 'exiting'
-                          ? `${(loadingWords.length - 1 - index) * 0.1}s`
-                          : `${index * 0.12}s`,
-                      }}
-                    >
-                      {word}
-                      {index < loadingWords.length - 1 && '\u00A0'}
-                    </span>
-                  ))}
-                </p>
+            {/* Status message - keep height stable */}
+            <p className="loading-text-home min-h-[3rem] flex items-center justify-center">
+              {currentMessage && (
+                loadingWords.map((word, index) => (
+                  <span
+                      key={`${displayedPhase}-${displayMessage}-${index}`}
+                    className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''} ${loadingPhase === 'hidden' ? 'opacity-0' : ''}`}
+                    style={{
+                      animationDelay: loadingPhase === 'exiting'
+                        ? `${(loadingWords.length - 1 - index) * 0.1}s`
+                        : `${index * 0.12}s`,
+                    }}
+                  >
+                    {word}
+                    {index < loadingWords.length - 1 && '\u00A0'}
+                  </span>
+                ))
               )}
-            </div>
+              {!currentMessage && '\u00A0'}
+            </p>
             {/* Duration - always visible during loading */}
             <p className="loading-duration-home">
               <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
