@@ -56,7 +56,7 @@ function Button({
     asChild?: boolean
   }) {
   const motionProps = {
-    whileHover: { scale: 1.02 },
+    whileHover: { scale: 1.05 },
     whileTap: { scale: 0.98 },
     transition: springTransition,
   }
