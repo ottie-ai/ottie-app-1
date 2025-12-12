@@ -71,7 +71,7 @@ export function DestructiveButton({
           currentTarget: buttonRef.current,
           target: buttonRef.current,
           nativeEvent: new MouseEvent('click', { bubbles: true, cancelable: true }),
-        } as React.MouseEvent<HTMLButtonElement>
+        } as unknown as React.MouseEvent<HTMLButtonElement>
         
         // Call onClick directly - this should work with AlertDialog
         onClick(syntheticEvent)

@@ -11,7 +11,6 @@ import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe, Info } from 'lucide-react'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Button } from '@/components/ui/button'
-import { DestructiveButton } from '@/components/ui/destructive-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -3283,25 +3282,6 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         'Delete account'
                       )}
                     </Button>
-                  </div>
-
-                  {/* Debug Destructive Button */}
-                  <Separator className="my-6" />
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="space-y-1 w-full sm:w-1/2">
-                      <p className="text-sm font-medium">Debug Button</p>
-                      <p className="text-sm text-muted-foreground">
-                        Test destructive button with hold to confirm effect (debug only)
-                      </p>
-                    </div>
-                    <DestructiveButton 
-                      size="sm"
-                      onClick={() => {
-                        console.log('Debug button confirmed!')
-                      }}
-                    >
-                      Hold to confirm
-                    </DestructiveButton>
                   </div>
                 </TabsContent>
               )}
