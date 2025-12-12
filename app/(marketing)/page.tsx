@@ -342,8 +342,33 @@ export default function Home() {
     setError(null)
     
     // Validate URL input
-    if (!link.trim()) {
+    const trimmedLink = link.trim()
+    if (!trimmedLink) {
       setError('Please enter a valid link')
+      return
+    }
+    
+    // Validate URL format - must be done BEFORE any animations
+    let validatedUrl: string
+    try {
+      // Add protocol if missing
+      let urlToValidate = trimmedLink
+      if (!trimmedLink.startsWith('http://') && !trimmedLink.startsWith('https://')) {
+        urlToValidate = `https://${trimmedLink}`
+      }
+      
+      // Try to create URL object to validate
+      const url = new URL(urlToValidate)
+      
+      // Additional validation: must have a valid hostname (not empty, has at least one dot or is localhost)
+      const hostname = url.hostname
+      if (!hostname || (hostname !== 'localhost' && !hostname.includes('.') && !hostname.includes(':'))) {
+        throw new Error('Invalid hostname')
+      }
+      
+      validatedUrl = urlToValidate
+    } catch (err) {
+      setError('Please enter a valid URL')
       return
     }
 
@@ -423,7 +448,7 @@ export default function Home() {
     // Normal mode - real API calls
     try {
       // Add to queue and get preview ID
-      const result = await generatePreview(link)
+      const result = await generatePreview(validatedUrl)
       
       if ('error' in result) {
         setError(result.error || 'An error occurred while generating preview')
