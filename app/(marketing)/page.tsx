@@ -72,6 +72,45 @@ export default function Home() {
   const [currentMessage, setCurrentMessage] = useState<string>('')
   const [isTransitioning, setIsTransitioning] = useState(false)
   
+  // Debug mode
+  const [debugMode, setDebugMode] = useState(false)
+  const [debugPhaseTimes, setDebugPhaseTimes] = useState({
+    queue: 3000,
+    scraping: 5000,
+    gallery: 4000,
+    call1: 6000,
+    call2: 5000,
+    assembling: 3000,
+  })
+  const [showDebugPanel, setShowDebugPanel] = useState(false)
+  
+  // Load debug mode from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('ottie-debug-mode')
+    if (saved === 'true') {
+      setDebugMode(true)
+      setShowDebugPanel(true)
+    }
+    const savedTimes = localStorage.getItem('ottie-debug-phase-times')
+    if (savedTimes) {
+      try {
+        setDebugPhaseTimes(JSON.parse(savedTimes))
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, [])
+  
+  // Save debug mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('ottie-debug-mode', debugMode.toString())
+  }, [debugMode])
+  
+  // Save debug phase times to localStorage
+  useEffect(() => {
+    localStorage.setItem('ottie-debug-phase-times', JSON.stringify(debugPhaseTimes))
+  }, [debugPhaseTimes])
+  
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
   
@@ -295,55 +334,6 @@ export default function Home() {
 
   const sphereRef = useRef<HTMLDivElement>(null)
 
-  // Mouse tracking for sphere rotation in idle mode (desktop only)
-  const [isMobile, setIsMobile] = useState(false)
-  const [hasMouseMoved, setHasMouseMoved] = useState(false)
-  
-  useEffect(() => {
-    // Check if mobile/touch device
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window)
-    }
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-  
-  useEffect(() => {
-    if (isLoading || isMobile) return
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      const sphere = sphereRef.current
-      if (!sphere) return
-      
-      // First mouse move - disable CSS animation and switch to mouse tracking
-      if (!hasMouseMoved) {
-        setHasMouseMoved(true)
-        sphere.style.animation = 'none'
-      }
-
-      // Calculate mouse position relative to center of screen
-      const centerX = window.innerWidth / 2
-      const centerY = window.innerHeight / 2
-      
-      // Normalize to -1 to 1 range
-      const x = (e.clientX - centerX) / centerX
-      const y = (e.clientY - centerY) / centerY
-      
-      // Apply rotation based on mouse position (subtle effect)
-      // Base: 126° (7 seconds into animation)
-      const baseRotation = 126
-      const rotateX = y * 15 // Max 15 degrees offset
-      const rotateY = x * 15 // Max 15 degrees offset
-      
-      sphere.style.transform = `rotateZ(${baseRotation + rotateY}deg) rotateX(${-baseRotation + rotateX}deg) rotateZ(${baseRotation}deg)`
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [isLoading, isMobile, hasMouseMoved])
-
   // Loading animation ref
   const loadingAnimationRef = useRef<number | null>(null)
   const loadingStartTimeRef = useRef<number>(0)
@@ -412,6 +402,43 @@ export default function Home() {
     setQueuePosition(null)
     setIsTransitioning(false)
 
+    // Debug mode - simulate loading without API calls
+    if (debugMode) {
+      const phases: Array<{ phase: string; queuePosition: number | null; time: number }> = [
+        { phase: 'queue', queuePosition: 2, time: debugPhaseTimes.queue },
+        { phase: 'scraping', queuePosition: null, time: debugPhaseTimes.scraping },
+        { phase: 'gallery', queuePosition: null, time: debugPhaseTimes.gallery },
+        { phase: 'call1', queuePosition: null, time: debugPhaseTimes.call1 },
+        { phase: 'call2', queuePosition: null, time: debugPhaseTimes.call2 },
+        { phase: 'assembling', queuePosition: null, time: debugPhaseTimes.assembling },
+      ]
+      
+      let currentPhaseIndex = 0
+      const runDebugPhase = () => {
+        if (currentPhaseIndex >= phases.length) {
+          // Completed - navigate to a dummy preview (or stay on page)
+          const totalEndTime = Date.now()
+          const totalDuration = totalEndTime - totalStartTime
+          setIsLoading(false)
+          console.log(`✅ Debug mode completed in ${totalDuration}ms`)
+          // Optionally navigate to a test preview or show success message
+          return
+        }
+        
+        const { phase, queuePosition, time } = phases[currentPhaseIndex]
+        updatePhases(phase, queuePosition)
+        
+        currentPhaseIndex++
+        setTimeout(runDebugPhase, time)
+      }
+      
+      // Start with queue phase
+      updatePhases('queue', 2)
+      setTimeout(runDebugPhase, debugPhaseTimes.queue)
+      return
+    }
+
+    // Normal mode - real API calls
     try {
       // Add to queue and get preview ID
       const result = await generatePreview(link)
@@ -496,6 +523,11 @@ export default function Home() {
   // Get current message based on what's being displayed
   const displayMessage = currentMessage || getLoadingMessage(displayedPhase)
   const loadingWords = displayMessage.split(' ')
+  
+  // Use stable key that doesn't change during transition to prevent double animation
+  // Use transitionTargetRef if transitioning (set before message changes), otherwise use currentPhase or displayedPhase
+  const stablePhase = transitionTargetRef.current || currentPhase || displayedPhase
+  const messageKey = `${stablePhase}-${displayMessage}`
 
   return (
     <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
@@ -523,7 +555,7 @@ export default function Home() {
               {currentMessage && (
                 loadingWords.map((word, index) => (
                   <span
-                      key={`${displayedPhase}-${displayMessage}-${index}`}
+                    key={`${messageKey}-${index}`}
                     className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''} ${loadingPhase === 'hidden' ? 'opacity-0' : ''}`}
                     style={{
                       animationDelay: loadingPhase === 'exiting'
@@ -547,6 +579,94 @@ export default function Home() {
       )}
 
       <Navbar />
+      
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="fixed top-20 right-4 z-50 bg-black/90 border border-white/20 rounded-lg p-4 max-w-sm text-white text-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Debug Mode</h3>
+            <button
+              onClick={() => setShowDebugPanel(false)}
+              className="text-white/60 hover:text-white"
+            >
+              ×
+            </button>
+          </div>
+          <div className="space-y-2 mb-3">
+            <label className="flex items-center gap-2">
+              <Switch
+                checked={debugMode}
+                onCheckedChange={setDebugMode}
+              />
+              <span>Enable Debug Mode</span>
+            </label>
+          </div>
+          {debugMode && (
+            <div className="space-y-2 border-t border-white/10 pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-white/60">Phase durations (ms):</p>
+                <button
+                  onClick={() => {
+                    setDebugPhaseTimes({
+                      queue: 3000,
+                      scraping: 5000,
+                      gallery: 4000,
+                      call1: 6000,
+                      call2: 5000,
+                      assembling: 3000,
+                    })
+                  }}
+                  className="text-xs text-white/60 hover:text-white underline"
+                  disabled={isLoading}
+                >
+                  Reset
+                </button>
+              </div>
+              {Object.entries(debugPhaseTimes).map(([phase, time]) => (
+                <div key={phase} className="flex items-center gap-2">
+                  <label className="text-xs w-20 capitalize">{phase}:</label>
+                  <Input
+                    type="number"
+                    value={time}
+                    onChange={(e) => {
+                      const newTime = parseInt(e.target.value) || 0
+                      setDebugPhaseTimes(prev => ({ ...prev, [phase]: newTime }))
+                    }}
+                    className="h-7 text-xs bg-white/10 border-white/20 text-white"
+                    disabled={isLoading}
+                  />
+                </div>
+              ))}
+              <div className="text-xs text-white/40 mt-2 space-y-1">
+                {isLoading ? (
+                  <>
+                    <p>⏳ Loading in progress...</p>
+                    <p className="text-white/60">Current: {displayedPhase}</p>
+                  </>
+                ) : (
+                  <p>Ready to test</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Debug Toggle Button */}
+      {!showDebugPanel && (
+        <button
+          onClick={() => setShowDebugPanel(true)}
+          className={cn(
+            "fixed top-20 right-4 z-50 border rounded-lg px-3 py-2 text-xs transition-colors",
+            debugMode 
+              ? "bg-orange-500/20 border-orange-500/50 text-orange-300 hover:bg-orange-500/30" 
+              : "bg-black/80 hover:bg-black/90 border-white/20 text-white"
+          )}
+        >
+          {debugMode ? "🔧 Debug ON" : "Debug"}
+        </button>
+      )}
+      
       {/* Hero Section */}
       <div className={`relative min-h-screen overflow-hidden transition-all duration-1000 ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="relative z-20 min-h-screen flex flex-col">

@@ -11,6 +11,7 @@ import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
 import { Sun, Moon, Monitor, Check, AlertTriangle, Trash2, Globe, Info } from 'lucide-react'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { Button } from '@/components/ui/button'
+import { DestructiveButton } from '@/components/ui/destructive-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -276,6 +277,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
 
   // Reset workspace state
   const [resetWorkspaceLoading, setResetWorkspaceLoading] = useState(false)
+  const [showResetWorkspaceDialog, setShowResetWorkspaceDialog] = useState(false)
 
   // Form state - initialize from context data
   // IMPORTANT: Only use profile.avatar_url, never userMetadata.avatarUrl (which may contain Google avatar)
@@ -3148,37 +3150,8 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           <Button 
                             variant="link" 
                             size="sm"
-                            onClick={async () => {
-                              if (!workspace || !user?.id) return
-                              
-                              const confirmed = window.confirm(
-                                `Are you sure you want to reset "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                              )
-                              
-                              if (!confirmed) return
-                              
-                              setResetWorkspaceLoading(true)
-                              const result = await resetWorkspace(workspace.id, user.id)
-                              
-                              if ('error' in result) {
-                                toast.error(result.error)
-                              } else {
-                                toastSuccess('Workspace reset successfully')
-                                // Refresh workspace data - this will load the new workspace
-                                await refreshWorkspace()
-                                // Reset local state
-                                setWorkspaceLogoUrl('')
-                                setOriginalWorkspaceLogoUrl('')
-                                setWorkspaceLogoFile(null)
-                                setWorkspaceLogoPreview(null)
-                                if (workspaceLogoInputRef.current) {
-                                  workspaceLogoInputRef.current.value = ''
-                                }
-                                // Reload page to ensure all components use the new workspace
-                                window.location.reload()
-                              }
-                              
-                              setResetWorkspaceLoading(false)
+                            onClick={() => {
+                              setShowResetWorkspaceDialog(true)
                             }}
                             disabled={resetWorkspaceLoading || !user?.id}
                             className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
@@ -3256,37 +3229,8 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         <Button 
                           variant="link" 
                           size="sm"
-                          onClick={async () => {
-                            if (!workspace || !user?.id) return
-                            
-                            const confirmed = window.confirm(
-                              `Are you sure you want to reset "${workspace.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.`
-                            )
-                            
-                            if (!confirmed) return
-                            
-                            setResetWorkspaceLoading(true)
-                            const result = await resetWorkspace(workspace.id, user.id)
-                            
-                            if ('error' in result) {
-                              toast.error(result.error)
-                            } else {
-                              toastSuccess('Workspace reset successfully')
-                              // Refresh workspace data - this will load the new workspace
-                              await refreshWorkspace()
-                              // Reset local state
-                              setWorkspaceLogoUrl('')
-                              setOriginalWorkspaceLogoUrl('')
-                              setWorkspaceLogoFile(null)
-                              setWorkspaceLogoPreview(null)
-                              if (workspaceLogoInputRef.current) {
-                                workspaceLogoInputRef.current.value = ''
-                              }
-                              // Reload page to ensure all components use the new workspace
-                              window.location.reload()
-                            }
-                            
-                            setResetWorkspaceLoading(false)
+                          onClick={() => {
+                            setShowResetWorkspaceDialog(true)
                           }}
                           disabled={resetWorkspaceLoading || !user?.id}
                           className="w-fit h-auto p-0 text-destructive hover:text-destructive/80 sm:ml-auto"
@@ -3339,6 +3283,25 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                         'Delete account'
                       )}
                     </Button>
+                  </div>
+
+                  {/* Debug Destructive Button */}
+                  <Separator className="my-6" />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-1 w-full sm:w-1/2">
+                      <p className="text-sm font-medium">Debug Button</p>
+                      <p className="text-sm text-muted-foreground">
+                        Test destructive button with hold to confirm effect (debug only)
+                      </p>
+                    </div>
+                    <DestructiveButton 
+                      size="sm"
+                      onClick={() => {
+                        console.log('Debug button confirmed!')
+                      }}
+                    >
+                      Hold to confirm
+                    </DestructiveButton>
                   </div>
                 </TabsContent>
               )}
@@ -3876,6 +3839,69 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Reset Workspace Dialog */}
+      <AlertDialog open={showResetWorkspaceDialog} onOpenChange={setShowResetWorkspaceDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Reset Workspace
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reset "{workspace?.name}"? This will permanently delete all sites, integrations, and remove the logo. A new workspace will be created automatically. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowResetWorkspaceDialog(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!workspace || !user?.id) return
+
+                setResetWorkspaceLoading(true)
+                setError(null)
+
+                const result = await resetWorkspace(workspace.id, user.id)
+
+                if ('error' in result) {
+                  setError(result.error)
+                  toast.error(result.error)
+                  setResetWorkspaceLoading(false)
+                  setShowResetWorkspaceDialog(false)
+                } else {
+                  toastSuccess('Workspace reset successfully')
+                  // Refresh workspace data - this will load the new workspace
+                  await refreshWorkspace()
+                  // Reset local state
+                  setWorkspaceLogoUrl('')
+                  setOriginalWorkspaceLogoUrl('')
+                  setWorkspaceLogoFile(null)
+                  setWorkspaceLogoPreview(null)
+                  if (workspaceLogoInputRef.current) {
+                    workspaceLogoInputRef.current.value = ''
+                  }
+                  setShowResetWorkspaceDialog(false)
+                  // Reload page to ensure all components use the new workspace
+                  window.location.reload()
+                }
+              }}
+              disabled={resetWorkspaceLoading}
+              variant="destructive"
+            >
+              {resetWorkspaceLoading ? (
+                <>
+                  <LottieSpinner size={16} className="mr-2" />
+                  Resetting...
+                </>
+              ) : (
+                'Hold to reset'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Account Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
@@ -3970,7 +3996,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                 }
               }}
               disabled={deleteLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
             >
               {deleteLoading ? (
                 <>
@@ -3978,7 +4004,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   Deleting...
                 </>
               ) : (
-                'Delete Account'
+                'Hold to delete'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

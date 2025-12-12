@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { Button } from '@/components/ui/button'
+import { DestructiveButton } from '@/components/ui/destructive-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -567,15 +568,14 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
               </Button>
             )}
 
-            <Button
-              variant="destructive"
+            <DestructiveButton
               className="w-full justify-start"
               onClick={() => setIsDeleteDialogOpen(true)}
               disabled={isDeleting}
             >
               <LottieTrashIcon className="size-4 mr-2" destructive={true} />
               {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
+            </DestructiveButton>
           </div>
         </div>
       </div>

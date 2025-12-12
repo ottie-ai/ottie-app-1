@@ -8,11 +8,11 @@ import { motion, type HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "bg-primary text-primary-foreground",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
@@ -50,14 +50,25 @@ function Button({
   variant,
   size,
   asChild = false,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  const motionProps = {
-    whileHover: { scale: 1.05 },
-    whileTap: { scale: 0.98 },
+  // Check if this is a navigation button (sidebar menu buttons should not have zoom effect)
+  // Check both data-slot and data-sidebar attributes
+  const dataSlot = (props as any)['data-slot']
+  const dataSidebar = (props as any)['data-sidebar']
+  const isNavigationButton = dataSlot === 'sidebar-menu-button' || 
+                             dataSlot === 'sidebar-menu-sub-button' ||
+                             dataSidebar === 'menu-button' ||
+                             dataSidebar === 'menu-sub-button'
+  
+  // Motion props - apply zoom effect to all buttons except navigation
+  const motionProps = isNavigationButton ? {} : {
+    whileHover: { scale: 1.03 },
+    whileTap: { scale: 0.97 },
     transition: springTransition,
   }
 
@@ -85,12 +96,14 @@ function Button({
     )
   }
 
+  // Regular button with motion effects
   return (
     <motion.button
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
-      {...motionProps}
+      onClick={onClick}
       {...(props as HTMLMotionProps<"button">)}
+      {...motionProps}
     />
   )
 }

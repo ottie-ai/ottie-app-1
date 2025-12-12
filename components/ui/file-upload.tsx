@@ -5,6 +5,7 @@ import { useDropzone, type DropzoneOptions } from 'react-dropzone'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { DestructiveButton } from '@/components/ui/destructive-button'
 
 interface FileUploadProps extends Omit<DropzoneOptions, 'onDrop'> {
   value?: string | null
@@ -77,15 +78,14 @@ export function FileUpload({
             alt="Preview"
             className="mx-auto max-h-32 rounded-md object-contain"
           />
-          <Button
+          <DestructiveButton
             type="button"
-            variant="destructive"
             size="icon"
             className="absolute -right-2 -top-2 size-6"
             onClick={handleRemove}
           >
             <X className="size-3" />
-          </Button>
+          </DestructiveButton>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 text-center">

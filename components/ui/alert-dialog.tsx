@@ -4,7 +4,8 @@ import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants, type ButtonProps } from "@/components/ui/button"
+import { Button, buttonVariants, type ButtonProps } from "@/components/ui/button"
+import { DestructiveButton } from "@/components/ui/destructive-button"
 
 function AlertDialog({
   ...props
@@ -121,15 +122,24 @@ function AlertDialogDescription({
 function AlertDialogAction({
   className,
   variant,
+  onClick,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action> & {
   variant?: ButtonProps['variant']
 }) {
+  // Use DestructiveButton for destructive variant
+  if (variant === 'destructive') {
+    return (
+      <AlertDialogPrimitive.Action asChild>
+        <DestructiveButton className={className} onClick={onClick} {...props} />
+      </AlertDialogPrimitive.Action>
+    )
+  }
+  
   return (
-    <AlertDialogPrimitive.Action
-      className={cn(buttonVariants({ variant }), className)}
-      {...props}
-    />
+    <AlertDialogPrimitive.Action asChild>
+      <Button variant={variant} className={className} onClick={onClick} {...props} />
+    </AlertDialogPrimitive.Action>
   )
 }
 
@@ -138,10 +148,9 @@ function AlertDialogCancel({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
-    <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: "outline" }), className)}
-      {...props}
-    />
+    <AlertDialogPrimitive.Cancel asChild>
+      <Button variant="outline" className={className} {...props} />
+    </AlertDialogPrimitive.Cancel>
   )
 }
 
