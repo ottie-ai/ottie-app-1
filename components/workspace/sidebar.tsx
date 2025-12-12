@@ -248,19 +248,6 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="relative overflow-hidden overflow-x-hidden" suppressHydrationWarning>
-      {/* Background Sphere - exact same as homepage, just scaled down */}
-      {!isCollapsed && (
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/4 pointer-events-none z-0">
-          <div className="sphere-sidebar-wrapper opacity-80">
-            <div className="sphere-background">
-              {Array.from({ length: 36 }, (_, i) => (
-                <div key={i + 1} className={`ring${i + 1}`} />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       <SidebarHeader className="relative z-10 group-data-[collapsible=icon]:p-0">
         <SidebarMenu>
           <SidebarMenuItem>
