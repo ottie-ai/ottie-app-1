@@ -15,9 +15,9 @@
   transition: transform 0.1s ease-out;
 }
 
-/* Active/loading state - keep current rotation, just scale up */
+/* Active/loading state - continue animation with full rotation */
 .sphere-background.sphere-active {
-  /* Animation is disabled via JS, sphere stays at captured transform */
+  animation: spinSphere 20s linear infinite;
 }
 
 .sphere-background [class^="ring"] {
@@ -216,14 +216,14 @@
   opacity: 0;
   filter: blur(20px);
   transform: translateY(12px);
-  animation: wordRevealInHome 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: wordRevealInHome 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .loading-word-home.exiting {
   opacity: 1;
   filter: blur(0);
   transform: translateY(0);
-  animation: wordRevealOutHome 1s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: wordRevealOutHome 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
 @keyframes wordRevealInHome {
@@ -254,11 +254,30 @@
 
 /* Duration text with shimmer effect */
 .loading-duration-home {
-  margin-top: 2rem;
   font-size: 1.125rem;
   font-weight: 500;
   letter-spacing: 0.01em;
   color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  /* Remove margin-top from CSS - will be controlled by motion */
+  /* Remove transition - motion handles it */
+}
+
+/* Grid stack for StaggeringText - overlays two divs exactly on top of each other */
+.grid-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+}
+
+.grid-stack > div,
+.grid-stack > span {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
 }
 
 .shimmer-text-home {

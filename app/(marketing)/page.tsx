@@ -5,9 +5,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
 import { ScrollReveal } from '@/components/ui/scroll-reveal'
+import { LoadingText } from '@/components/ui/loading-text'
+import { StaggeringTextActive } from '@/components/ui/staggering-text-active'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,13 +25,16 @@ import { generatePreview, getPreviewStatus } from './actions'
 import '../sphere.css'
 
 const realEstateLinks = [
-  'zillow.com/123-Main-St',
-  'airbnb.com/rooms/456789',
-  'realtor.com/456-Oak-Avenue',
-  'booking.com/hotel/12345',
-  'redfin.com/789-Park-Boulevard',
-  'trulia.com/321-Elm-Street',
-  'homes.com/654-Pine-Drive',
+  // Agentúrne weby
+  'luxuryestates-agency.com/123-Main-Street',
+  'premiumproperties.com/456-Oak-Avenue',
+  'elitehomes-realty.com/789-Park-Boulevard',
+  'luxuryhomes-agency.com/321-Elm-Drive',
+  // Portálové weby
+  'propertyportal.com/654-Pine-Road',
+  'homesearch-portal.com/987-Cedar-Lane',
+  'realestate-hub.com/456-Maple-Court',
+  'propertyfinder-portal.com/123-Willow-Way',
 ]
 
 // Phase-based loading messages tied to actual process
@@ -36,7 +42,7 @@ const realEstateLinks = [
 const getLoadingMessage = (phase: string): string => {
   switch (phase) {
     case 'queue':
-      return 'Waiting for available agent...'
+      return 'Waiting for available agent'
     case 'scraping':
       return 'Reading property details'
     case 'gallery':
@@ -65,12 +71,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [currentPhase, setCurrentPhase] = useState<string>('queue') // Latest phase from API
   const [displayedPhase, setDisplayedPhase] = useState<string>('queue') // Phase currently shown in UI
-  const [pendingPhase, setPendingPhase] = useState<string | null>(null) // Phase waiting to be shown
-  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [error, setError] = useState<string | null>(null)
   const [queuePosition, setQueuePosition] = useState<number | null>(null)
+  
+  // Loading message state - original blur reveal approach
   const [currentMessage, setCurrentMessage] = useState<string>('')
+  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
   const [isTransitioning, setIsTransitioning] = useState(false)
+  // Duration animation state
+  const [durationPosition, setDurationPosition] = useState<'hidden' | 'centered' | 'normal'>('hidden')
   
   // Debug mode
   const [debugMode, setDebugMode] = useState(false)
@@ -211,10 +220,10 @@ export default function Home() {
   // Refs to store timers and track state
   const transitionTimersRef = useRef<NodeJS.Timeout[]>([])
   const hasShownInitialMessageRef = useRef(false)
-  const isTransitioningRef = useRef(false) // Sync ref for transition state
-  const lastAnimatedPhaseRef = useRef<string>('queue') // Last phase we fully animated to
-  const transitionTargetRef = useRef<string | null>(null) // Phase we're animating towards
-  const phasesQueueRef = useRef<string[]>([]) // queue of incoming phases
+  const isTransitioningRef = useRef(false)
+  const lastAnimatedPhaseRef = useRef<string>('queue')
+  const transitionTargetRef = useRef<string | null>(null)
+  const phasesQueueRef = useRef<string[]>([])
   
   // Clear all transition timers
   const clearTransitionTimers = () => {
@@ -222,16 +231,14 @@ export default function Home() {
     transitionTimersRef.current = []
   }
 
-  // Run next transition from queue - atomic check-and-set to prevent duplicates
+  // Run next transition from queue
   const runNextTransitionRef = useRef<() => void>()
   runNextTransitionRef.current = () => {
-    // Atomic check - if already transitioning, return immediately
     if (isTransitioningRef.current) return
     
     const nextPhase = phasesQueueRef.current.shift()
     if (!nextPhase) return
 
-    // Set transitioning flag IMMEDIATELY to prevent concurrent calls
     isTransitioningRef.current = true
     
     const targetMessage = getLoadingMessage(nextPhase)
@@ -240,25 +247,35 @@ export default function Home() {
     setIsTransitioning(true)
     setLoadingPhase('exiting')
 
+    // Calculate animation duration: 0.5s animation + max delay (for longest message ~30 chars: 29 * 0.04 = 1.16s) = ~1.66s, add buffer = 2000ms
+    const exitingDuration = 2000
+
     transitionTimersRef.current.push(setTimeout(() => {
       setLoadingPhase('hidden')
       setCurrentMessage('')
 
-      transitionTimersRef.current.push(setTimeout(() => {
-        setCurrentMessage(targetMessage)
-        setLoadingPhase('entering')
-
         transitionTimersRef.current.push(setTimeout(() => {
-          setLoadingPhase('visible')
-          setDisplayedPhase(nextPhase)
-          isTransitioningRef.current = false
-          setIsTransitioning(false)
-          transitionTargetRef.current = null
-          // Process next in queue
-          runNextTransitionRef.current?.()
-        }, 1500))
-      }, 150))
-    }, 800))
+          setCurrentMessage(targetMessage)
+          setLoadingPhase('entering')
+
+          // Calculate animation duration: 0.8s animation + max delay (for longest message ~30 chars: 29 * 0.05 = 1.45s) = ~2.25s, add buffer = 3000ms
+          const enteringDuration = 3000
+
+          transitionTimersRef.current.push(setTimeout(() => {
+            // Set visible phase - stagger effect will start
+            // Wait for blur reveal animation to complete fully
+            setLoadingPhase('visible')
+            setDisplayedPhase(nextPhase)
+            isTransitioningRef.current = false
+            setIsTransitioning(false)
+            transitionTargetRef.current = null
+            // Small delay to ensure smooth transition before next phase
+            setTimeout(() => {
+              runNextTransitionRef.current?.()
+            }, 100)
+          }, enteringDuration))
+        }, 150))
+    }, exitingDuration))
   }
 
   // Handle initial message display
@@ -268,41 +285,23 @@ export default function Home() {
       setCurrentMessage('')
       setDisplayedPhase('queue')
       lastAnimatedPhaseRef.current = 'queue'
-      setPendingPhase(null)
       setLoadingPhase('waiting')
       setIsTransitioning(false)
       hasShownInitialMessageRef.current = false
       isTransitioningRef.current = false
       transitionTargetRef.current = null
       phasesQueueRef.current = []
+      setDurationPosition('hidden')
       return
     }
 
-    // Initial message when loading starts (only once)
-    if (!hasShownInitialMessageRef.current) {
-      hasShownInitialMessageRef.current = true
-      isTransitioningRef.current = true
-      setIsTransitioning(true)
-      const targetMessage = getLoadingMessage(displayedPhase)
-      
-      transitionTimersRef.current.push(setTimeout(() => {
-        setCurrentMessage(targetMessage)
-        setLoadingPhase('entering')
-        
-        transitionTimersRef.current.push(setTimeout(() => {
-          setLoadingPhase('visible')
-          setIsTransitioning(false)
-          isTransitioningRef.current = false
-        }, 1500))
-      }, 800))
-    }
+    // Don't auto-show initial message anymore - it's handled in handleGenerate
   }, [isLoading, displayedPhase])
 
   // Handle phase transitions via queue
   useEffect(() => {
     if (!isLoading || !hasShownInitialMessageRef.current) return
 
-    // Enqueue new phase if it's different from what we show or have queued
     if (
       currentPhase !== displayedPhase &&
       currentPhase !== lastAnimatedPhaseRef.current &&
@@ -316,22 +315,6 @@ export default function Home() {
     }
   }, [isLoading, currentPhase, displayedPhase])
 
-  // If pendingPhase was set earlier, enqueue it when transition ends
-  useEffect(() => {
-    if (
-      !isTransitioning &&
-      pendingPhase &&
-      pendingPhase !== displayedPhase &&
-      pendingPhase !== lastAnimatedPhaseRef.current &&
-      pendingPhase !== transitionTargetRef.current &&
-      !isTransitioningRef.current
-    ) {
-      phasesQueueRef.current.push(pendingPhase)
-      setPendingPhase(null)
-      runNextTransitionRef.current?.()
-    }
-  }, [isTransitioning, pendingPhase, displayedPhase])
-
   const sphereRef = useRef<HTMLDivElement>(null)
 
   // Loading animation ref
@@ -339,39 +322,7 @@ export default function Home() {
   const loadingStartTimeRef = useRef<number>(0)
   const loadingStartRotationRef = useRef<number>(126)
   
-  // Loading rotation animation
-  useEffect(() => {
-    if (!isLoading || !sphereRef.current) {
-      if (loadingAnimationRef.current) {
-        cancelAnimationFrame(loadingAnimationRef.current)
-      }
-      return
-    }
-    
-    const animateLoading = (time: number) => {
-      if (!sphereRef.current) return
-      
-      if (loadingStartTimeRef.current === 0) {
-        loadingStartTimeRef.current = time
-      }
-      
-      const elapsed = time - loadingStartTimeRef.current
-      const rotationSpeed = 18 // degrees per second (360° / 20s)
-      const rotation = loadingStartRotationRef.current + (elapsed / 1000) * rotationSpeed
-      
-      sphereRef.current.style.transform = `rotateZ(${rotation}deg) rotateX(${-rotation}deg) rotateZ(${rotation}deg)`
-      
-      loadingAnimationRef.current = requestAnimationFrame(animateLoading)
-    }
-    
-    loadingAnimationRef.current = requestAnimationFrame(animateLoading)
-
-    return () => {
-      if (loadingAnimationRef.current) {
-        cancelAnimationFrame(loadingAnimationRef.current)
-      }
-    }
-  }, [isLoading])
+  // No loading rotation animation needed - CSS animation handles it
   
   const handleGenerate = async () => {
     // Clear any previous error
@@ -379,18 +330,12 @@ export default function Home() {
     
     // Validate URL input
     if (!link.trim()) {
-      setError('Please enter a URL to scrape')
+      setError('Please enter a valid link')
       return
     }
 
-    if (sphereRef.current) {
-      // Stop any current animation
-      sphereRef.current.style.animation = 'none'
-      
-      // Reset loading animation timer
-      loadingStartTimeRef.current = 0
-      loadingStartRotationRef.current = 126
-    }
+    // No need to capture or stop animation - just let it continue
+    // The sphere will smoothly transition with its CSS animation
     
     // Start total generation timer
     const totalStartTime = Date.now()
@@ -401,6 +346,30 @@ export default function Home() {
     setLoadingPhase('waiting')
     setQueuePosition(null)
     setIsTransitioning(false)
+    setDurationPosition('hidden')
+    
+    // First: Show duration in center after a brief delay
+    setTimeout(() => {
+      setDurationPosition('centered')
+      
+      // Then: Move duration down to its normal position
+      setTimeout(() => {
+        setDurationPosition('normal')
+        
+        // Finally: Show first status message
+        setTimeout(() => {
+          const targetMessage = getLoadingMessage('queue')
+          setCurrentMessage(targetMessage)
+          setLoadingPhase('entering')
+          
+          // Calculate animation duration: 0.8s animation + max delay (for longest message ~30 chars: 29 * 0.05 = 1.45s) = ~2.25s, add buffer = 3000ms
+          setTimeout(() => {
+            setLoadingPhase('visible')
+            hasShownInitialMessageRef.current = true
+          }, 3000)
+        }, 300) // Small delay after duration moves down
+      }, 600) // Duration stays centered for 600ms
+    }, 400) // Initial delay before showing duration
 
     // Debug mode - simulate loading without API calls
     if (debugMode) {
@@ -520,15 +489,6 @@ export default function Home() {
     }
   }
 
-  // Get current message based on what's being displayed
-  const displayMessage = currentMessage || getLoadingMessage(displayedPhase)
-  const loadingWords = displayMessage.split(' ')
-  
-  // Use stable key that doesn't change during transition to prevent double animation
-  // Use transitionTargetRef if transitioning (set before message changes), otherwise use currentPhase or displayedPhase
-  const stablePhase = transitionTargetRef.current || currentPhase || displayedPhase
-  const messageKey = `${stablePhase}-${displayMessage}`
-
   return (
     <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
@@ -548,32 +508,68 @@ export default function Home() {
 
       {/* Loading Text Overlay */}
       {isLoading && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="text-center">
-            {/* Status message - keep height stable */}
-            <p className="loading-text-home min-h-[3rem] flex items-center justify-center">
-              {currentMessage && (
-                loadingWords.map((word, index) => (
-                  <span
-                    key={`${messageKey}-${index}`}
-                    className={`loading-word-home ${loadingPhase === 'exiting' ? 'exiting' : ''} ${loadingPhase === 'hidden' ? 'opacity-0' : ''}`}
-                    style={{
-                      animationDelay: loadingPhase === 'exiting'
-                        ? `${(loadingWords.length - 1 - index) * 0.1}s`
-                        : `${index * 0.12}s`,
-                    }}
-                  >
-                    {word}
-                    {index < loadingWords.length - 1 && '\u00A0'}
-                  </span>
-                ))
+        <div className="fixed inset-0 z-30 flex items-center justify-center pointer-events-none max-sm:items-end max-sm:pb-8">
+          <div className="text-center flex flex-col items-center w-full relative">
+            {/* Status message area - fixed height to prevent jumping */}
+            <div className="h-[clamp(3rem,8vw,5rem)] flex items-center justify-center w-full">
+              {currentMessage && loadingPhase === 'visible' ? (
+                // Active status - show stagger effect
+                <LoadingText
+                  key={`stagger-${displayedPhase || 'visible'}`}
+                  text={currentMessage}
+                  mode="stagger-active"
+                  loadingPhase={loadingPhase}
+                  rotateX={80}
+                  stagger={true}
+                />
+              ) : currentMessage ? (
+                // Transitioning - show blur reveal
+                // Use stable key based on phase transition to prevent remounting during animation
+                <LoadingText
+                  key={`blur-${transitionTargetRef.current || displayedPhase || 'transition'}`}
+                  text={currentMessage}
+                  mode="blur-reveal"
+                  loadingPhase={loadingPhase}
+                />
+              ) : durationPosition === 'centered' ? (
+                // Show duration in center when no message yet (desktop) or bottom (mobile)
+                <motion.p
+                  layoutId="duration-text"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 25,
+                  }}
+                  className="loading-duration-home text-center max-sm:absolute max-sm:bottom-8 max-sm:left-1/2 max-sm:-translate-x-1/2"
+                  style={{ marginTop: 0 }}
+                >
+                  <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
+                </motion.p>
+              ) : (
+                <div className="h-[clamp(3rem,8vw,5rem)]" />
               )}
-              {!currentMessage && '\u00A0'}
-            </p>
-            {/* Duration - always visible during loading */}
-            <p className="loading-duration-home">
-              <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
-            </p>
+            </div>
+            {/* Duration - animated position when moved down - same element, different position */}
+            {durationPosition === 'normal' && (
+              <motion.p
+                layoutId="duration-text"
+                layout="position"
+                transition={{
+                  layout: {
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 22,
+                    mass: 0.7,
+                  },
+                }}
+                className="loading-duration-home max-sm:absolute max-sm:bottom-8 max-sm:left-1/2 max-sm:-translate-x-1/2"
+                style={{ marginTop: '2rem' }}
+              >
+                <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
+              </motion.p>
+            )}
           </div>
         </div>
       )}
