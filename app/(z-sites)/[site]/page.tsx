@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { PageConfig, Section } from '@/types/builder'
 import { PasswordCheck } from './password-check'
+import { SiteContentClient } from './site-content-client'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   try {
@@ -376,43 +377,54 @@ export default async function SitePage({
   // Check if site is password protected
   const isPasswordProtected = siteRecord.password_protected === true
   
-  // TEMPORARY: Simple render for testing
-  // This confirms that database fetch and routing work
-  const siteContent = (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      backgroundColor: '#f5f5f5',
-      fontFamily: 'system-ui, sans-serif',
-      padding: '2rem',
-      textAlign: 'center'
-    }}>
-      <div style={{
-        backgroundColor: '#fff',
-        padding: '3rem',
-        borderRadius: '12px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        maxWidth: '600px'
-      }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#333' }}>
-          {siteRecord.title}
-        </h1>
-        <p style={{ fontSize: '1rem', color: '#666', marginBottom: '1.5rem' }}>
-          Site is working! 🎉
-        </p>
-        <div style={{ fontSize: '0.875rem', color: '#888' }}>
-          <p>Slug: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.slug}</code></p>
-          <p>Status: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.status}</code></p>
-          <p>Domain: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteRecord.domain}</code></p>
-          <p>Password Protected: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{isPasswordProtected ? 'Yes' : 'No'}</code></p>
-          <p>Has Config: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig ? 'Yes' : 'No'}</code></p>
-          <p>Sections: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{siteConfig?.sections?.length || 0}</code></p>
-        </div>
-      </div>
-    </div>
-  )
+  // Check if user has edit permissions (for authenticated users)
+  let canEdit = false
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (user) {
+      // Check permissions: owner, admin, creator, or assigned_agent_id
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('role')
+        .eq('workspace_id', siteRecord.workspace_id)
+        .eq('user_id', user.id)
+        .single()
+      
+      const isOwnerOrAdmin = membership?.role === 'owner' || membership?.role === 'admin'
+      const isCreator = siteRecord.creator_id === user.id
+      const isAssignedAgent = siteRecord.assigned_agent_id === user.id
+      
+      canEdit = isOwnerOrAdmin || isCreator || isAssignedAgent
+    }
+  } catch (error) {
+    // User not authenticated or error - can't edit
+    canEdit = false
+  }
+  
+  // Default config if missing
+  const defaultConfig: PageConfig = {
+    theme: {
+      fontFamily: 'Inter',
+      headingFontFamily: 'Inter',
+      headingFontSize: 1,
+      headingLetterSpacing: 0,
+      uppercaseTitles: false,
+      primaryColor: '#000000',
+      secondaryColor: '#666666',
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
+      borderRadius: 'md',
+      ctaType: 'none',
+      ctaValue: '',
+    },
+    sections: [],
+  }
+  
+  const finalConfig = siteConfig || defaultConfig
+  
+  const siteContent = <SiteContentClient site={siteRecord} siteConfig={finalConfig} canEdit={canEdit} />
   
   // Wrap content with password check if site is password protected
   if (isPasswordProtected) {
@@ -428,26 +440,4 @@ export default async function SitePage({
   }
   
   return siteContent
-  
-  // TODO: Uncomment when ready to render full site with sections
-  // const { theme, sections } = siteConfig
-  // const ctaType = theme?.ctaType || 'none'
-  // const ctaValue = theme?.ctaValue || ''
-  // 
-  // const fonts = [theme?.fontFamily, theme?.headingFontFamily].filter(Boolean) as string[]
-  // const primaryFont = theme?.fontFamily || 'Inter'
-  // 
-  // return (
-  //   <>
-  //     <FontLoader fonts={fonts} />
-  //     <FontTransition font={primaryFont}>
-  //       <div style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}>
-  //         {sections?.map((section: Section) => (
-  //           <SectionRenderer key={section.id} section={section} theme={theme} colorScheme={section.colorScheme || 'light'} />
-  //         ))}
-  //       </div>
-  //       <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
-  //     </FontTransition>
-  //   </>
-  // )
 }

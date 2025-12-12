@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Site } from '@/types/database'
 import { Lock, Globe, Check } from 'lucide-react'
 import { LottieCopyIcon } from '@/components/ui/lottie-copy-icon'
@@ -13,6 +13,7 @@ interface SitePreviewProps {
 export function SitePreview({ site }: SitePreviewProps) {
   const [isCopied, setIsCopied] = useState(false)
   const [isUrlHovered, setIsUrlHovered] = useState(false)
+  const [iframeUrl, setIframeUrl] = useState<string>('')
 
   // Get public URL for published sites, preview URL for drafts/archived
   // For custom domains, slug is in the path: https://customdomain.com/slug
@@ -26,8 +27,13 @@ export function SitePreview({ site }: SitePreviewProps) {
 
   // Use preview route for iframe to show draft/archived sites
   // This allows viewing unpublished sites (draft, archived) in the preview iframe
-  // For localhost, we need to preserve the port number
+  // Use relative URL - preview route is available on same domain
   const getPreviewUrl = () => {
+    return `/preview/${site.id}`
+  }
+  
+  // Get full URL for display/copy (for preview button that opens in new tab)
+  const getFullPreviewUrl = () => {
     if (typeof window === 'undefined') {
       return `/preview/${site.id}` // Fallback for SSR
     }
@@ -42,7 +48,14 @@ export function SitePreview({ site }: SitePreviewProps) {
     return `${baseUrl}/preview/${site.id}`
   }
   
-  const previewUrl = getPreviewUrl()
+  // Set iframe URL - use relative URL for iframe to avoid cross-origin issues
+  useEffect(() => {
+    const previewUrl = getPreviewUrl()
+    console.log('[SitePreview] Setting iframe URL:', previewUrl, 'Current location:', typeof window !== 'undefined' ? window.location.href : 'SSR')
+    setIframeUrl(previewUrl)
+  }, [site.id])
+  
+  const previewUrl = getFullPreviewUrl()
   const publicUrl = getPublicUrl()
   // Show public URL in address bar if published, preview URL for drafts/archived
   const displayUrl = site.status === 'published' ? publicUrl : previewUrl
@@ -111,11 +124,25 @@ export function SitePreview({ site }: SitePreviewProps) {
 
       {/* Preview iframe container */}
       <div className="flex-1 relative overflow-hidden bg-background">
-        <iframe
-          src={previewUrl}
-          className="w-full h-full border-0"
-          title={`Preview of ${site.title}`}
-        />
+        {iframeUrl && (
+          <iframe
+            key={iframeUrl}
+            src={iframeUrl}
+            className="w-full h-full border-0"
+            title={`Preview of ${site.title}`}
+            onLoad={() => {
+              console.log('[SitePreview] Iframe loaded successfully:', iframeUrl)
+            }}
+            onError={(e) => {
+              console.error('[SitePreview] Iframe error:', e, 'URL:', iframeUrl)
+            }}
+          />
+        )}
+        {!iframeUrl && (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            Loading preview...
+          </div>
+        )}
       </div>
     </div>
   )

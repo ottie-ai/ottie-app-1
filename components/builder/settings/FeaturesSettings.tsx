@@ -37,8 +37,8 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
         className={cn(
           'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
           value === 'light' 
-            ? 'bg-primary text-primary-foreground border-primary' 
-            : 'bg-muted/50 border-input hover:bg-muted'
+            ? 'bg-white text-gray-900 border-gray-300 shadow-sm' 
+            : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'
         )}
       >
         <Sun className="size-4" />
@@ -50,8 +50,8 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
         className={cn(
           'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
           value === 'dark' 
-            ? 'bg-primary text-primary-foreground border-primary' 
-            : 'bg-muted/50 border-input hover:bg-muted'
+            ? 'bg-white text-gray-900 border-gray-300 shadow-sm' 
+            : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'
         )}
       >
         <Moon className="size-4" />
@@ -112,26 +112,26 @@ export function FeaturesRemixPanel({
   return (
     <FieldGroup className="gap-5">
       <Field>
-        <FieldLabel>Layout</FieldLabel>
+        <FieldLabel className="text-gray-600">Layout</FieldLabel>
         <Carousel setApi={setApi} opts={{ loop: true }}>
-          <div className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
-            <CarouselPrevious className="static translate-y-0 size-7" />
+          <div className="flex items-center justify-between p-2 rounded-md border border-gray-200 bg-gray-100">
+            <CarouselPrevious className="static translate-y-0 size-7 text-gray-700 hover:text-gray-900" />
             <CarouselContent className="flex-1 mx-2">
               {featuresVariants.map((v) => (
                 <CarouselItem key={v} className="pl-0">
                   <div className="flex items-center justify-center">
-                    <span className="text-sm font-medium capitalize">{v}</span>
+                    <span className="text-sm font-medium capitalize text-gray-900">{v}</span>
                   </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselNext className="static translate-y-0 size-7" />
+            <CarouselNext className="static translate-y-0 size-7 text-gray-700 hover:text-gray-900" />
           </div>
         </Carousel>
       </Field>
 
       <Field>
-        <FieldLabel>Color Scheme</FieldLabel>
+        <FieldLabel className="text-gray-600">Color Scheme</FieldLabel>
         <ColorSchemeSelector 
           value={colorScheme} 
           onChange={(cs) => onColorSchemeChange?.(cs)} 

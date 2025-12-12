@@ -1,0 +1,422 @@
+'use client'
+
+import * as React from 'react'
+import useMeasure from 'react-use-measure'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useClickOutside } from '@/hooks/use-click-outside'
+import { cn } from '@/lib/utils'
+import type { Section, HeroSectionData, FeaturesSectionData, ColorScheme } from '@/types/builder'
+import { HeroRemixPanel } from '@/components/builder/settings/PageSettings'
+import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
+
+interface SectionMorphingIndicatorProps {
+  activeSection: Section | null
+  onSectionChange?: (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => void
+}
+
+const FEEDBACK_WIDTH = 360
+const FEEDBACK_HEIGHT = 400
+const SPEED = 1
+
+const LOGO_SPRING = {
+  type: 'spring',
+  stiffness: 350 / SPEED,
+  damping: 35,
+} as const
+
+/**
+ * Sticky morphing indicator that shows current section name
+ * Positioned at the bottom center of the screen
+ * Includes Settings button that opens section-specific settings panel
+ */
+export function SectionMorphingIndicator({ activeSection, onSectionChange }: SectionMorphingIndicatorProps) {
+  const [ref, bounds] = useMeasure()
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const [showSettings, setShowSettings] = React.useState(false)
+  const [success, setSuccess] = React.useState(false)
+
+  // Editing state for current section
+  const [editingVariant, setEditingVariant] = React.useState<string>(activeSection?.variant || '')
+  const [editingData, setEditingData] = React.useState<any>(activeSection?.data || {})
+  const [editingColorScheme, setEditingColorScheme] = React.useState<ColorScheme>(
+    activeSection?.colorScheme || 'light'
+  )
+
+  // Update editing state when active section changes
+  React.useEffect(() => {
+    if (activeSection) {
+      setEditingVariant(activeSection.variant)
+      setEditingData(activeSection.data)
+      setEditingColorScheme(activeSection.colorScheme || 'light')
+    }
+  }, [activeSection])
+
+  // Close settings when section changes
+  React.useEffect(() => {
+    if (activeSection && showSettings) {
+      setShowSettings(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection?.id])
+
+  function closeSettings() {
+    setShowSettings(false)
+  }
+
+  function openSettings() {
+    setShowSettings(true)
+  }
+
+  function onSave() {
+    if (activeSection && onSectionChange) {
+      onSectionChange(activeSection.id, {
+        variant: editingVariant,
+        data: editingData,
+        colorScheme: editingColorScheme,
+      })
+    }
+    closeSettings()
+    setSuccess(true)
+    setTimeout(() => {
+      setSuccess(false)
+    }, 1500)
+  }
+
+  useClickOutside(rootRef, closeSettings)
+
+  // Get section display name
+  const getSectionName = (section: Section | null): string => {
+    if (!section) return ''
+    
+    // Try to get title from section data
+    const data = section.data as any
+    if (data?.title) return data.title
+    
+    // Fallback to capitalized section type
+    const typeMap: Record<string, string> = {
+      hero: 'Hero',
+      features: 'Features',
+      gallery: 'Gallery',
+      agent: 'Agent',
+      contact: 'Contact',
+      testimonials: 'Testimonials',
+      pricing: 'Pricing',
+      faq: 'FAQ',
+    }
+    
+    return typeMap[section.type] || section.type.charAt(0).toUpperCase() + section.type.slice(1)
+  }
+
+  const sectionName = getSectionName(activeSection)
+
+  if (!sectionName) return null
+
+  // Get settings panel for current section type
+  const getSettingsPanel = () => {
+    if (!activeSection) return null
+
+    if (activeSection.type === 'hero') {
+      return (
+        <HeroRemixPanel
+          variant={editingVariant}
+          data={editingData as HeroSectionData}
+          colorScheme={editingColorScheme}
+          onVariantChange={setEditingVariant}
+          onDataChange={setEditingData}
+          onColorSchemeChange={setEditingColorScheme}
+        />
+      )
+    }
+
+    if (activeSection.type === 'features') {
+      return (
+        <FeaturesRemixPanel
+          variant={editingVariant}
+          data={editingData as FeaturesSectionData}
+          colorScheme={editingColorScheme}
+          onVariantChange={setEditingVariant}
+          onDataChange={setEditingData}
+          onColorSchemeChange={setEditingColorScheme}
+        />
+      )
+    }
+
+    return null
+  }
+
+  const settingsPanel = getSettingsPanel()
+
+  // Calculate max height (90vh)
+  const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.9 : 600
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <div
+        className="flex items-end justify-center"
+        style={{
+          width: showSettings ? FEEDBACK_WIDTH : 'auto',
+          height: showSettings ? FEEDBACK_HEIGHT : 44,
+        }}
+      >
+        <motion.div
+          ref={rootRef}
+          className={cn(
+            'bg-white relative flex flex-col items-center shadow-xl overflow-hidden pointer-events-auto'
+          )}
+          initial={false}
+          animate={{
+            width: showSettings ? FEEDBACK_WIDTH : 'auto',
+            height: showSettings ? FEEDBACK_HEIGHT : 44,
+            borderRadius: showSettings ? 14 : 20,
+          }}
+          transition={{
+            type: 'spring',
+            stiffness: 550 / SPEED,
+            damping: 45,
+            mass: 0.7,
+            delay: showSettings ? 0 : 0.08,
+          }}
+        >
+          {/* Dock with section name and settings button */}
+          <footer className="flex items-center justify-center select-none whitespace-nowrap mt-auto h-[44px]">
+            <div className="flex items-center justify-center gap-6 px-3">
+              <AnimatePresence mode="wait">
+                {!showSettings && (
+                  <motion.div
+                    key="content"
+                    initial={{ opacity: 0 }}
+                    animate={{ 
+                      opacity: 1,
+                      width: bounds.width > 0 ? bounds.width : 'auto'
+                    }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 350,
+                      damping: 35,
+                    }}
+                  >
+                    <div ref={ref} className="flex items-center gap-2 w-fit [&>svg]:w-5 [&>svg]:h-5">
+                      <motion.div
+                        className="w-5 h-5 gradient-ottie rounded-full"
+                        layoutId="morph-surface-dot"
+                        transition={LOGO_SPRING}
+                      >
+                        <AnimatePresence>
+                          {success && (
+                            <motion.div
+                              key="check"
+                              exit={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              transition={{
+                                type: 'spring',
+                                stiffness: 500 / SPEED,
+                                damping: 22,
+                                delay: success ? 0.3 : 0,
+                              }}
+                              className="m-[2px]"
+                            >
+                              <IconCheck />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                      <div className="text-[14px] text-gray-900">
+                        <AnimatePresence mode="popLayout" initial={false}>
+                          {sectionName.split('').map((letter, index) => {
+                            return (
+                              <motion.div
+                                initial={{ opacity: 0, filter: 'blur(2px)' }}
+                                animate={{
+                                  opacity: 1,
+                                  filter: 'blur(0px)',
+                                  transition: {
+                                    type: 'spring',
+                                    stiffness: 350,
+                                    damping: 55,
+                                    delay: index * 0.015,
+                                  },
+                                }}
+                                exit={{
+                                  opacity: 0,
+                                  filter: 'blur(2px)',
+                                  transition: {
+                                    type: 'spring',
+                                    stiffness: 500,
+                                    damping: 55,
+                                  },
+                                }}
+                                transition={{
+                                  type: 'spring',
+                                  stiffness: 350,
+                                  damping: 55,
+                                }}
+                                key={`${sectionName}-${index}-${letter}`}
+                                className="inline-block"
+                              >
+                                {letter}
+                                {letter === ' ' ? '\u00A0' : ''}
+                              </motion.div>
+                            )
+                          })}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {!showSettings && (
+                  <motion.div
+                    key="settings-button"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 350,
+                      damping: 35,
+                    }}
+                    className="text-gray-600 text-[14px] flex items-center z-2"
+                  >
+                    <button
+                      className="m-[-8px] flex justify-end rounded-full p-2 flex-1 gap-1 -outline-offset-2 hover:bg-gray-100 transition-colors"
+                      onClick={openSettings}
+                    >
+                      <span className="ml-1 max-w-[20ch] truncate">Settings</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </footer>
+
+          {/* Settings Panel */}
+          {settingsPanel && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                onSave()
+              }}
+              className="absolute bottom-0 w-full"
+              style={{
+                width: showSettings ? FEEDBACK_WIDTH : 0,
+                height: showSettings ? FEEDBACK_HEIGHT : 0,
+                maxHeight: showSettings ? maxHeight : 'none',
+                pointerEvents: showSettings ? 'all' : 'none',
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  closeSettings()
+                }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault()
+                  onSave()
+                }
+              }}
+            >
+              <AnimatePresence>
+                {showSettings && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 550 / SPEED,
+                      damping: 45,
+                      mass: 0.7,
+                    }}
+                    className="p-1 flex flex-col h-full"
+                  >
+                    <div className="flex justify-between items-center py-1">
+                      <p className="flex gap-[6px] text-sm items-center text-gray-600 select-none z-2 ml-[25px]">
+                        Settings
+                      </p>
+                      <button
+                        type="submit"
+                        className="mt-1 flex items-center gap-1 text-sm -translate-y-[3px] text-gray-600 hover:text-gray-900 right-4 text-center bg-transparent select-none rounded-[12px] cursor-pointer user-select-none pr-1"
+                      >
+                        <Kbd>⌘</Kbd>
+                        <Kbd className="w-fit">Enter</Kbd>
+                      </button>
+                    </div>
+                    <textarea
+                      placeholder="What's on your mind?"
+                      name="message"
+                      className="resize-none w-full h-full scroll-py-2 text-base outline-0 p-4 bg-gray-50 rounded-xl"
+                      required
+                      spellCheck={false}
+                      style={{ 
+                        display: 'none',
+                        caretColor: '#fda90f'
+                      }}
+                    />
+                    <div 
+                      className="flex-1 overflow-y-auto scroll-py-2 p-4"
+                      style={{ 
+                        maxHeight: `${maxHeight - 44 - 8}px`
+                      }}
+                    >
+                      {settingsPanel}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {showSettings && (
+                <motion.div
+                  layoutId="morph-surface-dot"
+                  className="w-2 h-2 gradient-ottie rounded-full absolute top-[18.5px] left-4"
+                  transition={LOGO_SPRING}
+                />
+              )}
+            </form>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function IconCheck() {
+  return (
+    <svg
+      width="16px"
+      height="16px"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      color="white"
+    >
+      <path
+        d="M5 13L9 17L19 7"
+        stroke="white"
+        strokeWidth="2px"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function Kbd({
+  children,
+  className,
+}: {
+  children: string
+  className?: string
+}) {
+  return (
+    <kbd
+      className={cn(
+        'h-6 bg-gray-200 text-gray-700 rounded-md flex items-center justify-center font-sans px-1.5 text-xs',
+        className
+      )}
+    >
+      {children}
+    </kbd>
+  )
+}
+

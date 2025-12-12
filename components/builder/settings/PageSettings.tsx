@@ -49,9 +49,9 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
         onClick={() => onChange('light')}
         className={cn(
           'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
-          value === 'light' 
-            ? 'bg-primary text-primary-foreground border-primary' 
-            : 'bg-muted/50 border-input hover:bg-muted'
+          value === 'light'
+            ? 'bg-white text-gray-900 border-gray-300 shadow-sm'
+            : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'
         )}
       >
         <Sun className="size-4" />
@@ -62,9 +62,9 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
         onClick={() => onChange('dark')}
         className={cn(
           'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md border transition-colors',
-          value === 'dark' 
-            ? 'bg-primary text-primary-foreground border-primary' 
-            : 'bg-muted/50 border-input hover:bg-muted'
+          value === 'dark'
+            ? 'bg-white text-gray-900 border-gray-300 shadow-sm'
+            : 'bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-700'
         )}
       >
         <Moon className="size-4" />
@@ -127,26 +127,26 @@ export function HeroRemixPanel({
   return (
     <FieldGroup className="gap-5">
       <Field>
-        <FieldLabel>Layout</FieldLabel>
+        <FieldLabel className="text-gray-600">Layout</FieldLabel>
         <Carousel setApi={setApi} opts={{ loop: true }}>
-          <div className="flex items-center justify-between p-2 rounded-md border bg-muted/50">
-            <CarouselPrevious className="static translate-y-0 size-7" />
+          <div className="flex items-center justify-between p-2 rounded-md border border-gray-200 bg-gray-100">
+            <CarouselPrevious className="static translate-y-0 size-7 text-gray-700 hover:text-gray-900" />
             <CarouselContent className="flex-1 mx-2">
               {heroVariants.map((v) => (
                 <CarouselItem key={v} className="pl-0">
                   <div className="flex items-center justify-center">
-                    <span className="text-sm font-medium capitalize">{v}</span>
+                    <span className="text-sm font-medium capitalize text-gray-900">{v}</span>
                   </div>
                 </CarouselItem>
             ))}
             </CarouselContent>
-            <CarouselNext className="static translate-y-0 size-7" />
+            <CarouselNext className="static translate-y-0 size-7 text-gray-700 hover:text-gray-900" />
           </div>
         </Carousel>
       </Field>
 
       <Field>
-        <FieldLabel>Color Scheme</FieldLabel>
+        <FieldLabel className="text-gray-600">Color Scheme</FieldLabel>
         <ColorSchemeSelector 
           value={colorScheme} 
           onChange={(cs) => onColorSchemeChange?.(cs)} 
@@ -154,7 +154,7 @@ export function HeroRemixPanel({
       </Field>
 
       <Field>
-        <FieldLabel>Background Image</FieldLabel>
+        <FieldLabel className="text-gray-600">Background Image</FieldLabel>
         <FileUpload
           value={data.backgroundImage}
           onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
@@ -198,15 +198,30 @@ export function PageSettingsPanel({
   passwordProtected,
   onPasswordUpdate
 }: PageSettingsPanelProps) {
-  const ctaType = theme.ctaType || 'whatsapp'
+  // Ensure theme has all required properties
+  const safeTheme = theme || {
+    fontFamily: 'Inter',
+    headingFontFamily: 'Inter',
+    headingFontSize: 1,
+    headingLetterSpacing: 0,
+    uppercaseTitles: false,
+    primaryColor: '#000000',
+    secondaryColor: '#666666',
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    borderRadius: 'md',
+    ctaType: 'none',
+    ctaValue: '',
+  }
+  const ctaType = safeTheme.ctaType || 'whatsapp'
   
   return (
     <FieldGroup className="gap-5">
       <Field>
         <FieldLabel>Font Family</FieldLabel>
           <FontSelector 
-            value={theme.headingFontFamily}
-            onChange={(font) => onThemeChange({ ...theme, headingFontFamily: font })}
+            value={safeTheme.headingFontFamily}
+            onChange={(font) => onThemeChange({ ...safeTheme, headingFontFamily: font })}
           />
       </Field>
 
@@ -214,8 +229,8 @@ export function PageSettingsPanel({
         <FieldLabel htmlFor="uppercase-hero">Uppercase Titles</FieldLabel>
             <Switch
               id="uppercase-hero"
-              checked={theme.uppercaseTitles}
-              onCheckedChange={(checked) => onThemeChange({ ...theme, uppercaseTitles: checked })}
+              checked={safeTheme.uppercaseTitles}
+              onCheckedChange={(checked) => onThemeChange({ ...safeTheme, uppercaseTitles: checked })}
             />
       </Field>
 
@@ -225,7 +240,7 @@ export function PageSettingsPanel({
         <FieldLabel>Floating CTA Button</FieldLabel>
         <Select 
           value={ctaType} 
-          onValueChange={(value: CTAType) => onThemeChange({ ...theme, ctaType: value })}
+          onValueChange={(value: CTAType) => onThemeChange({ ...safeTheme, ctaType: value })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select CTA type" />
@@ -248,8 +263,8 @@ export function PageSettingsPanel({
           </FieldLabel>
           <Input
             type={ctaType === 'email' ? 'email' : 'tel'}
-            value={theme.ctaValue || ''}
-            onChange={(e) => onThemeChange({ ...theme, ctaValue: e.target.value })}
+            value={safeTheme.ctaValue || ''}
+            onChange={(e) => onThemeChange({ ...safeTheme, ctaValue: e.target.value })}
             placeholder={ctaPlaceholders[ctaType]}
           />
         </Field>

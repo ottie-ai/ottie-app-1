@@ -489,19 +489,26 @@ export async function middleware(request: NextRequest) {
     const authRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password']
     const isAuthRoute = authRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
     
-    // Preview routes - temp-preview is for anonymous scrape results, preview is for authenticated
-    const isPreviewRoute = pathname.startsWith('/preview/') || pathname.startsWith('/temp-preview/')
+    // Temp-preview is for anonymous scrape results (stays on root domain in marketing group)
+    const isTempPreviewRoute = pathname.startsWith('/temp-preview/')
+    
+    // Preview routes are now in (app) group - redirect to app subdomain
+    if (pathname.startsWith('/preview/')) {
+      console.log('[Middleware] Redirecting /preview/ to app subdomain:', pathname)
+      const redirectUrl = new URL(pathname, `https://${appDomain}`)
+      redirectUrl.search = request.nextUrl.search
+      return NextResponse.redirect(redirectUrl, 301)
+    }
     
     // API routes are allowed
     const isApiRoute = pathname.startsWith('/api/')
     
-    // If it's a marketing, auth, preview, or API route, allow it to continue
+    // If it's a marketing, auth, temp-preview, or API route, allow it to continue
     // Marketing routes are handled by (marketing) route group and are always public
-    // Preview routes are handled by preview route group (temp-preview is anonymous, preview requires auth)
-    if (isMarketingRoute || isAuthRoute || isPreviewRoute || isApiRoute) {
+    // Temp-preview is anonymous and handled by (marketing) route group
+    if (isMarketingRoute || isAuthRoute || isTempPreviewRoute || isApiRoute) {
       // Allow these routes - continue to route groups
       // Marketing will be handled by (marketing) route group
-      // Preview will be handled by preview route group
       console.log('[Middleware] Allowing route on root domain:', pathname)
     } else {
       // ANY other path on ottie.com is BLOCKED
@@ -658,21 +665,9 @@ export async function middleware(request: NextRequest) {
   } else {
     // Localhost: Check for subdomain simulation
     if (hostnameWithoutPort.startsWith('app.')) {
-      // app.localhost - all routes should go to (app) route group
-      // We need to ensure workspace/builder routes are explicitly routed to (app)
-      // by checking if it's a workspace route and passing through without rewrite
-      // Next.js will match (app) routes first due to alphabetical order
-      const workspaceRoutes = ['/dashboard', '/sites', '/settings', '/client-portals']
-      const isWorkspaceRoute = workspaceRoutes.includes(pathname) || pathname.startsWith('/builder/')
-      
-      if (isWorkspaceRoute) {
-        // Workspace/builder route on app.localhost - ensure it goes to (app) route group
-        // We pass through and Next.js should match (app)/dashboard
-        response = NextResponse.next()
-      } else {
-        // Other routes on app.localhost - also go to (app) route group
-        response = NextResponse.next()
-      }
+      // app.localhost - all routes go to (app) route group
+      // This includes /preview/, /builder/, /dashboard/, /sites/, /settings/, /client-portals/, etc.
+      response = NextResponse.next()
     } else if (hostnameWithoutPort !== 'localhost' && hostnameWithoutPort !== '127.0.0.1') {
       // Other localhost subdomains -> rewrite to (z-sites)/[site] route
       const subdomain = hostnameWithoutPort.split('.')[0]
@@ -683,10 +678,11 @@ export async function middleware(request: NextRequest) {
       // App routes should redirect to app.localhost subdomain
       const appRoutes = ['/dashboard', '/sites', '/settings', '/client-portals', '/login', '/signup', '/auth']
       const isAppRoute = appRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) || 
-                         pathname.startsWith('/builder/')
+                         pathname.startsWith('/builder/') ||
+                         pathname.startsWith('/preview/') // /preview/ is now in (app) route group
       
-      // Preview routes are allowed on root localhost (temp-preview is anonymous, preview requires auth)
-      const isPreviewRoute = pathname.startsWith('/preview/') || pathname.startsWith('/temp-preview/')
+      // Temp-preview is anonymous and stays on root localhost (in marketing group)
+      const isTempPreviewRoute = pathname.startsWith('/temp-preview/')
       
       if (isAppRoute) {
         // Redirect app routes to app.localhost subdomain
@@ -697,8 +693,8 @@ export async function middleware(request: NextRequest) {
       } else if (pathname === '/' || pathname.startsWith('/privacy') || pathname.startsWith('/terms')) {
         // Marketing routes - no rewrite needed
         response = NextResponse.next()
-      } else if (isPreviewRoute) {
-        // Preview routes - allow on root localhost
+      } else if (isTempPreviewRoute) {
+        // Temp-preview routes - allow on root localhost (anonymous)
         response = NextResponse.next()
       } else {
         // Other paths -> treat as site route (z-sites)
@@ -711,6 +707,59 @@ export async function middleware(request: NextRequest) {
           response = NextResponse.next()
         }
       }
+    }
+  }
+  
+  // Set headers for preview routes to allow iframe embedding
+  if (pathname.startsWith('/preview/')) {
+    // Create new response or clone existing one
+    const previewResponse = response instanceof NextResponse ? response.clone() : NextResponse.next()
+    
+    // Remove X-Frame-Options completely (CSP frame-ancestors takes precedence)
+    previewResponse.headers.delete('X-Frame-Options')
+    
+    // Get existing CSP from response
+    const existingCSP = previewResponse.headers.get('Content-Security-Policy') || ''
+    
+    // Build frame-ancestors directive - allow same origin and localhost variants
+    const hostname = request.headers.get('host') || ''
+    const isLocalhost = hostname.includes('localhost')
+    const isAppSubdomain = hostname.startsWith('app.')
+    
+    const frameAncestors = [
+      "'self'",
+      isLocalhost ? "http://localhost:*" : "",
+      isLocalhost ? "http://*.localhost:*" : "",
+      isLocalhost && isAppSubdomain ? "http://app.localhost:*" : "",
+      !isLocalhost ? "https://app.ottie.com" : "",
+    ].filter(Boolean).join(' ')
+    
+    // Replace frame-ancestors in CSP - remove 'none' and add our allowed origins
+    let newCSP = existingCSP
+    if (existingCSP.includes('frame-ancestors')) {
+      // Replace existing frame-ancestors directive
+      newCSP = existingCSP.replace(/frame-ancestors\s+[^;]+/g, `frame-ancestors ${frameAncestors}`)
+    } else {
+      // Add frame-ancestors to existing CSP (remove 'none' if present elsewhere)
+      newCSP = existingCSP.replace(/frame-ancestors\s+'none'/g, '')
+      newCSP = newCSP.trim()
+      if (newCSP && !newCSP.endsWith(';')) {
+        newCSP += '; '
+      }
+      newCSP += `frame-ancestors ${frameAncestors}`
+    }
+    
+    // Set the modified CSP
+    previewResponse.headers.set('Content-Security-Policy', newCSP)
+    console.log('[Middleware] Preview route - Set frame-ancestors:', frameAncestors)
+    console.log('[Middleware] Preview route - Modified CSP:', newCSP.substring(0, 200) + '...')
+    
+    // Handle Supabase session refresh
+    try {
+      return await handleSupabaseSession(request, previewResponse, pathname)
+    } catch (error) {
+      console.error('Middleware error:', error)
+      return previewResponse
     }
   }
   

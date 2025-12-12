@@ -56,7 +56,7 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
   }) {
-  // Check if this is a navigation button (sidebar menu buttons should not have zoom effect)
+  // Check if this is a navigation button or dropdown/select trigger (should not have zoom effect)
   // Check both data-slot and data-sidebar attributes
   const dataSlot = (props as any)['data-slot']
   const dataSidebar = (props as any)['data-sidebar']
@@ -65,8 +65,17 @@ function Button({
                              dataSidebar === 'menu-button' ||
                              dataSidebar === 'menu-sub-button'
   
-  // Motion props - apply zoom effect to all buttons except navigation
-  const motionProps = isNavigationButton ? {} : {
+  // Check if this is a dropdown or select trigger
+  const isDropdownTrigger = dataSlot === 'select-trigger' ||
+                            dataSlot === 'dropdown-menu-trigger' ||
+                            dataSlot === 'dropdown-menu-sub-trigger'
+  
+  // For asChild, check if child element might be a dropdown/select trigger
+  // When asChild is used with DropdownMenuTrigger or SelectTrigger, disable hover effect
+  const shouldDisableHover = isNavigationButton || isDropdownTrigger || asChild
+  
+  // Motion props - apply zoom effect to all buttons except navigation, dropdown triggers, and asChild buttons
+  const motionProps = shouldDisableHover ? {} : {
     whileHover: { scale: 1.03 },
     whileTap: { scale: 0.97 },
     transition: springTransition,

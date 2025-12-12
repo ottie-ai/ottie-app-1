@@ -78,8 +78,11 @@ export default async function PreviewPage({
     notFound()
   }
 
+  // Check if user has edit permissions
+  const canEdit = isOwnerOrAdmin || isCreator || isAssignedAgent
+
   // Preview bypasses password protection for authorized users
   // This allows viewing draft/archived/password-protected sites in preview
-  return <PreviewSitePage site={site} />
+  return <PreviewSitePage site={site} canEdit={canEdit} />
 }
 

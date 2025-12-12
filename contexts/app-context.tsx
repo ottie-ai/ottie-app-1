@@ -26,7 +26,7 @@ interface AppContextType {
   hasPlanFeature: (planName: string | null | undefined, feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_brand_domain' | 'feature_custom_property_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync' | 'feature_password_protection'>) => boolean
 }
 
-const AppContext = createContext<AppContextType | undefined>(undefined)
+export const AppContext = createContext<AppContextType | undefined>(undefined)
 
 /**
  * AppProvider - Loads all app data using React Query

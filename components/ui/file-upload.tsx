@@ -63,9 +63,9 @@ export function FileUpload({
     <div
       {...getRootProps()}
       className={cn(
-        'relative flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-input bg-background p-4 transition-colors',
-        isDragActive && 'border-primary bg-primary/5',
-        'hover:border-primary/50 hover:bg-muted/50',
+        'relative flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white p-4 transition-colors',
+        isDragActive && 'border-orange-500 bg-orange-50',
+        'hover:border-gray-300 hover:bg-gray-50',
         className
       )}
     >
@@ -89,14 +89,14 @@ export function FileUpload({
         </div>
       ) : (
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="rounded-full bg-muted p-3">
+          <div className="rounded-full bg-gray-100 p-3">
             {isDragActive ? (
-              <Upload className="size-5 text-primary" />
+              <Upload className="size-5 text-orange-500" />
             ) : (
-              <ImageIcon className="size-5 text-muted-foreground" />
+              <ImageIcon className="size-5 text-gray-600" />
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{placeholder}</p>
+          <p className="text-sm text-gray-600">{placeholder}</p>
         </div>
       )}
     </div>
