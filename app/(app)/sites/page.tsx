@@ -955,7 +955,7 @@ export default function SitesPage() {
               {(statusFilter.length < 3 || sortBy !== 'createdDesc' || searchQuery || (isMultiUser && assignedToFilter.length > 0 && assignedToFilter.length < members.length) || (availabilityFilter.length > 0 && availabilityFilter.length < 5)) && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
+                    <motion.button
                       onClick={() => {
                         setStatusFilter(['published', 'draft', 'archived'])
                         setSortBy('createdDesc')
@@ -970,9 +970,16 @@ export default function SitesPage() {
                         setAvailabilityFilter(['available', 'under_offer', 'reserved', 'sold', 'off_market'])
                       }}
                       className="p-1.5 rounded-full hover:bg-muted/50 transition-colors shrink-0"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 250,
+                        damping: 10,
+                      }}
                     >
                       <LottieResetIcon size={18} />
-                    </button>
+                    </motion.button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Reset filters</p>

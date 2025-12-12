@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
 import { X } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 interface SearchInputProps {
   value: string
@@ -59,14 +60,21 @@ export function SearchInput({
           onChange={(e) => onChange(e.target.value)}
         />
         {value && (
-          <button
+          <motion.button
             onClick={() => {
               onChange('')
             }}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted/50 transition-colors"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{
+              type: "spring",
+              stiffness: 250,
+              damping: 10,
+            }}
           >
             <X className="size-4 text-muted-foreground" />
-          </button>
+          </motion.button>
         )}
       </div>
 
@@ -98,15 +106,22 @@ export function SearchInput({
               autoFocus
             />
             {value && (
-              <button
+              <motion.button
                 onClick={() => {
                   onChange('')
                   searchInputRef.current?.focus()
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted/50 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 250,
+                  damping: 10,
+                }}
               >
                 <X className="size-4 text-muted-foreground" />
-              </button>
+              </motion.button>
             )}
           </div>
         )}

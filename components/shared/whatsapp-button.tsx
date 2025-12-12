@@ -2,8 +2,8 @@
 
 import { WhatsappLogo, Phone, Envelope } from '@phosphor-icons/react'
 import { CTAType, ColorScheme } from '@/types/builder'
-import { useMagnetic } from '@/hooks/useMagnetic'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
 interface FloatingCTAButtonProps {
   type?: CTAType
@@ -13,11 +13,6 @@ interface FloatingCTAButtonProps {
 }
 
 export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme = 'dark' }: FloatingCTAButtonProps) {
-  const magneticRef = useMagnetic<HTMLAnchorElement>({
-    distance: 150,
-    strength: 0.4,
-  })
-
   if (type === 'none') return null
 
   // Invert colors based on section color scheme
@@ -55,14 +50,22 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
     }
   }
 
+  const springTransition = {
+    type: "spring" as const,
+    stiffness: 250,
+    damping: 10,
+  }
+
   return (
     <div className="fixed right-4 md:right-10 bottom-6 md:bottom-12 z-50">
-      <a
-        ref={magneticRef}
+      <motion.a
         href={getHref()}
         target={type === 'email' ? undefined : '_blank'}
         rel={type === 'email' ? undefined : 'noopener noreferrer'}
         className="group relative flex items-center justify-center"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={springTransition}
       >
         {/* Radio wave rings - emanating outward with equal spacing */}
         <span 
@@ -91,7 +94,7 @@ export function FloatingCTAButton({ type = 'whatsapp', value = '', colorScheme =
         )}>
           {getIcon()}
         </span>
-      </a>
+      </motion.a>
     </div>
   )
 }

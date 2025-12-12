@@ -9,7 +9,7 @@ import { Typography } from '@/components/ui/typography'
 import { WordReveal } from '@/components/ui/word-reveal'
 import { ScrollReveal } from '@/components/ui/scroll-reveal'
 import { Input } from '@/components/ui/input'
-import { MagneticButton } from '@/components/ui/magnetic-button'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -615,15 +615,13 @@ export default function Home() {
               </p>
             )}
             
-            <MagneticButton 
+            <Button 
               className="w-full bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed" 
-              magneticDistance={120} 
-              magneticStrength={0.4}
               onClick={handleGenerate}
               disabled={isLoading}
             >
               {isLoading ? 'Generating...' : 'Generate Free Site'}
-            </MagneticButton>
+            </Button>
             
             {/* Manual Start Link */}
             <div className="pt-1">
@@ -701,6 +699,13 @@ export default function Home() {
                 className="text-xs text-white/50 hover:text-white underline underline-offset-2 transition-colors"
               >
                 Terms & Conditions
+              </Link>
+              <span className="text-xs text-white/50">•</span>
+              <Link 
+                href="/dpa" 
+                className="text-xs text-white/50 hover:text-white underline underline-offset-2 transition-colors"
+              >
+                DPA
               </Link>
               <span className="text-xs text-white/50">•</span>
               <span className="text-xs text-white/50">GDPR compliant</span>
@@ -795,13 +800,11 @@ export default function Home() {
               wordDelay={0.05}
             />
           </Typography>
-          <MagneticButton 
+          <Button 
             className="bg-white text-black hover:bg-white/90 px-8 py-3" 
-            magneticDistance={100} 
-            magneticStrength={0.3}
           >
             Get Started Free
-          </MagneticButton>
+          </Button>
         </div>
       </section>
     </div>
@@ -965,18 +968,16 @@ function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[
                   </ul>
                   
                   {/* CTA Button */}
-                  <MagneticButton
+                  <Button
                     className={cn(
                       'w-full',
                       tier.popular 
                         ? 'bg-white text-black hover:bg-white/90' 
                         : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                     )}
-                    magneticDistance={60}
-                    magneticStrength={0.2}
                   >
                     {tier.cta}
-                  </MagneticButton>
+                  </Button>
                   {tier.trial && (
                     <p className="text-xs text-center text-white/30 mt-3">
                       14-day free trial
@@ -1023,13 +1024,11 @@ function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[
                 </div>
               </div>
               <div className="shrink-0">
-                <MagneticButton
+                <Button
                   className="bg-white/10 text-white hover:bg-white/20 border border-white/10 px-8"
-                  magneticDistance={60}
-                  magneticStrength={0.2}
                 >
                   Contact Sales
-                </MagneticButton>
+                </Button>
               </div>
             </div>
           </div>
