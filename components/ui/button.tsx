@@ -43,8 +43,6 @@ const springTransition = {
   damping: 10,
 }
 
-const MotionSlot = motion(Slot)
-
 function Button({
   className,
   variant,
@@ -62,13 +60,26 @@ function Button({
   }
 
   if (asChild) {
+    // For asChild, exclude animation event handlers that conflict
+    const {
+      onAnimationStart,
+      onAnimationEnd,
+      onAnimationIteration,
+      ...restProps
+    } = props
+    
+    // Use motion.div wrapper to apply effects while preserving Slot behavior
     return (
-      <MotionSlot
-        data-slot="button"
-        className={cn(buttonVariants({ variant, size, className }))}
+      <motion.div
         {...motionProps}
-        {...props}
-      />
+        style={{ display: "inline-flex" }}
+        className={cn(buttonVariants({ variant, size, className }))}
+      >
+        <Slot
+          data-slot="button"
+          {...(restProps as React.ComponentProps<typeof Slot>)}
+        />
+      </motion.div>
     )
   }
 
