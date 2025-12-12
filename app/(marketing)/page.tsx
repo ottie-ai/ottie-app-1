@@ -76,7 +76,7 @@ export default function Home() {
   
   // Loading message state - original blur reveal approach
   const [currentMessage, setCurrentMessage] = useState<string>('')
-  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'>('waiting')
+  const [loadingPhase, setLoadingPhase] = useState<'waiting' | 'entering' | 'visible' | 'stagger-exiting' | 'exiting' | 'hidden'>('waiting')
   const [isTransitioning, setIsTransitioning] = useState(false)
   // Duration animation state
   const [durationPosition, setDurationPosition] = useState<'hidden' | 'centered' | 'normal'>('hidden')
@@ -245,37 +245,50 @@ export default function Home() {
     transitionTargetRef.current = nextPhase
     lastAnimatedPhaseRef.current = nextPhase
     setIsTransitioning(true)
-    setLoadingPhase('exiting')
+    
+    // Wait for stagger animation to complete if it's currently active
+    // Calculate max stagger animation duration: max delay + spring transition
+    // For hover=false: (text.length - 1) * 0.06 + 0.8s transition
+    // For hover=true: (text.length - 1) * 0.05 + 0.1 + 0.8s transition
+    // Use the longer one + buffer to ensure completion
+    const currentMessageLength = currentMessage.length || 30
+    const maxStaggerDelay = Math.max(
+      (currentMessageLength - 1) * 0.06, // hover = false direction
+      (currentMessageLength - 1) * 0.05 + 0.1 // hover = true direction
+    )
+    const staggerAnimationDuration = maxStaggerDelay * 1000 + 800 // max delay + spring transition
+    const waitForStagger = loadingPhase === 'visible' ? staggerAnimationDuration : 0
+    
+    setTimeout(() => {
+      // Use stagger-exiting to keep stagger visible during its exit animation
+      setLoadingPhase('stagger-exiting')
 
-    // Calculate animation duration: 0.5s animation + max delay (for longest message ~30 chars: 29 * 0.04 = 1.16s) = ~1.66s, add buffer = 2000ms
-    const exitingDuration = 2000
+      // Wait for stagger exit animation to complete (0.4s in motion.span exit + buffer)
+      const staggerExitDuration = 500
 
-    transitionTimersRef.current.push(setTimeout(() => {
-      setLoadingPhase('hidden')
-      setCurrentMessage('')
+      transitionTimersRef.current.push(setTimeout(() => {
+        // Immediately switch to new text with blur reveal - no hidden gap
+        setCurrentMessage(targetMessage)
+        setLoadingPhase('entering')
+
+        // Calculate animation duration: 0.8s animation + max delay (for longest message ~30 chars: 29 * 0.05 = 1.45s) = ~2.25s, add buffer = 3000ms
+        const enteringDuration = 3000
 
         transitionTimersRef.current.push(setTimeout(() => {
-          setCurrentMessage(targetMessage)
-          setLoadingPhase('entering')
-
-          // Calculate animation duration: 0.8s animation + max delay (for longest message ~30 chars: 29 * 0.05 = 1.45s) = ~2.25s, add buffer = 3000ms
-          const enteringDuration = 3000
-
-          transitionTimersRef.current.push(setTimeout(() => {
-            // Set visible phase - stagger effect will start
-            // Wait for blur reveal animation to complete fully
-            setLoadingPhase('visible')
-            setDisplayedPhase(nextPhase)
-            isTransitioningRef.current = false
-            setIsTransitioning(false)
-            transitionTargetRef.current = null
-            // Small delay to ensure smooth transition before next phase
-            setTimeout(() => {
-              runNextTransitionRef.current?.()
-            }, 100)
-          }, enteringDuration))
-        }, 150))
-    }, exitingDuration))
+          // Set visible phase - stagger effect will start
+          // Wait for blur reveal animation to complete fully
+          setLoadingPhase('visible')
+          setDisplayedPhase(nextPhase)
+          isTransitioningRef.current = false
+          setIsTransitioning(false)
+          transitionTargetRef.current = null
+          // Small delay to ensure smooth transition before next phase
+          setTimeout(() => {
+            runNextTransitionRef.current?.()
+          }, 100)
+        }, enteringDuration))
+      }, staggerExitDuration))
+    }, waitForStagger)
   }
 
   // Handle initial message display
@@ -512,26 +525,29 @@ export default function Home() {
           <div className="text-center flex flex-col items-center w-full relative">
             {/* Status message area - fixed height to prevent jumping */}
             <div className="h-[clamp(3rem,8vw,5rem)] flex items-center justify-center w-full">
-              {currentMessage && loadingPhase === 'visible' ? (
-                // Active status - show stagger effect
-                <LoadingText
-                  key={`stagger-${displayedPhase || 'visible'}`}
-                  text={currentMessage}
-                  mode="stagger-active"
-                  loadingPhase={loadingPhase}
-                  rotateX={80}
-                  stagger={true}
-                />
-              ) : currentMessage ? (
-                // Transitioning - show blur reveal
-                // Use stable key based on phase transition to prevent remounting during animation
-                <LoadingText
-                  key={`blur-${transitionTargetRef.current || displayedPhase || 'transition'}`}
-                  text={currentMessage}
-                  mode="blur-reveal"
-                  loadingPhase={loadingPhase}
-                />
-              ) : durationPosition === 'centered' ? (
+              <AnimatePresence mode="wait">
+                {currentMessage && (loadingPhase === 'visible' || loadingPhase === 'stagger-exiting') ? (
+                  // Active status - show stagger effect (visible or exiting)
+                  <LoadingText
+                    key={`stagger-${displayedPhase || 'visible'}`}
+                    text={currentMessage}
+                    mode="stagger-active"
+                    loadingPhase={loadingPhase}
+                    rotateX={80}
+                    stagger={true}
+                  />
+                ) : currentMessage ? (
+                  // Transitioning - show blur reveal
+                  // Use stable key based on phase transition to prevent remounting during animation
+                  <LoadingText
+                    key={`blur-${transitionTargetRef.current || displayedPhase || 'transition'}`}
+                    text={currentMessage}
+                    mode="blur-reveal"
+                    loadingPhase={loadingPhase}
+                  />
+                ) : null}
+              </AnimatePresence>
+              {durationPosition === 'centered' ? (
                 // Show duration in center when no message yet (desktop) or bottom (mobile)
                 <motion.p
                   layoutId="duration-text"
@@ -547,9 +563,7 @@ export default function Home() {
                 >
                   <span className="shimmer-text-home">Expected duration 30-60 seconds</span>
                 </motion.p>
-              ) : (
-                <div className="h-[clamp(3rem,8vw,5rem)]" />
-              )}
+              ) : null}
             </div>
             {/* Duration - animated position when moved down - same element, different position */}
             {durationPosition === 'normal' && (

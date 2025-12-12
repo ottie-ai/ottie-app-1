@@ -6,10 +6,11 @@ import { motion } from "framer-motion"
 interface LoadingTextProps {
   text: string
   mode: 'blur-reveal' | 'stagger-active'
-  loadingPhase?: 'waiting' | 'entering' | 'visible' | 'exiting' | 'hidden'
+  loadingPhase?: 'waiting' | 'entering' | 'visible' | 'stagger-exiting' | 'exiting' | 'hidden'
   rotateX?: number
   stagger?: boolean
   className?: string
+  isExiting?: boolean
 }
 
 /**
@@ -23,18 +24,37 @@ export function LoadingText({
   rotateX = 80,
   stagger = true,
   className = "loading-text-home",
+  isExiting = false,
 }: LoadingTextProps) {
   const [hover, setHover] = React.useState(false)
   // Memoize chunks to prevent remounting during animation
   const chunks = React.useMemo(() => text.split(""), [text])
   
-  // Auto-flip for stagger mode
+  // Auto-flip for stagger mode with 3 second delay between animations
   React.useEffect(() => {
     if (mode === 'stagger-active') {
-      const interval = setInterval(() => {
-        setHover((prev) => !prev)
-      }, 2000)
-      return () => clearInterval(interval)
+      // Calculate animation duration based on text length and delays
+      const animationDuration = 2500 // Max delay + spring transition time
+      const pauseBetweenAnimations = 3000 // 3 seconds pause
+      
+      const timeouts: NodeJS.Timeout[] = []
+      
+      // Function to schedule next animation
+      const scheduleAnimation = (nextHoverState: boolean, delay: number) => {
+        const timeout = setTimeout(() => {
+          setHover(nextHoverState)
+          // After animation completes, schedule next one after pause
+          scheduleAnimation(!nextHoverState, animationDuration + pauseBetweenAnimations)
+        }, delay)
+        timeouts.push(timeout)
+      }
+      
+      // Start first animation immediately (forward direction)
+      scheduleAnimation(true, 0)
+      
+      return () => {
+        timeouts.forEach(clearTimeout)
+      }
     }
   }, [mode])
 
@@ -89,8 +109,48 @@ export function LoadingText({
   // Use a stable key based on text length to prevent remounting during animation
   const stableKey = `stagger-${text.length}`
   
+  // Different initial/animate/exit for stagger vs blur modes
+  // When isExiting is true, animate to exit state instead of normal state
+  const staggerInitial = mode === 'stagger-active' ? { opacity: 1, filter: "blur(0px)", y: 0 } : { opacity: 0 }
+  const staggerAnimate = mode === 'stagger-active' 
+    ? (isExiting || loadingPhase === 'stagger-exiting'
+      ? { 
+          opacity: 0, 
+          filter: "blur(20px)", 
+          y: -12,
+          transition: { 
+            duration: 0.4,
+            ease: [0.7, 0, 0.84, 0]
+          } 
+        }
+      : { opacity: 1, filter: "blur(0px)", y: 0 })
+    : { opacity: 1 }
+  const staggerExit = mode === 'stagger-active' 
+    ? { 
+        opacity: 0, 
+        filter: "blur(20px)", 
+        y: -12,
+        transition: { 
+          duration: 0.4,
+          ease: [0.7, 0, 0.84, 0]
+        } 
+      }
+    : {
+        opacity: 0,
+        transition: {
+          duration: 0.2
+        }
+      }
+
   return (
-    <span className="inline-block" aria-label={text} style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
+    <motion.span
+      className="inline-block"
+      aria-label={text}
+      style={{ whiteSpace: 'nowrap', display: 'inline-block' }}
+      initial={staggerInitial}
+      animate={staggerAnimate}
+      exit={staggerExit}
+    >
       <div className={`${className} grid-stack`} style={{ display: 'inline-grid', whiteSpace: 'nowrap', width: 'fit-content' }}>
         {/* Top layer */}
         <div className={className} aria-hidden style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
@@ -186,6 +246,6 @@ export function LoadingText({
           })}
         </div>
       </div>
-    </span>
+    </motion.span>
   )
 }
