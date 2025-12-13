@@ -476,7 +476,7 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
                   ref={buttonRef}
                   size={isMobile ? "sm" : "sm"}
                   variant="default"
-                  className={isMobile ? "text-xs px-2" : ""}
+                  className={`whitespace-nowrap gap-0 [&>span]:inline [&>span]:leading-none [&>span]:m-0 [&>span]:p-0 ${isMobile ? "text-xs px-2" : ""}`}
                   onClick={async () => {
                     if (hasUnsavedChanges) {
                       setIsSaving(true)
@@ -509,7 +509,6 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
                     }
                   }}
                   disabled={isSaving}
-                  className="whitespace-nowrap gap-0 [&>span]:inline [&>span]:leading-none [&>span]:m-0 [&>span]:p-0"
                   style={{ letterSpacing: 0, wordSpacing: 0 }}
                 >
                   <AnimatePresence mode="popLayout" initial={false}>
