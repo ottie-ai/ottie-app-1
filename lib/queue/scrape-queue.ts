@@ -10,6 +10,11 @@ import { redis, QUEUE_KEYS } from '@/lib/redis/client'
 const MAX_CONCURRENT_SCRAPES = parseInt(process.env.MAX_CONCURRENT_SCRAPES || '2')
 import { scrapeUrl, type ScrapeResult } from '@/lib/scraper/providers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { 
+  extractImageUrlsFromConfig, 
+  processImages, 
+  replaceImageUrlsInConfig 
+} from '@/lib/storage/image-processor'
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/scraper/html-processors'
 import { load } from 'cheerio'
@@ -739,12 +744,27 @@ async function generateConfigFromData(
     // Sort config keys to match sample config order (local operation, not part of OpenAI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
+    // Process images: download and upload to Supabase Storage
+    console.log(`🖼️ [Queue Worker] Processing images for ${previewId}...`)
+    const imageUrls = extractImageUrlsFromConfig(generatedConfig)
+    let processedConfig = generatedConfig
+    
+    if (imageUrls.length > 0) {
+      console.log(`🖼️ [Queue Worker] Found ${imageUrls.length} images to process`)
+      const basePath = `temp-preview/${previewId}`
+      const urlMap = await processImages(imageUrls, basePath, 5)
+      processedConfig = replaceImageUrlsInConfig(generatedConfig, urlMap)
+      console.log(`✅ [Queue Worker] Processed ${urlMap.size} images`)
+    } else {
+      console.log(`ℹ️ [Queue Worker] No images found in config`)
+    }
+
     // Update with Call 1 results immediately (so frontend can see Call 1 is done)
     await supabase
       .from('temp_previews')
       .update({
         generated_config: {
-          ...generatedConfig,
+          ...processedConfig,
           _metadata: {
             call1_started_at: call1StartTime,
             call1_completed_at: call1EndTime,
@@ -752,7 +772,7 @@ async function generateConfigFromData(
             call1_usage: call1Usage,
           }
         },
-        unified_json: generatedConfig, // Set initial unified_json with Call 1 data
+        unified_json: processedConfig, // Set initial unified_json with Call 1 data (with processed images)
         updated_at: call1EndTime,
       })
       .eq('id', previewId)
@@ -825,6 +845,15 @@ async function generateConfigFromData(
       if (titleResponse.highlights && Array.isArray(titleResponse.highlights)) {
         finalConfig.highlights = titleResponse.highlights
         console.log(`✅ [Queue Worker] Highlights improved: ${titleResponse.highlights.length} items`)
+      }
+
+      // Process any new images that might have been added in Call 2
+      // (though typically images are only in Call 1, this ensures we catch any new ones)
+      const imageUrlsCall2 = extractImageUrlsFromConfig(finalConfig)
+      if (imageUrlsCall2.length > 0) {
+        const basePath = `temp-preview/${previewId}`
+        const urlMapCall2 = await processImages(imageUrlsCall2, basePath, 5)
+        finalConfig = replaceImageUrlsInConfig(finalConfig, urlMapCall2)
       }
 
       // Update with Call 2 results and mark as completed

@@ -6,6 +6,7 @@
 -- ==========================================
 
 -- Function to cleanup expired previews
+-- Note: Image cleanup is handled by server-side function, not SQL
 create or replace function public.cleanup_expired_previews()
 returns table(deleted_count bigint)
 language plpgsql
@@ -15,6 +16,7 @@ declare
   deleted_count bigint;
 begin
   -- Delete expired previews
+  -- Images will be cleaned up by server-side cleanup function
   with deleted as (
     delete from public.temp_previews
     where expires_at < now()

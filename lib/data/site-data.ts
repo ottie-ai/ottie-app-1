@@ -282,6 +282,13 @@ export async function deleteSite(siteId: string): Promise<{ success: true } | { 
   console.log('🚀 deleteSite called with siteId:', siteId)
   const supabase = await createClient()
   
+  // Get site config before deletion for image cleanup
+  const { data: siteData } = await supabase
+    .from('sites')
+    .select('config')
+    .eq('id', siteId)
+    .single()
+  
   // Use RPC function to soft delete (bypasses RLS issues)
   const { data, error } = await supabase.rpc('soft_delete_site', { site_id: siteId })
   
@@ -300,7 +307,18 @@ export async function deleteSite(siteId: string): Promise<{ success: true } | { 
     }
     if ('success' in data && data.success) {
       console.log('✅ Site deleted successfully:', siteId)
-  return { success: true }
+      
+      // Cleanup images asynchronously (don't block deletion)
+      if (siteData?.config) {
+        import('@/lib/storage/cleanup').then(({ cleanupSiteImages }) => {
+          cleanupSiteImages(siteId, siteData.config).catch(err => {
+            console.error('Error cleaning up site images:', err)
+            // Don't fail deletion if image cleanup fails
+          })
+        })
+      }
+      
+      return { success: true }
     }
   }
   

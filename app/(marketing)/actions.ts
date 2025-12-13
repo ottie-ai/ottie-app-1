@@ -347,6 +347,13 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
   
   const finalSlug = existingSite ? `${slug}-${Date.now()}` : slug
   
+  // Get config with processed images
+  const configWithImages = preview.unified_json || preview.generated_config || {}
+  
+  // When claiming, move images from temp-preview/{previewId}/ to {siteId}/
+  // We'll do this after site creation since we need the site ID
+  // For now, images are already in Supabase, just need to update paths in config if needed
+  
   // Create site
   const { data: site, error: siteError } = await supabase
     .from('sites')
@@ -356,7 +363,7 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
       title: title,
       slug: finalSlug,
       status: 'draft',
-      config: preview.unified_json || preview.generated_config || {}, // Use unified_json as production config
+      config: configWithImages, // Use unified_json as production config (images already processed)
       metadata: {
         external_url: preview.external_url, // Use external_url instead of source_url
         source_domain: preview.source_domain,
@@ -371,6 +378,24 @@ export async function claimPreview(previewId: string, workspaceId: string, userI
   if (siteError || !site) {
     console.error('Failed to create site:', siteError)
     return { error: 'Failed to create site. Please try again.' }
+  }
+  
+  // Move images from temp-preview/{previewId}/ to {siteId}/
+  // This ensures images persist after temp preview expires
+  try {
+    const { moveTempPreviewImagesToSite } = await import('@/lib/storage/image-processor')
+    const moveResult = await moveTempPreviewImagesToSite(previewId, site.id, configWithImages)
+    
+    // Update site config with moved image URLs if successful
+    if (moveResult.success && moveResult.updatedConfig) {
+      await supabase
+        .from('sites')
+        .update({ config: moveResult.updatedConfig })
+        .eq('id', site.id)
+    }
+  } catch (error) {
+    console.error('Error moving images during claim:', error)
+    // Don't fail claim if image move fails - images are already accessible
   }
   
   // Optionally delete preview (or let it expire naturally)
