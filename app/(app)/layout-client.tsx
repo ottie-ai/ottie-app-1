@@ -202,12 +202,19 @@ function IntercomWithProfile() {
   const { profile, userName } = useUserProfile()
   const pathname = usePathname()
   
-  // Don't initialize Intercom on site editor routes (but allow on /sites list page)
-  const isBuilderRoute = pathname.startsWith('/sites/') && pathname !== '/sites'
+  // Don't initialize Intercom on preview routes (preview pages should be clean without admin elements)
+  // But allow on /sites/[id] (edit site page) and other admin routes
+  const isPreviewRoute = pathname.startsWith('/preview/')
   
   useEffect(() => {
-    // Skip if builder route or user not loaded
-    if (isBuilderRoute || !user?.id) return
+    // Skip if preview route or user not loaded
+    if (isPreviewRoute || !user?.id) {
+      // Hide Intercom on preview routes
+      if (isPreviewRoute && typeof window !== 'undefined' && (window as any).Intercom) {
+        (window as any).Intercom('shutdown')
+      }
+      return
+    }
 
     // Fetch JWT token from API
     const initializeIntercom = async () => {
@@ -222,7 +229,7 @@ function IntercomWithProfile() {
 
         // Initialize Intercom with JWT token for authenticated users
         // This enables identity verification and shows home/messenger tabs
-        // Use Intercom() function (not .boot()) with intercom_user_jwt parameter
+        // Use Intercom() function with intercom_user_jwt parameter
         Intercom({
           api_base: 'https://api-iam.intercom.io',
           app_id: 'r9srnf09',
@@ -240,7 +247,7 @@ function IntercomWithProfile() {
 
     initializeIntercom()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.email, user?.created_at, userName, isBuilderRoute])
+  }, [user?.id, user?.email, user?.created_at, userName, isPreviewRoute])
   
   return null
 }
