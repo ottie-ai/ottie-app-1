@@ -175,7 +175,7 @@ function PreviewContent() {
       }
       
       // Navigate to builder
-      router.push(`/builder/${result.siteId}`)
+      router.push(`/sites/${result.siteId}`)
     } catch (err) {
       setError('Failed to claim preview')
       setClaiming(false)

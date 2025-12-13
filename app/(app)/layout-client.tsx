@@ -202,8 +202,8 @@ function IntercomWithProfile() {
   const { profile, userName } = useUserProfile()
   const pathname = usePathname()
   
-  // Don't initialize Intercom on builder routes
-  const isBuilderRoute = pathname.startsWith('/builder/')
+  // Don't initialize Intercom on site editor routes (but allow on /sites list page)
+  const isBuilderRoute = pathname.startsWith('/sites/') && pathname !== '/sites'
   
   useEffect(() => {
     // Skip if builder route or user not loaded

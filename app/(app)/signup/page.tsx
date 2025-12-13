@@ -158,7 +158,7 @@ function RegisterForm() {
               const claimResult = await claimPreview(previewId, workspace.id, data.user.id)
               if ('success' in claimResult && claimResult.success) {
                 // Navigate to builder with the claimed site
-                router.push(`/builder/${claimResult.siteId}`)
+                router.push(`/sites/${claimResult.siteId}`)
                 router.refresh()
                 return
               }

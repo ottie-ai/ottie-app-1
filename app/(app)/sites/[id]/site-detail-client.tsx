@@ -34,17 +34,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from '@/components/ui/tabs'
-import { ChevronsUpDown, ChevronDown, Settings, ExternalLink, Menu, PanelLeft } from 'lucide-react'
+import { ChevronsUpDown, ChevronDown, ExternalLink, Menu, PanelLeft } from 'lucide-react'
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -439,29 +434,6 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
                   <ExternalLink className="size-4" />
                   <span className="hidden md:inline">Preview</span>
                 </Button>
-              )}
-              {!isMobile && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Settings className="size-4" />
-                      <span className="hidden md:inline">Settings</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-80">
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium leading-none">Site Settings</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Manage site configuration and preferences.
-                        </p>
-                      </div>
-                      <div className="max-h-[50vh] overflow-y-auto">
-                        {/* Settings content can go here */}
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
               )}
               <motion.div
                 animate={{ width: buttonBounds.width > 0 ? buttonBounds.width : 'auto' }}

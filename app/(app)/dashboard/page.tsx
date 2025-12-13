@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
   const { currentWorkspace } = useAppData()
-  const { sites, loading: sitesLoading } = useSites(currentWorkspace?.id)
+  const { sites, loading: sitesLoading, refresh } = useSites(currentWorkspace?.id)
 
   // Get recent sites (last 4, sorted by updated_at)
   const recentSites = useMemo(() => {
@@ -257,7 +257,7 @@ export default function DashboardPage() {
 
             {/* Site Cards */}
             {!sitesLoading && recentSites.length > 0 && recentSites.map((site) => (
-              <SiteCard key={site.id} site={site} href={`/builder/${site.id}`} />
+              <SiteCard key={site.id} site={site} onStatusChange={refresh} />
             ))}
           </div>
         </div>
