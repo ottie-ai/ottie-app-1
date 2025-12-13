@@ -190,7 +190,7 @@ export function isBlockedContent(html: string): boolean {
 }
 
 /**
- * Scrape URL using Firecrawl
+ * Scrape URL using Firecrawl with retry logic
  * Returns raw HTML (unified interface with other providers)
  * 
  * REFACTORED: Uses single call with multiple scrape actions when gallery extraction is needed
@@ -199,15 +199,16 @@ export function isBlockedContent(html: string): boolean {
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds
+ * @param isRetry - Whether this is a retry attempt (internal use)
  */
-async function scrapeWithFirecrawl(url: string, timeout: number): Promise<ScrapeResult> {
+async function scrapeWithFirecrawl(url: string, timeout: number, isRetry: boolean = false): Promise<ScrapeResult> {
   const apiKey = process.env.FIRECRAWL_API_KEY
   
   if (!apiKey) {
     throw new Error('FIRECRAWL_API_KEY is not configured')
   }
 
-  console.log('🔵 [Firecrawl] Scraping URL:', url)
+  console.log(`🔵 [Firecrawl] ${isRetry ? '[RETRY] ' : ''}Scraping URL:`, url)
   const callStartTime = Date.now()
   
   // Set timeout for Firecrawl call
@@ -439,11 +440,45 @@ async function scrapeWithFirecrawl(url: string, timeout: number): Promise<Scrape
 }
 
 /**
+ * Run Apify actor with retry logic (1 retry)
+ * @param scraper - Apify scraper configuration
+ * @param url - URL to scrape
+ * @param timeout - Timeout in milliseconds
+ * @param proxyGroups - Optional proxy groups
+ * @param isRetry - Whether this is a retry attempt (internal use)
+ */
+async function runApifyWithRetry(
+  scraper: ApifyScraperConfig,
+  url: string,
+  timeout: number,
+  proxyGroups?: string[],
+  isRetry: boolean = false
+): Promise<ApifyResult> {
+  try {
+    if (isRetry) {
+      console.log(`🔄 [Apify:${scraper.name}] [RETRY] Attempting scrape...`)
+    }
+    return await runApifyActor(scraper, url, timeout, proxyGroups)
+  } catch (error: any) {
+    if (isRetry) {
+      // Already retried once, throw error
+      throw error
+    }
+    
+    // First attempt failed, retry once
+    console.warn(`⚠️ [Apify:${scraper.name}] First attempt failed, retrying...`, error?.message || error)
+    return runApifyWithRetry(scraper, url, timeout, proxyGroups, true)
+  }
+}
+
+/**
  * Scrape a URL using the appropriate provider
  * 
  * Priority:
  * 1. Check if URL has a dedicated Apify scraper (e.g., Zillow)
+ *    - Apify has 1 retry, then falls back to Firecrawl
  * 2. Otherwise, use Firecrawl (auto proxy mode)
+ *    - Firecrawl has 1 retry, then falls back to Apify generic scraper
  * 
  * @param url - URL to scrape
  * @param timeout - Timeout in milliseconds (default: 170000 = 170 seconds)
@@ -487,14 +522,23 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
             actualProvider: `apify_${apifyScraper.id}`,
           }
         } catch (retryError) {
-          console.error(`❌ [Apify:${apifyScraper.name}] Both proxy attempts (DATACENTER and RESIDENTIAL) failed`)
-          throw retryError
+          console.error(`❌ [Apify:${apifyScraper.name}] Both proxy attempts (DATACENTER and RESIDENTIAL) failed, falling back to Firecrawl...`)
+          // Fallback to Firecrawl
+          try {
+            const firecrawlResult = await scrapeWithFirecrawl(url, timeout)
+            firecrawlResult.actualProvider = `firecrawl_fallback_from_${apifyScraper.id}`
+            return firecrawlResult
+          } catch (firecrawlError: any) {
+            console.error(`❌ [Firecrawl Fallback] Failed after Apify retries:`, firecrawlError?.message || firecrawlError)
+            // Rethrow the original Apify error to preserve context
+            throw retryError
+          }
         }
       }
     } else {
-      // For other scrapers, use default proxy configuration
+      // For other scrapers, use retry logic (1 retry), then fallback to Firecrawl
       try {
-        const apifyResult = await runApifyActor(apifyScraper, url, timeout)
+        const apifyResult = await runApifyWithRetry(apifyScraper, url, timeout)
         
         return {
           json: apifyResult.data,
@@ -503,17 +547,26 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
           apifyScraperId: apifyScraper.id,
           actualProvider: `apify_${apifyScraper.id}`,
         }
-      } catch (error) {
-        console.error(`❌ [Apify:${apifyScraper.name}] Failed:`, error)
-        // If Apify fails, throw error (don't fallback to general scraper)
-        // This ensures we get proper error messages for site-specific issues
-        throw error
+      } catch (error: any) {
+        console.error(`❌ [Apify:${apifyScraper.name}] Failed after retry, falling back to Firecrawl...`, error?.message || error)
+        
+        // Fallback to Firecrawl
+        try {
+          const firecrawlResult = await scrapeWithFirecrawl(url, timeout)
+          firecrawlResult.actualProvider = `firecrawl_fallback_from_${apifyScraper.id}`
+          return firecrawlResult
+        } catch (firecrawlError: any) {
+          console.error(`❌ [Firecrawl Fallback] Failed after Apify retry:`, firecrawlError?.message || firecrawlError)
+          // Rethrow the original Apify error to preserve context
+          throw error
+        }
       }
     }
   }
   
   // PRIORITY 2: Use Firecrawl (auto proxy)
   // Uses single call with combined actions when gallery extraction is needed
+  // Firecrawl has 1 retry, then falls back to Apify generic scraper
   console.log(`🎯 [Routing] Using Firecrawl with auto proxy`)
   
   try {
@@ -523,58 +576,68 @@ export async function scrapeUrl(url: string, timeout: number = 170000): Promise<
     
     return result
   } catch (error: any) {
-    console.error('❌ [Firecrawl] Failed, attempting Apify fallback...', error?.message || error)
-
-    // Generic Apify fallback (no env needed)
-    const fallbackConfig: ApifyScraperConfig = {
-      id: 'apify_generic_fallback',
-      name: 'Apify Generic Fallback',
-      actorId: 'apify~website-content-crawler',
-      shouldHandle: () => true,
-      buildInput: (inputUrl: string, proxyGroups?: string[]) => ({
-        startUrls: [{ url: inputUrl }],
-        proxy: {
-          useApifyProxy: true,
-          ...(proxyGroups && proxyGroups.length > 0 && { apifyProxyGroups: proxyGroups }),
-        },
-      }),
-    }
-
+    // First attempt failed, try retry
+    console.warn(`⚠️ [Firecrawl] First attempt failed, retrying...`, error?.message || error)
+    
     try {
-      const apifyResult = await runApifyActor(fallbackConfig, url, timeout)
-      console.log('✅ [Apify Fallback] Successful scrape via generic actor')
+      const retryResult = await scrapeWithFirecrawl(url, timeout, true)
+      retryResult.actualProvider = retryResult.actualProvider || 'firecrawl_auto_retry'
+      return retryResult
+    } catch (retryError: any) {
+      // Retry also failed, fallback to Apify
+      console.error('❌ [Firecrawl] Failed after retry, attempting Apify fallback...', retryError?.message || retryError)
 
-      // Try to extract markdown first, otherwise HTML, then convert to markdown
-      const fallbackMarkdown =
-        apifyResult.data?.markdown ||
-        apifyResult.data?.pageFunctionResult?.markdown ||
-        apifyResult.data?.contentMarkdown ||
-        apifyResult.data?.content_markdown ||
-        apifyResult.data?.markdownContent
-
-      const fallbackHtml =
-        apifyResult.data?.html ||
-        apifyResult.data?.pageFunctionResult?.html ||
-        apifyResult.data?.pageFunctionResult?.content ||
-        apifyResult.data?.content
-
-      const resolvedMarkdown =
-        fallbackMarkdown ||
-        (fallbackHtml ? htmlToMarkdownUniversal(fallbackHtml) : undefined)
-
-      return {
-        json: apifyResult.data,
-        html: fallbackHtml,
-        markdown: resolvedMarkdown,
-        provider: 'apify',
-        duration: apifyResult.duration,
-        apifyScraperId: fallbackConfig.id,
-        actualProvider: `apify_${fallbackConfig.id}`,
+      // Generic Apify fallback (no env needed)
+      const fallbackConfig: ApifyScraperConfig = {
+        id: 'apify_generic_fallback',
+        name: 'Apify Generic Fallback',
+        actorId: 'apify~website-content-crawler',
+        shouldHandle: () => true,
+        buildInput: (inputUrl: string, proxyGroups?: string[]) => ({
+          startUrls: [{ url: inputUrl }],
+          proxy: {
+            useApifyProxy: true,
+            ...(proxyGroups && proxyGroups.length > 0 && { apifyProxyGroups: proxyGroups }),
+          },
+        }),
       }
-    } catch (fallbackError: any) {
-      console.error('❌ [Apify Fallback] Failed:', fallbackError?.message || fallbackError)
-      // Rethrow the original Firecrawl error to preserve context
-      throw error
+
+      try {
+        const apifyResult = await runApifyActor(fallbackConfig, url, timeout)
+        console.log('✅ [Apify Fallback] Successful scrape via generic actor')
+
+        // Try to extract markdown first, otherwise HTML, then convert to markdown
+        const fallbackMarkdown =
+          apifyResult.data?.markdown ||
+          apifyResult.data?.pageFunctionResult?.markdown ||
+          apifyResult.data?.contentMarkdown ||
+          apifyResult.data?.content_markdown ||
+          apifyResult.data?.markdownContent
+
+        const fallbackHtml =
+          apifyResult.data?.html ||
+          apifyResult.data?.pageFunctionResult?.html ||
+          apifyResult.data?.pageFunctionResult?.content ||
+          apifyResult.data?.content
+
+        const resolvedMarkdown =
+          fallbackMarkdown ||
+          (fallbackHtml ? htmlToMarkdownUniversal(fallbackHtml) : undefined)
+
+        return {
+          json: apifyResult.data,
+          html: fallbackHtml,
+          markdown: resolvedMarkdown,
+          provider: 'apify',
+          duration: apifyResult.duration,
+          apifyScraperId: fallbackConfig.id,
+          actualProvider: `apify_${fallbackConfig.id}`,
+        }
+      } catch (fallbackError: any) {
+        console.error('❌ [Apify Fallback] Failed:', fallbackError?.message || fallbackError)
+        // Rethrow the original Firecrawl retry error to preserve context
+        throw retryError
+      }
     }
   }
 }
