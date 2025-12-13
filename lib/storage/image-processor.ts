@@ -18,14 +18,16 @@ const BUCKET_NAME = 'site-images'
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
 const FETCH_TIMEOUT = 30000 // 30 seconds
 
-export interface ImageUploadResult {
-  success: true
-  url: string
-  path: string
-} | {
-  success: false
-  error: string
-}
+export type ImageUploadResult =
+  | {
+      success: true
+      url: string
+      path: string
+    }
+  | {
+      success: false
+      error: string
+    }
 
 /**
  * Download image from URL and upload to Supabase Storage
