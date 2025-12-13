@@ -5,12 +5,14 @@ import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
+import { getSectionColors } from '@/lib/section-colors'
 
 /**
  * HeroSplit - Split layout hero with content on left, image on right
  */
-export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
+export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
+  const colors = getSectionColors(colorScheme, theme)
   
   const {
     headline,
@@ -23,7 +25,10 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
   } = data
 
   return (
-    <section className="min-h-[80vh] flex items-center pt-12">
+    <section 
+      className="min-h-[80vh] flex items-center pt-12"
+      style={{ backgroundColor: colors.backgroundColor }}
+    >
       <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content Side */}
@@ -53,7 +58,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
                 <h1 
                   className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
                   style={{ 
-                    color: theme?.textColor,
+                    color: colors.textColor,
                     fontFamily: headingFont,
                     transform: `scale(${theme?.headingFontSize || 1})`,
                     letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
@@ -66,7 +71,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
             <h1 
               className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
               style={{ 
-                color: theme?.textColor,
+                color: colors.textColor,
                 fontFamily: headingFont,
                 transform: `scale(${theme?.headingFontSize || 1})`,
                 letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
@@ -86,7 +91,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
                 >
                   <p 
                     className="text-lg md:text-xl opacity-80"
-                    style={{ color: theme?.textColor }}
+                    style={{ color: colors.textColor }}
                   >
                     {subheadline}
                   </p>
@@ -94,7 +99,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
               ) : (
               <p 
                 className="text-lg md:text-xl opacity-80"
-                style={{ color: theme?.textColor }}
+                style={{ color: colors.textColor }}
               >
                 {subheadline}
               </p>
@@ -104,7 +109,7 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
             {address && (
               <p 
                 className="text-base opacity-60 flex items-center gap-2"
-                style={{ color: theme?.textColor }}
+                style={{ color: colors.textColor }}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -131,7 +136,10 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
           </div>
 
           {/* Image Side */}
-          <div className="relative aspect-[4/3] lg:aspect-square rounded-2xl overflow-hidden bg-gray-100">
+          <div 
+            className="relative aspect-[4/3] lg:aspect-square rounded-2xl overflow-hidden"
+            style={{ backgroundColor: colors.cardBg }}
+          >
             {propertyImage ? (
               <Image
                 src={propertyImage}
@@ -141,7 +149,10 @@ export function HeroSplit({ data, theme, onDataChange }: SectionComponentProps<H
                 sizes="(max-width: 1024px) 100vw, 50vw"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+              <div 
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ color: colors.secondaryTextColor }}
+              >
                 <svg className="w-24 h-24 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>

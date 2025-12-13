@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Site } from '@/types/database'
-import type { PageConfig, Section } from '@/types/builder'
+import type { PageConfig, Section, ColorScheme } from '@/types/builder'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
@@ -93,6 +96,7 @@ const testSections: Section[] = [
 interface PreviewSitePageProps {
   site: Site
   canEdit?: boolean
+  onHasUnsavedChanges?: (hasChanges: boolean) => void
 }
 
 /**
@@ -106,7 +110,7 @@ interface PreviewSitePageProps {
  * 
  * Archived version with admin elements: preview-site-page-archived-with-admin.tsx
  */
-export function PreviewSitePage({ site, canEdit = false }: PreviewSitePageProps) {
+export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: PreviewSitePageProps) {
   const config = site.config as PageConfig | null
 
   // Default config if missing
@@ -140,30 +144,171 @@ export function PreviewSitePage({ site, canEdit = false }: PreviewSitePageProps)
 
   const [sections, setSections] = useState<Section[]>(actualSections)
   const [activeSection, setActiveSection] = useState<Section | null>(sections[0] || null)
+  const [editingState, setEditingState] = useState<Record<string, { variant: string; data: any; colorScheme: ColorScheme }>>({})
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  // Handle section updates from settings panel
-  const handleSectionChange = (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => {
-    setSections(prev => 
-      prev.map(section => {
-        if (section.id !== sectionId) return section
+  const router = useRouter()
+
+  // Handle editing state changes (for preview only, not saved yet)
+  const handleEditingStateChange = (sectionId: string, editingState: { variant: string; data: any; colorScheme: ColorScheme }) => {
+    setEditingState(prev => ({
+      ...prev,
+      [sectionId]: editingState,
+    }))
+  }
+
+  // Track unsaved changes globally across all sections
+  useEffect(() => {
+    // Check if any section has unsaved changes
+    let hasAnyChanges = false
+    
+    for (const section of sections) {
+      const editing = editingState[section.id]
+      if (editing) {
+        const hasChanges = 
+          editing.variant !== section.variant ||
+          JSON.stringify(editing.data) !== JSON.stringify(section.data) ||
+          editing.colorScheme !== (section.colorScheme || 'light')
+        
+        if (hasChanges) {
+          hasAnyChanges = true
+          break
+        }
+      }
+    }
+    
+    setHasUnsavedChanges(hasAnyChanges)
+    
+    // Call parent callback if provided (direct rendering)
+    if (onHasUnsavedChanges) {
+      onHasUnsavedChanges(hasAnyChanges)
+    }
+    
+    // Notify parent window (if in iframe - for backward compatibility)
+    if (typeof window !== 'undefined' && window.parent !== window) {
+      window.parent.postMessage({ type: 'UNSAVED_CHANGES', hasChanges: hasAnyChanges }, '*')
+    }
+  }, [editingState, sections, onHasUnsavedChanges])
+
+  // Save all unsaved changes (use useCallback to make it stable)
+  const handleSaveAllChanges = useCallback(async () => {
+    if (!canEdit || !hasUnsavedChanges || isSaving) return
+    
+    setIsSaving(true)
+    
+    // Save all sections with editing state
+    const updatedSections = sections.map(section => {
+      const editing = editingState[section.id]
+      if (editing) {
         return {
           ...section,
-          variant: updates.variant ?? section.variant,
-          data: updates.data ?? section.data,
-          colorScheme: updates.colorScheme ?? section.colorScheme,
+          variant: editing.variant,
+          data: editing.data,
+          colorScheme: editing.colorScheme,
         }
-      })
-    )
+      }
+      return section
+    })
+    
+    setSections(updatedSections)
+    setEditingState({})
+    setHasUnsavedChanges(false)
+    
+    // Save to database
+    const supabase = createClient()
+    const updatedConfig: PageConfig = {
+      ...siteConfig,
+      sections: updatedSections,
+    }
+    
+    const { error } = await supabase
+      .from('sites')
+      .update({ config: updatedConfig })
+      .eq('id', site.id)
+    
+    if (error) {
+      console.error('Error saving changes:', error)
+      setIsSaving(false)
+      return
+    }
+    
+    router.refresh()
+    setIsSaving(false)
+  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router])
+
+  // Listen for save message from parent
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SAVE_CHANGES') {
+        handleSaveAllChanges()
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [handleSaveAllChanges])
+
+  // Handle section updates from settings panel (save to database)
+  const handleSectionChange = async (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => {
+    // Get current editing state or use updates
+    const currentEditing = editingState[sectionId]
+    const finalUpdates = {
+      variant: updates.variant !== undefined ? updates.variant : (currentEditing?.variant ?? sections.find(s => s.id === sectionId)?.variant),
+      data: updates.data !== undefined ? updates.data : (currentEditing?.data ?? sections.find(s => s.id === sectionId)?.data),
+      colorScheme: updates.colorScheme !== undefined ? updates.colorScheme : (currentEditing?.colorScheme ?? sections.find(s => s.id === sectionId)?.colorScheme),
+    }
+
+    // Update local state
+    const updatedSections = sections.map(section => {
+      if (section.id !== sectionId) return section
+      return {
+        ...section,
+        variant: finalUpdates.variant ?? section.variant,
+        data: finalUpdates.data ?? section.data,
+        colorScheme: finalUpdates.colorScheme ?? section.colorScheme,
+      }
+    })
+    
+    setSections(updatedSections)
+    
+    // Clear editing state for this section
+    setEditingState(prev => {
+      const newState = { ...prev }
+      delete newState[sectionId]
+      return newState
+    })
     
     // Update active section if it's the one being edited
     if (activeSection?.id === sectionId) {
       setActiveSection(prev => prev ? {
         ...prev,
-        variant: updates.variant ?? prev.variant,
-        data: updates.data ?? prev.data,
-        colorScheme: updates.colorScheme ?? prev.colorScheme,
+        variant: finalUpdates.variant ?? prev.variant,
+        data: finalUpdates.data ?? prev.data,
+        colorScheme: finalUpdates.colorScheme ?? prev.colorScheme,
       } : null)
+    }
+
+    // Save to database
+    if (canEdit) {
+      const supabase = createClient()
+      const updatedConfig: PageConfig = {
+        ...siteConfig,
+        sections: updatedSections,
+      }
+      
+      const { error } = await supabase
+        .from('sites')
+        .update({ config: updatedConfig })
+        .eq('id', site.id)
+      
+      if (error) {
+        console.error('Error saving section changes:', error)
+        return
+      }
+      
+      router.refresh()
     }
   }
 
@@ -193,22 +338,49 @@ export function PreviewSitePage({ site, canEdit = false }: PreviewSitePageProps)
 
   // Scroll detection for active section
   useEffect(() => {
+    // Find the scroll container (parent with overflow-y-auto or window)
+    const findScrollContainer = (): HTMLElement | Window | null => {
+      if (sectionRefs.current.size === 0) return null
+      
+      const firstSection = Array.from(sectionRefs.current.values())[0]
+      if (!firstSection) return window
+      
+      let parent: HTMLElement | null = firstSection.parentElement
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent)
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+          return parent
+        }
+        parent = parent.parentElement
+      }
+      return window
+    }
+
     const handleScroll = () => {
-      const detectionPoint = window.scrollY + window.innerHeight * 0.5
+      if (sectionRefs.current.size === 0) return
+      
+      const scrollContainer = findScrollContainer()
+      if (!scrollContainer) return
+      
+      const viewportHeight = scrollContainer === window
+        ? window.innerHeight
+        : (scrollContainer as HTMLElement).clientHeight
+      const viewportCenter = viewportHeight * 0.5
       
       let activeSectionId: string | null = null
       let minDistance = Infinity
       
-      // Find the section closest to the detection point
+      // Find the section closest to viewport center using getBoundingClientRect
+      // This works for both window scroll and container scroll
       for (const [id, element] of sectionRefs.current.entries()) {
         const rect = element.getBoundingClientRect()
-        const elementTop = window.scrollY + rect.top
-        const elementBottom = elementTop + rect.height
-        const elementCenter = elementTop + rect.height / 2
+        const elementTop = rect.top
+        const elementBottom = rect.bottom
+        const elementCenter = rect.top + rect.height / 2
         
-        // Check if detection point is within this section
-        if (detectionPoint >= elementTop && detectionPoint <= elementBottom) {
-          const distance = Math.abs(detectionPoint - elementCenter)
+        // Check if viewport center is within this section
+        if (viewportCenter >= elementTop && viewportCenter <= elementBottom) {
+          const distance = Math.abs(viewportCenter - elementCenter)
           if (distance < minDistance) {
             minDistance = distance
             activeSectionId = id
@@ -224,10 +396,28 @@ export function PreviewSitePage({ site, canEdit = false }: PreviewSitePageProps)
       }
     }
     
+    // Listen to both window and scroll container
     window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    // Also listen to scroll container if it exists
+    let scrollContainer: HTMLElement | Window | null = null
+    const timeoutId = setTimeout(() => {
+      scrollContainer = findScrollContainer()
+      if (scrollContainer && scrollContainer !== window) {
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+      }
+      handleScroll() // Initial check
+    }, 100)
+    
     handleScroll() // Initial check
     
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(timeoutId)
+      if (scrollContainer && scrollContainer !== window) {
+        scrollContainer.removeEventListener('scroll', handleScroll)
+      }
+    }
   }, [sections, activeSection])
 
   const fonts = [theme?.fontFamily, theme?.headingFontFamily].filter(Boolean) as string[]
@@ -277,20 +467,77 @@ export function PreviewSitePage({ site, canEdit = false }: PreviewSitePageProps)
       <FontLoader fonts={fonts} />
       <FontTransition font={primaryFont}>
         <div style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}>
-          {sections?.map((section: Section) => (
-            <div
-              key={section.id}
-              ref={(el) => {
-                const sectionElement = el as HTMLDivElement | null
-                registerSectionRef(section.id, sectionElement)
-              }}
-            >
-              <SectionRenderer section={section} theme={theme} colorScheme={section.colorScheme || 'light'} />
-            </div>
-          ))}
+          {sections?.map((section: Section) => {
+            // Use editing state if available (for preview), otherwise use saved section
+            const editing = editingState[section.id]
+            const displaySection = editing ? {
+              ...section,
+              variant: editing.variant,
+              data: editing.data,
+              colorScheme: editing.colorScheme,
+            } : section
+            
+            // Create unique key that includes variant for hero sections to trigger animation
+            const sectionKey = section.type === 'hero' 
+              ? `${section.id}-${displaySection.variant}` 
+              : section.id
+            
+            return (
+              <div
+                key={section.id}
+                ref={(el) => {
+                  const sectionElement = el as HTMLDivElement | null
+                  registerSectionRef(section.id, sectionElement)
+                }}
+              >
+                {section.type === 'hero' ? (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={sectionKey}
+                      initial={{ 
+                        opacity: 0, 
+                        x: 50,
+                        scale: 0.95,
+                        filter: 'blur(4px)'
+                      }}
+                      animate={{ 
+                        opacity: 1, 
+                        x: 0,
+                        scale: 1,
+                        filter: 'blur(0px)'
+                      }}
+                      exit={{ 
+                        opacity: 0, 
+                        x: -50,
+                        scale: 0.95,
+                        filter: 'blur(4px)'
+                      }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 30,
+                        mass: 0.8,
+                      }}
+                    >
+                      <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                    </motion.div>
+                  </AnimatePresence>
+                ) : (
+                  <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                )}
+              </div>
+            )
+          })}
         </div>
         <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
-        {canEdit && <SectionMorphingIndicator activeSection={activeSection} onSectionChange={handleSectionChange} />}
+        {canEdit && (
+          <SectionMorphingIndicator 
+            activeSection={activeSection}
+            originalSection={sections.find(s => s.id === activeSection?.id) || null}
+            onSectionChange={handleSectionChange}
+            onEditingStateChange={handleEditingStateChange}
+          />
+        )}
       </FontTransition>
     </>
   )

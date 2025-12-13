@@ -40,6 +40,17 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
   - IF adding a new standard UI component (Button, Dialog), RUN: `npx shadcn@latest add <component_name>`.
   - Do NOT manually create files in `/components/ui`.
   - Do NOT invent custom CSS classes. Use `cn()` for merging.
+- **Inline Styles:**
+  - **STRICTLY FORBIDDEN:** Never use inline `style={{}}` props unless explicitly requested by the user.
+  - Always use Tailwind CSS classes or CSS variables for styling.
+  - **Force Light/Dark Mode:** If you need to force light mode on specific components (e.g., floating navbar, morphing indicator), use the `.force-light-mode` CSS class wrapper. This class is defined in `globals.css` and overrides all CSS variables to light mode values. Example:
+    ```tsx
+    <div className="force-light-mode">
+      <Button>Click me</Button>
+      <Tabs>...</Tabs>
+    </div>
+    ```
+  - Components should be reusable and styled consistently through their className props, not inline styles.
 
 ### Architecture: Section Builder
 - **Registry:** All template sections map via `components/templates/registry.ts`.

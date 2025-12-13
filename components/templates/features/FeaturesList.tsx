@@ -5,6 +5,7 @@ import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fir
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
+import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -28,19 +29,21 @@ const iconMap: Record<string, ComponentType<IconProps>> = {
 export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComponentProps<FeaturesSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const { title, features } = data
+  const colors = getSectionColors(colorScheme, theme)
+  const primaryColor = getPrimaryColor(theme, colorScheme)
   const isDark = colorScheme === 'dark'
 
   return (
-    <section className={cn(
-      "py-16 md:py-24",
-      isDark ? "bg-black/10" : "bg-gray-50"
-    )}>
+    <section 
+      className="py-16 md:py-24"
+      style={{ backgroundColor: colors.cardBg }}
+    >
       <div className="container mx-auto px-4">
         {title && (
           <h2 
             className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
             style={{ 
-              color: theme?.textColor,
+              color: colors.textColor,
               fontFamily: headingFont,
               transform: `scale(${theme?.headingFontSize || 1})`,
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
@@ -62,37 +65,28 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
                 {IconComponent && (
                   <div 
                     className="flex items-center justify-center w-12 h-12 rounded-full"
-                    style={theme?.primaryColor ? { 
-                      backgroundColor: `${theme.primaryColor}15` 
-                    } : { 
-                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(59,130,246,0.1)' 
+                    style={{ 
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : `${primaryColor}15`
                     }}
                   >
                     <IconComponent 
                       className="w-6 h-6" 
                       weight="light"
-                      style={theme?.primaryColor ? { 
-                        color: theme.primaryColor 
-                      } : { 
-                        color: isDark ? 'rgba(255,255,255,0.8)' : '#3b82f6' 
-                      }}
+                      style={{ color: primaryColor }}
                     />
                   </div>
                 )}
                 <div className="flex flex-col">
                   <span 
-                    className={cn(
-                      "text-xl md:text-2xl font-bold",
-                      isDark ? "text-white" : ""
-                    )}
-                    style={!isDark && theme?.textColor ? { color: theme.textColor } : undefined}
+                    className="text-xl md:text-2xl font-bold"
+                    style={{ color: colors.textColor }}
                   >
                     {feature.value}
                   </span>
-                  <span className={cn(
-                    "text-sm",
-                    isDark ? "text-white/60" : "text-gray-600"
-                  )}>
+                  <span 
+                    className="text-sm"
+                    style={{ color: colors.secondaryTextColor }}
+                  >
                     {feature.label}
                   </span>
                 </div>

@@ -9,7 +9,7 @@ import { EditableText } from '@/components/ui/editable-text'
 /**
  * HeroCentered - Centered layout hero with full-width background
  */
-export function HeroCentered({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
+export function HeroCentered({ data, theme, colorScheme = 'light', onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   
   const {

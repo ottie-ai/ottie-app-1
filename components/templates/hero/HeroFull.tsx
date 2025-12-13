@@ -14,7 +14,7 @@ import { getFontWeight } from '@/lib/fonts'
  * HeroFull - Full-screen cinematic hero with large centered title
  * Inspired by luxury real estate and editorial design
  */
-export function HeroFull({ data, theme, onDataChange }: SectionComponentProps<HeroSectionData>) {
+export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: SectionComponentProps<HeroSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const sectionRef = useRef<HTMLElement>(null)

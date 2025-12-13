@@ -7,6 +7,7 @@ import { Phone, Envelope } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
+import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
 
 /**
  * AgentCard - Card layout for agent information
@@ -15,10 +16,15 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { name, title, photo, bio, phone, email, company, license } = data
+  const colors = getSectionColors(colorScheme, theme)
+  const primaryColor = getPrimaryColor(theme, colorScheme)
   const isDark = colorScheme === 'dark'
 
   return (
-    <section className="min-h-screen bg-transparent flex items-center">
+    <section 
+      className="min-h-screen flex items-center"
+      style={{ backgroundColor: colors.backgroundColor }}
+    >
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="max-w-4xl mx-auto">
           <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
@@ -47,7 +53,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                 style={{ 
                   fontFamily: headingFont,
                   fontWeight: fontWeight,
-                  color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                  color: colors.textColor
                 }}
               >
                 {name}
@@ -56,21 +62,21 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
               {title && (
                 <p 
                   className="text-lg mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+                  style={{ color: colors.secondaryTextColor }}
                 >{title}</p>
               )}
               
               {company && (
                 <p 
                   className="mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }}
+                  style={{ color: colors.secondaryTextColor }}
                 >{company}</p>
               )}
 
               {bio && (
                 <p 
                   className="mb-6 leading-relaxed transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{ color: isDark ? 'rgba(255,255,255,0.7)' : '#6b7280' }}
+                  style={{ color: colors.secondaryTextColor }}
                 >{bio}</p>
               )}
 
@@ -80,19 +86,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                   <a 
                     href={`tel:${phone}`}
                     className="inline-flex items-center gap-2 text-sm transition-colors"
-                    style={{ 
-                      color: isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isDark) {
-                        e.currentTarget.style.color = '#ffffff'
-                      } else {
-                        e.currentTarget.style.color = theme?.primaryColor || '#2563eb'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
-                    }}
+                    style={{ color: primaryColor }}
                   >
                     <Phone className="size-4" weight="light" />
                     {phone}
@@ -102,19 +96,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                   <a 
                     href={`mailto:${email}`}
                     className="inline-flex items-center gap-2 text-sm transition-colors"
-                    style={{ 
-                      color: isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isDark) {
-                        e.currentTarget.style.color = '#ffffff'
-                      } else {
-                        e.currentTarget.style.color = theme?.primaryColor || '#2563eb'
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = isDark ? 'rgba(255,255,255,0.8)' : (theme?.primaryColor || '#3b82f6')
-                    }}
+                    style={{ color: primaryColor }}
                   >
                     <Envelope className="size-4" weight="light" />
                     {email}
@@ -125,7 +107,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
               {license && (
                 <p 
                   className="text-xs mt-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                  style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#9ca3af' }}
+                  style={{ color: colors.secondaryTextColor, opacity: 0.8 }}
                 >{license}</p>
               )}
             </AnimateOnScroll>

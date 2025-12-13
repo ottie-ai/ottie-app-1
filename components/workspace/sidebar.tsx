@@ -477,11 +477,17 @@ export function DashboardSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavItems.map((item) => (
+              {mainNavItems.map((item) => {
+                // For "Sites", also check if we're on a site detail or builder page
+                const isActive = item.title === 'Sites'
+                  ? pathname === item.url || pathname?.startsWith('/sites/') || pathname?.startsWith('/builder/')
+                  : pathname === item.url
+                
+                return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
-                    isActive={pathname === item.url}
+                    isActive={isActive}
                     tooltip={item.title}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
@@ -495,7 +501,8 @@ export function DashboardSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -7,6 +7,7 @@ import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
+import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -31,10 +32,15 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, features } = data
+  const colors = getSectionColors(colorScheme, theme)
+  const primaryColor = getPrimaryColor(theme, colorScheme)
   const isDark = colorScheme === 'dark'
 
   return (
-    <section className="relative min-h-screen z-30 bg-transparent flex items-center">
+    <section 
+      className="relative min-h-screen z-30 flex items-center"
+      style={{ backgroundColor: colors.backgroundColor }}
+    >
       <div className="container mx-auto px-4 py-16 md:py-24">
         {title && (
           <AnimateOnScroll animation="fade-up" delay={0.5}>
@@ -48,7 +54,7 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
                 fontWeight: fontWeight,
                 transform: `scale(${theme?.headingFontSize || 1})`,
                 letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-                color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                color: colors.textColor
               }}
             >
               {title}
@@ -63,35 +69,32 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
             return (
               <StaggerItem key={index}>
                 <div 
-                  className={cn(
-                    'flex flex-col items-center text-center p-6 rounded-xl transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                    isDark 
-                      ? 'bg-white/5 hover:bg-white/10 border border-white/10' 
-                      : 'bg-black/5 hover:bg-black/10 border border-black/10'
-                  )}
+                  className="flex flex-col items-center text-center p-6 rounded-xl transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  style={{
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.borderColor,
+                    borderWidth: '1px',
+                    borderStyle: 'solid'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.cardBgHover}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.cardBg}
                 >
                   {IconComponent && (
                     <IconComponent 
                       className="w-8 h-8 mb-3 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                       weight="light"
-                      style={{ 
-                        color: isDark ? 'rgba(255,255,255,0.7)' : (theme?.primaryColor || '#3b82f6')
-                      }}
+                      style={{ color: primaryColor }}
                     />
                   )}
                   <span 
                     className="text-2xl md:text-3xl font-semibold mb-1 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                    style={{ 
-                      color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
-                    }}
+                    style={{ color: colors.textColor }}
                   >
                     {feature.value}
                   </span>
                   <span 
                     className="text-sm transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                    style={{ 
-                      color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280'
-                    }}
+                    style={{ color: colors.secondaryTextColor }}
                   >
                     {feature.label}
                   </span>

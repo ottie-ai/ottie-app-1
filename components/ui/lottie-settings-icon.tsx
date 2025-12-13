@@ -5,13 +5,15 @@ import settingsAnimation from '@/lib/lottie/system-regular-109-slider-toggle-set
 
 interface LottieSettingsIconProps {
   className?: string
+  size?: number
+  forceLightMode?: boolean
 }
 
 /**
  * Settings Icon Component
  * Uses Lottie animation with hover effect
  */
-export function LottieSettingsIcon({ className = '' }: LottieSettingsIconProps) {
-  return <LottieIcon animationData={settingsAnimation} className={className} size={18} />
+export function LottieSettingsIcon({ className = '', size = 18, forceLightMode = false }: LottieSettingsIconProps) {
+  return <LottieIcon animationData={settingsAnimation} className={className} size={size} forceLightMode={forceLightMode} />
 }
 

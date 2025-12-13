@@ -8,10 +8,13 @@ import { cn } from '@/lib/utils'
 import type { Section, HeroSectionData, FeaturesSectionData, ColorScheme } from '@/types/builder'
 import { HeroRemixPanel } from '@/components/builder/settings/PageSettings'
 import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
+import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
 
 interface SectionMorphingIndicatorProps {
   activeSection: Section | null
+  originalSection?: Section | null // Original section values to compare against
   onSectionChange?: (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => void
+  onEditingStateChange?: (sectionId: string, editingState: { variant: string; data: any; colorScheme: ColorScheme }) => void
 }
 
 const FEEDBACK_WIDTH = 360
@@ -29,7 +32,7 @@ const LOGO_SPRING = {
  * Positioned at the bottom center of the screen
  * Includes Settings button that opens section-specific settings panel
  */
-export function SectionMorphingIndicator({ activeSection, onSectionChange }: SectionMorphingIndicatorProps) {
+export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange }: SectionMorphingIndicatorProps) {
   const [ref, bounds] = useMeasure()
   const rootRef = React.useRef<HTMLDivElement>(null)
   const [showSettings, setShowSettings] = React.useState(false)
@@ -42,24 +45,28 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
     activeSection?.colorScheme || 'light'
   )
 
-  // Update editing state when active section changes
+  // Update editing state when active section changes (but not when variant changes from within)
+  const isInternalChange = React.useRef(false)
+  
   React.useEffect(() => {
-    if (activeSection) {
+    if (activeSection && !isInternalChange.current) {
       setEditingVariant(activeSection.variant)
       setEditingData(activeSection.data)
       setEditingColorScheme(activeSection.colorScheme || 'light')
     }
-  }, [activeSection])
+    isInternalChange.current = false
+  }, [activeSection?.id]) // Only update when section ID changes, not when variant changes
 
-  // Close settings when section changes
+
+  // Close settings when section changes (don't save)
   React.useEffect(() => {
     if (activeSection && showSettings) {
       setShowSettings(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection?.id])
 
   function closeSettings() {
+    // Don't save when closing - just close
     setShowSettings(false)
   }
 
@@ -68,6 +75,7 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
   }
 
   function onSave() {
+    // Save changes
     if (activeSection && onSectionChange) {
       onSectionChange(activeSection.id, {
         variant: editingVariant,
@@ -121,9 +129,37 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
           variant={editingVariant}
           data={editingData as HeroSectionData}
           colorScheme={editingColorScheme}
-          onVariantChange={setEditingVariant}
-          onDataChange={setEditingData}
-          onColorSchemeChange={setEditingColorScheme}
+          onVariantChange={(variant) => {
+            isInternalChange.current = true
+            setEditingVariant(variant)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant,
+                data: editingData,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onDataChange={(data) => {
+            setEditingData(data)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onColorSchemeChange={(colorScheme) => {
+            setEditingColorScheme(colorScheme)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data: editingData,
+                colorScheme,
+              })
+            }
+          }}
         />
       )
     }
@@ -134,9 +170,37 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
           variant={editingVariant}
           data={editingData as FeaturesSectionData}
           colorScheme={editingColorScheme}
-          onVariantChange={setEditingVariant}
-          onDataChange={setEditingData}
-          onColorSchemeChange={setEditingColorScheme}
+          onVariantChange={(variant) => {
+            isInternalChange.current = true
+            setEditingVariant(variant)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant,
+                data: editingData,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onDataChange={(data) => {
+            setEditingData(data)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onColorSchemeChange={(colorScheme) => {
+            setEditingColorScheme(colorScheme)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data: editingData,
+                colorScheme,
+              })
+            }
+          }}
         />
       )
     }
@@ -161,7 +225,7 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
         <motion.div
           ref={rootRef}
           className={cn(
-            'bg-white relative flex flex-col items-center shadow-xl overflow-hidden pointer-events-auto'
+            'bg-background border relative flex flex-col items-center shadow-xl overflow-hidden pointer-events-auto'
           )}
           initial={false}
           animate={{
@@ -222,7 +286,7 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
                           )}
                         </AnimatePresence>
                       </motion.div>
-                      <div className="text-[14px] text-gray-900">
+                      <div className="text-[14px] text-foreground">
                         <AnimatePresence mode="popLayout" initial={false}>
                           {sectionName.split('').map((letter, index) => {
                             return (
@@ -279,13 +343,14 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
                       stiffness: 350,
                       damping: 35,
                     }}
-                    className="text-gray-600 text-[14px] flex items-center z-2"
+                    className="text-muted-foreground text-[14px] flex items-center z-2"
                   >
                     <button
-                      className="m-[-8px] flex justify-end rounded-full p-2 flex-1 gap-1 -outline-offset-2 hover:bg-gray-100 transition-colors"
+                      className="m-[-8px] flex items-center justify-end rounded-full p-2 flex-1 gap-1.5 -outline-offset-2 hover:bg-accent transition-colors group"
                       onClick={openSettings}
                     >
-                      <span className="ml-1 max-w-[20ch] truncate">Settings</span>
+                      <LottieSettingsIcon className="size-4 shrink-0" />
+                      <span className="ml-1 max-w-[20ch] truncate">Section Settings</span>
                     </button>
                   </motion.div>
                 )}
@@ -332,12 +397,12 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
                     className="p-1 flex flex-col h-full"
                   >
                     <div className="flex justify-between items-center py-1">
-                      <p className="flex gap-[6px] text-sm items-center text-gray-600 select-none z-2 ml-[25px]">
-                        Settings
+                      <p className="flex gap-[6px] text-sm items-center text-muted-foreground select-none z-2 ml-[25px]">
+                        Section Settings
                       </p>
                       <button
                         type="submit"
-                        className="mt-1 flex items-center gap-1 text-sm -translate-y-[3px] text-gray-600 hover:text-gray-900 right-4 text-center bg-transparent select-none rounded-[12px] cursor-pointer user-select-none pr-1"
+                        className="mt-1 flex items-center gap-1 text-sm -translate-y-[3px] text-muted-foreground hover:text-foreground right-4 text-center bg-transparent select-none rounded-[12px] cursor-pointer user-select-none pr-1"
                       >
                         <Kbd>⌘</Kbd>
                         <Kbd className="w-fit">Enter</Kbd>
@@ -346,7 +411,7 @@ export function SectionMorphingIndicator({ activeSection, onSectionChange }: Sec
                     <textarea
                       placeholder="What's on your mind?"
                       name="message"
-                      className="resize-none w-full h-full scroll-py-2 text-base outline-0 p-4 bg-gray-50 rounded-xl"
+                      className="resize-none w-full h-full scroll-py-2 text-base outline-0 p-4 bg-muted rounded-xl"
                       required
                       spellCheck={false}
                       style={{ 
@@ -411,7 +476,7 @@ function Kbd({
   return (
     <kbd
       className={cn(
-        'h-6 bg-gray-200 text-gray-700 rounded-md flex items-center justify-center font-sans px-1.5 text-xs',
+        'h-6 bg-muted text-muted-foreground rounded-md flex items-center justify-center font-sans px-1.5 text-xs',
         className
       )}
     >

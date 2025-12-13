@@ -6,6 +6,7 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { cn } from '@/lib/utils'
 import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
+import { getSectionColors } from '@/lib/section-colors'
 
 /**
  * GalleryGrid - Grid layout for property photos
@@ -14,10 +15,14 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, images } = data
+  const colors = getSectionColors(colorScheme, theme)
   const isDark = colorScheme === 'dark'
 
   return (
-    <section className="min-h-screen bg-transparent flex items-center">
+    <section 
+      className="min-h-screen flex items-center"
+      style={{ backgroundColor: colors.backgroundColor }}
+    >
       <div className="container mx-auto px-4 py-16 md:py-24">
         {title && (
           <AnimateOnScroll animation="fade-up" delay={0.5}>
@@ -29,7 +34,7 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
               style={{ 
                 fontFamily: headingFont,
                 fontWeight: fontWeight,
-                color: isDark ? '#ffffff' : (theme?.textColor || '#111827')
+                color: colors.textColor
               }}
             >
               {title}

@@ -11,6 +11,7 @@ interface LottieIconProps {
   useGradient?: boolean // If true, use gradient colors instead of theme colors
   invertTheme?: boolean // If true, invert the theme color (light icon on dark bg, dark icon on light bg)
   destructive?: boolean // If true, use destructive red color
+  forceLightMode?: boolean // If true, always use dark color (light mode) regardless of theme
 }
 
 /**
@@ -21,7 +22,7 @@ interface LottieIconProps {
  * - Animates on hover
  * - Can be used as a replacement for icon components
  */
-export function LottieIcon({ animationData, className = '', size = 18, useGradient = false, invertTheme = false, destructive = false }: LottieIconProps) {
+export function LottieIcon({ animationData, className = '', size = 18, useGradient = false, invertTheme = false, destructive = false, forceLightMode = false }: LottieIconProps) {
   const { theme, resolvedTheme } = useTheme()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -119,6 +120,11 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
       return [0.898, 0.643, 0.706]
     }
     
+    // If forceLightMode is true, always use dark color (light mode)
+    if (forceLightMode) {
+      return [0.1, 0.1, 0.2]  // Dark color for light backgrounds
+    }
+    
     // Determine effective dark mode (invert if needed)
     // invertTheme is used for buttons where the icon needs to contrast with button background
     // e.g., dark button in light mode needs light icon, light button in dark mode needs dark icon
@@ -127,14 +133,15 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
     return effectiveIsDark 
       ? [0.95, 0.95, 0.98] // Light color for dark backgrounds
       : [0.1, 0.1, 0.2]  // Dark color for light backgrounds
-  }, [isDark, useGradient, invertTheme, destructive])
+  }, [isDark, useGradient, invertTheme, destructive, forceLightMode])
 
   // Determine if we should apply opacity (for light icons in dark mode)
   const shouldApplyOpacity = useMemo(() => {
     if (useGradient) return false
+    if (forceLightMode) return false // Never apply opacity in forceLightMode
     const effectiveIsDark = invertTheme ? !isDark : isDark
     return effectiveIsDark // Apply opacity to light icons in dark mode
-  }, [isDark, useGradient, invertTheme])
+  }, [isDark, useGradient, invertTheme, forceLightMode])
 
   // Helper function to update colors recursively in any object
   const updateColorsInObject = useCallback((obj: any) => {
