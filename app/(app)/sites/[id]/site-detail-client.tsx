@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import useMeasure from 'react-use-measure'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useTheme } from 'next-themes'
 import { Site } from '@/types/database'
 import { PreviewSitePage } from '@/app/(app)/preview/[id]/preview-site-page'
 import { SiteSettingsPanel } from './site-settings-panel'
@@ -39,6 +38,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@/components/ui/tabs'
+import { AnimatedTabsList } from '@/components/ui/animated-tabs-list'
 import { ChevronsUpDown, ChevronDown, ExternalLink, Menu, PanelLeft } from 'lucide-react'
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
@@ -219,83 +219,6 @@ interface SiteDetailClientProps {
   }>
 }
 
-// Hoverable Tabs List with animated background
-function HoverableTabsList({ children }: { children: React.ReactNode }) {
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number; opacity: number }>({ left: 0, width: 0, opacity: 0 })
-  const tabsListRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-  
-  const isDark = mounted && resolvedTheme === 'dark'
-
-  const updateIndicator = (target: HTMLElement | null) => {
-    if (!target || !tabsListRef.current) {
-      setIndicatorStyle(prev => ({ ...prev, opacity: 0 }))
-      return
-    }
-
-    const list = tabsListRef.current
-    const listRect = list.getBoundingClientRect()
-    const tabRect = target.getBoundingClientRect()
-    
-    setIndicatorStyle({
-      left: tabRect.left - listRect.left,
-      width: tabRect.width,
-      opacity: 1,
-    })
-  }
-
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    updateIndicator(e.currentTarget)
-  }
-
-  const handleMouseLeave = () => {
-    setIndicatorStyle(prev => ({ ...prev, opacity: 0 }))
-  }
-
-  // Clone children and add handlers
-  const childrenArray = React.Children.toArray(children)
-  const enhancedChildren = React.Children.map(childrenArray, (child) => {
-    if (React.isValidElement(child) && child.type === TabsTrigger) {
-      return React.cloneElement(child as React.ReactElement, {
-        onMouseEnter: handleMouseEnter,
-        onMouseLeave: handleMouseLeave,
-        className: `${child.props.className || ''} relative z-10`,
-      })
-    }
-    return child
-  })
-
-  return (
-    <div 
-      ref={containerRef}
-      className="relative"
-      onMouseLeave={handleMouseLeave}
-    >
-      <div ref={tabsListRef}>
-        <TabsList className="relative">
-          {/* Animated background indicator */}
-          <div
-            className="absolute top-[3px] h-[calc(100%-6px)] rounded-md pointer-events-none z-0"
-            style={{
-              left: `${indicatorStyle.left}px`,
-              width: `${indicatorStyle.width}px`,
-              opacity: indicatorStyle.opacity,
-              transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-out',
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-            }}
-          />
-          {enhancedChildren}
-        </TabsList>
-      </div>
-    </div>
-  )
-}
 
 export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
   const [activeTab, setActiveTab] = useState('website')
@@ -404,12 +327,12 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             {!isMobile ? (
             <div className="absolute left-1/2 -translate-x-1/2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <HoverableTabsList>
+                <AnimatedTabsList activeValue={activeTab}>
                     <TabsTrigger value="website">Website</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                   <TabsTrigger value="analytics">Analytics</TabsTrigger>
                   <TabsTrigger value="leads">Leads</TabsTrigger>
-                </HoverableTabsList>
+                </AnimatedTabsList>
               </Tabs>
             </div>
             ) : (

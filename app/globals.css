@@ -951,3 +951,36 @@ canvas {
   opacity: 0.8 !important;
 }
 
+/* ===== Liquid Glass Effect ===== */
+/* SVG Filter for liquid glass distortion effect */
+#liquid-glass-filter {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Liquid glass navbar styling */
+.liquid-glass-navbar {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 2px solid transparent !important;
+  box-shadow: 
+    0 0 0 2px rgba(255, 255, 255, 0.6),
+    0 16px 32px rgba(0, 0, 0, 0.12) !important;
+  backdrop-filter: url(#frosted) !important;
+  -webkit-backdrop-filter: url(#frosted) !important;
+  transition: all 0.3s ease !important;
+}
+
+.dark .liquid-glass-navbar {
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 
+    0 0 0 2px rgba(255, 255, 255, 0.3),
+    0 16px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+.liquid-glass-navbar:hover {
+  backdrop-filter: url(#frosted-hover) !important;
+  -webkit-backdrop-filter: url(#frosted-hover) !important;
+}
+

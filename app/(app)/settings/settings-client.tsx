@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AnimatedTabsList } from '@/components/ui/animated-tabs-list'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -681,7 +682,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
             <div className="max-w-4xl mx-auto">
               {/* Top Tabs - hidden on mobile, shown on desktop */}
               <div className="hidden sm:block px-4 sm:px-6 pt-4 sm:pt-6">
-                <TabsList className="flex-wrap">
+                <AnimatedTabsList activeValue={activeTab}>
                   <TabsTrigger value="profile">Account</TabsTrigger>
                   {showWorkspaceSettings && (
                     <TabsTrigger value="workspace">Workspace</TabsTrigger>
@@ -696,7 +697,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <TabsTrigger value="domain">Branding</TabsTrigger>
                   <TabsTrigger value="integrations">Integrations</TabsTrigger>
                   <TabsTrigger value="data">Data</TabsTrigger>
-                </TabsList>
+                </AnimatedTabsList>
               </div>
 
               <div className="p-4 sm:p-6">

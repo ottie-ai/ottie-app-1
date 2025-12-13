@@ -84,6 +84,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AnimatedTabsList } from '@/components/ui/animated-tabs-list'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 const mainNavItems = [
@@ -626,7 +627,7 @@ export function DashboardSidebar() {
                 <div className="px-2 py-1.5 flex items-center justify-between">
                   <span className="text-sm">Theme</span>
                   <Tabs value={theme || 'system'} onValueChange={(value) => setTheme(value as 'system' | 'light' | 'dark')}>
-                    <TabsList className="h-9 p-1">
+                    <AnimatedTabsList activeValue={theme || 'system'}>
                       <TabsTrigger value="system" className="size-8 p-0">
                         <Monitor className="size-4" />
                       </TabsTrigger>
@@ -636,7 +637,7 @@ export function DashboardSidebar() {
                       <TabsTrigger value="dark" className="size-8 p-0">
                         <Moon className="size-4" />
                       </TabsTrigger>
-                    </TabsList>
+                    </AnimatedTabsList>
                   </Tabs>
                 </div>
                 <DropdownMenuSeparator />

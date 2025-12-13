@@ -19,27 +19,30 @@ export function getTitleGenerationPrompt(
   language?: string
 ): string {
   const iconCategories = {
-    location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "Signpost", "MapTrifold"] },
-    view: { label: "Views & Scenery", icons: ["Mountains", "SunHorizon", "Tree", "Waves", "Binoculars"] },
+    location: { label: "Location & Area", icons: ["MapPin", "Compass", "GlobeHemisphereWest", "Signpost", "MapTrifold", "City", "Hospital", "Church"] },
+    view: { label: "Views & Scenery", icons: ["Mountains", "SunHorizon", "Tree", "Waves", "Binoculars", "MoonStars"] },
     bedroom: { label: "Bedrooms", icons: ["Bed", "Door", "DoorOpen"] },
     bathroom: { label: "Bathrooms", icons: ["Toilet", "Bathtub", "Shower"] },
-    kitchen: { label: "Kitchen", icons: ["Oven", "CookingPot", "ForkKnife"] },
-    luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "Star"] },
-    pool: { label: "Pool & Water", icons: ["SwimmingPool", "Waves", "Drop"] },
-    parking: { label: "Parking", icons: ["CarSimple", "Garage", "Car"] },
-    outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Plant", "Park", "Fire", "Campfire"] },
+    kitchen: { label: "Kitchen", icons: ["Oven", "CookingPot", "ForkKnife", "Coffee", "ChefHat", "Wine"] },
+    luxury: { label: "Luxury & Premium", icons: ["Crown", "Diamond", "Sparkle", "Asterisk", "Star", "Champagne", "Peace"] },
+    pool: { label: "Pool & Water", icons: ["SwimmingPool", "Waves", "Drop", "Fish", "Boat"] },
+    fitness: { label: "Fitness & Wellness", icons: ["Barbell", "Basketball", "CourtBasketball"] },
+    parking: { label: "Parking", icons: ["CarSimple", "Garage", "Car", "Bicycle"] },
+    outdoor: { label: "Outdoor & Garden", icons: ["Tree", "Flower", "PottedPlant", "Plant", "Park", "Fire", "Campfire", "Cactus", "FlowerLotus"] },
     security: { label: "Security & Safety", icons: ["ShieldCheck", "Lock", "Camera", "Alarm"] },
     heating_cooling: { label: "Climate Control", icons: ["Thermometer", "Fan", "Sun", "Snowflake"] },
-    energy: { label: "Energy & Utilities", icons: ["SolarPanel", "Lightning", "BatteryFull", "Windmill", "Plug"] },
+    energy: { label: "Energy & Utilities", icons: ["SolarPanel", "Lightning", "BatteryFull", "Windmill", "Plug", "ChargingStation"] },
     price: { label: "Price & Financial", icons: ["CurrencyDollar", "CurrencyEur", "CurrencyGbp", "Coin", "Receipt"] },
-    size: { label: "Size & Measurements", icons: ["Ruler", "Square", "Resize", "ArrowsOut"] },
+    size: { label: "Size & Measurements", icons: ["Ruler"] },
     elevator: { label: "Elevator & Accessibility", icons: ["Elevator", "Wheelchair", "WheelchairMotion"] },
-    building: { label: "Building & Structure", icons: ["House", "Building", "Buildings", "CastleTurret", "BuildingApartment"] },
-    appliances: { label: "Appliances & Furniture", icons: ["Couch", "Chair", "Table", "Lamp", "Desk"] },
-    storage: { label: "Storage & Space", icons: ["Dresser", "Books", "Cube", "Folder", "Archive"] },
-    distance: { label: "Proximity & Distance", icons: ["MapPin", "Signpost", "Compass", "MapTrifold", "ArrowRight"] },
+    building: { label: "Building & Structure", icons: ["House", "Building", "Buildings", "CastleTurret", "BuildingApartment", "Warehouse"] },
+    appliances: { label: "Appliances & Furniture", icons: ["Couch", "Chair", "Table", "Lamp", "Desk", "OfficeChair"] },
+    storage: { label: "Storage & Space", icons: ["Dresser", "Books", "Folder", "Archive", "Backpack"] },
+    distance: { label: "Proximity & Distance", icons: ["MapPin", "Signpost", "Compass", "MapTrifold", "ArrowRight", "ShoppingBagOpen", "AirplaneTilt"] },
     trending: { label: "Trending & Popular", icons: ["TrendUp", "Fire", "Heart", "Star", "Lightning"] },
-    miscellaneous: { label: "General", icons: ["Check", "Plus", "Info", "CheckCircle"] }
+    transport: { label: "Transport & Transit", icons: ["Bus", "Subway", "Train"] },
+    pets: { label: "Pets & Animals", icons: ["Cat", "Dog", "PawPrint"] },
+    miscellaneous: { label: "General", icons: ["Check", "Plus", "Info", "CheckCircle", "BabyCarriage"] }
   }
 
   const iconJson = JSON.stringify(iconCategories, null, 2)
