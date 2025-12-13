@@ -733,16 +733,67 @@ export async function verifyBrandDomain(
 
   // 6. Update all sites in workspace to use brand domain
   // This ensures all sites (including already published ones) use the brand domain
-  const { error: sitesError } = await supabase
+  // Try to restore original slugs if they were changed due to conflicts
+  const { data: sites, error: sitesFetchError } = await supabase
     .from('sites')
-    .update({ domain })
+    .select('id, slug, metadata')
     .eq('workspace_id', workspaceId)
     .is('deleted_at', null)
 
-  if (sitesError) {
-    console.error('[Brand Domain] Error updating sites:', sitesError)
+  if (sitesFetchError) {
+    console.error('[Brand Domain] Error fetching sites:', sitesFetchError)
     // Continue anyway - domain verification can succeed even if sites update fails
-  } else {
+  } else if (sites && sites.length > 0) {
+    // Import slug availability functions
+    const { checkSlugAvailability } = await import('@/lib/data/slug-availability')
+    
+    // Update each site individually to restore original slugs if possible
+    for (const site of sites) {
+      const currentSlug = site.slug
+      const metadata = site.metadata || {}
+      const originalSlug = metadata.original_brand_domain_slug as string | undefined
+      
+      let slugToUse = currentSlug
+      const updatedMetadata = { ...metadata }
+      
+      // If we have original slug from brand domain, try to restore it
+      if (originalSlug && typeof originalSlug === 'string') {
+        // Check if original slug is available on brand domain
+        // On brand domain, we only need to check if it's not used by another site in this workspace
+        // (slug uniqueness is per domain, so brand domain slug can be different from ottie.site slug)
+        const { available } = await checkSlugAvailability(originalSlug, domain, site.id)
+        
+        if (available) {
+          // Original slug is available - restore it
+          slugToUse = originalSlug
+          console.log(`[Brand Domain] Restoring original slug "${originalSlug}" for site ${site.id}`)
+          
+          // Clear conflict metadata since we're restoring original slug
+          delete updatedMetadata.brand_domain_slug_conflict
+          delete updatedMetadata.brand_domain_new_slug
+        } else {
+          // Original slug is still taken - keep current slug
+          console.log(`[Brand Domain] Original slug "${originalSlug}" is still taken, keeping current slug "${currentSlug}"`)
+        }
+      }
+      
+      // Update site with brand domain and restored/current slug
+      const { error: updateError } = await supabase
+        .from('sites')
+        .update({
+          domain,
+          slug: slugToUse,
+          metadata: updatedMetadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', site.id)
+      
+      if (updateError) {
+        console.error(`[Brand Domain] Error updating site ${site.id}:`, updateError)
+        // Continue with other sites even if one fails
+      }
+    }
+    
     console.log('[Brand Domain] Updated all sites in workspace to use brand domain:', domain)
   }
 
@@ -824,15 +875,61 @@ export async function removeBrandDomainInternal(
   }
 
   // 3. Revert all sites in workspace to ottie.site
-  const { error: sitesError } = await supabase
+  // IMPORTANT: Check slug availability for each site to avoid conflicts
+  // If slug is taken on ottie.site, generate a new available slug
+  const { data: sites, error: sitesFetchError } = await supabase
     .from('sites')
-    .update({ domain: 'ottie.site' })
+    .select('id, slug, metadata')
     .eq('workspace_id', workspaceId)
     .is('deleted_at', null)
 
-  if (sitesError) {
-    console.error('[Brand Domain] Error reverting sites:', sitesError)
-    // Continue anyway
+  if (sitesFetchError) {
+    console.error('[Brand Domain] Error fetching sites:', sitesFetchError)
+    // Continue anyway - try to update domain even if fetch fails
+  } else if (sites && sites.length > 0) {
+    // Import slug availability functions
+    const { checkSlugAvailability, generateAvailableSlug } = await import('@/lib/data/slug-availability')
+    
+    // Update each site individually to handle slug conflicts
+    for (const site of sites) {
+      const currentSlug = site.slug
+      
+      // Store original slug in metadata for potential reconnection
+      const updatedMetadata = {
+        ...(site.metadata || {}),
+        original_brand_domain_slug: currentSlug,
+      }
+      
+      // Check if current slug is available on ottie.site
+      const { available } = await checkSlugAvailability(currentSlug, 'ottie.site', site.id)
+      
+      let newSlug = currentSlug
+      if (!available) {
+        // Slug is taken - generate a new available slug
+        newSlug = await generateAvailableSlug(currentSlug, 'ottie.site', site.id)
+        console.log(`[Brand Domain] Slug "${currentSlug}" is taken on ottie.site, using "${newSlug}" instead`)
+        
+        // Store both original slug and the conflict resolution
+        updatedMetadata.brand_domain_slug_conflict = true
+        updatedMetadata.brand_domain_new_slug = newSlug
+      }
+      
+      // Update site with new domain and potentially new slug
+      const { error: updateError } = await supabase
+        .from('sites')
+        .update({
+          domain: 'ottie.site',
+          slug: newSlug,
+          metadata: updatedMetadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', site.id)
+      
+      if (updateError) {
+        console.error(`[Brand Domain] Error updating site ${site.id}:`, updateError)
+        // Continue with other sites even if one fails
+      }
+    }
   }
 
   // 4. Clear branding_config domain fields
