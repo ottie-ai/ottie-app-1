@@ -48,10 +48,10 @@ TO authenticated
 WITH CHECK (
   bucket_id = 'site-images' AND
   (
-    -- For temp previews: allow if path starts with 'temp-preview/'
-    name LIKE 'temp-preview/%'
+    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
+    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
     OR
-    -- For sites: allow if user has access to the site
+    -- For sites: allow if user has access to the site and path matches UUID pattern
     EXISTS (
       SELECT 1 FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
@@ -64,7 +64,7 @@ WITH CHECK (
         -- Agents can upload for sites they created or are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND (name LIKE s.id::text || '/%' OR name = s.id::text || '.%')
+      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );
@@ -76,10 +76,10 @@ TO authenticated
 USING (
   bucket_id = 'site-images' AND
   (
-    -- For temp previews: allow if path starts with 'temp-preview/'
-    name LIKE 'temp-preview/%'
+    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
+    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
     OR
-    -- For sites: allow if user has access to the site
+    -- For sites: allow if user has access to the site and path matches UUID pattern
     EXISTS (
       SELECT 1 FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
@@ -92,7 +92,7 @@ USING (
         -- Agents can update for sites they created or are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND (name LIKE s.id::text || '/%' OR name = s.id::text || '.%')
+      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );
@@ -104,10 +104,10 @@ TO authenticated
 USING (
   bucket_id = 'site-images' AND
   (
-    -- For temp previews: allow if path starts with 'temp-preview/'
-    name LIKE 'temp-preview/%'
+    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
+    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
     OR
-    -- For sites: allow if user has access to the site
+    -- For sites: allow if user has access to the site and path matches UUID pattern
     EXISTS (
       SELECT 1 FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
@@ -120,7 +120,7 @@ USING (
         -- Agents can delete for sites they created or are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND (name LIKE s.id::text || '/%' OR name = s.id::text || '.%')
+      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );

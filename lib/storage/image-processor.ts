@@ -4,9 +4,19 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  sanitizePath,
+  isValidImageExtension,
+  isValidImageMimeType,
+  validateImageMagicBytes,
+  sanitizeFilename,
+  generateSecureFilename,
+  isValidImageUrl,
+} from './security'
 
 const BUCKET_NAME = 'site-images'
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+const FETCH_TIMEOUT = 30000 // 30 seconds
 
 export interface ImageUploadResult {
   success: true
@@ -28,16 +38,27 @@ export async function downloadAndUploadImage(
   targetPath: string
 ): Promise<ImageUploadResult> {
   try {
-    // Validate URL
+    // Validate URL format
     if (!imageUrl || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
       return { success: false, error: 'Invalid image URL' }
     }
 
+    // Validate URL is safe (not localhost, private IPs, etc.)
+    if (!isValidImageUrl(imageUrl)) {
+      return { success: false, error: 'Invalid image URL' }
+    }
+
+    // Sanitize and validate target path
+    const sanitizedPath = sanitizePath(targetPath)
+    if (!sanitizedPath) {
+      return { success: false, error: 'Invalid target path' }
+    }
+
     // Skip if already in our bucket
     if (imageUrl.includes(`/storage/v1/object/public/${BUCKET_NAME}/`)) {
-      // Extract path from URL and return as-is
+      // Extract path from URL and validate it
       const urlMatch = imageUrl.match(new RegExp(`/${BUCKET_NAME}/(.+)$`))
-      if (urlMatch) {
+      if (urlMatch && sanitizePath(urlMatch[1])) {
         return { 
           success: true, 
           url: imageUrl,
@@ -46,83 +67,105 @@ export async function downloadAndUploadImage(
       }
     }
 
-    // Download image
-    const response = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; OttieBot/1.0)',
-      },
-    })
+    // Download image with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+
+    let response: Response
+    try {
+      response = await fetch(imageUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; OttieBot/1.0)',
+        },
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return { success: false, error: 'Download timeout' }
+      }
+      throw fetchError
+    }
 
     if (!response.ok) {
-      return { success: false, error: `Failed to download image: ${response.statusText}` }
+      return { success: false, error: 'Failed to download image' }
     }
 
     const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.startsWith('image/')) {
-      return { success: false, error: 'URL does not point to an image' }
+    if (!contentType || !isValidImageMimeType(contentType)) {
+      return { success: false, error: 'Invalid image type' }
     }
 
+    // Read response with size limit
     const arrayBuffer = await response.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Check size
+    // Check size before processing
     if (buffer.length > MAX_IMAGE_SIZE) {
-      return { success: false, error: `Image too large: ${(buffer.length / 1024 / 1024).toFixed(2)}MB (max 10MB)` }
+      return { success: false, error: `Image too large (max 10MB)` }
     }
 
-    // Determine file extension from content type or URL
-    let extension = 'jpg'
-    if (contentType.includes('png')) extension = 'png'
-    else if (contentType.includes('gif')) extension = 'gif'
-    else if (contentType.includes('webp')) extension = 'webp'
-    else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = 'jpg'
-    else {
-      // Try to get extension from URL
-      const urlMatch = imageUrl.match(/\.(jpg|jpeg|png|gif|webp)(\?|$)/i)
-      if (urlMatch) {
-        extension = urlMatch[1].toLowerCase()
-      }
+    // Validate magic bytes to prevent MIME type spoofing
+    const magicBytesCheck = validateImageMagicBytes(buffer)
+    if (!magicBytesCheck.valid) {
+      return { success: false, error: 'Invalid image file' }
     }
 
-    // Generate unique filename if targetPath doesn't include extension
-    const finalPath = targetPath.includes('.') 
-      ? targetPath 
-      : `${targetPath}.${extension}`
+    // Use detected type from magic bytes if available, otherwise use content-type
+    const detectedType = magicBytesCheck.detectedType || contentType
+    const extension = detectedType.split('/')[1]?.split(';')[0] || 'jpg'
+    
+    if (!isValidImageExtension(extension)) {
+      return { success: false, error: 'Invalid image format' }
+    }
+
+    // Generate secure filename
+    const filename = generateSecureFilename(extension)
+    const finalPath = `${sanitizedPath}/${filename}`
+
+    // Validate final path again
+    const finalSanitizedPath = sanitizePath(finalPath)
+    if (!finalSanitizedPath) {
+      return { success: false, error: 'Invalid file path' }
+    }
 
     // Upload to Supabase Storage
     const supabase = createAdminClient()
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .upload(finalPath, buffer, {
-        contentType,
+      .upload(finalSanitizedPath, buffer, {
+        contentType: detectedType,
         cacheControl: '3600',
-        upsert: true, // Allow overwriting
+        upsert: false, // Don't allow overwriting (security)
       })
 
     if (error) {
       console.error('Error uploading image to Supabase:', error)
-      return { success: false, error: `Failed to upload image: ${error.message}` }
+      // Don't expose internal error details
+      return { success: false, error: 'Failed to upload image' }
     }
 
     // Get public URL
     const { data: urlData } = supabase.storage
       .from(BUCKET_NAME)
-      .getPublicUrl(finalPath)
+      .getPublicUrl(finalSanitizedPath)
 
     if (!urlData?.publicUrl) {
-      return { success: false, error: 'Failed to get public URL' }
+      return { success: false, error: 'Failed to get image URL' }
     }
 
     return {
       success: true,
       url: urlData.publicUrl,
-      path: finalPath,
+      path: finalSanitizedPath,
     }
   } catch (error) {
     console.error('Error processing image:', error)
+    // Don't expose internal error details
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error processing image' 
+      error: 'Failed to process image' 
     }
   }
 }
@@ -141,27 +184,39 @@ export async function processImages(
 ): Promise<Map<string, string>> {
   const urlMap = new Map<string, string>()
   
+  // Validate basePath
+  const sanitizedBasePath = sanitizePath(basePath)
+  if (!sanitizedBasePath) {
+    console.error('Invalid basePath:', basePath)
+    return urlMap
+  }
+
+  // Filter out invalid URLs
+  const validUrls = imageUrls.filter(url => isValidImageUrl(url))
+  if (validUrls.length !== imageUrls.length) {
+    console.warn(`Filtered out ${imageUrls.length - validUrls.length} invalid URLs`)
+  }
+
   // Process in batches
-  for (let i = 0; i < imageUrls.length; i += maxConcurrent) {
-    const batch = imageUrls.slice(i, i + maxConcurrent)
+  for (let i = 0; i < validUrls.length; i += maxConcurrent) {
+    const batch = validUrls.slice(i, i + maxConcurrent)
     const results = await Promise.allSettled(
-      batch.map(async (url, index) => {
-        const filename = `img-${Date.now()}-${i + index}`
-        const targetPath = `${basePath}/${filename}`
-        const result = await downloadAndUploadImage(url, targetPath)
+      batch.map(async (url) => {
+        // Use sanitized basePath - filename will be generated securely in downloadAndUploadImage
+        const result = await downloadAndUploadImage(url, sanitizedBasePath)
         
         if (result.success) {
           return { originalUrl: url, newUrl: result.url }
         } else {
-          console.warn(`Failed to process image ${url}:`, result.error)
-          // Return original URL as fallback (but we should avoid using it)
-          return { originalUrl: url, newUrl: url }
+          console.warn(`Failed to process image:`, result.error)
+          // Don't return original URL - fail silently to avoid using external URLs
+          return null
         }
       })
     )
 
     results.forEach((result) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === 'fulfilled' && result.value) {
         urlMap.set(result.value.originalUrl, result.value.newUrl)
       }
     })
@@ -332,25 +387,43 @@ export async function moveTempPreviewImagesToSite(
   config: any
 ): Promise<{ success: boolean; updatedConfig?: any; error?: string }> {
   try {
+    // Validate UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(previewId) || !uuidRegex.test(siteId)) {
+      return { success: false, error: 'Invalid preview or site ID' }
+    }
+
     const supabase = createAdminClient()
-    const prefix = `temp-preview/${previewId}/`
+    const basePath = `temp-preview/${previewId}`
     
+    // Validate and sanitize base path
+    const sanitizedBasePath = sanitizePath(basePath)
+    if (!sanitizedBasePath) {
+      return { success: false, error: 'Invalid preview path' }
+    }
+
     // List all files in temp-preview directory
     const { data: files, error: listError } = await supabase.storage
       .from(BUCKET_NAME)
-      .list(prefix, {
+      .list(sanitizedBasePath, {
         limit: 1000,
         sortBy: { column: 'name', order: 'asc' },
       })
 
     if (listError) {
       console.error('Error listing temp preview images:', listError)
-      return { success: false, error: listError.message }
+      return { success: false, error: 'Failed to list images' }
     }
 
     if (!files || files.length === 0) {
       // No images to move
       return { success: true, updatedConfig: config }
+    }
+
+    // Validate site path
+    const siteBasePath = sanitizePath(siteId)
+    if (!siteBasePath) {
+      return { success: false, error: 'Invalid site path' }
     }
 
     // Create mapping of old paths to new paths
@@ -359,9 +432,19 @@ export async function moveTempPreviewImagesToSite(
     for (const file of files) {
       if (file.name.endsWith('/')) continue // Skip directories
       
-      const oldPath = `${prefix}${file.name}`
-      const newPath = `${siteId}/${file.name}`
-      pathMap.set(oldPath, newPath)
+      // Validate filename
+      if (!/^[a-zA-Z0-9._-]+$/.test(file.name)) {
+        console.warn(`Skipping invalid filename: ${file.name}`)
+        continue
+      }
+
+      const oldPath = `${sanitizedBasePath}/${file.name}`
+      const newPath = `${siteBasePath}/${file.name}`
+      
+      // Validate both paths
+      if (sanitizePath(oldPath) && sanitizePath(newPath)) {
+        pathMap.set(oldPath, newPath)
+      }
     }
 
     // Copy files to new location (Supabase doesn't have move, so we copy then delete)

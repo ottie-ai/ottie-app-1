@@ -5,6 +5,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractImagePathsFromConfig, deleteImages } from './image-processor'
+import { sanitizePath } from './security'
 
 const BUCKET_NAME = 'site-images'
 
@@ -27,12 +28,24 @@ export async function cleanupTempPreviewImages(
     const pathsToDelete: string[] = []
     
     for (const previewId of previewIds) {
-      const prefix = `temp-preview/${previewId}/`
+      // Validate UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(previewId)) {
+        console.warn(`Invalid preview ID: ${previewId}`)
+        continue
+      }
+
+      const basePath = `temp-preview/${previewId}`
+      const sanitizedBasePath = sanitizePath(basePath)
+      if (!sanitizedBasePath) {
+        console.warn(`Invalid preview path: ${basePath}`)
+        continue
+      }
       
       // List all files with this prefix
       const { data: files, error } = await supabase.storage
         .from(BUCKET_NAME)
-        .list(prefix, {
+        .list(sanitizedBasePath, {
           limit: 1000,
           sortBy: { column: 'name', order: 'asc' },
         })
@@ -43,10 +56,11 @@ export async function cleanupTempPreviewImages(
       }
 
       if (files && files.length > 0) {
-        // Get full paths
+        // Get full paths and validate them
         const fullPaths = files
           .filter(file => !file.name.endsWith('/')) // Exclude directories
-          .map(file => `${prefix}${file.name}`)
+          .map(file => `${sanitizedBasePath}/${file.name}`)
+          .filter(path => sanitizePath(path)) // Only add valid paths
         
         pathsToDelete.push(...fullPaths)
       }
@@ -86,16 +100,25 @@ export async function cleanupSiteImages(
   siteConfig: any
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
+    // Validate UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(siteId)) {
+      return { success: false, deletedCount: 0, error: 'Invalid site ID' }
+    }
+
     // Extract image paths from config
     const imagePaths = extractImagePathsFromConfig(siteConfig)
     
     // Also delete all files in site/{siteId}/ directory (for manually uploaded images)
     const supabase = createAdminClient()
-    const prefix = `${siteId}/`
+    const sanitizedSitePath = sanitizePath(siteId)
+    if (!sanitizedSitePath) {
+      return { success: false, deletedCount: 0, error: 'Invalid site path' }
+    }
     
     const { data: files, error } = await supabase.storage
       .from(BUCKET_NAME)
-      .list(prefix, {
+      .list(sanitizedSitePath, {
         limit: 1000,
         sortBy: { column: 'name', order: 'asc' },
       })
@@ -104,13 +127,17 @@ export async function cleanupSiteImages(
       console.error(`Error listing files for site ${siteId}:`, error)
     }
 
-    const allPathsToDelete = new Set<string>(imagePaths)
+    const allPathsToDelete = new Set<string>(
+      imagePaths.filter(path => sanitizePath(path)) // Only valid paths
+    )
     
     if (files && files.length > 0) {
       files
         .filter(file => !file.name.endsWith('/'))
-        .forEach(file => {
-          allPathsToDelete.add(`${prefix}${file.name}`)
+        .map(file => `${sanitizedSitePath}/${file.name}`)
+        .filter(path => sanitizePath(path)) // Only valid paths
+        .forEach(path => {
+          allPathsToDelete.add(path)
         })
     }
 

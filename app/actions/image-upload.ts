@@ -59,20 +59,45 @@ export async function uploadSiteImage(
       return { error: 'File size too large. Maximum size is 10MB.' }
     }
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop() || 'jpg'
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    // Validate siteId is UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(siteId)) {
+      return { error: 'Invalid site ID' }
+    }
+
+    // Sanitize filename and generate secure one
+    const { sanitizeFilename, generateSecureFilename, isValidImageExtension } = await import('@/lib/storage/security')
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const validExt = isValidImageExtension(fileExt) ? fileExt : 'jpg'
+    const fileName = generateSecureFilename(validExt)
     const targetPath = `${siteId}/${fileName}`
+    
+    // Validate path
+    const { sanitizePath } = await import('@/lib/storage/security')
+    const sanitizedPath = sanitizePath(targetPath)
+    if (!sanitizedPath) {
+      return { error: 'Invalid file path' }
+    }
 
     // Convert File to Buffer for upload
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
+    // Validate file content with magic bytes
+    const { validateImageMagicBytes } = await import('@/lib/storage/security')
+    const magicBytesCheck = validateImageMagicBytes(buffer)
+    if (!magicBytesCheck.valid) {
+      return { error: 'Invalid image file' }
+    }
+
+    // Use detected type from magic bytes
+    const detectedType = magicBytesCheck.detectedType || file.type
+
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
-      .upload(targetPath, buffer, {
-        contentType: file.type,
+      .upload(sanitizedPath, buffer, {
+        contentType: detectedType,
         cacheControl: '3600',
         upsert: false,
       })
@@ -85,7 +110,7 @@ export async function uploadSiteImage(
     // Get public URL
     const { data: urlData } = supabase.storage
       .from(BUCKET_NAME)
-      .getPublicUrl(targetPath)
+      .getPublicUrl(sanitizedPath)
 
     if (!urlData?.publicUrl) {
       return { error: 'Failed to get image URL' }
@@ -112,10 +137,20 @@ export async function uploadImageFromUrl(
   imageUrl: string
 ): Promise<{ success: true; url: string } | { error: string }> {
   try {
-    const fileName = `img-${Date.now()}-${Math.random().toString(36).substring(7)}`
-    const targetPath = `temp-preview/${previewId}/${fileName}`
-    
-    const result = await downloadAndUploadImage(imageUrl, targetPath)
+    // Validate previewId is UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(previewId)) {
+      return { error: 'Invalid preview ID' }
+    }
+
+    // Validate URL
+    const { isValidImageUrl } = await import('@/lib/storage/security')
+    if (!isValidImageUrl(imageUrl)) {
+      return { error: 'Invalid image URL' }
+    }
+
+    const basePath = `temp-preview/${previewId}`
+    const result = await downloadAndUploadImage(imageUrl, basePath)
     
     if (result.success) {
       return { success: true, url: result.url }
