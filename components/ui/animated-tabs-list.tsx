@@ -216,9 +216,6 @@ export function AnimatedTabsList({ children, activeValue }: AnimatedTabsListProp
                 zIndex: 2,
                 transformOrigin: `${originX * 100}% center`,
               }}
-              style={{
-                zIndex: 2,
-              }}
             />
           )}
           
