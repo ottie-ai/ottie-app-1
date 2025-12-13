@@ -288,15 +288,29 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     
     // Check if downgrading to a plan with fewer sites
     const targetMaxSites = getMaxSites(targetTierId)
-    const publishedSites = sites.filter(s => s.status === 'published')
-    const totalPublishedSites = publishedSites.length
+    const isFreePlan = targetTierId === 'free' && targetMaxSites === 1
     
-    // Warn ONLY if we have more published sites than the target plan limit
-    if (totalPublishedSites > targetMaxSites) {
-      const sitesToUnpublish = totalPublishedSites - targetMaxSites
-      warnings.push(
-        `Published sites above the plan limit (${sitesToUnpublish}) will be unpublished.`
-      )
+    if (isFreePlan) {
+      // For free plan, check ALL sites (published, draft, archived) - limit is 1 total
+      // Free plan can only have 1 site regardless of status
+      const totalSites = sites.length
+      if (totalSites > targetMaxSites) {
+        const sitesToArchive = totalSites - targetMaxSites
+        warnings.push(
+          `All sites except the newest one (${sitesToArchive} site${sitesToArchive > 1 ? 's' : ''}) will be archived.`
+        )
+      }
+    } else {
+      // For other plans, check active sites (published + draft) - archived sites don't count
+      const activeSites = sites.filter(s => s.status === 'published' || s.status === 'draft')
+      const totalActiveSites = activeSites.length
+      
+      if (totalActiveSites > targetMaxSites) {
+        const sitesToArchive = totalActiveSites - targetMaxSites
+        warnings.push(
+          `Active sites above the plan limit (${sitesToArchive} site${sitesToArchive > 1 ? 's' : ''}) will be archived.`
+        )
+      }
     }
     
     // Check if downgrading to a plan without password protection feature
