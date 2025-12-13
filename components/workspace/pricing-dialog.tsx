@@ -353,10 +353,18 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
       if ('error' in result) {
         toast.error(result.error)
       } else {
+        const messages: string[] = []
+        
         if (result.passwordRemovedCount && result.passwordRemovedCount > 0) {
-          toast.success(
-            `Plan downgraded successfully. Password protection removed from ${result.passwordRemovedCount} site${result.passwordRemovedCount > 1 ? 's' : ''}.`
-          )
+          messages.push(`Password protection removed from ${result.passwordRemovedCount} site${result.passwordRemovedCount > 1 ? 's' : ''}`)
+        }
+        
+        if (result.archivedSitesCount && result.archivedSitesCount > 0) {
+          messages.push(`${result.archivedSitesCount} site${result.archivedSitesCount > 1 ? 's' : ''} archived due to plan limit`)
+        }
+        
+        if (messages.length > 0) {
+          toast.success(`Plan downgraded successfully. ${messages.join('. ')}.`)
         } else {
           toast.success('Plan downgraded successfully')
         }

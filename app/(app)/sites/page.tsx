@@ -89,6 +89,8 @@ import { toastSuccess } from '@/lib/toast-helpers'
 import { checkSlugAvailability, generateAvailableSlug } from '@/lib/data/slug-availability'
 import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
 import { cn } from '@/lib/utils'
+import { PricingDialog } from '@/components/workspace/pricing-dialog'
+import { AlertTriangle } from 'lucide-react'
 
 // Helper to get user initials
 function getUserInitials(fullName: string | null, email: string | null): string {
@@ -196,11 +198,19 @@ const mockSites: SiteCardData[] = [
 ]
 
 export default function SitesPage() {
-  const { currentWorkspace, isMultiUserPlan } = useAppData()
+  const { currentWorkspace, isMultiUserPlan, getMaxSites } = useAppData()
   const { sites, loading, refresh } = useSites(currentWorkspace?.id)
   const { user } = useAuth()
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null)
   const isMultiUser = isMultiUserPlan(currentWorkspace?.plan ?? null)
+  
+  // Calculate active sites count (published + draft, not archived)
+  const activeSitesCount = useMemo(() => {
+    return sites.filter(s => s.status === 'published' || s.status === 'draft').length
+  }, [sites])
+  
+  // Get max sites for current plan
+  const maxSites = getMaxSites(currentWorkspace?.plan ?? null)
   
   // Sort members so current user is always first
   const sortedMembers = useMemo(() => {
@@ -225,6 +235,7 @@ export default function SitesPage() {
   // Create site modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -579,10 +590,24 @@ export default function SitesPage() {
         password_hash: null,
       }
 
-      const result = await createSite(siteData)
+      // Check limit before creating
+      if (activeSitesCount >= maxSites) {
+        setIsCreateModalOpen(false)
+        setIsUpgradeModalOpen(true)
+        setIsCreating(false)
+        return
+      }
+
+      const result = await createSite(siteData, maxSites)
 
       if ('error' in result) {
-        toast.error(result.error)
+        if (result.limitExceeded) {
+          // Limit exceeded - show upgrade modal
+          setIsCreateModalOpen(false)
+          setIsUpgradeModalOpen(true)
+        } else {
+          toast.error(result.error)
+        }
       } else {
         toastSuccess('Site created successfully!')
         setIsCreateModalOpen(false)
@@ -1299,6 +1324,67 @@ export default function SitesPage() {
             >
               {isCreating ? 'Creating...' : 'Create Site'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upgrade Modal for Site Limit */}
+      <Dialog open={isUpgradeModalOpen} onOpenChange={setIsUpgradeModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <DialogTitle>Site Limit Reached</DialogTitle>
+                <DialogDescription className="mt-1">
+                  You've reached the maximum number of active sites for your plan.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg border bg-muted/50 p-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Current Plan Limit:</span>
+                  <span className="font-medium">{maxSites} active site{maxSites !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Active Sites:</span>
+                  <span className="font-medium">{activeSitesCount} / {maxSites}</span>
+                </div>
+              </div>
+            </div>
+            
+            <p className="text-sm text-muted-foreground">
+              To create more sites, you can either:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
+              <li>Upgrade to a plan with more sites</li>
+              <li>Archive existing sites to free up space</li>
+            </ul>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsUpgradeModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <PricingDialog
+              currentPlan={currentWorkspace?.plan ?? null}
+              workspaceId={currentWorkspace?.id ?? null}
+              defaultSelectedTier={null}
+            >
+              <Button className="w-full sm:w-auto">
+                Upgrade Plan
+              </Button>
+            </PricingDialog>
           </DialogFooter>
         </DialogContent>
       </Dialog>

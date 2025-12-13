@@ -936,7 +936,7 @@ export async function handleDowngradeWorkspacePlan(
   workspaceId: string,
   userId: string,
   targetPlan: string
-): Promise<{ success: true; workspace: Workspace; passwordRemovedCount?: number } | { error: string }> {
+): Promise<{ success: true; workspace: Workspace; passwordRemovedCount?: number; archivedSitesCount?: number } | { error: string }> {
   if (!workspaceId || !userId || !targetPlan) {
     return { error: 'Missing required fields' }
   }
@@ -980,7 +980,7 @@ export async function handleDowngradeWorkspacePlan(
 
   const { data: targetPlanData } = await supabase
     .from('plans')
-    .select('feature_password_protection, feature_custom_brand_domain')
+    .select('feature_password_protection, feature_custom_brand_domain, max_sites')
     .eq('name', targetPlan)
     .single()
 
@@ -1043,6 +1043,22 @@ export async function handleDowngradeWorkspacePlan(
     }
   }
 
+  // Check if we need to archive sites due to lower max_sites limit
+  const targetMaxSites = targetPlanData.max_sites ?? 1
+  const { archiveSitesBeyondLimit } = await import('@/lib/data/site-data')
+  const archiveResult = await archiveSitesBeyondLimit(workspaceId, targetMaxSites)
+  
+  let archivedSitesCount = 0
+  if ('error' in archiveResult) {
+    // Log error but continue with plan downgrade - don't fail the entire operation
+    console.error('[Plan Downgrade] Failed to archive sites:', archiveResult.error)
+  } else {
+    archivedSitesCount = archiveResult.archivedCount
+    if (archivedSitesCount > 0) {
+      console.log(`[Plan Downgrade] Archived ${archivedSitesCount} site(s) due to plan limit`)
+    }
+  }
+
   // Update workspace plan
   const updatedWorkspace = await updateWorkspace(workspaceId, { plan: targetPlan as any })
 
@@ -1057,7 +1073,8 @@ export async function handleDowngradeWorkspacePlan(
   return { 
     success: true, 
     workspace: updatedWorkspace,
-    ...(passwordRemovedCount > 0 && { passwordRemovedCount })
+    ...(passwordRemovedCount > 0 && { passwordRemovedCount }),
+    ...(archivedSitesCount > 0 && { archivedSitesCount })
   }
 }
 

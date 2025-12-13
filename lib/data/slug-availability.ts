@@ -77,7 +77,8 @@ export async function checkSlugAvailability(
     .select('id')
     .eq('slug', slug.trim().toLowerCase())
     .eq('domain', domain)
-    .is('deleted_at', null) // Only check active sites
+    .is('deleted_at', null) // Only check active sites (not soft-deleted)
+    .in('status', ['published', 'draft']) // Only check published and draft sites (archived sites have released their slug)
 
   // Exclude current site if updating
   if (excludeSiteId) {

@@ -31,6 +31,28 @@ export async function getSites(workspaceId: string): Promise<Site[]> {
 }
 
 /**
+ * Count active sites for a workspace (published + draft, excluding archived)
+ * Active sites are those that count towards the plan limit
+ */
+export async function countActiveSites(workspaceId: string): Promise<number> {
+  const supabase = await createClient()
+  
+  const { data, error, count } = await supabase
+    .from('sites')
+    .select('*', { count: 'exact', head: true })
+    .eq('workspace_id', workspaceId)
+    .is('deleted_at', null)
+    .in('status', ['published', 'draft']) // Only count published and draft, not archived
+
+  if (error) {
+    console.error('Error counting active sites:', error)
+    return 0
+  }
+
+  return count || 0
+}
+
+/**
  * Get a single site by ID
  */
 export async function getSite(siteId: string): Promise<Site | null> {
@@ -80,13 +102,28 @@ export async function getSiteBySlug(
 /**
  * Create a new site
  * Validates that published sites have assigned_agent_id
+ * Checks plan limit before creating (counts published + draft sites)
  */
-export async function createSite(site: SiteInsert): Promise<{ success: true; site: Site } | { error: string }> {
+export async function createSite(
+  site: SiteInsert,
+  maxSites?: number
+): Promise<{ success: true; site: Site } | { error: string; limitExceeded?: boolean }> {
   const supabase = await createClient()
   
   // Validate: Cannot publish site without assigned agent
   if (site.status === 'published' && !site.assigned_agent_id) {
     return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
+  }
+  
+  // Check plan limit if maxSites is provided
+  if (maxSites !== undefined && site.workspace_id) {
+    const activeSitesCount = await countActiveSites(site.workspace_id)
+    if (activeSitesCount >= maxSites) {
+      return { 
+        error: `You've reached the limit of ${maxSites} active site${maxSites !== 1 ? 's' : ''} for your plan. Please upgrade to create more sites or archive existing ones.`,
+        limitExceeded: true
+      }
+    }
   }
   
   // Ensure domain is set (default to 'ottie.site')
@@ -284,16 +321,39 @@ export async function unpublishSite(siteId: string): Promise<{ success: true; si
 }
 
 /**
- * Archive a site (sets status to archived)
- * Slug remains reserved, but site is not accessible via public URL
+ * Archive a site (sets status to archived and clears slug to release it)
+ * Archived sites don't count towards plan limit and their slug is released
  */
 export async function archiveSite(siteId: string): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
+  
+  // Get current site to preserve slug in metadata before clearing it
+  const { data: currentSite } = await supabase
+    .from('sites')
+    .select('slug, metadata')
+    .eq('id', siteId)
+    .single()
+
+  if (!currentSite) {
+    return { error: 'Site not found' }
+  }
+
+  // Store original slug in metadata for potential unarchive
+  const updatedMetadata = {
+    ...(currentSite.metadata || {}),
+    archived_slug: currentSite.slug,
+  }
+
+  // Archive site and clear slug to release it
+  // Use a unique archived slug format to avoid conflicts
+  const archivedSlug = `archived-${siteId}-${Date.now()}`
   
   const { data, error } = await supabase
     .from('sites')
     .update({
       status: 'archived',
+      slug: archivedSlug, // Clear original slug by setting unique archived slug
+      metadata: updatedMetadata,
       updated_at: new Date().toISOString(),
     })
     .eq('id', siteId)
@@ -309,24 +369,125 @@ export async function archiveSite(siteId: string): Promise<{ success: true; site
 }
 
 /**
- * Unarchive a site (sets status to draft)
+ * Archive multiple sites (used during plan downgrade)
+ * Archives sites beyond the limit, keeping the most recently updated ones active
+ */
+export async function archiveSitesBeyondLimit(
+  workspaceId: string,
+  maxSites: number
+): Promise<{ success: true; archivedCount: number } | { error: string }> {
+  const supabase = await createClient()
+  
+  // Get all active sites (published + draft) ordered by updated_at (newest first)
+  const { data: activeSites, error: fetchError } = await supabase
+    .from('sites')
+    .select('id, slug, metadata, updated_at')
+    .eq('workspace_id', workspaceId)
+    .is('deleted_at', null)
+    .in('status', ['published', 'draft'])
+    .order('updated_at', { ascending: false })
+
+  if (fetchError) {
+    console.error('Error fetching sites for archiving:', fetchError)
+    return { error: 'Failed to fetch sites' }
+  }
+
+  if (!activeSites || activeSites.length <= maxSites) {
+    // No sites need to be archived
+    return { success: true, archivedCount: 0 }
+  }
+
+  // Sites beyond the limit (oldest ones) need to be archived
+  const sitesToArchive = activeSites.slice(maxSites)
+  const archivedCount = sitesToArchive.length
+
+  // Archive each site
+  for (const site of sitesToArchive) {
+    const archivedSlug = `archived-${site.id}-${Date.now()}`
+    const updatedMetadata = {
+      ...(site.metadata || {}),
+      archived_slug: site.slug,
+    }
+
+    const { error: archiveError } = await supabase
+      .from('sites')
+      .update({
+        status: 'archived',
+        slug: archivedSlug,
+        metadata: updatedMetadata,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', site.id)
+
+    if (archiveError) {
+      console.error(`Error archiving site ${site.id}:`, archiveError)
+      // Continue with other sites even if one fails
+    }
+  }
+
+  return { success: true, archivedCount }
+}
+
+/**
+ * Unarchive a site (sets status to draft and restores original slug if available)
  * Site becomes accessible again via builder, but not published
+ * Note: Slug restoration may fail if the original slug is now taken
  */
 export async function unarchiveSite(siteId: string): Promise<{ success: true; site: Site } | { error: string }> {
   const supabase = await createClient()
   
+  // Get current site to check for archived slug
+  const { data: currentSite } = await supabase
+    .from('sites')
+    .select('metadata')
+    .eq('id', siteId)
+    .single()
+
+  if (!currentSite) {
+    return { error: 'Site not found' }
+  }
+
+  // Try to restore original slug from metadata
+  const archivedSlug = currentSite.metadata?.archived_slug
+  const updates: SiteUpdate = {
+    status: 'draft',
+    updated_at: new Date().toISOString(),
+  }
+
+  // If we have the archived slug, try to restore it
+  // Note: This might fail if slug is now taken, but we'll let the unique constraint handle it
+  if (archivedSlug && typeof archivedSlug === 'string') {
+    // Check if slug is available (only check published and draft sites, not archived)
+    const { data: existingSite } = await supabase
+      .from('sites')
+      .select('id')
+      .eq('slug', archivedSlug)
+      .eq('domain', 'ottie.site') // Assuming default domain
+      .is('deleted_at', null)
+      .in('status', ['published', 'draft']) // Only check published and draft sites (archived sites have released their slug)
+      .neq('id', siteId)
+      .limit(1)
+
+    if (!existingSite || existingSite.length === 0) {
+      // Slug is available, restore it
+      updates.slug = archivedSlug
+    }
+    // If slug is taken, we'll keep the archived slug format and user can change it manually
+  }
+
   const { data, error } = await supabase
     .from('sites')
-    .update({
-      status: 'draft',
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq('id', siteId)
     .select()
     .single()
 
   if (error) {
     console.error('Error unarchiving site:', error)
+    // Check if it's a unique constraint violation (slug conflict)
+    if (error.code === '23505') {
+      return { error: 'Cannot restore original slug - it is now taken by another site. Please change the slug manually.' }
+    }
     return { error: 'Failed to unarchive site' }
   }
 
