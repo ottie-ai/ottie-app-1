@@ -936,7 +936,7 @@ export async function handleDowngradeWorkspacePlan(
   workspaceId: string,
   userId: string,
   targetPlan: string
-): Promise<{ success: true; workspace: Workspace; passwordRemovedCount?: number; archivedSitesCount?: number } | { error: string }> {
+): Promise<{ success: true; workspace: Workspace; passwordRemovedCount?: number; archivedSitesCount?: number; brandDomainRemoved?: boolean } | { error: string }> {
   if (!workspaceId || !userId || !targetPlan) {
     return { error: 'Missing required fields' }
   }
@@ -1032,6 +1032,7 @@ export async function handleDowngradeWorkspacePlan(
   const currentHasBrandDomainFeature = currentPlan?.feature_custom_brand_domain ?? false
   const targetHasBrandDomainFeature = targetPlanData.feature_custom_brand_domain ?? false
 
+  let brandDomainRemoved = false
   // If losing custom brand domain feature, remove brand domain from workspace and Vercel
   if (currentHasBrandDomainFeature && !targetHasBrandDomainFeature) {
     const brandDomainResult = await removeBrandDomainInternal(workspaceId)
@@ -1039,6 +1040,7 @@ export async function handleDowngradeWorkspacePlan(
       // Log error but continue with plan downgrade - don't fail the entire operation
       console.error('[Plan Downgrade] Failed to remove brand domain:', brandDomainResult.error)
     } else {
+      brandDomainRemoved = true
       console.log('[Plan Downgrade] Successfully removed brand domain due to plan downgrade')
     }
   }
@@ -1046,7 +1048,7 @@ export async function handleDowngradeWorkspacePlan(
   // Check if we need to archive sites due to lower max_sites limit
   const targetMaxSites = targetPlanData.max_sites ?? 1
   const { archiveSitesBeyondLimit } = await import('@/lib/data/site-data')
-  const archiveResult = await archiveSitesBeyondLimit(workspaceId, targetMaxSites)
+  const archiveResult = await archiveSitesBeyondLimit(workspaceId, targetMaxSites, targetPlan)
   
   let archivedSitesCount = 0
   if ('error' in archiveResult) {
@@ -1074,7 +1076,8 @@ export async function handleDowngradeWorkspacePlan(
     success: true, 
     workspace: updatedWorkspace,
     ...(passwordRemovedCount > 0 && { passwordRemovedCount }),
-    ...(archivedSitesCount > 0 && { archivedSitesCount })
+    ...(archivedSitesCount > 0 && { archivedSitesCount }),
+    ...(brandDomainRemoved && { brandDomainRemoved: true })
   }
 }
 

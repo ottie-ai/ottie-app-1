@@ -204,13 +204,19 @@ export default function SitesPage() {
   const { members } = useWorkspaceMembers(currentWorkspace?.id ?? null)
   const isMultiUser = isMultiUserPlan(currentWorkspace?.plan ?? null)
   
-  // Calculate active sites count (published + draft, not archived)
-  const activeSitesCount = useMemo(() => {
-    return sites.filter(s => s.status === 'published' || s.status === 'draft').length
-  }, [sites])
-  
   // Get max sites for current plan
   const maxSites = getMaxSites(currentWorkspace?.plan ?? null)
+  const isFreePlan = currentWorkspace?.plan === 'free' || !currentWorkspace?.plan
+  
+  // Calculate sites count based on plan
+  // For free plan: count ALL sites (including archived) - limit is 1 total
+  // For other plans: count only published + draft (not archived)
+  const sitesCount = useMemo(() => {
+    if (isFreePlan) {
+      return sites.length // Count all sites for free plan
+    }
+    return sites.filter(s => s.status === 'published' || s.status === 'draft').length
+  }, [sites, isFreePlan])
   
   // Sort members so current user is always first
   const sortedMembers = useMemo(() => {
@@ -591,14 +597,14 @@ export default function SitesPage() {
       }
 
       // Check limit before creating
-      if (activeSitesCount >= maxSites) {
+      if (sitesCount >= maxSites) {
         setIsCreateModalOpen(false)
         setIsUpgradeModalOpen(true)
         setIsCreating(false)
         return
       }
 
-      const result = await createSite(siteData, maxSites)
+      const result = await createSite(siteData, maxSites, currentWorkspace?.plan ?? null)
 
       if ('error' in result) {
         if (result.limitExceeded) {
@@ -1352,10 +1358,10 @@ export default function SitesPage() {
                   <span className="text-muted-foreground">Current Plan Limit:</span>
                   <span className="font-medium">{maxSites} active site{maxSites !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Active Sites:</span>
-                  <span className="font-medium">{activeSitesCount} / {maxSites}</span>
-                </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{isFreePlan ? 'Total Sites' : 'Active Sites'}:</span>
+                    <span className="font-medium">{sitesCount} / {maxSites}</span>
+                  </div>
               </div>
             </div>
             

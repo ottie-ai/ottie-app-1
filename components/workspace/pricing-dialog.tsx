@@ -363,6 +363,10 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
           messages.push(`${result.archivedSitesCount} site${result.archivedSitesCount > 1 ? 's' : ''} archived due to plan limit`)
         }
         
+        if (result.brandDomainRemoved) {
+          messages.push('Brand domain removed')
+        }
+        
         if (messages.length > 0) {
           toast.success(`Plan downgraded successfully. ${messages.join('. ')}.`)
         } else {

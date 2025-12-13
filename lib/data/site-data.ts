@@ -53,6 +53,38 @@ export async function countActiveSites(workspaceId: string): Promise<number> {
 }
 
 /**
+ * Count sites for a workspace based on plan type
+ * - For free plan: counts ALL sites (published, draft, archived) - limit is 1 total
+ * - For other plans: counts only published + draft sites (archived don't count)
+ */
+export async function countSitesForPlanLimit(
+  workspaceId: string,
+  planName: string | null | undefined
+): Promise<number> {
+  const supabase = await createClient()
+  
+  // For free plan, count ALL sites (including archived)
+  if (planName === 'free' || !planName) {
+    const { data, error, count } = await supabase
+      .from('sites')
+      .select('*', { count: 'exact', head: true })
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+      // Count all statuses for free plan
+
+    if (error) {
+      console.error('Error counting sites for free plan:', error)
+      return 0
+    }
+
+    return count || 0
+  }
+
+  // For other plans, count only published + draft (not archived)
+  return await countActiveSites(workspaceId)
+}
+
+/**
  * Get a single site by ID
  */
 export async function getSite(siteId: string): Promise<Site | null> {
@@ -102,11 +134,14 @@ export async function getSiteBySlug(
 /**
  * Create a new site
  * Validates that published sites have assigned_agent_id
- * Checks plan limit before creating (counts published + draft sites)
+ * Checks plan limit before creating
+ * - For free plan: counts ALL sites (including archived) - limit is 1 total
+ * - For other plans: counts only published + draft sites
  */
 export async function createSite(
   site: SiteInsert,
-  maxSites?: number
+  maxSites?: number,
+  planName?: string | null
 ): Promise<{ success: true; site: Site } | { error: string; limitExceeded?: boolean }> {
   const supabase = await createClient()
   
@@ -117,10 +152,15 @@ export async function createSite(
   
   // Check plan limit if maxSites is provided
   if (maxSites !== undefined && site.workspace_id) {
-    const activeSitesCount = await countActiveSites(site.workspace_id)
-    if (activeSitesCount >= maxSites) {
+    const sitesCount = await countSitesForPlanLimit(site.workspace_id, planName)
+    if (sitesCount >= maxSites) {
+      const isFreePlan = planName === 'free' || !planName
+      const message = isFreePlan
+        ? `You've reached the limit of 1 site for the free plan. Please upgrade to create more sites.`
+        : `You've reached the limit of ${maxSites} active site${maxSites !== 1 ? 's' : ''} for your plan. Please upgrade to create more sites or archive existing ones.`
+      
       return { 
-        error: `You've reached the limit of ${maxSites} active site${maxSites !== 1 ? 's' : ''} for your plan. Please upgrade to create more sites or archive existing ones.`,
+        error: message,
         limitExceeded: true
       }
     }
@@ -370,15 +410,76 @@ export async function archiveSite(siteId: string): Promise<{ success: true; site
 
 /**
  * Archive multiple sites (used during plan downgrade)
- * Archives sites beyond the limit, keeping the most recently updated ones active
+ * - For free plan: archives ALL sites except the newest one (limit is 1 total including archived)
+ * - For other plans: archives active sites (published + draft) beyond limit, keeping newest ones
  */
 export async function archiveSitesBeyondLimit(
   workspaceId: string,
-  maxSites: number
+  maxSites: number,
+  planName?: string | null
 ): Promise<{ success: true; archivedCount: number } | { error: string }> {
   const supabase = await createClient()
   
-  // Get all active sites (published + draft) ordered by updated_at (newest first)
+  const isFreePlan = planName === 'free' || !planName
+  
+  if (isFreePlan && maxSites === 1) {
+    // For free plan, archive ALL sites except the newest one (regardless of status)
+    const { data: allSites, error: fetchError } = await supabase
+      .from('sites')
+      .select('id, slug, metadata, updated_at')
+      .eq('workspace_id', workspaceId)
+      .is('deleted_at', null)
+      // Get all sites (published, draft, archived) for free plan
+      .order('updated_at', { ascending: false })
+
+    if (fetchError) {
+      console.error('Error fetching sites for archiving (free plan):', fetchError)
+      return { error: 'Failed to fetch sites' }
+    }
+
+    if (!allSites || allSites.length <= 1) {
+      // No sites need to be archived (0 or 1 site total)
+      return { success: true, archivedCount: 0 }
+    }
+
+    // Archive all sites except the newest one
+    const sitesToArchive = allSites.slice(1)
+    const archivedCount = sitesToArchive.length
+
+    // Archive each site
+    for (const site of sitesToArchive) {
+      // Only archive if not already archived
+      if (site.metadata?.archived_slug) {
+        // Already archived, skip
+        continue
+      }
+
+      const archivedSlug = `archived-${site.id}-${Date.now()}`
+      const updatedMetadata = {
+        ...(site.metadata || {}),
+        archived_slug: site.slug,
+      }
+
+      const { error: archiveError } = await supabase
+        .from('sites')
+        .update({
+          status: 'archived',
+          slug: archivedSlug,
+          metadata: updatedMetadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', site.id)
+
+      if (archiveError) {
+        console.error(`Error archiving site ${site.id}:`, archiveError)
+        // Continue with other sites even if one fails
+      }
+    }
+
+    return { success: true, archivedCount }
+  }
+
+  // For other plans, archive only active sites (published + draft) beyond limit
   const { data: activeSites, error: fetchError } = await supabase
     .from('sites')
     .select('id, slug, metadata, updated_at')
