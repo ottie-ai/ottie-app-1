@@ -364,7 +364,7 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             left: isMobile 
               ? '1rem'
               : (sidebar.state === 'expanded' 
-                ? 'calc(var(--sidebar-width, 16rem) + 0.5rem)' 
+              ? 'calc(var(--sidebar-width, 16rem) + 0.5rem)' 
                 : 'calc(var(--sidebar-width-icon, 3rem) + 0.5rem)'), 
             right: isMobile ? '1rem' : '0.5rem' 
           }}
@@ -390,28 +390,28 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             </Button>
             {!isMobile && (
               <>
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <Breadcrumbs
-                  items={[
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumbs
+              items={[
                     { label: 'Back to Sites', href: '/sites' },
-                    { label: site.title, href: `/sites/${site.id}` },
-                  ]}
-                />
+                { label: site.title, href: `/sites/${site.id}` },
+              ]}
+            />
               </>
             )}
             
             {/* Center - Tabs */}
             {!isMobile ? (
-              <div className="absolute left-1/2 -translate-x-1/2">
+            <div className="absolute left-1/2 -translate-x-1/2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <HoverableTabsList>
+                <HoverableTabsList>
                     <TabsTrigger value="website">Website</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
-                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                    <TabsTrigger value="leads">Leads</TabsTrigger>
-                  </HoverableTabsList>
-                </Tabs>
-              </div>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  <TabsTrigger value="leads">Leads</TabsTrigger>
+                </HoverableTabsList>
+              </Tabs>
+            </div>
             ) : (
               <MobileTabsSelector activeTab={activeTab} onTabChange={setActiveTab} />
             )}
@@ -419,21 +419,21 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             {/* Right side - Actions */}
             <div className={`${isMobile ? '' : 'ml-auto'} flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
               {!isMobile && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    // Always use current origin to ensure cookies/session are shared
-                    // For localhost, preserve the port number
-                    const { protocol, hostname, port } = window.location
-                    const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
-                    const previewUrl = `${baseUrl}/preview/${site.id}`
-                    window.open(previewUrl, '_blank', 'noopener,noreferrer')
-                  }}
-                >
-                  <ExternalLink className="size-4" />
-                  <span className="hidden md:inline">Preview</span>
-                </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Always use current origin to ensure cookies/session are shared
+                  // For localhost, preserve the port number
+                  const { protocol, hostname, port } = window.location
+                  const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
+                  const previewUrl = `${baseUrl}/preview/${site.id}`
+                  window.open(previewUrl, '_blank', 'noopener,noreferrer')
+                }}
+              >
+                <ExternalLink className="size-4" />
+                <span className="hidden md:inline">Preview</span>
+              </Button>
               )}
               <motion.div
                 animate={{ width: buttonBounds.width > 0 ? buttonBounds.width : 'auto' }}
