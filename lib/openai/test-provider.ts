@@ -19,13 +19,35 @@ export async function compareProviders(testData: string) {
   console.log('🔬 [Provider Test] Starting comparison test...')
   console.log('🔬 [Provider Test] Test data length:', testData.length, 'characters')
   
-  // Save original provider setting
-  const originalProvider = process.env.CALL1_AI_PROVIDER
+  // Save original Groq key setting
+  const originalGroqKey = process.env.GROQ_API_KEY
   
   try {
-    // Test OpenAI
+    // Test Groq (temporarily ensure Groq key is set)
+    console.log('\n📊 [Test] Testing Groq (Llama-3.3-70b-versatile)...')
+    if (!originalGroqKey) {
+      console.warn('⚠️ [Test] GROQ_API_KEY not set, skipping Groq test')
+    } else {
+      process.env.GROQ_API_KEY = originalGroqKey // Ensure it's set
+    }
+    const groqStartTime = Date.now()
+    let groqResult
+    let groqDuration = 0
+    try {
+      groqResult = await generateStructuredJSON(
+        getRealEstateConfigPrompt('text', testData),
+        undefined,
+        'gpt-4o-mini'
+      )
+      groqDuration = Date.now() - groqStartTime
+    } catch (groqError: any) {
+      console.warn('⚠️ [Test] Groq test failed:', groqError?.message)
+      groqResult = null
+    }
+    
+    // Test OpenAI (temporarily remove Groq key to force OpenAI)
     console.log('\n📊 [Test] Testing OpenAI (GPT-4o-mini)...')
-    process.env.CALL1_AI_PROVIDER = 'openai'
+    delete process.env.GROQ_API_KEY // Force OpenAI usage
     const openaiStartTime = Date.now()
     const openaiResult = await generateStructuredJSON(
       getRealEstateConfigPrompt('text', testData),
@@ -33,17 +55,6 @@ export async function compareProviders(testData: string) {
       'gpt-4o-mini'
     )
     const openaiDuration = Date.now() - openaiStartTime
-    
-    // Test Groq
-    console.log('\n📊 [Test] Testing Groq (Llama-3.1-8b-instant)...')
-    process.env.CALL1_AI_PROVIDER = 'groq'
-    const groqStartTime = Date.now()
-    const groqResult = await generateStructuredJSON(
-      getRealEstateConfigPrompt('text', testData),
-      undefined,
-      'llama-3.1-8b-instant'
-    )
-    const groqDuration = Date.now() - groqStartTime
     
     // Compare results
     const comparison = {
@@ -53,29 +64,33 @@ export async function compareProviders(testData: string) {
         dataSize: JSON.stringify(openaiResult.data).length,
         fields: Object.keys(openaiResult.data).length,
       },
-      groq: {
+      groq: groqResult ? {
         duration: groqDuration,
         usage: groqResult.usage,
         dataSize: JSON.stringify(groqResult.data).length,
         fields: Object.keys(groqResult.data).length,
-      },
-      speedup: `${(openaiDuration / groqDuration).toFixed(2)}x`,
-      winner: groqDuration < openaiDuration ? 'Groq' : 'OpenAI',
+      } : null,
+      speedup: groqResult ? `${(openaiDuration / groqDuration).toFixed(2)}x` : 'N/A',
+      winner: groqResult && groqDuration < openaiDuration ? 'Groq' : 'OpenAI',
     }
     
     console.log('\n📊 [Test] Comparison Results:')
     console.log('  OpenAI Duration:', openaiDuration, 'ms')
-    console.log('  Groq Duration:', groqDuration, 'ms')
-    console.log('  Speed Improvement:', comparison.speedup)
-    console.log('  Faster Provider:', comparison.winner)
+    if (groqResult) {
+      console.log('  Groq Duration:', groqDuration, 'ms')
+      console.log('  Speed Improvement:', comparison.speedup)
+      console.log('  Faster Provider:', comparison.winner)
+      console.log('  Groq Tokens:', groqResult.usage?.total_tokens || 'N/A')
+    } else {
+      console.log('  Groq: Test skipped or failed')
+    }
     console.log('  OpenAI Tokens:', openaiResult.usage?.total_tokens || 'N/A')
-    console.log('  Groq Tokens:', groqResult.usage?.total_tokens || 'N/A')
     
     return {
       success: true,
       comparison,
       openaiResult: openaiResult.data,
-      groqResult: groqResult.data,
+      groqResult: groqResult?.data || null,
     }
   } catch (error: any) {
     console.error('❌ [Test] Comparison failed:', error.message)
@@ -84,8 +99,12 @@ export async function compareProviders(testData: string) {
       error: error.message,
     }
   } finally {
-    // Restore original provider setting
-    process.env.CALL1_AI_PROVIDER = originalProvider
+    // Restore original Groq key setting
+    if (originalGroqKey) {
+      process.env.GROQ_API_KEY = originalGroqKey
+    } else {
+      delete process.env.GROQ_API_KEY
+    }
   }
 }
 
@@ -93,12 +112,15 @@ export async function compareProviders(testData: string) {
  * Get current AI provider configuration
  */
 export function getCurrentProviderConfig() {
-  const provider = (process.env.CALL1_AI_PROVIDER || 'openai').toLowerCase()
   const hasOpenAI = !!process.env.OPENAI_API_KEY
   const hasGroq = !!process.env.GROQ_API_KEY
   
+  // With new logic: Groq is primary (if configured), OpenAI is fallback
+  const primaryProvider = hasGroq ? 'groq' : 'openai'
+  
   return {
-    currentProvider: provider,
+    primaryProvider,
+    fallbackProvider: 'openai',
     availableProviders: {
       openai: hasOpenAI,
       groq: hasGroq,
@@ -106,7 +128,7 @@ export function getCurrentProviderConfig() {
     recommendations: {
       canUseOpenAI: hasOpenAI,
       canUseGroq: hasGroq,
-      isOptimalSetup: hasOpenAI && hasGroq, // Best to have both configured
+      isOptimalSetup: hasOpenAI && hasGroq, // Best to have both configured (Groq primary, OpenAI fallback)
     },
   }
 }
@@ -116,23 +138,28 @@ export function getCurrentProviderConfig() {
  * Throws error if configuration is invalid
  */
 export function validateProviderConfig() {
-  const provider = (process.env.CALL1_AI_PROVIDER || 'openai').toLowerCase()
-  
-  // OpenAI is always required for Call 2
+  // OpenAI is always required (for fallback and Call 2)
   if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is required (for Call 2 - title/highlights generation)')
+    throw new Error('OPENAI_API_KEY is required (for fallback and Call 2 - title/highlights generation)')
   }
   
-  // Check Call 1 provider
-  if (provider === 'openai') {
-    // Already checked above
-    return { valid: true, provider: 'openai', model: 'gpt-4o-mini' }
-  } else if (provider === 'groq') {
-    if (!process.env.GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY is not configured. Either set it or change CALL1_AI_PROVIDER to "openai"')
+  // Groq is optional (primary provider if configured)
+  const hasGroq = !!process.env.GROQ_API_KEY
+  
+  if (hasGroq) {
+    return { 
+      valid: true, 
+      primaryProvider: 'groq', 
+      fallbackProvider: 'openai',
+      groqModel: 'llama-3.3-70b-versatile',
+      openaiModel: 'gpt-4o-mini'
     }
-    return { valid: true, provider: 'groq', model: 'llama-3.1-8b-instant' }
   } else {
-    throw new Error(`Invalid CALL1_AI_PROVIDER: "${provider}". Must be "openai" or "groq"`)
+    return { 
+      valid: true, 
+      primaryProvider: 'openai', 
+      fallbackProvider: null,
+      openaiModel: 'gpt-4o-mini'
+    }
   }
 }

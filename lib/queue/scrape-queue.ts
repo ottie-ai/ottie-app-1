@@ -827,8 +827,6 @@ async function generateConfigFromData(
       
       const titleResponse = await generateTitle(
         propertyText,
-        generatedConfig.title,
-        generatedConfig.highlights,
         'gpt-4o-mini',
         generatedConfig.language // Pass language explicitly
       )
@@ -837,10 +835,14 @@ async function generateConfigFromData(
       call2Duration = titleResponse.callDuration
       const call2EndTime = new Date().toISOString()
       
-      // Update title and highlights in config
+      // Update title, subtitle and highlights in config
       if (titleResponse.title && titleResponse.title.trim().length > 0) {
         finalConfig.title = titleResponse.title.trim()
         console.log(`✅ [Queue Worker] Title improved: "${titleResponse.title}"`)
+      }
+      if (titleResponse.subtitle && titleResponse.subtitle.trim().length > 0) {
+        finalConfig.subtitle = titleResponse.subtitle.trim()
+        console.log(`✅ [Queue Worker] Subtitle generated: "${titleResponse.subtitle.substring(0, 50)}..."`)
       }
       if (titleResponse.highlights && Array.isArray(titleResponse.highlights)) {
         finalConfig.highlights = titleResponse.highlights

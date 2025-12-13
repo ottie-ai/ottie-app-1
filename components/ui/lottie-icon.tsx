@@ -302,7 +302,7 @@ export function LottieIcon({ animationData, className = '', size = 18, useGradie
       <Lottie
         lottieRef={lottieRef}
         animationData={themedAnimationData}
-        style={{ width: size, height: size }}
+        style={{ width: size, height: size, pointerEvents: 'none', userSelect: 'none' }}
         loop={false}
         autoplay={false}
         onComplete={() => {

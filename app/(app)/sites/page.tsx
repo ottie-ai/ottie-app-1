@@ -1105,7 +1105,7 @@ export default function SitesPage() {
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                 className="group hidden md:block"
               >
-                <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-muted-foreground/30 keep-border" initialGlow>
+                <GlowCard className="border-dashed bg-transparent !bg-transparent dark:border-white/10 keep-border" initialGlow>
                   <CardContent className="flex flex-col items-center justify-center aspect-[4/3] text-foreground p-6">
                   <div className="mb-4">
                     <LottieAddCardIcon size={28} invertTheme={false} />

@@ -5,17 +5,14 @@
 
 /**
  * Get the title and highlights generation prompt
- * Returns JSON with title and highlights
+ * Returns JSON with title, subtitle and highlights
  * 
  * @param propertyData - The property data (JSON stringified config from first OpenAI call)
- * @param currentTitle - Optional current title to improve/regenerate
- * @param currentHighlights - Optional current highlights to improve/regenerate
- * @returns Complete prompt string for title and highlights generation
+ * @param language - Optional language code (ISO 2-letter)
+ * @returns Complete prompt string for title, subtitle and highlights generation
  */
 export function getTitleGenerationPrompt(
   propertyData: string,
-  currentTitle?: string,
-  currentHighlights?: any[],
   language?: string
 ): string {
   const iconCategories = {
@@ -66,9 +63,23 @@ export function getTitleGenerationPrompt(
 
   return `You are a copywriter for a high-end real estate agency.
 
-TASK: Generate 1 emotional title + exactly 6 UNIQUE highlights in ${detectedLanguage}.
+TASK: Generate EXACTLY 1 emotional, aspirational TITLE (max 8 words) + 1 SUBTITLE (20-40 words) + 6 UNIQUE HIGHLIGHTS in ${detectedLanguage}.
 
 INPUT DATA: ${propertyData}
+
+TITLE RULES:
+- Lifestyle-focused: Mediterranean escape, Oceanfront sanctuary, Private hilltop retreat
+- Location + emotion: Cascais Coastal Masterpiece, Miami Sunset Penthouse
+- Aspirational: Where Luxury Meets Horizon, Timeless Coastal Elegance
+- Max 8 words, punchy, hero-section ready
+- NO: "Beautiful house", "3 bed villa", "Modern property" (too generic)
+
+SUBTITLE RULES:
+- Lifestyle narrative: 20-40 words that paint daily life
+- Buyer immersion: Use phrases like "Imagine waking...", "Your mornings...", "Host unforgettable...", "Wake to..."
+- Paint daily life: Describe specific moments and experiences (e.g., "Wake to Atlantic sunrises from your infinity pool terrace. Host unforgettable evenings on the panoramic deck. Privacy, luxury, and coastal elegance await in your private Cascais sanctuary.")
+- Evocative and aspirational: Make the buyer visualize living there
+- NO generic descriptions: Focus on specific, sensory experiences
 
 STRICT RULES FOR HIGHLIGHTS:
 
@@ -95,6 +106,7 @@ ICON CATEGORIES: ${iconJson}
 Return ONLY JSON:
 {
   "title": "...",
+  "subtitle": "...", // 20-40 words, lifestyle narrative with buyer immersion
   "highlights": [
     {
       "title": "...", // Max 4 words, punchy

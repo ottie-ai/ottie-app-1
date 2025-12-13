@@ -1,5 +1,6 @@
 {
   "title": "",
+  "subtitle": "",
   "language": "",
   "currency": "",
   "currency_symbol": "",
@@ -18,6 +19,7 @@
     "neighborhood": "",
     "state": "",
     "zipcode": "",
+    "county": "",
     "country": "",
     "subdivision": ""
   },

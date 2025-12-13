@@ -2,7 +2,7 @@
 
 import type { Site } from '@/types/database'
 import type { PageConfig } from '@/types/builder'
-import { PreviewSitePage } from '@/app/(app)/preview/[id]/preview-site-page'
+import { PreviewSitePage } from '@/app/preview/[id]/preview-site-page'
 
 interface SiteContentClientProps {
   site: Site
@@ -11,13 +11,14 @@ interface SiteContentClientProps {
 }
 
 export function SiteContentClient({ site, siteConfig, canEdit }: SiteContentClientProps) {
-  // Use PreviewSitePage component which handles everything
+  // Use clean PreviewSitePage component (no admin elements like morphing indicator)
+  // This is for client portal pages, not admin preview
   // Update site.config to match siteConfig
   const siteWithConfig = {
     ...site,
     config: siteConfig,
   }
   
-  return <PreviewSitePage site={siteWithConfig} canEdit={canEdit} />
+  return <PreviewSitePage site={siteWithConfig} />
 }
 

@@ -52,6 +52,9 @@ export function getRealEstateConfigPrompt(
     sampleConfig = JSON.parse(readFileSync(sampleConfigPath, 'utf-8'))
   }
 
+  // Remove fields that are generated in the second OpenAI call (title, subtitle, highlights)
+  const { title, subtitle, highlights, ...configWithoutTitleFields } = sampleConfig
+
   return `Analyze real estate listing. Fill JSON config for one-pager.
 
 PRIORITY FIELDS (fill FIRST):
@@ -84,8 +87,6 @@ RULES:
 
 - Ignore: similar properties, navigation, footers
 
-- **highlights exactly 6**, do not use the same words in both title and value, make sure the highlights are diverse
-
 - floorplan_url: Find a dedicated floor plan (PDF/SVG/image url). Look for "Floor plan"/"Plans"/"Grundriss" links in all languages.
 
 - language: detect from listing → set language field to ISO code (en/es/de/cs/sk/fr/it) and keep ALL text fields in this language.
@@ -93,6 +94,8 @@ RULES:
 - interest_rate: in percent
 
 - do not use currency in unit
+
+- country: if you can't generate country from content, guess it based on address and language combination
 
 - photos: EXHAUSTIVE LIST. You MUST extract EVERY single photo URL found in the input. Do not truncate the array. Maximum 20. Keep the same order.
 
@@ -111,7 +114,7 @@ RULES:
 
 JSON STRUCTURE:
 
-${JSON.stringify(sampleConfig, null, 2)}
+${JSON.stringify(configWithoutTitleFields, null, 2)}
 
 DATA TO PROCESS:
 

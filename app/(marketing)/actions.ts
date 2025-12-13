@@ -1287,15 +1287,16 @@ export async function generateTitleCall2(previewId: string) {
     // Convert relevant data to text format (not JSON)
     const propertyText = formatPropertyDataForTitle(relevantData)
     
-    // Generate improved title and highlights
+    // Generate improved title, subtitle and highlights
     const openaiResponse = await generateTitle(
       propertyText,
-      generatedConfig.title,
-      generatedConfig.highlights
+      'gpt-4o-mini',
+      generatedConfig.language
     )
     
     const titleAndHighlights = {
       title: openaiResponse.title,
+      subtitle: openaiResponse.subtitle,
       highlights: openaiResponse.highlights,
     }
     const call2Usage = openaiResponse.usage

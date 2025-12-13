@@ -40,12 +40,12 @@ export function getGroqClient(): Groq {
 }
 
 /**
- * Generate structured JSON from text using OpenAI or Groq
- * Provider is determined by CALL1_AI_PROVIDER env variable (default: 'openai')
+ * Generate structured JSON from text
+ * Uses Groq (Llama Versatile) as primary provider with OpenAI as fallback
  * 
  * @param prompt - The prompt to send to AI
  * @param schema - Optional JSON schema for structured output
- * @param model - Model to use (default: 'gpt-4o-mini' for OpenAI, 'llama-3.1-8b-instant' for Groq)
+ * @param model - Model to use for OpenAI fallback (default: 'gpt-4o-mini')
  * @returns Generated JSON object
  */
 export async function generateStructuredJSON(
@@ -53,17 +53,24 @@ export async function generateStructuredJSON(
   schema?: object,
   model?: string
 ): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
-  // Determine provider from env variable (default: 'openai')
-  // Options: 'openai' or 'groq'
-  const provider = (process.env.CALL1_AI_PROVIDER || 'openai').toLowerCase()
+  // Try Groq first if API key is configured
+  const hasGroqKey = !!process.env.GROQ_API_KEY
   
-  if (provider === 'groq') {
-    // If Groq provider, ignore passed model and use Groq default model
-    // This prevents passing OpenAI model names (like 'gpt-4o-mini') to Groq
-    return generateStructuredJSONWithGroq(prompt, schema, 'llama-3.3-70b-versatile')
+  if (hasGroqKey) {
+    try {
+      console.log('🔄 [Structured JSON] Attempting Groq (Llama Versatile) first...')
+      return await generateStructuredJSONWithGroq(prompt, schema, 'llama-3.3-70b-versatile')
+    } catch (groqError: any) {
+      console.warn('⚠️ [Structured JSON] Groq failed, falling back to OpenAI...')
+      console.warn('⚠️ [Structured JSON] Groq error:', groqError?.message || groqError)
+      
+      // Fallback to OpenAI
+      return await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+    }
   } else {
-    // For OpenAI, use passed model or default to 'gpt-4o-mini'
-    return generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+    // No Groq key, use OpenAI directly
+    console.log('🔄 [Structured JSON] Using OpenAI (Groq not configured)...')
+    return await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
   }
 }
 
@@ -224,53 +231,137 @@ async function generateStructuredJSONWithGroq(
     console.error(`❌ [Groq] Error message:`, error?.message)
     console.error(`❌ [Groq] Error status:`, error?.status)
     console.error(`❌ [Groq] Error code:`, error?.code)
-    console.error(`❌ [Groq] Full error:`, error)
 
-    if (error?.message?.includes('timeout')) {
-      throw new Error(`Groq API timeout after ${duration}ms. The model may be overloaded or the request is too large.`)
-    }
-    if (error?.status === 401) {
-      throw new Error('Groq API key is invalid')
-    }
-    if (error?.status === 429) {
-      throw new Error('Groq API rate limit exceeded. Please try again in a moment.')
-    }
-    if (error?.status === 500 || error?.status === 503) {
-      throw new Error(`Groq API server error (${error.status}). The service may be temporarily unavailable.`)
-    }
-    if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT') {
-      throw new Error(`Groq API connection error: ${error.message}`)
+    // Re-throw to trigger fallback to OpenAI
+    throw error
+  }
+}
+
+/**
+ * Generate title and highlights for real estate listing using Groq (Llama Versatile)
+ * Uses higher temperature (0.8) for more creative, lifestyle-focused titles
+ * Returns JSON with title, subtitle and highlights
+ * 
+ * @param propertyData - The property data (JSON stringified config from first OpenAI call)
+ * @param language - Optional language code (ISO 2-letter)
+ * @returns Generated JSON object with title, subtitle and highlights
+ */
+async function generateTitleWithGroq(
+  propertyData: string,
+  language?: string
+): Promise<{ title: string; subtitle: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+  const { getTitleGenerationPrompt } = await import('./title-prompts')
+  const prompt = getTitleGenerationPrompt(propertyData, language)
+  
+  const client = getGroqClient()
+  const callStartTime = Date.now()
+
+  console.log('🤖 [Groq] Generating title, subtitle and highlights...')
+  console.log('🤖 [Groq] Model: llama-3.3-70b-versatile')
+  console.log('🤖 [Groq] Temperature: 0.8')
+
+  // Timeout wrapper - 60 seconds max
+  const timeoutMs = 60000
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Groq API timeout after ${timeoutMs}ms`)), timeoutMs)
+  })
+
+  try {
+    const apiCall = client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.8, // Higher temperature for more creative titles
+      response_format: { type: 'json_object' },
+      max_tokens: 8192, // 8k tokens for title, subtitle and highlights
+    })
+
+    const response = await Promise.race([apiCall, timeoutPromise])
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('No content in Groq response')
     }
 
-    throw new Error(`Groq error: ${error?.message || error?.toString() || 'Unknown error'}`)
+    const callEndTime = Date.now()
+    const callDuration = callEndTime - callStartTime
+    
+    // Extract usage info
+    const usage = response.usage ? {
+      prompt_tokens: response.usage.prompt_tokens,
+      completion_tokens: response.usage.completion_tokens,
+      total_tokens: response.usage.total_tokens,
+    } : undefined
+
+    if (usage) {
+      console.log(`📊 [Groq] Usage: ${usage.prompt_tokens} prompt + ${usage.completion_tokens} completion = ${usage.total_tokens} total tokens`)
+    }
+
+    // Parse JSON from response
+    try {
+      const result = JSON.parse(content)
+      
+      // Validate structure
+      if (!result.title || typeof result.title !== 'string') {
+        throw new Error('Invalid JSON: missing or invalid title field')
+      }
+      if (!result.subtitle || typeof result.subtitle !== 'string') {
+        throw new Error('Invalid JSON: missing or invalid subtitle field')
+      }
+      if (!result.highlights || !Array.isArray(result.highlights)) {
+        throw new Error('Invalid JSON: missing or invalid highlights field')
+      }
+
+      console.log(`✅ [Groq] Generated title: "${result.title}" with subtitle and ${result.highlights.length} highlights (${callDuration}ms)`)
+
+      return {
+        title: result.title.trim(),
+        subtitle: result.subtitle.trim(),
+        highlights: result.highlights,
+        usage,
+        callDuration,
+      }
+    } catch (parseError) {
+      console.error('❌ [Groq] Failed to parse JSON:', parseError)
+      throw new Error(`Invalid JSON in Groq response: ${parseError}`)
+    }
+  } catch (error: any) {
+    const duration = Date.now() - callStartTime
+    console.error(`❌ [Groq] Title generation error after ${duration}ms:`)
+    console.error(`❌ [Groq] Error type:`, error?.constructor?.name)
+    console.error(`❌ [Groq] Error message:`, error?.message)
+
+    // Re-throw to trigger fallback
+    throw error
   }
 }
 
 /**
  * Generate title and highlights for real estate listing using OpenAI
  * Uses higher temperature (0.8) for more creative, lifestyle-focused titles
- * Returns JSON with title and highlights
+ * Returns JSON with title, subtitle and highlights
  * 
  * @param propertyData - The property data (JSON stringified config from first OpenAI call)
- * @param currentTitle - Optional current title to improve/regenerate
- * @param currentHighlights - Optional current highlights to improve/regenerate
  * @param model - Model to use (default: 'gpt-4o-mini')
- * @returns Generated JSON object with title and highlights
+ * @param language - Optional language code (ISO 2-letter)
+ * @returns Generated JSON object with title, subtitle and highlights
  */
-export async function generateTitle(
+async function generateTitleWithOpenAI(
   propertyData: string,
-  currentTitle?: string,
-  currentHighlights?: any[],
   model: string = 'gpt-4o-mini',
   language?: string
-): Promise<{ title: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+): Promise<{ title: string; subtitle: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
   const { getTitleGenerationPrompt } = await import('./title-prompts')
-  const prompt = getTitleGenerationPrompt(propertyData, currentTitle, currentHighlights, language)
+  const prompt = getTitleGenerationPrompt(propertyData, language)
   
   const client = getOpenAIClient()
   const callStartTime = Date.now()
 
-  console.log('🤖 [OpenAI] Generating title and highlights...')
+  console.log('🤖 [OpenAI] Generating title, subtitle and highlights...')
   console.log('🤖 [OpenAI] Model:', model)
   console.log('🤖 [OpenAI] Temperature: 0.8')
 
@@ -314,14 +405,18 @@ export async function generateTitle(
       if (!result.title || typeof result.title !== 'string') {
         throw new Error('Invalid JSON: missing or invalid title field')
       }
+      if (!result.subtitle || typeof result.subtitle !== 'string') {
+        throw new Error('Invalid JSON: missing or invalid subtitle field')
+      }
       if (!result.highlights || !Array.isArray(result.highlights)) {
         throw new Error('Invalid JSON: missing or invalid highlights field')
       }
 
-      console.log(`✅ [OpenAI] Generated title: "${result.title}" with ${result.highlights.length} highlights (${callDuration}ms)`)
+      console.log(`✅ [OpenAI] Generated title: "${result.title}" with subtitle and ${result.highlights.length} highlights (${callDuration}ms)`)
 
       return {
         title: result.title.trim(),
+        subtitle: result.subtitle.trim(),
         highlights: result.highlights,
         usage,
         callDuration,
@@ -342,5 +437,41 @@ export async function generateTitle(
     }
 
     throw new Error(`OpenAI title generation error: ${error.message || 'Unknown error'}`)
+  }
+}
+
+/**
+ * Generate title, subtitle and highlights for real estate listing
+ * Uses Groq (Llama Versatile) as primary provider with OpenAI as fallback
+ * Returns JSON with title, subtitle and highlights
+ * 
+ * @param propertyData - The property data (JSON stringified config from first OpenAI call)
+ * @param model - Model to use for OpenAI fallback (default: 'gpt-4o-mini')
+ * @param language - Optional language code (ISO 2-letter)
+ * @returns Generated JSON object with title, subtitle and highlights
+ */
+export async function generateTitle(
+  propertyData: string,
+  model: string = 'gpt-4o-mini',
+  language?: string
+): Promise<{ title: string; subtitle: string; highlights: any[]; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+  // Try Groq first if API key is configured
+  const hasGroqKey = !!process.env.GROQ_API_KEY
+  
+  if (hasGroqKey) {
+    try {
+      console.log('🔄 [Title Generation] Attempting Groq (Llama Versatile) first...')
+      return await generateTitleWithGroq(propertyData, language)
+    } catch (groqError: any) {
+      console.warn('⚠️ [Title Generation] Groq failed, falling back to OpenAI...')
+      console.warn('⚠️ [Title Generation] Groq error:', groqError?.message || groqError)
+      
+      // Fallback to OpenAI
+      return await generateTitleWithOpenAI(propertyData, model, language)
+    }
+  } else {
+    // No Groq key, use OpenAI directly
+    console.log('🔄 [Title Generation] Using OpenAI (Groq not configured)...')
+    return await generateTitleWithOpenAI(propertyData, model, language)
   }
 }
