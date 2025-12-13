@@ -120,7 +120,7 @@ export function LoadingText({
           y: -12,
           transition: { 
             duration: 0.4,
-            ease: [0.7, 0, 0.84, 0]
+            ease: [0.7, 0, 0.84, 0] as [number, number, number, number]
           } 
         }
       : { opacity: 1, filter: "blur(0px)", y: 0 })
@@ -132,7 +132,7 @@ export function LoadingText({
         y: -12,
         transition: { 
           duration: 0.4,
-          ease: [0.7, 0, 0.84, 0]
+          ease: [0.7, 0, 0.84, 0] as [number, number, number, number]
         } 
       }
     : {
