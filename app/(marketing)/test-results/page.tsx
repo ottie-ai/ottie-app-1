@@ -89,7 +89,7 @@ function TestResultsContent() {
   const totalTime = data?.totalTime
 
   return (
-    <div className="dark bg-[#08000d] min-h-screen">
+    <div className="dark bg-[var(--dark-bg)] min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-20">
         {/* Back Button */}
         <Link 
@@ -263,7 +263,7 @@ function TestResultsContent() {
 export default function TestResultsPage() {
   return (
     <Suspense fallback={
-      <div className="dark bg-[#08000d] min-h-screen">
+      <div className="dark bg-[var(--dark-bg)] min-h-screen">
         <div className="max-w-7xl mx-auto px-4 py-20">
           <Link 
             href="/" 

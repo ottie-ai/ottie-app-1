@@ -55,6 +55,8 @@
   :root {
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --radius: 0.625rem;
+  /* Global dark background - used for homepage and admin dark mode */
+  --dark-bg: #08000d;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -90,11 +92,11 @@
   }
 
   .dark {
-  --background: oklch(0 0 0);
+  --background: var(--dark-bg);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.039 0 0);
+  --card: var(--dark-bg);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0 0 0);
+  --popover: var(--dark-bg);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
@@ -106,7 +108,7 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: rgb(31, 31, 31);
+  --border: rgba(255, 255, 255, 0.1);
   --input: oklch(1 0 0 / 0.15);
   --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -114,7 +116,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: rgb(10, 10, 10);
+  --sidebar: var(--dark-bg);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -953,9 +955,20 @@ canvas {
 
 /* Sidebar background image in dark mode */
 .dark [data-sidebar="sidebar"] {
+  position: relative;
+}
+
+.dark [data-sidebar="sidebar"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
   background-image: url("/images/sidebar-bg-dark.png");
-  background-position: bottom center;
+  background-position: center bottom;
   background-repeat: no-repeat;
-  background-size: 100% auto;
+  background-size: auto 50%;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+  transform: translateY(10%);
 }
 

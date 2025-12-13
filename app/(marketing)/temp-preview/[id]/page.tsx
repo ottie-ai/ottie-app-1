@@ -337,7 +337,7 @@ function PreviewContent() {
 
   if (loading) {
     return (
-      <div className={`dark bg-[#08000d] min-h-screen flex items-center justify-center transition-opacity duration-[600ms] ${isRevealing ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`dark bg-[var(--dark-bg)] min-h-screen flex items-center justify-center transition-opacity duration-[600ms] ${isRevealing ? 'opacity-0' : 'opacity-100'}`}>
         <LottieSpinner size={32} />
       </div>
     )
@@ -345,7 +345,7 @@ function PreviewContent() {
 
   if (error || !preview) {
     return (
-      <div className="dark bg-[#08000d] min-h-screen">
+      <div className="dark bg-[var(--dark-bg)] min-h-screen">
         <div className="max-w-7xl mx-auto px-4 py-20">
           <Link 
             href="/" 
@@ -377,9 +377,9 @@ function PreviewContent() {
                         preview?.scraped_data?.provider === 'apify'
 
   return (
-    <div className={`dark bg-[#08000d] min-h-screen transition-opacity duration-[600ms] ${isRevealing ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`dark bg-[var(--dark-bg)] min-h-screen transition-opacity duration-[600ms] ${isRevealing ? 'opacity-100' : 'opacity-0'}`}>
       {/* Header Bar */}
-      <div className="sticky top-0 z-50 border-b border-white/10 bg-[#08000d]/80 backdrop-blur-sm">
+      <div className="sticky top-0 z-50 border-b border-white/10 bg-[var(--dark-bg)]/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -1211,7 +1211,7 @@ function PreviewContent() {
 export default function PreviewPage() {
   return (
     <Suspense fallback={
-      <div className="dark bg-[#08000d] min-h-screen flex items-center justify-center">
+      <div className="dark bg-[var(--dark-bg)] min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="flex-shrink-0 w-8 h-8">
             <LottieSpinner size={32} />

@@ -528,7 +528,7 @@ export default function Home() {
   }
 
   return (
-    <div className="dark bg-[#08000d] min-h-screen overflow-hidden">
+    <div className="dark bg-[var(--dark-bg)] min-h-screen overflow-hidden">
       {/* Sphere Background - animated with scale wrapper */}
         <div
         ref={sphereWrapperRef}
@@ -874,7 +874,7 @@ export default function Home() {
       {/* Feature Points Section - Below the fold */}
       <section 
         ref={secondSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[var(--dark-bg)] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-4xl px-4 text-center">
           <Typography variant="h2" className="mb-12 text-white border-none">
@@ -936,7 +936,7 @@ export default function Home() {
       {/* Third Section - CTA */}
       <section 
         ref={thirdSectionRef}
-        className={`relative bg-[#08000d] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+        className={`relative bg-[var(--dark-bg)] min-h-screen flex items-center justify-center py-20 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="w-full max-w-2xl px-4 text-center">
           <Typography variant="h2" className="mb-6 text-white border-none">
@@ -999,7 +999,7 @@ function PricingSection({ isLoading, plans }: { isLoading: boolean; plans: Plan[
 
   return (
     <section 
-      className={`relative bg-[#08000d] py-24 md:py-32 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+      className={`relative bg-[var(--dark-bg)] py-24 md:py-32 transition-all duration-1000 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
     >
       <div className="w-full max-w-6xl mx-auto px-4">
         {/* Header */}

@@ -14,7 +14,7 @@ export default function DPAPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-[#08000d] text-white">
+      <main className="min-h-screen bg-[var(--dark-bg)] text-white">
         <div className="container mx-auto px-4 py-16 max-w-4xl">
           <div className="space-y-8">
             {/* Header */}
