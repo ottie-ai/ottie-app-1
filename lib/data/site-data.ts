@@ -172,27 +172,57 @@ export async function createSite(
     domain: site.domain || 'ottie.site',
   }
   
-  const { data, error } = await supabase
-    .from('sites')
-    .insert(siteData)
-    .select()
-    .single()
+  // Retry logic for slug conflicts (race conditions)
+  const maxRetries = 3
+  let currentSlug = siteData.slug
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const { data, error } = await supabase
+      .from('sites')
+      .insert({ ...siteData, slug: currentSlug })
+      .select()
+      .single()
 
-  if (error) {
+    if (!error) {
+      // Success!
+      return { success: true, site: data }
+    }
+    
+    // Check if error is due to duplicate slug (race condition)
+    if (error.code === '23505' && attempt < maxRetries - 1) {
+      // Unique violation - slug was taken between our check and insert
+      console.log(`[createSite] Slug conflict detected (attempt ${attempt + 1}/${maxRetries}), generating new slug...`)
+      
+      // Import slug generation function
+      const { generateAvailableSlug } = await import('@/lib/data/slug-availability')
+      
+      // Generate a new available slug
+      currentSlug = await generateAvailableSlug(site.slug, siteData.domain)
+      console.log(`[createSite] Generated new slug: ${currentSlug}`)
+      
+      // Retry with new slug
+      continue
+    }
+    
+    // Non-retryable error or last attempt
     console.error('Error creating site:', error)
-    // Check if error is due to duplicate slug
-    if (error.code === '23505') { // Unique violation
+    
+    if (error.code === '23505') {
+      // Unique violation on last attempt
       return { error: 'This slug is already taken. Please choose a different one.' }
     }
+    
     // Check if it's the constraint violation
     if (error.message?.includes('cannot be published without an assigned agent') || 
         error.message?.includes('sites_published_must_be_assigned')) {
       return { error: 'Site cannot be published without an assigned agent. Please assign an agent first.' }
     }
+    
     return { error: 'Failed to create site' }
   }
-
-  return { success: true, site: data }
+  
+  // Should never reach here, but TypeScript requires a return
+  return { error: 'Failed to create site after multiple attempts' }
 }
 
 /**

@@ -97,9 +97,33 @@ export async function getWorkspace(workspaceId: string): Promise<Workspace | nul
 
 export async function updateWorkspace(
   workspaceId: string,
-  updates: WorkspaceUpdate
+  updates: WorkspaceUpdate,
+  options?: {
+    expectedUpdatedAt?: string // For optimistic locking
+  }
 ): Promise<Workspace | null> {
   const supabase = await createClient()
+  
+  // If optimistic locking is enabled, verify updated_at hasn't changed
+  if (options?.expectedUpdatedAt) {
+    // First, check if the workspace has been modified since expectedUpdatedAt
+    const { data: currentWorkspace } = await supabase
+      .from('workspaces')
+      .select('updated_at')
+      .eq('id', workspaceId)
+      .single()
+    
+    if (currentWorkspace && currentWorkspace.updated_at !== options.expectedUpdatedAt) {
+      console.warn('[updateWorkspace] Optimistic locking conflict detected:', {
+        expected: options.expectedUpdatedAt,
+        current: currentWorkspace.updated_at,
+        workspaceId
+      })
+      // Workspace was modified by another request - return null to signal conflict
+      return null
+    }
+  }
+  
   const { data, error } = await supabase
     .from('workspaces')
     .update(updates)

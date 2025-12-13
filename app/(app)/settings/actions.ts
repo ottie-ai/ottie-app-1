@@ -1039,6 +1039,15 @@ export async function handleDowngradeWorkspacePlan(
     if ('error' in brandDomainResult) {
       // Log error but continue with plan downgrade - don't fail the entire operation
       console.error('[Plan Downgrade] Failed to remove brand domain:', brandDomainResult.error)
+      console.error('[CRITICAL] [MONITORING ALERT] Brand domain removal failed during plan downgrade', {
+        workspaceId,
+        targetPlan,
+        error: brandDomainResult.error,
+        timestamp: new Date().toISOString(),
+        action: 'manual_cleanup_required'
+      })
+      // TODO: Send notification to admin/monitoring system
+      // Example: await sendMonitoringAlert('brand_domain_removal_failed', { workspaceId, error })
     } else {
       brandDomainRemoved = true
       console.log('[Plan Downgrade] Successfully removed brand domain due to plan downgrade')

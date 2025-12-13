@@ -57,6 +57,92 @@ function sanitizeErrorMessage(error: string): string {
 }
 
 /**
+ * Check if error is transient (can be retried)
+ */
+function isTransientError(error: any, statusCode?: number): boolean {
+  // Retry on network errors, timeouts, and 5xx server errors
+  if (statusCode && statusCode >= 500 && statusCode < 600) {
+    return true
+  }
+  
+  // Retry on rate limits (429)
+  if (statusCode === 429) {
+    return true
+  }
+  
+  // Check error message for transient patterns
+  const errorMessage = typeof error === 'string' ? error : error?.message || ''
+  const transientPatterns = [
+    /timeout/i,
+    /ECONNRESET/i,
+    /ETIMEDOUT/i,
+    /ENOTFOUND/i,
+    /network/i,
+    /temporarily unavailable/i,
+    /try again/i,
+  ]
+  
+  return transientPatterns.some(pattern => pattern.test(errorMessage))
+}
+
+/**
+ * Retry wrapper for Vercel API calls
+ * Retries transient errors with exponential backoff
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: {
+    maxRetries?: number
+    initialDelay?: number
+    maxDelay?: number
+    operationName?: string
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    operationName = 'Vercel API operation'
+  } = options
+  
+  let lastError: any
+  let delay = initialDelay
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      
+      // Don't retry on last attempt
+      if (attempt === maxRetries) {
+        break
+      }
+      
+      // Check if error is transient
+      const statusCode = (error as any)?.statusCode || (error as any)?.status
+      if (!isTransientError(error, statusCode)) {
+        // Non-transient error - don't retry
+        throw error
+      }
+      
+      console.log(`[Vercel API] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`)
+      console.log(`[Vercel API] Error:`, error)
+      
+      // Wait before retry with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay))
+      
+      // Increase delay for next retry (exponential backoff)
+      delay = Math.min(delay * 2, maxDelay)
+    }
+  }
+  
+  // All retries failed
+  console.error(`[Vercel API] ${operationName} failed after ${maxRetries + 1} attempts`)
+  throw lastError
+}
+
+/**
  * Get Vercel API credentials from environment
  */
 function getVercelCredentials() {
@@ -125,67 +211,76 @@ export async function addVercelDomain(
   }
 ): Promise<{ success: true; domain: VercelDomainResponse } | { error: string }> {
   try {
-    const { token } = getVercelCredentials()
-    const finalProjectId = projectId || await getProjectId()
+    return await withRetry(
+      async () => {
+        const { token } = getVercelCredentials()
+        const finalProjectId = projectId || await getProjectId()
 
-    if (!finalProjectId) {
-      return { error: 'Project ID not found. Please contact support.' }
-    }
+        if (!finalProjectId) {
+          throw new Error('Project ID not found. Please contact support.')
+        }
 
-    // Prepare request body
-    const requestBody: {
-      name: string
-      redirect?: string
-      redirectStatusCode?: number
-    } = {
-      name: domain,
-    }
+        // Prepare request body
+        const requestBody: {
+          name: string
+          redirect?: string
+          redirectStatusCode?: number
+        } = {
+          name: domain,
+        }
 
-    // Add redirect configuration if provided
-    if (options?.redirect) {
-      requestBody.redirect = options.redirect
-      requestBody.redirectStatusCode = options.redirectStatusCode || 307
-      console.log('[Vercel API] Adding domain with redirect:', {
-        domain,
-        redirect: options.redirect,
-        redirectStatusCode: requestBody.redirectStatusCode,
-      })
-    }
+        // Add redirect configuration if provided
+        if (options?.redirect) {
+          requestBody.redirect = options.redirect
+          requestBody.redirectStatusCode = options.redirectStatusCode || 307
+          console.log('[Vercel API] Adding domain with redirect:', {
+            domain,
+            redirect: options.redirect,
+            redirectStatusCode: requestBody.redirectStatusCode,
+          })
+        }
 
-    // Add domain to Vercel project
-    const response = await fetch(
-      `https://api.vercel.com/v10/projects/${finalProjectId}/domains`,
+        // Add domain to Vercel project
+        const response = await fetch(
+          `https://api.vercel.com/v10/projects/${finalProjectId}/domains`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          }
+        )
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          const error = data as VercelError
+          
+          // Domain už existuje - to je OK
+          if (error.error?.code === 'domain_already_in_use' || error.error?.code === 'domain_already_added') {
+            // Skús získať existujúcu doménu
+            const existingDomain = await getVercelDomain(domain, finalProjectId)
+            if (!('error' in existingDomain)) {
+              return { success: true, domain: existingDomain.domain }
+            }
+          }
+
+          const errorMessage = error.error?.message || `Failed to add domain: ${response.statusText}`
+          const wrappedError: any = new Error(sanitizeErrorMessage(errorMessage))
+          wrappedError.statusCode = response.status
+          throw wrappedError
+        }
+
+        return { success: true, domain: data as VercelDomainResponse }
+      },
       {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+        maxRetries: 3,
+        initialDelay: 1000,
+        operationName: `Add domain ${domain}`
       }
     )
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      const error = data as VercelError
-      
-      // Domain už existuje - to je OK
-      if (error.error?.code === 'domain_already_in_use' || error.error?.code === 'domain_already_added') {
-        // Skús získať existujúcu doménu
-        const existingDomain = await getVercelDomain(domain, finalProjectId)
-        if (!('error' in existingDomain)) {
-          return { success: true, domain: existingDomain.domain }
-        }
-      }
-
-      const errorMessage = error.error?.message || `Failed to add domain: ${response.statusText}`
-      return { 
-        error: sanitizeErrorMessage(errorMessage)
-      }
-    }
-
-    return { success: true, domain: data as VercelDomainResponse }
   } catch (error) {
     console.error('[Vercel API] Error adding domain:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error adding domain'
@@ -203,39 +298,48 @@ export async function removeVercelDomain(
   projectId?: string
 ): Promise<{ success: true } | { error: string }> {
   try {
-    const { token } = getVercelCredentials()
-    const finalProjectId = projectId || await getProjectId()
+    return await withRetry(
+      async () => {
+        const { token } = getVercelCredentials()
+        const finalProjectId = projectId || await getProjectId()
 
-    if (!finalProjectId) {
-      return { error: 'Project ID not found. Please contact support.' }
-    }
+        if (!finalProjectId) {
+          throw new Error('Project ID not found. Please contact support.')
+        }
 
-    // URL encode the domain name to handle special characters like * in wildcard domains
-    const encodedDomain = encodeURIComponent(domain)
-    const response = await fetch(
-      `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${encodedDomain}`,
+        // URL encode the domain name to handle special characters like * in wildcard domains
+        const encodedDomain = encodeURIComponent(domain)
+        const response = await fetch(
+          `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${encodedDomain}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          // 404 je OK - domain už neexistuje
+          if (response.status === 404) {
+            return { success: true }
+          }
+
+          const data = await response.json() as VercelError
+          const errorMessage = data.error?.message || `Failed to remove domain: ${response.statusText}`
+          const wrappedError: any = new Error(sanitizeErrorMessage(errorMessage))
+          wrappedError.statusCode = response.status
+          throw wrappedError
+        }
+
+        return { success: true }
+      },
       {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        maxRetries: 3,
+        initialDelay: 1000,
+        operationName: `Remove domain ${domain}`
       }
     )
-
-    if (!response.ok) {
-      // 404 je OK - domain už neexistuje
-      if (response.status === 404) {
-        return { success: true }
-      }
-
-      const data = await response.json() as VercelError
-      const errorMessage = data.error?.message || `Failed to remove domain: ${response.statusText}`
-      return { 
-        error: sanitizeErrorMessage(errorMessage)
-      }
-    }
-
-    return { success: true }
   } catch (error) {
     console.error('[Vercel API] Error removing domain:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error removing domain'
@@ -253,35 +357,45 @@ export async function getVercelDomain(
   projectId?: string
 ): Promise<{ success: true; domain: VercelDomainResponse } | { error: string }> {
   try {
-    const { token } = getVercelCredentials()
-    const finalProjectId = projectId || await getProjectId()
+    return await withRetry(
+      async () => {
+        const { token } = getVercelCredentials()
+        const finalProjectId = projectId || await getProjectId()
 
-    if (!finalProjectId) {
-      return { error: 'Project ID not found. Please contact support.' }
-    }
+        if (!finalProjectId) {
+          throw new Error('Project ID not found. Please contact support.')
+        }
 
-    const response = await fetch(
-      `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${domain}`,
+        const response = await fetch(
+          `https://api.vercel.com/v10/projects/${finalProjectId}/domains/${domain}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            // 404 is not transient - don't retry
+            return { error: 'Domain not found' }
+          }
+          const data = await response.json() as VercelError
+          const errorMessage = data.error?.message || `Failed to get domain: ${response.statusText}`
+          const wrappedError: any = new Error(sanitizeErrorMessage(errorMessage))
+          wrappedError.statusCode = response.status
+          throw wrappedError
+        }
+
+        const data = await response.json() as VercelDomainResponse
+        return { success: true, domain: data }
+      },
       {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        maxRetries: 2,
+        initialDelay: 500,
+        operationName: `Get domain ${domain}`
       }
     )
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        return { error: 'Domain not found' }
-      }
-      const data = await response.json() as VercelError
-      const errorMessage = data.error?.message || `Failed to get domain: ${response.statusText}`
-      return { 
-        error: sanitizeErrorMessage(errorMessage)
-      }
-    }
-
-    const data = await response.json() as VercelDomainResponse
-    return { success: true, domain: data }
   } catch (error) {
     console.error('[Vercel API] Error getting domain:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error getting domain'
@@ -300,63 +414,74 @@ export async function getVercelDomainConfig(
   projectId?: string
 ): Promise<{ success: true; config: VercelDomainConfig } | { error: string }> {
   try {
-    const { token, teamId } = getVercelCredentials()
+    return await withRetry(
+      async () => {
+        const { token, teamId } = getVercelCredentials()
 
-    // v6/domains/{domain}/config is a domain-level endpoint, doesn't require project ID
-    // But may require teamId if domain is part of a team
-    let url = `https://api.vercel.com/v6/domains/${domain}/config`
-    if (teamId) {
-      url += `?teamId=${teamId}`
-    }
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        // v6/domains/{domain}/config is a domain-level endpoint, doesn't require project ID
+        // But may require teamId if domain is part of a team
+        let url = `https://api.vercel.com/v6/domains/${domain}/config`
+        if (teamId) {
+          url += `?teamId=${teamId}`
+        }
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`[Vercel API] Error getting domain config for ${domain}:`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+          })
+          
+          if (response.status === 404) {
+            // 404 is not transient - don't retry
+            return { error: 'Domain configuration not found. The domain may not be added to your account yet.' }
+          }
+          
+          if (response.status === 403) {
+            // 403 is not transient - don't retry
+            return { error: 'Access forbidden. Please contact support if you believe this is an error.' }
+          }
+          
+          try {
+            const data = await response.json() as VercelError
+            const errorMessage = data.error?.message || `Failed to get domain config: ${response.statusText}`
+            const wrappedError: any = new Error(sanitizeErrorMessage(errorMessage))
+            wrappedError.statusCode = response.status
+            throw wrappedError
+          } catch (e) {
+            const wrappedError: any = new Error(sanitizeErrorMessage(`Failed to get domain config: ${response.statusText}`))
+            wrappedError.statusCode = response.status
+            throw wrappedError
+          }
+        }
+
+        const data = await response.json() as VercelDomainConfig
+        console.log(`[Vercel API] Domain config for ${domain}:`, {
+          configuredBy: data.configuredBy,
+          recommendedIPv4: data.recommendedIPv4,
+          aValues: data.aValues,
+          cnames: data.cnames,
+          nameservers: data.nameservers,
+          misconfigured: data.misconfigured,
+          fullConfig: JSON.stringify(data, null, 2),
+        })
+        
+        return { success: true, config: data }
       },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[Vercel API] Error getting domain config for ${domain}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-      })
-      
-      if (response.status === 404) {
-        return { error: 'Domain configuration not found. The domain may not be added to your account yet.' }
+      {
+        maxRetries: 3,
+        initialDelay: 1000,
+        operationName: `Get domain config ${domain}`
       }
-      
-      if (response.status === 403) {
-        return { error: 'Access forbidden. Please contact support if you believe this is an error.' }
-      }
-      
-      try {
-        const data = await response.json() as VercelError
-        const errorMessage = data.error?.message || `Failed to get domain config: ${response.statusText}`
-        return { 
-          error: sanitizeErrorMessage(errorMessage)
-        }
-      } catch {
-        return { 
-          error: sanitizeErrorMessage(`Failed to get domain config: ${response.statusText}`)
-        }
-      }
-    }
-
-    const data = await response.json() as VercelDomainConfig
-    console.log(`[Vercel API] Domain config for ${domain}:`, {
-      configuredBy: data.configuredBy,
-      recommendedIPv4: data.recommendedIPv4,
-      aValues: data.aValues,
-      cnames: data.cnames,
-      nameservers: data.nameservers,
-      misconfigured: data.misconfigured,
-      fullConfig: JSON.stringify(data, null, 2),
-    })
-    
-    return { success: true, config: data }
+    )
   } catch (error) {
     console.error('[Vercel API] Error getting domain config:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error getting domain config'

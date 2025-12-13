@@ -611,8 +611,23 @@ export async function setBrandDomain(
 
   if (!updatedWorkspace) {
     // Rollback: remove both www and non-www subdomains if DB update fails
+    console.log('[Brand Domain] DB update failed, rolling back Vercel domains...')
     await removeVercelDomain(normalizedDomain)
     await removeVercelDomain(wwwDomain)
+    
+    // Verify rollback succeeded - if domain still exists in Vercel, log for manual cleanup
+    const verifyNonWwwRemoval = await getVercelDomain(normalizedDomain)
+    const verifyWwwRemoval = await getVercelDomain(wwwDomain)
+    
+    if (!('error' in verifyNonWwwRemoval)) {
+      console.error('[CRITICAL] Non-www domain left in Vercel after failed DB update:', normalizedDomain)
+      console.error('[CRITICAL] Manual cleanup required - remove domain from Vercel dashboard')
+    }
+    if (!('error' in verifyWwwRemoval)) {
+      console.error('[CRITICAL] WWW domain left in Vercel after failed DB update:', wwwDomain)
+      console.error('[CRITICAL] Manual cleanup required - remove domain from Vercel dashboard')
+    }
+    
     // Rollback: clear domain from database if it was a new domain (not updating existing)
     // Only clear if there was no previous domain (adding new domain, not changing existing)
     if (!currentDomain || currentDomain === null) {
@@ -894,9 +909,14 @@ export async function removeBrandDomainInternal(
     for (const site of sites) {
       const currentSlug = site.slug
       
-      // Store original slug in metadata for potential reconnection
-      const updatedMetadata = {
-        ...(site.metadata || {}),
+      // Clean up old brand domain metadata and store new original slug
+      const oldMetadata = site.metadata || {}
+      const updatedMetadata: Record<string, any> = {
+        ...oldMetadata,
+        // Clear any old brand domain metadata to prevent overflow
+        brand_domain_slug_conflict: undefined,
+        brand_domain_new_slug: undefined,
+        // Store current slug as original for potential reconnection
         original_brand_domain_slug: currentSlug,
       }
       
@@ -1069,5 +1089,120 @@ export async function removeBrandDomain(
   }
   
   return result
+}
+
+/**
+ * Cleanup orphaned brand domains for deleted workspaces
+ * This function should be called periodically (e.g., via cron job) to remove
+ * domains from Vercel for workspaces that have been soft-deleted
+ * 
+ * @returns Array of cleaned up workspace IDs and any errors encountered
+ */
+export async function cleanupOrphanedBrandDomains(): Promise<{
+  success: true
+  cleanedWorkspaces: string[]
+  errors: Array<{ workspaceId: string; error: string }>
+}> {
+  const supabase = await createClient()
+  
+  // Find all soft-deleted workspaces that still have brand domains
+  const { data: deletedWorkspaces, error: fetchError } = await supabase
+    .from('workspaces')
+    .select('id, branding_config')
+    .not('deleted_at', 'is', null)
+    .not('branding_config->custom_brand_domain', 'is', null)
+  
+  if (fetchError) {
+    console.error('[Cleanup] Error fetching deleted workspaces:', fetchError)
+    return {
+      success: true,
+      cleanedWorkspaces: [],
+      errors: [{ workspaceId: 'unknown', error: fetchError.message }]
+    }
+  }
+  
+  if (!deletedWorkspaces || deletedWorkspaces.length === 0) {
+    console.log('[Cleanup] No orphaned brand domains found')
+    return {
+      success: true,
+      cleanedWorkspaces: [],
+      errors: []
+    }
+  }
+  
+  console.log(`[Cleanup] Found ${deletedWorkspaces.length} deleted workspace(s) with brand domains`)
+  
+  const cleanedWorkspaces: string[] = []
+  const errors: Array<{ workspaceId: string; error: string }> = []
+  
+  // Clean up each workspace
+  for (const workspace of deletedWorkspaces) {
+    const config = (workspace.branding_config || {}) as BrandingConfig
+    const domain = config.custom_brand_domain
+    
+    if (!domain) {
+      continue
+    }
+    
+    console.log(`[Cleanup] Removing brand domain for deleted workspace ${workspace.id}: ${domain}`)
+    
+    try {
+      // Remove domains from Vercel
+      const wwwDomain = `www.${domain}`
+      
+      const removeNonWww = await removeVercelDomain(domain)
+      const removeWww = await removeVercelDomain(wwwDomain)
+      
+      // Log results (don't fail cleanup if removal fails - domain might already be removed)
+      if ('error' in removeNonWww && !removeNonWww.error.includes('not found')) {
+        console.warn(`[Cleanup] Failed to remove non-www domain ${domain}:`, removeNonWww.error)
+      }
+      
+      if ('error' in removeWww && !removeWww.error.includes('not found')) {
+        console.warn(`[Cleanup] Failed to remove www domain ${wwwDomain}:`, removeWww.error)
+      }
+      
+      // Clear domain from workspace config
+      const updatedConfig: BrandingConfig = {
+        ...config,
+        custom_brand_domain: null,
+        custom_brand_domain_verified: false,
+        custom_brand_domain_verified_at: null,
+        custom_brand_domain_vercel_added: false,
+        custom_brand_domain_vercel_dns_instructions: undefined,
+      }
+      
+      const { error: updateError } = await supabase
+        .from('workspaces')
+        .update({ branding_config: updatedConfig })
+        .eq('id', workspace.id)
+      
+      if (updateError) {
+        console.error(`[Cleanup] Failed to update workspace ${workspace.id}:`, updateError)
+        errors.push({
+          workspaceId: workspace.id,
+          error: `Failed to update config: ${updateError.message}`
+        })
+      } else {
+        console.log(`[Cleanup] Successfully cleaned up workspace ${workspace.id}`)
+        cleanedWorkspaces.push(workspace.id)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error(`[Cleanup] Error cleaning up workspace ${workspace.id}:`, error)
+      errors.push({
+        workspaceId: workspace.id,
+        error: errorMessage
+      })
+    }
+  }
+  
+  console.log(`[Cleanup] Cleanup complete. Cleaned: ${cleanedWorkspaces.length}, Errors: ${errors.length}`)
+  
+  return {
+    success: true,
+    cleanedWorkspaces,
+    errors
+  }
 }
 
