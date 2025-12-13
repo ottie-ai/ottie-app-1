@@ -712,8 +712,8 @@ export async function middleware(request: NextRequest) {
   
   // Set headers for preview routes to allow iframe embedding
   if (pathname.startsWith('/preview/')) {
-    // Create new response or clone existing one
-    const previewResponse = response instanceof NextResponse ? response.clone() : NextResponse.next()
+    // Create new response or clone existing one - always ensure it's NextResponse
+    const previewResponse: NextResponse = response instanceof NextResponse ? response.clone() : NextResponse.next()
     
     // Remove X-Frame-Options completely (CSP frame-ancestors takes precedence)
     previewResponse.headers.delete('X-Frame-Options')
