@@ -50,7 +50,6 @@ import { LottieScreenShareIcon } from '@/components/ui/lottie-screen-share-icon'
 import { LottieLaptopIcon } from '@/components/ui/lottie-laptop-icon'
 import { LottieViewArrayIcon } from '@/components/ui/lottie-view-array-icon'
 import { LottieViewQuiltIcon } from '@/components/ui/lottie-view-quilt-icon'
-import { LottieAddCardIcon } from '@/components/ui/lottie-add-card-icon'
 import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
 import { LottieLogoutIcon } from '@/components/ui/lottie-logout-icon'
 import { LottieSearchIcon } from '@/components/ui/lottie-search-icon'
@@ -83,8 +82,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AnimatedTabsList } from '@/components/ui/animated-tabs-list'
+import { AnimatedSidebarMenu } from '@/components/ui/animated-sidebar-menu'
 import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 const mainNavItems = [
@@ -127,6 +132,7 @@ export function DashboardSidebar() {
   const { theme, setTheme } = useTheme()
   const { state, isMobile, setOpenMobile, setOpen } = useSidebar()
   const isCollapsed = state === 'collapsed'
+  const [helpSupportOpen, setHelpSupportOpen] = useState(false)
   const { user } = useAuth()
   const { userName, userEmail, userAvatar } = useUserProfile()
   const { allWorkspaces, currentWorkspace, currentMembership, loading: appDataLoading, isMultiUserPlan } = useAppData()
@@ -454,28 +460,11 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* New Site Button */}
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="New Site"
-                  className="bg-primary text-primary-foreground hover:!bg-primary/90 hover:!text-primary-foreground active:!bg-primary/80"
-                >
-              <LottieAddCardIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
-                  <span>New Site</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <AnimatedSidebarMenu activePath={pathname}>
               {mainNavItems.map((item) => {
                 // For "Sites", also check if we're on a site detail or builder page
                 const isActive = item.title === 'Sites'
@@ -490,7 +479,7 @@ export function DashboardSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
-                      <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
+                      <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" invertTheme={isActive} />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
                         <Badge className="text-[10px] px-1.5 py-0 h-5 gradient-ottie hover:opacity-90 text-white border-0">
@@ -502,14 +491,14 @@ export function DashboardSidebar() {
                 </SidebarMenuItem>
                 )
               })}
-            </SidebarMenu>
+            </AnimatedSidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Support & Settings */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <AnimatedSidebarMenu activePath={pathname}>
               {bottomNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
@@ -520,13 +509,13 @@ export function DashboardSidebar() {
                     {'external' in item && item.external ? (
                       <a href={item.url} target="_blank" rel="noopener noreferrer">
                         <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
-                        <span>{item.title}</span>
+                        <span className="flex-1">{item.title}</span>
                         <ExternalLink className="!size-3 text-muted-foreground" />
                       </a>
                     ) : (
                       <Link href={item.url} onClick={handleLinkClick}>
-                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
-                        <span>{item.title}</span>
+                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" invertTheme={!('external' in item) && pathname === item.url} />
+                        <span className="flex-1">{item.title}</span>
                       </Link>
                     )}
                   </SidebarMenuButton>
@@ -535,57 +524,89 @@ export function DashboardSidebar() {
 
               {/* Help & Support */}
               <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild suppressHydrationWarning>
+                <Popover open={helpSupportOpen} onOpenChange={setHelpSupportOpen}>
+                  <PopoverTrigger asChild>
                     <SidebarMenuButton 
-                      asChild={false}
+                      asChild
                       isActive={false}
                       tooltip="Help & Support"
                     >
-                      <LottieSupportIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
-                      <span>Help & Support</span>
-                      <ChevronRight className="ml-auto size-4" />
+                      <div 
+                        onClick={() => setHelpSupportOpen(!helpSupportOpen)}
+                        className="flex w-full items-center gap-2 cursor-pointer"
+                      >
+                        <LottieSupportIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
+                        <span className="flex-1">Help & Support</span>
+                      </div>
                     </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-56 rounded-lg"
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-56 rounded-lg p-1"
                     align="end"
                     side="right"
                     sideOffset={4}
                   >
-                    <DropdownMenuItem>
-                      <LottieMailOpenIcon className="mr-2 size-4" />
-                      Contact Support
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <LottieFileIcon className="mr-2 size-4" />
-                      Documentation
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={openUserJot}>
-                      <LottieBulbIcon className="mr-2 size-4" />
-                      Suggest Feature
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={openUserJot}>
-                      <LottieBugIcon className="mr-2 size-4" />
-                      Report Bug
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    <div className="flex flex-col">
+                      <button
+                        onClick={() => {
+                          window.location.href = 'mailto:support@ottie.com'
+                          setHelpSupportOpen(false)
+                        }}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <LottieMailOpenIcon className="size-4" />
+                        Contact Support
+                      </button>
+                      <button
+                        onClick={() => {
+                          window.open('https://docs.ottie.com', '_blank')
+                          setHelpSupportOpen(false)
+                        }}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <LottieFileIcon className="size-4" />
+                        Documentation
+                      </button>
+                      <div className="my-1 h-px bg-border" />
+                      <button
+                        onClick={() => {
+                          openUserJot()
+                          setHelpSupportOpen(false)
+                        }}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <LottieBulbIcon className="size-4" />
+                        Suggest Feature
+                      </button>
+                      <button
+                        onClick={() => {
+                          openUserJot()
+                          setHelpSupportOpen(false)
+                        }}
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      >
+                        <LottieBugIcon className="size-4" />
+                        Report Bug
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </SidebarMenuItem>
 
               {/* Feedback Button */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={openUserJot}
+                  asChild
                   tooltip="Got Feedback?"
                   suppressHydrationWarning
                 >
-                  <LottieForumIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
-                  <span className="gradient-ottie-text">Got Feedback?</span>
+                  <div onClick={openUserJot} className="flex w-full items-center gap-2 cursor-pointer">
+                    <LottieForumIcon className="size-[18px] group-data-[collapsible=icon]:-ml-px" />
+                    <span className="flex-1 gradient-ottie-text">Got Feedback?</span>
+                  </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-            </SidebarMenu>
+            </AnimatedSidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 

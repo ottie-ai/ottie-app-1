@@ -619,6 +619,67 @@ canvas {
   [data-slot="tabs-trigger"]:not(:last-child) {
     margin-right: 2px;
   }
+
+  /* Active sidebar menu button text color - same as tabs - MUST be after other rules */
+  /* Light mode: white text on black pill */
+  [data-slot="sidebar-menu-button"][data-active="true"],
+  [data-slot="sidebar-menu-button"][data-active="true"] *:not([class*="badge"]) {
+    color: white !important;
+  }
+  [data-slot="sidebar-menu-button"][data-active="true"] [class*="badge"] {
+    color: white !important;
+  }
+  
+  /* Dark mode: black text on white pill - override all other text color rules */
+  .dark [data-slot="sidebar-menu-button"][data-active="true"],
+  .dark [data-slot="sidebar-menu-button"][data-active="true"] *:not([class*="badge"]) {
+    color: #000000 !important;
+  }
+  .dark [data-slot="sidebar-menu-button"][data-active="true"] [class*="badge"] {
+    color: white !important; /* Badge keeps white text */
+  }
+  
+  /* Override hover text color for active items */
+  [data-slot="sidebar-menu-button"][data-active="true"]:hover,
+  [data-slot="sidebar-menu-button"][data-active="true"]:hover *:not([class*="badge"]) {
+    color: white !important;
+  }
+  .dark [data-slot="sidebar-menu-button"][data-active="true"]:hover,
+  .dark [data-slot="sidebar-menu-button"][data-active="true"]:hover *:not([class*="badge"]) {
+    color: #000000 !important;
+  }
+
+  /* Remove default hover effect from sidebar menu buttons - we use animated indicator instead */
+  /* Exception: primary variant buttons keep their hover effect */
+  [data-slot="sidebar-menu-button"]:hover:not([data-variant="primary"]),
+  [data-slot="popover-trigger"][data-sidebar="menu-button"]:hover:not([data-variant="primary"]) {
+    background-color: transparent !important;
+  }
+  [data-slot="sidebar-menu-button"]:hover:not([data-variant="primary"]) *,
+  [data-slot="popover-trigger"][data-sidebar="menu-button"]:hover:not([data-variant="primary"]) * {
+    color: inherit !important;
+  }
+  
+  /* Primary sidebar menu buttons - pill shape and no hover color change */
+  [data-slot="sidebar-menu-button"][data-variant="primary"] {
+    border-radius: 9999px !important;
+  }
+  [data-slot="sidebar-menu-button"][data-variant="primary"]:hover,
+  [data-slot="sidebar-menu-button"][data-variant="primary"]:hover * {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* Gap between sidebar menu items - margin on all items except last */
+  [data-slot="sidebar-menu-item"]:not(:last-child) {
+    margin-bottom: 2px;
+  }
+
+  /* Sidebar menu items must be above the animated indicator */
+  [data-slot="sidebar-menu-item"] {
+    position: relative;
+    z-index: 10;
+  }
 }
 
 /* Ottie Brand Gradient - Orange to Purple (from sphere) */
@@ -886,17 +947,17 @@ canvas {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Sidebar button active state - black transparent background */
+/* Sidebar button active state - transparent background (we use animated pill instead) */
 [data-slot="sidebar-menu-button"][data-active="true"],
 [data-sidebar="menu-button"][data-active="true"],
 [data-sidebar="menu-sub-button"][data-active="true"] {
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: transparent !important;
 }
 
 .dark [data-slot="sidebar-menu-button"][data-active="true"],
 .dark [data-sidebar="menu-button"][data-active="true"],
 .dark [data-sidebar="menu-sub-button"][data-active="true"] {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: transparent !important;
 }
 
 /* Dropdown menu item hover styles - darker in dark mode */
@@ -1113,6 +1174,58 @@ header.border-b {
 .dark .frost-navbar {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* CRITICAL: Active sidebar menu button text color - highest priority, must be at the end */
+/* Light mode: white text on black pill */
+[data-slot="sidebar-menu-button"][data-active="true"],
+[data-slot="sidebar-menu-button"][data-active="true"] span,
+[data-slot="sidebar-menu-button"][data-active="true"] svg,
+[data-slot="sidebar-menu-button"][data-active="true"] a,
+[data-slot="sidebar-menu-button"][data-active="true"] *:not([class*="badge"]) {
+  color: rgb(255, 255, 255) !important;
+}
+
+/* Dark mode: black text on white pill */
+.dark [data-slot="sidebar-menu-button"][data-active="true"],
+.dark [data-slot="sidebar-menu-button"][data-active="true"] span,
+.dark [data-slot="sidebar-menu-button"][data-active="true"] svg,
+.dark [data-slot="sidebar-menu-button"][data-active="true"] a,
+.dark [data-slot="sidebar-menu-button"][data-active="true"] *:not([class*="badge"]) {
+  color: rgb(0, 0, 0) !important;
+}
+
+/* Override hover states for active items */
+[data-slot="sidebar-menu-button"][data-active="true"]:hover,
+[data-slot="sidebar-menu-button"][data-active="true"]:hover span,
+[data-slot="sidebar-menu-button"][data-active="true"]:hover svg,
+[data-slot="sidebar-menu-button"][data-active="true"]:hover a,
+[data-slot="sidebar-menu-button"][data-active="true"]:hover *:not([class*="badge"]) {
+  color: rgb(255, 255, 255) !important;
+}
+
+.dark [data-slot="sidebar-menu-button"][data-active="true"]:hover,
+.dark [data-slot="sidebar-menu-button"][data-active="true"]:hover span,
+.dark [data-slot="sidebar-menu-button"][data-active="true"]:hover svg,
+.dark [data-slot="sidebar-menu-button"][data-active="true"]:hover a,
+.dark [data-slot="sidebar-menu-button"][data-active="true"]:hover *:not([class*="badge"]) {
+  color: rgb(0, 0, 0) !important;
+}
+
+/* CRITICAL: Primary sidebar menu button - no color change on hover, highest priority */
+[data-slot="sidebar-menu-button"][data-variant="primary"],
+[data-slot="sidebar-menu-button"][data-variant="primary"]:hover,
+[data-slot="sidebar-menu-button"][data-variant="primary"]:focus,
+[data-slot="sidebar-menu-button"][data-variant="primary"]:active {
+  background-color: var(--primary) !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+[data-slot="sidebar-menu-button"][data-variant="primary"] *,
+[data-slot="sidebar-menu-button"][data-variant="primary"]:hover *,
+[data-slot="sidebar-menu-button"][data-variant="primary"]:focus *,
+[data-slot="sidebar-menu-button"][data-variant="primary"]:active * {
+  color: var(--primary-foreground) !important;
 }
 
 

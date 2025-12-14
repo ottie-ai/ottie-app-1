@@ -12,8 +12,7 @@ import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { useRouter } from 'next/navigation'
 import { Breadcrumbs } from '@/components/ui/breadcrumbs'
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
+import { useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -39,7 +38,12 @@ import {
   TabsContent,
 } from '@/components/ui/tabs'
 import { AnimatedTabsList } from '@/components/ui/animated-tabs-list'
-import { ChevronsUpDown, ChevronDown, ExternalLink, Menu, PanelLeft } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { ChevronsUpDown, ChevronDown, ExternalLink } from 'lucide-react'
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -288,9 +292,13 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             left: isMobile 
               ? '1rem'
               : (sidebar.state === 'expanded' 
-              ? 'calc(var(--sidebar-width, 16rem) + 0.5rem)' 
-                : 'calc(var(--sidebar-width-icon, 3rem) + 0.5rem)'), 
-            right: isMobile ? '1rem' : '0.5rem' 
+              ? 'calc(var(--sidebar-width, 16rem) + 15vw)' 
+                : 'calc(var(--sidebar-width-icon, 3rem) + 15vw)'), 
+            width: isMobile 
+              ? 'calc(100vw - 2rem)' 
+              : (sidebar.state === 'expanded'
+                ? 'calc(70vw - var(--sidebar-width, 16rem))'
+                : 'calc(70vw - var(--sidebar-width-icon, 3rem))')
           }}
           initial={{ y: -100, opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
           animate={{ y: 0, opacity: 1, scale: 1, filter: 'blur(0px)' }}
@@ -303,27 +311,15 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
           }}
         >
           <div 
-            className={`frost-navbar flex h-12 items-center rounded-lg ${isMobile ? 'pl-3 pr-2 gap-1' : 'px-2'}`}
+            className={`bg-background border flex h-12 items-center rounded-full shadow-xl ${isMobile ? 'pl-3 pr-2 gap-1' : 'pl-4 pr-2'}`}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`${isMobile ? 'size-6' : 'size-7'} ${isMobile ? '-ml-1 mr-1' : '-ml-1 mr-1'}`}
-              onClick={() => sidebar.toggleSidebar()}
-            >
-              {isMobile ? <Menu className="size-4" /> : <PanelLeft className="size-4" />}
-              <span className="sr-only">{isMobile ? 'Open Navigation' : 'Toggle Sidebar'}</span>
-            </Button>
             {!isMobile && (
-              <>
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumbs
-              items={[
-                    { label: 'Back to Sites', href: '/sites' },
-                { label: site.title, href: `/sites/${site.id}` },
-              ]}
-            />
-              </>
+              <Breadcrumbs
+                items={[
+                      { label: 'Back to Sites', href: '/sites' },
+                  { label: site.title, href: `/sites/${site.id}` },
+                ]}
+              />
             )}
             
             {/* Center - Tabs */}
@@ -345,21 +341,28 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             {/* Right side - Actions */}
             <div className={`${isMobile ? '' : 'ml-auto'} flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
               {!isMobile && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // Always use current origin to ensure cookies/session are shared
-                  // For localhost, preserve the port number
-                  const { protocol, hostname, port } = window.location
-                  const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
-                  const previewUrl = `${baseUrl}/preview/${site.id}`
-                  window.open(previewUrl, '_blank', 'noopener,noreferrer')
-                }}
-              >
-                <ExternalLink className="size-4" />
-                <span className="hidden md:inline">Preview</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      // Always use current origin to ensure cookies/session are shared
+                      // For localhost, preserve the port number
+                      const { protocol, hostname, port } = window.location
+                      const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
+                      const previewUrl = `${baseUrl}/preview/${site.id}`
+                      window.open(previewUrl, '_blank', 'noopener,noreferrer')
+                    }}
+                  >
+                    <ExternalLink className="size-4" />
+                    <span className="sr-only">Preview</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Preview site in a new tab</p>
+                </TooltipContent>
+              </Tooltip>
               )}
               <motion.div
                 animate={{ width: buttonBounds.width > 0 ? buttonBounds.width : 'auto' }}
