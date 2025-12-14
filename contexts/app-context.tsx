@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/use-auth'
 import { loadAppData } from '@/lib/data/app-data-client'
 import { isMultiUserPlanFromDB, isSingleUserPlanFromDB, getMaxUsersForPlan, getMaxSitesForPlan, hasFeature, getPlanByName } from '@/lib/data/plans'
-import type { Profile, Workspace, Membership, Plan } from '@/types/database'
+import type { Profile, Workspace, Membership, Plan, PlanFeature } from '@/types/database'
 
 interface AppContextType {
   profile: Profile | null
@@ -23,7 +23,7 @@ interface AppContextType {
   getMaxUsers: (planName: string | null | undefined) => number
   getMaxSites: (planName: string | null | undefined) => number
   getPlan: (planName: string | null | undefined) => Plan | null
-  hasPlanFeature: (planName: string | null | undefined, feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_brand_domain' | 'feature_custom_property_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync' | 'feature_password_protection' | 'feature_premium_fonts'>) => boolean
+  hasPlanFeature: (planName: string | null | undefined, feature: PlanFeature) => boolean
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined)

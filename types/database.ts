@@ -123,11 +123,30 @@ export interface Plan {
   feature_pdf_flyers: boolean
   feature_crm_sync: boolean
   feature_password_protection: boolean
+  feature_premium_fonts: boolean
   price_cents: number // Monthly price in cents
   annual_price_cents: number // Monthly price in cents when paid annually (with 15% discount)
   created_at: string // timestamp
   updated_at: string // timestamp
 }
+
+/**
+ * Extract all feature keys from Plan interface
+ * This type automatically includes all fields that start with 'feature_'
+ */
+export type PlanFeature = keyof Pick<Plan, 
+  'feature_lead_generation' | 
+  'feature_custom_brand_domain' | 
+  'feature_custom_property_domain' | 
+  'feature_analytics' | 
+  'feature_api_access' | 
+  'feature_priority_support' | 
+  'feature_3d_tours' | 
+  'feature_pdf_flyers' | 
+  'feature_crm_sync' |
+  'feature_password_protection' |
+  'feature_premium_fonts'
+>
 
 // ==========================================
 // INSERT TYPES (for creating new records)

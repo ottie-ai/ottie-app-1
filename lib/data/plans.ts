@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import type { Plan } from '@/types/database'
+import type { Plan, PlanFeature } from '@/types/database'
 
 /**
  * Cached plans data
@@ -132,19 +132,7 @@ export function getMaxSitesForPlan(plans: Plan[], planName: string | null | unde
 export function hasFeature(
   plans: Plan[],
   planName: string | null | undefined,
-  feature: keyof Pick<Plan, 
-    'feature_lead_generation' | 
-    'feature_custom_brand_domain' | 
-    'feature_custom_property_domain' | 
-    'feature_analytics' | 
-    'feature_api_access' | 
-    'feature_priority_support' | 
-    'feature_3d_tours' | 
-    'feature_pdf_flyers' | 
-    'feature_crm_sync' |
-    'feature_password_protection' |
-    'feature_premium_fonts'
-  >
+  feature: PlanFeature
 ): boolean {
   const plan = getPlanByName(plans, planName)
   return plan?.[feature] ?? false
@@ -160,19 +148,7 @@ export function hasFeature(
  */
 export function getFirstPlanWithFeature(
   plans: Plan[],
-  feature: keyof Pick<Plan, 
-    'feature_lead_generation' | 
-    'feature_custom_brand_domain' | 
-    'feature_custom_property_domain' | 
-    'feature_analytics' | 
-    'feature_api_access' | 
-    'feature_priority_support' | 
-    'feature_3d_tours' | 
-    'feature_pdf_flyers' | 
-    'feature_crm_sync' |
-    'feature_password_protection' |
-    'feature_premium_fonts'
-  >
+  feature: PlanFeature
 ): Plan | null {
   // Plans should already be ordered by price_cents ascending
   // Find the first plan that has this feature enabled
