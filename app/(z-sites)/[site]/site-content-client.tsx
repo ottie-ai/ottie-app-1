@@ -22,7 +22,7 @@
 
 import type { Site } from '@/types/database'
 import type { PageConfig } from '@/types/builder'
-import { PublishedSitePage } from './published-site-page'
+import { PublishedSitePage, type PublishedSiteData } from './published-site-page'
 
 interface SiteContentClientProps {
   site: Site
@@ -33,18 +33,15 @@ interface SiteContentClientProps {
 export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) {
   // SECURITY: Only pass public data to PublishedSitePage
   // Do NOT pass sensitive fields like workspace_id, creator_id, password_hash
-  const publicSiteData = {
-    id: site.id, // Needed for password check component
+  // PublishedSitePage only needs: id, title, config
+  const publicSiteData: PublishedSiteData = {
+    id: site.id, // Needed for password check component (if needed in future)
     title: site.title, // Public title
-    slug: site.slug, // Public slug
-    status: site.status, // Public status (always 'published' at this point)
     config: siteConfig, // Public config (theme, sections)
-    password_protected: site.password_protected, // Needed for password check
-    // Explicitly exclude: workspace_id, creator_id, assigned_agent_id, password_hash, etc.
   }
   
   // Use clean PublishedSitePage for public sites
   // This component has NO admin dependencies
-  return <PublishedSitePage site={publicSiteData as Site} />
+  return <PublishedSitePage site={publicSiteData} />
 }
 

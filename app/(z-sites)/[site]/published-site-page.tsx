@@ -34,8 +34,14 @@ import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { useEffect } from 'react'
 import { getFontByValue, getGoogleFontsUrl } from '@/lib/fonts'
 
+/**
+ * Minimal site data needed for published site rendering
+ * Only includes public fields - no sensitive data
+ */
+export type PublishedSiteData = Pick<Site, 'id' | 'title' | 'config'>
+
 interface PublishedSitePageProps {
-  site: Site
+  site: PublishedSiteData
 }
 
 /**
