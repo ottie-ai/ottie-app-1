@@ -1,5 +1,11 @@
 // Google Fonts configuration for the page builder
 
+export interface FontFile {
+  weight: number
+  style: 'normal' | 'italic'
+  url: string
+}
+
 export interface FontOption {
   name: string
   value: string
@@ -8,6 +14,10 @@ export interface FontOption {
   /** Default font weight for headings - user cannot change this */
   defaultWeight: number
   description?: string
+  /** Flag indicating this is a premium (self-hosted) font */
+  isPremium?: boolean
+  /** Self-hosted font files (only for premium fonts) */
+  fontFiles?: FontFile[]
 }
 
 /**
@@ -201,6 +211,75 @@ export const headingFonts: FontOption[] = [
 ]
 
 /**
+ * Premium self-hosted fonts (requires feature_premium_fonts plan feature)
+ * These fonts are loaded via @font-face rules instead of Google Fonts
+ */
+export const premiumFonts: FontOption[] = [
+  // ============================================
+  // 1. Jedira - Elegant serif with italic support
+  // ============================================
+  {
+    name: 'Jedira',
+    value: 'Jedira',
+    category: 'luxury',
+    weights: [400],
+    defaultWeight: 400,
+    description: 'Elegant serif with italic support. Perfect for luxury properties.',
+    isPremium: true,
+    fontFiles: [
+      { weight: 400, style: 'normal', url: '/fonts/premium/Jedira/Jedira-Regular.woff2' },
+      { weight: 400, style: 'italic', url: '/fonts/premium/Jedira/Jedira-Italic.woff2' },
+    ],
+  },
+
+  // ============================================
+  // 2. Prettywise - Complete modern sans family
+  // ============================================
+  {
+    name: 'Prettywise',
+    value: 'Prettywise',
+    category: 'modern',
+    weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
+    defaultWeight: 400,
+    description: 'Complete modern sans family. Versatile and elegant.',
+    isPremium: true,
+    fontFiles: [
+      { weight: 100, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Thin.woff2' },
+      { weight: 200, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-ExtraLight.woff2' },
+      { weight: 300, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Light.woff2' },
+      { weight: 400, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Regular.woff2' },
+      { weight: 500, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Medium.woff2' },
+      { weight: 600, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-SemiBold.woff2' },
+      { weight: 700, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Bold.woff2' },
+      { weight: 800, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-ExtraBold.woff2' },
+      { weight: 900, style: 'normal', url: '/fonts/premium/Pennywise/Prettywise-Heavy.woff2' },
+    ],
+  },
+
+  // ============================================
+  // 3. Poria - Luxury sans with complete weights
+  // ============================================
+  {
+    name: 'Poria',
+    value: 'Poria',
+    category: 'luxury',
+    weights: [100, 300, 400, 500, 700, 800, 900],
+    defaultWeight: 400,
+    description: 'Luxury sans with complete weight range. Bold and sophisticated.',
+    isPremium: true,
+    fontFiles: [
+      { weight: 100, style: 'normal', url: '/fonts/premium/Poria/Poria-Thin.woff2' },
+      { weight: 300, style: 'normal', url: '/fonts/premium/Poria/Poria-Light.woff2' },
+      { weight: 400, style: 'normal', url: '/fonts/premium/Poria/Poria-Regular.woff2' },
+      { weight: 500, style: 'normal', url: '/fonts/premium/Poria/Poria-Medium.woff2' },
+      { weight: 700, style: 'normal', url: '/fonts/premium/Poria/Poria-Bold.woff2' },
+      { weight: 800, style: 'normal', url: '/fonts/premium/Poria/Poria-ExtraBold.woff2' },
+      { weight: 900, style: 'normal', url: '/fonts/premium/Poria/Poria-Black.woff2' },
+    ],
+  },
+]
+
+/**
  * Category labels and descriptions
  */
 export const categoryInfo: Record<string, { label: string; description: string }> = {
@@ -236,10 +315,25 @@ export function getGoogleFontsUrl(fonts: string[], weights: number[] = [400, 500
 }
 
 /**
- * Get font option by value
+ * Get all fonts (Google + Premium)
+ */
+export function getAllFonts(): FontOption[] {
+  return [...headingFonts, ...premiumFonts]
+}
+
+/**
+ * Get font option by value (searches both Google and Premium fonts)
  */
 export function getFontByValue(value: string): FontOption | undefined {
-  return headingFonts.find(f => f.value === value)
+  return getAllFonts().find(f => f.value === value)
+}
+
+/**
+ * Check if font is premium
+ */
+export function isPremiumFont(fontValue: string): boolean {
+  const font = getFontByValue(fontValue)
+  return font?.isPremium === true
 }
 
 /**
@@ -252,10 +346,12 @@ export function getFontWeight(fontValue: string): number {
 }
 
 /**
- * Group fonts by category
+ * Group fonts by category (includes both Google and Premium fonts)
+ * Premium fonts appear first in each category
  */
 export function getFontsByCategory(): Record<string, FontOption[]> {
-  return headingFonts.reduce((acc, font) => {
+  const allFonts = getAllFonts()
+  return allFonts.reduce((acc, font) => {
     if (!acc[font.category]) {
       acc[font.category] = []
     }

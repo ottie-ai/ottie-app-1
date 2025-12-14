@@ -130,8 +130,8 @@ export function getMaxSitesForPlan(plans: Plan[], planName: string | null | unde
  * @returns true if feature is enabled for this plan
  */
 export function hasFeature(
-  plans: Plan[], 
-  planName: string | null | undefined, 
+  plans: Plan[],
+  planName: string | null | undefined,
   feature: keyof Pick<Plan, 
     'feature_lead_generation' | 
     'feature_custom_brand_domain' | 
@@ -142,7 +142,8 @@ export function hasFeature(
     'feature_3d_tours' | 
     'feature_pdf_flyers' | 
     'feature_crm_sync' |
-    'feature_password_protection'
+    'feature_password_protection' |
+    'feature_premium_fonts'
   >
 ): boolean {
   const plan = getPlanByName(plans, planName)
@@ -169,7 +170,8 @@ export function getFirstPlanWithFeature(
     'feature_3d_tours' | 
     'feature_pdf_flyers' | 
     'feature_crm_sync' |
-    'feature_password_protection'
+    'feature_password_protection' |
+    'feature_premium_fonts'
   >
 ): Plan | null {
   // Plans should already be ordered by price_cents ascending
