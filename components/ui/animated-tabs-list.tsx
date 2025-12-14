@@ -185,7 +185,7 @@ export function AnimatedTabsList({ children, activeValue }: AnimatedTabsListProp
           {/* Active tab indicator - animated with spring (rendered first, higher z-index) */}
           {activeIndicator.width > 0 && (
             <motion.div
-              className="absolute top-[3px] h-[calc(100%-6px)] rounded-md pointer-events-none bg-background dark:bg-background border border-transparent dark:border-input shadow-sm"
+              className="absolute top-[3px] h-[calc(100%-6px)] rounded-full pointer-events-none bg-black dark:bg-white shadow-sm"
               initial={false}
               animate={{
                 left: activeIndicator.left,
@@ -221,7 +221,7 @@ export function AnimatedTabsList({ children, activeValue }: AnimatedTabsListProp
           
           {/* Hover indicator - appears below active (rendered second, lower z-index) */}
           <motion.div
-            className="absolute top-[3px] h-[calc(100%-6px)] rounded-md pointer-events-none"
+            className="absolute top-[3px] h-[calc(100%-6px)] rounded-full pointer-events-none"
             animate={{
               left: hoverIndicator.left,
               width: hoverIndicator.width,
@@ -235,7 +235,7 @@ export function AnimatedTabsList({ children, activeValue }: AnimatedTabsListProp
             }}
             style={{
               zIndex: 1,
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
             }}
           />
           

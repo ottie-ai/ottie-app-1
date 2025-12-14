@@ -614,6 +614,11 @@ canvas {
     position: static;
     pointer-events: auto;
   }
+
+  /* Gap between tabs - margin on all tabs except last */
+  [data-slot="tabs-trigger"]:not(:last-child) {
+    margin-right: 2px;
+  }
 }
 
 /* Ottie Brand Gradient - Orange to Purple (from sphere) */
@@ -921,10 +926,6 @@ canvas {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Tabs background - same color as dropdown hover in dark mode */
-.dark [data-slot="tabs-list"] {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
 
 /* Select item hover styles - match dropdown hover color */
 [data-slot="select-item"]:hover,
