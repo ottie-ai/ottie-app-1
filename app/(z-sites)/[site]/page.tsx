@@ -118,9 +118,11 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
     const supabase = await createClient()
     
     // Build query - support both ottie.site and brand domains
+    // SECURITY: Do NOT select password_hash - it's only needed for verification in server actions
+    // Password verification is handled separately via verifySitePassword server action
     let query = supabase
       .from('sites')
-      .select('*, password_protected, password_hash')
+      .select('*, password_protected')
       .eq('slug', slug)
       .eq('status', 'published') // Only published sites are accessible
       .is('deleted_at', null)
