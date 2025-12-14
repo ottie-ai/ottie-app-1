@@ -12,6 +12,7 @@ import {
   handleUpdateSiteTitle,
   handleSetSitePassword,
   handleRemoveSitePassword,
+  handleUpdateSiteFont,
 } from '@/app/actions/site-actions'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
@@ -80,6 +81,8 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
 import { useMemo } from 'react'
+import { FontSelector } from '@/components/builder/FontSelector'
+import type { PageConfig } from '@/types/builder'
 
 interface SiteSettingsPanelProps {
   site: Site
@@ -112,7 +115,11 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
   const hasPasswordFeature = currentWorkspace 
     ? hasPlanFeature(currentWorkspace.plan, 'feature_password_protection')
     : false
+  const hasPremiumFonts = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_premium_fonts')
+    : false
   const [isSaving, setIsSaving] = useState(false)
+  const [isFontSaving, setIsFontSaving] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
@@ -292,6 +299,25 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
       toast.error('Failed to copy URL')
     }
   }
+
+  const handleFontChange = async (font: string) => {
+    if (isFontSaving) return
+    
+    setIsFontSaving(true)
+    const result = await handleUpdateSiteFont(site.id, font)
+    setIsFontSaving(false)
+    
+    if ('error' in result) {
+      toast.error(result.error)
+    } else {
+      toastSuccess('Font updated successfully')
+      router.refresh()
+    }
+  }
+
+  // Get current font from site config
+  const siteConfig = site.config as PageConfig | null
+  const currentFont = siteConfig?.theme?.headingFontFamily || 'Inter'
 
   const getAvailabilityBadgeClass = (availability: string) => {
     switch (availability) {
@@ -508,26 +534,42 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
           </>
         )}
 
+        {/* Font Selection */}
+        <Separator />
+        <div className="space-y-2">
+          <Label>Heading Font</Label>
+          <FontSelector 
+            value={currentFont}
+            onChange={handleFontChange}
+          />
+          {isFontSaving && (
+            <p className="text-xs text-muted-foreground">Saving font...</p>
+          )}
+        </div>
+
         {/* Password Protection */}
         {hasPasswordFeature && (
-        <div className="space-y-2">
-          <Label>Password Protection</Label>
-          <div className="flex items-center gap-2">
-            {site.password_protected && (
-              <Lock className="size-4 text-muted-foreground" />
-            )}
-            <Button
-              variant="outline"
-              className="flex-1 justify-start"
-              onClick={() => {
-                setPasswordValue('')
-                setIsPasswordDialogOpen(true)
-              }}
-            >
-              {site.password_protected ? 'Change Password' : 'Set Password'}
-            </Button>
+        <>
+          <Separator />
+          <div className="space-y-2">
+            <Label>Password Protection</Label>
+            <div className="flex items-center gap-2">
+              {site.password_protected && (
+                <Lock className="size-4 text-muted-foreground" />
+              )}
+              <Button
+                variant="outline"
+                className="flex-1 justify-start"
+                onClick={() => {
+                  setPasswordValue('')
+                  setIsPasswordDialogOpen(true)
+                }}
+              >
+                {site.password_protected ? 'Change Password' : 'Set Password'}
+              </Button>
+            </div>
           </div>
-        </div>
+        </>
         )}
 
         <Separator />

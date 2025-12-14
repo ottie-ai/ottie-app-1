@@ -61,7 +61,11 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
             <AnimateOnScroll animation="fade-right" delay={0.6} className="space-y-6">
               <h3 
                 className="text-lg font-medium mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{ color: colors.textColor }}
+                style={{ 
+                  color: colors.textColor,
+                  fontFamily: headingFont,
+                  fontWeight: fontWeight,
+                }}
               >Get in Touch</h3>
               
               {address && (

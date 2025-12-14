@@ -126,13 +126,18 @@ The `FontSelector` component:
 ### Published Site Flow
 
 1. User visits published site (e.g., `https://123-main-st.ottie.site`)
-2. Server fetches site config from database
-3. `SiteContentClient` renders `PreviewSitePage` with site config
-4. `FontLoader` in `PreviewSitePage` detects if font is premium:
-   - If premium: injects @font-face rules
-   - If Google: loads from CDN
-   - If local: does nothing (already available)
-5. Font is applied to site via CSS
+2. Middleware routes request to `(z-sites)/[site]/page.tsx`
+3. Server fetches site config from database
+4. `SiteContentClient` wraps `PublishedSitePage` with site config
+5. `PublishedSitePage` (clean public component) renders the site:
+   - Uses `useSiteFonts` hook to load fonts
+   - Premium fonts: injected via @font-face CSS rules
+   - Google fonts: loaded via CDN `<link>` tag
+   - Heading font applied globally via `[data-published-site]` CSS selector
+6. Font is applied to all headings (h1-h6) in the site
+
+**Important**: Published sites use `PublishedSitePage` which has NO admin dependencies.
+This ensures minimal bundle size and fast loading for public visitors.
 
 ## Adding New Premium Fonts
 
@@ -222,16 +227,17 @@ UPDATE plans SET feature_premium_fonts = false WHERE name = 'starter';
 4. **`contexts/app-context.tsx`**
    - Added `feature_premium_fonts` to `hasPlanFeature` type
 
-### Components Using FontLoader
+### Components Using Font Loading
 
-1. **`app/(app)/preview/[id]/preview-site-page.tsx`**
+1. **Admin Preview** (`app/(app)/preview/[id]/preview-site-page.tsx`)
    - Used in builder (direct rendering, no iframe)
    - Used in preview route (`/preview/[id]`)
-   - Renders `FontLoader` with fonts from `site.config.theme`
+   - Uses `FontLoader` component with fonts from `site.config.theme`
 
-2. **`app/(z-sites)/[site]/site-content-client.tsx`**
-   - Wraps `PreviewSitePage` for published sites
-   - FontLoader is handled by `PreviewSitePage` component
+2. **Published Sites** (`app/(z-sites)/[site]/published-site-page.tsx`)
+   - Clean public renderer with NO admin dependencies
+   - Uses `useSiteFonts` hook (self-contained font loading)
+   - Heading font applied via `[data-published-site]` CSS selector
 
 ## Current Premium Fonts
 

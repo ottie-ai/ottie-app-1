@@ -211,6 +211,50 @@ export async function handleUpdateSiteTitle(siteId: string, title: string) {
 }
 
 /**
+ * Update site heading font family
+ * Updates config.theme.headingFontFamily in site config
+ * Note: We don't revalidate here - the client will refresh React Query cache
+ */
+export async function handleUpdateSiteFont(siteId: string, headingFontFamily: string) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
+  const supabase = await createClient()
+  
+  // Get current site config
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('config')
+    .eq('id', siteId)
+    .single()
+  
+  if (siteError || !site) {
+    return { error: 'Site not found' }
+  }
+  
+  // Merge new font into existing config
+  const currentConfig = (site.config as any) || {}
+  const updatedConfig = {
+    ...currentConfig,
+    theme: {
+      ...currentConfig.theme,
+      headingFontFamily,
+    },
+  }
+  
+  const result = await updateSite(siteId, { config: updatedConfig })
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
+}
+
+/**
  * Set password protection for a site
  * Hashes the password and stores it in the database
  * Note: We don't revalidate here - the client will refresh React Query cache

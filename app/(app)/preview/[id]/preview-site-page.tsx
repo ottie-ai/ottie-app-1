@@ -462,11 +462,32 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     )
   }
 
+  // Get heading font for global CSS
+  const headingFont = theme?.headingFontFamily || 'Inter'
+
   return (
-    <>
+    <div data-site-wrapper>
       <FontLoader fonts={fonts} />
       <FontTransition font={primaryFont}>
-        <div style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}>
+        {/* Global style for all headings - ONLY applies to site content, not admin UI */}
+        {/* Using scoped style with unique ID to prevent affecting admin UI */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            [data-site-wrapper] [data-site-content] h1,
+            [data-site-wrapper] [data-site-content] h2,
+            [data-site-wrapper] [data-site-content] h3,
+            [data-site-wrapper] [data-site-content] h4,
+            [data-site-wrapper] [data-site-content] h5,
+            [data-site-wrapper] [data-site-content] h6 {
+              font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
+            }
+          `
+        }} />
+        <div 
+          data-site-content
+          className="site-content"
+          style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}
+        >
           {sections?.map((section: Section) => {
             // Use editing state if available (for preview), otherwise use saved section
             const editing = editingState[section.id]
@@ -539,6 +560,6 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
           />
         )}
       </FontTransition>
-    </>
+    </div>
   )
 }
