@@ -27,3 +27,4 @@ COMMENT ON COLUMN public.plans.feature_premium_fonts IS 'Whether the plan allows
 --    - Advanced typography options
 -- 4. Users on plans without this feature will only have access to standard fonts
 
+

@@ -75,12 +75,31 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
   }
 
   function onSave() {
+    console.log('[SectionMorphingIndicator] onSave called:', {
+      activeSection: activeSection?.id,
+      hasOnSectionChange: !!onSectionChange,
+      editingVariant,
+      editingData,
+      editingColorScheme,
+    })
+    
     // Save changes
     if (activeSection && onSectionChange) {
+      console.log('[SectionMorphingIndicator] Calling onSectionChange with:', {
+        sectionId: activeSection.id,
+        variant: editingVariant,
+        data: editingData,
+        colorScheme: editingColorScheme,
+      })
       onSectionChange(activeSection.id, {
         variant: editingVariant,
         data: editingData,
         colorScheme: editingColorScheme,
+      })
+    } else {
+      console.warn('[SectionMorphingIndicator] Cannot save - missing activeSection or onSectionChange:', {
+        activeSection: !!activeSection,
+        onSectionChange: !!onSectionChange,
       })
     }
     closeSettings()
@@ -141,6 +160,12 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
             }
           }}
           onDataChange={(data) => {
+            console.log('[SectionMorphingIndicator] onDataChange called (hero):', {
+              sectionId: activeSection?.id,
+              newData: data,
+              headline: data?.headline,
+              subheadline: data?.subheadline,
+            })
             setEditingData(data)
             if (activeSection && onEditingStateChange) {
               onEditingStateChange(activeSection.id, {
@@ -182,6 +207,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
             }
           }}
           onDataChange={(data) => {
+            console.log('[SectionMorphingIndicator] onDataChange called (features):', {
+              sectionId: activeSection?.id,
+              newData: data,
+            })
             setEditingData(data)
             if (activeSection && onEditingStateChange) {
               onEditingStateChange(activeSection.id, {

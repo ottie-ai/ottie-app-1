@@ -7,8 +7,10 @@ import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
 import { WordReveal } from '@/components/ui/word-reveal'
+import { SEOHeading } from '@/components/ui/seo-heading'
 import { scrollSpringConfig } from '@/hooks/useScrollAnimation'
 import { getFontWeight } from '@/lib/fonts'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * HeroFull - Full-screen cinematic hero with large centered title
@@ -93,29 +95,35 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
               label="Edit Title"
               description="Update the main title text."
             >
-              <h1 
-                className={`text-center text-[clamp(2rem,12vw,20rem)] text-white leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+              <SEOHeading
+                level={1}
+                text={headline}
+                className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
                 style={{ 
                   fontFamily: headingFont,
                   fontWeight: fontWeight,
                   letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+                  wordBreak: 'break-word',
                 }}
               >
-                <WordReveal text={headline} delay={0.5} wordDelay={0.15} />
-              </h1>
+                <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
+              </SEOHeading>
             </EditableText>
           </div>
         ) : (
-          <h1 
-            className={`text-center text-[clamp(2rem,12vw,20rem)] text-white leading-[0.9] ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+          <SEOHeading
+            level={1}
+            text={headline}
+            className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
             style={{ 
               fontFamily: headingFont,
               fontWeight: fontWeight,
               letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+              wordBreak: 'break-word',
             }}
           >
-            <WordReveal text={headline} delay={0.5} wordDelay={0.15} />
-          </h1>
+            <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
+          </SEOHeading>
         )}
       </motion.div>
 

@@ -5,7 +5,9 @@ import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
+import { SEOHeading } from '@/components/ui/seo-heading'
 import { getSectionColors } from '@/lib/section-colors'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * HeroSplit - Split layout hero with content on left, image on right
@@ -55,8 +57,10 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
                 label="Edit Headline"
                 description="Update the main headline text."
               >
-                <h1 
-                  className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+                <SEOHeading
+                  level={1}
+                  text={headline}
+                  className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${getTextCaseClass(theme?.titleCase)} origin-left`}
                   style={{ 
                     color: colors.textColor,
                     fontFamily: headingFont,
@@ -64,12 +68,14 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
                     letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
                   }}
                 >
-                  {headline}
-                </h1>
+                  {applyTextCase(headline, theme?.titleCase)}
+                </SEOHeading>
               </EditableText>
             ) : (
-            <h1 
-              className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''} origin-left`}
+            <SEOHeading
+              level={1}
+              text={headline}
+              className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${getTextCaseClass(theme?.titleCase)} origin-left`}
               style={{ 
                 color: colors.textColor,
                 fontFamily: headingFont,
@@ -77,8 +83,8 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
                 letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
               }}
             >
-              {headline}
-            </h1>
+              {applyTextCase(headline, theme?.titleCase)}
+            </SEOHeading>
             )}
             
             {subheadline && (

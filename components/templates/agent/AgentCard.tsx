@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * AgentCard - Card layout for agent information
@@ -45,10 +47,12 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
 
             {/* Agent Info */}
             <AnimateOnScroll animation="fade-left" delay={0.6} className="flex-1 text-center md:text-left">
-              <h2 
+              <SEOHeading
+                level={2}
+                text={name}
                 className={cn(
                   'text-[clamp(2rem,5vw,4rem)] mb-2 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                  theme?.uppercaseTitles ? 'uppercase' : ''
+                  getTextCaseClass(theme?.titleCase)
                 )}
                 style={{ 
                   fontFamily: headingFont,
@@ -56,8 +60,8 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                   color: colors.textColor
                 }}
               >
-                {name}
-              </h2>
+                {applyTextCase(name, theme?.titleCase)}
+              </SEOHeading>
               
               {title && (
                 <p 

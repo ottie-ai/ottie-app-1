@@ -12,7 +12,6 @@ import {
   handleUpdateSiteTitle,
   handleSetSitePassword,
   handleRemoveSitePassword,
-  handleUpdateSiteFont,
 } from '@/app/actions/site-actions'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
@@ -82,7 +81,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
 import { useMemo } from 'react'
 import { FontSelector } from '@/components/builder/FontSelector'
-import type { PageConfig } from '@/types/builder'
+import type { PageConfig, ThemeConfig } from '@/types/builder'
 
 interface SiteSettingsPanelProps {
   site: Site
@@ -90,6 +89,8 @@ interface SiteSettingsPanelProps {
     membership: { user_id: string }
     profile: { avatar_url: string | null; full_name: string | null; email: string | null }
   }>
+  themeRef?: React.MutableRefObject<ThemeConfig | null>
+  onThemeChange?: (theme: ThemeConfig) => void
 }
 
 // Helper to get user initials
@@ -107,7 +108,7 @@ function getUserInitials(fullName: string | null, email: string | null): string 
   return 'U'
 }
 
-export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
+export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: SiteSettingsPanelProps) {
   const router = useRouter()
   const { user } = useAuth()
   const { currentWorkspace, isMultiUserPlan, hasPlanFeature } = useAppData()
@@ -119,7 +120,6 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
     ? hasPlanFeature(currentWorkspace.plan, 'feature_premium_fonts')
     : false
   const [isSaving, setIsSaving] = useState(false)
-  const [isFontSaving, setIsFontSaving] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
@@ -300,24 +300,42 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
     }
   }
 
-  const handleFontChange = async (font: string) => {
-    if (isFontSaving) return
-    
-    setIsFontSaving(true)
-    const result = await handleUpdateSiteFont(site.id, font)
-    setIsFontSaving(false)
-    
-    if ('error' in result) {
-      toast.error(result.error)
-    } else {
-      toastSuccess('Font updated successfully')
-      router.refresh()
+  // Get current font and title case from themeRef or site config
+  const siteConfig = site.config as PageConfig | null
+  const currentTheme = themeRef?.current || siteConfig?.theme || {
+    fontFamily: 'Inter',
+    headingFontFamily: 'Inter',
+    headingFontSize: 1,
+    headingLetterSpacing: 0,
+    titleCase: 'sentence' as const,
+    primaryColor: '#000000',
+    secondaryColor: '#666666',
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    borderRadius: 'md' as const,
+    ctaType: 'none' as const,
+    ctaValue: '',
+  }
+  const currentFont = currentTheme.headingFontFamily || 'Inter'
+  const currentTitleCase = currentTheme.titleCase || 'sentence'
+
+  const handleFontChange = (font: string) => {
+    if (onThemeChange) {
+      onThemeChange({
+        ...currentTheme,
+        headingFontFamily: font,
+      })
     }
   }
 
-  // Get current font from site config
-  const siteConfig = site.config as PageConfig | null
-  const currentFont = siteConfig?.theme?.headingFontFamily || 'Inter'
+  const handleTitleCaseChange = (titleCase: 'uppercase' | 'title' | 'sentence') => {
+    if (onThemeChange) {
+      onThemeChange({
+        ...currentTheme,
+        titleCase,
+      })
+    }
+  }
 
   const getAvailabilityBadgeClass = (availability: string) => {
     switch (availability) {
@@ -536,15 +554,31 @@ export function SiteSettingsPanel({ site, members }: SiteSettingsPanelProps) {
 
         {/* Font Selection */}
         <Separator />
+        <div className="space-y-4">
         <div className="space-y-2">
           <Label>Heading Font</Label>
           <FontSelector 
             value={currentFont}
             onChange={handleFontChange}
           />
-          {isFontSaving && (
-            <p className="text-xs text-muted-foreground">Saving font...</p>
-          )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Title Case</Label>
+            <Select 
+              value={currentTitleCase}
+              onValueChange={(value: 'uppercase' | 'title' | 'sentence') => handleTitleCaseChange(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select title case" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sentence">Sentence Case</SelectItem>
+                <SelectItem value="title">Title Case</SelectItem>
+                <SelectItem value="uppercase">Uppercase</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Password Protection */}

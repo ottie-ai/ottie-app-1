@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Site } from '@/types/database'
-import type { PageConfig, Section, ColorScheme } from '@/types/builder'
+import type { PageConfig, Section, ColorScheme, ThemeConfig } from '@/types/builder'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
@@ -97,6 +97,9 @@ interface PreviewSitePageProps {
   site: Site
   canEdit?: boolean
   onHasUnsavedChanges?: (hasChanges: boolean) => void
+  saveChangesRef?: React.MutableRefObject<(() => Promise<void>) | null>
+  onThemeChange?: (theme: ThemeConfig) => void
+  themeRef?: React.MutableRefObject<ThemeConfig | null>
 }
 
 /**
@@ -110,7 +113,7 @@ interface PreviewSitePageProps {
  * 
  * Archived version with admin elements: preview-site-page-archived-with-admin.tsx
  */
-export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: PreviewSitePageProps) {
+export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, saveChangesRef, onThemeChange, themeRef }: PreviewSitePageProps) {
   const config = site.config as PageConfig | null
 
   // Default config if missing
@@ -120,7 +123,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
       headingFontFamily: 'Inter',
       headingFontSize: 1,
       headingLetterSpacing: 0,
-      uppercaseTitles: false,
+      titleCase: 'sentence',
       primaryColor: '#000000',
       secondaryColor: '#666666',
       backgroundColor: '#ffffff',
@@ -132,7 +135,45 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     sections: [],
   }
 
-  const { theme, sections: initialSections } = siteConfig
+  // Use local theme state that can be updated without saving
+  const [localTheme, setLocalTheme] = useState<ThemeConfig>(siteConfig.theme || {
+    fontFamily: 'Inter',
+    headingFontFamily: 'Inter',
+    headingFontSize: 1,
+    headingLetterSpacing: 0,
+    titleCase: 'sentence',
+    primaryColor: '#000000',
+    secondaryColor: '#666666',
+    backgroundColor: '#ffffff',
+    textColor: '#000000',
+    borderRadius: 'md',
+    ctaType: 'none',
+    ctaValue: '',
+  })
+
+  // Expose theme via ref
+  useEffect(() => {
+    if (themeRef) {
+      themeRef.current = localTheme
+    }
+  }, [localTheme, themeRef])
+
+  // Handle theme changes from settings panel
+  useEffect(() => {
+    if (onThemeChange) {
+      onThemeChange(localTheme)
+    }
+  }, [localTheme, onThemeChange])
+
+  // Update local theme when config changes (after save)
+  useEffect(() => {
+    if (config?.theme) {
+      setLocalTheme(config.theme)
+    }
+  }, [config?.theme])
+
+  const theme = localTheme
+  const { sections: initialSections } = siteConfig
   const ctaType = theme?.ctaType || 'none'
   const ctaValue = theme?.ctaValue || ''
 
@@ -144,6 +185,9 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
 
   const [sections, setSections] = useState<Section[]>(actualSections)
   const [activeSection, setActiveSection] = useState<Section | null>(sections[0] || null)
+  
+  // Track site config to detect changes after refresh
+  const [lastConfig, setLastConfig] = useState<string>(JSON.stringify(config))
   const [editingState, setEditingState] = useState<Record<string, { variant: string; data: any; colorScheme: ColorScheme }>>({})
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -159,7 +203,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     }))
   }
 
-  // Track unsaved changes globally across all sections
+  // Track unsaved changes globally across all sections and theme
   useEffect(() => {
     // Check if any section has unsaved changes
     let hasAnyChanges = false
@@ -179,22 +223,29 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
       }
     }
     
-    setHasUnsavedChanges(hasAnyChanges)
+    // Check if theme has changed
+    const themeChanged = themeRef?.current && JSON.stringify(themeRef.current) !== JSON.stringify(siteConfig.theme)
+    const hasChanges = hasAnyChanges || themeChanged
+    
+    setHasUnsavedChanges(hasChanges)
     
     // Call parent callback if provided (direct rendering)
     if (onHasUnsavedChanges) {
-      onHasUnsavedChanges(hasAnyChanges)
+      onHasUnsavedChanges(hasChanges)
     }
     
     // Notify parent window (if in iframe - for backward compatibility)
     if (typeof window !== 'undefined' && window.parent !== window) {
-      window.parent.postMessage({ type: 'UNSAVED_CHANGES', hasChanges: hasAnyChanges }, '*')
+      window.parent.postMessage({ type: 'UNSAVED_CHANGES', hasChanges }, '*')
     }
-  }, [editingState, sections, onHasUnsavedChanges])
+  }, [editingState, sections, onHasUnsavedChanges, themeRef, siteConfig.theme])
 
   // Save all unsaved changes (use useCallback to make it stable)
   const handleSaveAllChanges = useCallback(async () => {
-    if (!canEdit || !hasUnsavedChanges || isSaving) return
+    // Check if theme has changed
+    const themeChanged = themeRef?.current && JSON.stringify(themeRef.current) !== JSON.stringify(siteConfig.theme)
+    
+    if (!canEdit || (!hasUnsavedChanges && !themeChanged) || isSaving) return
     
     setIsSaving(true)
     
@@ -216,11 +267,12 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     setEditingState({})
     setHasUnsavedChanges(false)
     
-    // Save to database
+    // Save to database (sections + theme)
     const supabase = createClient()
     const updatedConfig: PageConfig = {
       ...siteConfig,
       sections: updatedSections,
+      theme: themeRef?.current || localTheme,
     }
     
     const { error } = await supabase
@@ -236,9 +288,19 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     
     router.refresh()
     setIsSaving(false)
-  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router])
+  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router, themeRef, localTheme])
 
-  // Listen for save message from parent
+  // Expose save function to parent via ref
+  useEffect(() => {
+    if (saveChangesRef) {
+      saveChangesRef.current = handleSaveAllChanges
+      return () => {
+        saveChangesRef.current = null
+      }
+    }
+  }, [handleSaveAllChanges, saveChangesRef])
+
+  // Listen for save message from parent (for iframe compatibility)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SAVE_CHANGES') {
@@ -252,6 +314,13 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
 
   // Handle section updates from settings panel (save to database)
   const handleSectionChange = async (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => {
+    console.log('[handleSectionChange] Called with:', {
+      sectionId,
+      updates,
+      canEdit,
+      siteId: site.id,
+    })
+    
     // Get current editing state or use updates
     const currentEditing = editingState[sectionId]
     const finalUpdates = {
@@ -259,6 +328,15 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
       data: updates.data !== undefined ? updates.data : (currentEditing?.data ?? sections.find(s => s.id === sectionId)?.data),
       colorScheme: updates.colorScheme !== undefined ? updates.colorScheme : (currentEditing?.colorScheme ?? sections.find(s => s.id === sectionId)?.colorScheme),
     }
+
+    console.log('[handleSectionChange] Final updates:', {
+      sectionId,
+      updates,
+      currentEditing,
+      finalUpdates,
+      dataHeadline: finalUpdates.data?.headline,
+      dataSubheadline: finalUpdates.data?.subheadline,
+    })
 
     // Update local state
     const updatedSections = sections.map(section => {
@@ -291,41 +369,96 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges }: 
     }
 
     // Save to database
+    console.log('[handleSectionChange] Checking canEdit:', canEdit)
     if (canEdit) {
+      console.log('[handleSectionChange] canEdit is true, saving to database...')
       const supabase = createClient()
       const updatedConfig: PageConfig = {
         ...siteConfig,
         sections: updatedSections,
       }
       
-      const { error } = await supabase
+      console.log('[handleSectionChange] Saving to database:', {
+        siteId: site.id,
+        updatedConfig: JSON.stringify(updatedConfig, null, 2),
+        sectionData: finalUpdates.data,
+        updatedSectionsCount: updatedSections.length,
+      })
+      
+      const { error, data } = await supabase
         .from('sites')
         .update({ config: updatedConfig })
         .eq('id', site.id)
+        .select()
       
       if (error) {
-        console.error('Error saving section changes:', error)
+        console.error('[handleSectionChange] Error saving section changes:', error)
+        alert(`Error saving: ${error.message}`)
         return
       }
       
+      console.log('[handleSectionChange] Successfully saved to database:', data)
+      
+      // Force refresh to get latest data
+      // Use router.refresh() to reload server components
       router.refresh()
+      
+      // Also update local state immediately with saved data
+      // This ensures UI updates even if refresh is slow
+      if (data && data[0]?.config) {
+        const savedConfig = data[0].config as PageConfig
+        if (savedConfig.sections) {
+          setSections(savedConfig.sections)
+          // Update active section if it's the one we just saved
+          if (activeSection?.id === sectionId) {
+            const updatedSection = savedConfig.sections.find(s => s.id === sectionId)
+            if (updatedSection) {
+              setActiveSection(updatedSection)
+            }
+          }
+        }
+      }
+    } else {
+      console.warn('[handleSectionChange] Cannot save - canEdit is false')
+      alert('Cannot save - you do not have edit permissions')
     }
   }
 
-  // Update sections when site.config changes
+  // Update sections when site.config changes (after refresh)
   useEffect(() => {
+    const currentConfigStr = JSON.stringify(config)
+    
+    // Check if config actually changed
+    if (currentConfigStr !== lastConfig) {
+      console.log('[PreviewSitePage] Config changed, updating sections')
+      setLastConfig(currentConfigStr)
+      
     const newSections = (config?.sections && Array.isArray(config.sections) && config.sections.length > 0) 
       ? config.sections 
       : (initialSections && initialSections.length > 0 ? initialSections : testSections)
     
     if (newSections.length > 0) {
+        console.log('[PreviewSitePage] Updating sections from config:', {
+          oldSections: sections,
+          newSections,
+        })
       setSections(newSections)
-      // Set first section as active initially
-      if (newSections.length > 0 && !activeSection) {
+        
+        // Update active section if it exists in new sections
+        if (activeSection) {
+          const updatedActiveSection = newSections.find(s => s.id === activeSection.id)
+          if (updatedActiveSection) {
+            console.log('[PreviewSitePage] Updating active section:', updatedActiveSection)
+            setActiveSection(updatedActiveSection)
+          } else if (newSections.length > 0) {
+            setActiveSection(newSections[0])
+          }
+        } else if (newSections.length > 0) {
         setActiveSection(newSections[0])
+        }
       }
     }
-  }, [config, initialSections])
+  }, [config, lastConfig, initialSections, sections, activeSection])
 
   // Register section refs
   const registerSectionRef = (sectionId: string, element: HTMLDivElement | null) => {

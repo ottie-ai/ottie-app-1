@@ -31,6 +31,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -56,7 +57,11 @@
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --radius: 0.625rem;
   /* Global dark background - used for homepage and admin dark mode */
-  --dark-bg: #08000d;
+  --dark-bg: #060010;
+  /* Hover background color for cards */
+  --hover-bg: rgb(25, 10, 51);
+  /* Muted border color */
+  --border-muted: rgb(22, 13, 40);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -102,13 +107,14 @@
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted: rgb(23, 13, 39);
+  --muted-foreground: rgb(177, 158, 239);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: rgba(255, 255, 255, 0.1);
+  --border: rgb(39, 30, 55);
+  --border-muted: rgb(22, 13, 40);
   --input: oklch(1 0 0 / 0.15);
   --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
@@ -122,7 +128,7 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.12 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 0.1);
+  --sidebar-border: rgb(39, 30, 55);
   --sidebar-ring: oklch(0.439 0 0);
 }
 
@@ -133,6 +139,31 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+  
+  /* Default border color for dark mode and marketing page */
+  .dark,
+  .dark * {
+    border-color: rgb(39, 30, 55) !important;
+  }
+  
+  /* Marketing page also uses dark background - apply border color */
+  .dark [class*="bg-[var(--dark-bg)]"],
+  .dark [class*="bg-[var(--dark-bg)"] *,
+  [class*="bg-[var(--dark-bg)]"],
+  [class*="bg-[var(--dark-bg)"] * {
+    border-color: rgb(39, 30, 55) !important;
+  }
+  
+  /* All lines/separators in dark mode and marketing page */
+  .dark hr,
+  .dark [data-slot="separator"],
+  .dark [role="separator"],
+  [class*="bg-[var(--dark-bg)]"] hr,
+  [class*="bg-[var(--dark-bg)]"] [data-slot="separator"],
+  [class*="bg-[var(--dark-bg)]"] [role="separator"] {
+    background-color: rgb(39, 30, 55) !important;
+    border-color: rgb(39, 30, 55) !important;
   }
 
   /* Hide scrollbar utility */
@@ -520,6 +551,38 @@ canvas {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Pill border-radius for buttons and inputs (exclude published sites) */
+  /* Apply pill radius to all buttons and inputs globally */
+  button,
+  [data-slot="button"] {
+    border-radius: 9999px !important;
+  }
+  
+  input,
+  [data-slot="input"] {
+    border-radius: 9999px !important;
+  }
+  
+  textarea,
+  [data-slot="textarea"] {
+    border-radius: 9999px !important;
+  }
+  
+  [data-slot="select-trigger"] {
+    border-radius: 9999px !important;
+  }
+  
+  /* Override for published sites - use default border-radius */
+  [data-published-site] button,
+  [data-published-site] [data-slot="button"],
+  [data-published-site] input,
+  [data-published-site] [data-slot="input"],
+  [data-published-site] textarea,
+  [data-published-site] [data-slot="textarea"],
+  [data-published-site] [data-slot="select-trigger"] {
+    border-radius: var(--radius-md, 0.375rem) !important;
   }
   
   /* Mobile: Show all TabsContent sections stacked */
@@ -953,22 +1016,102 @@ canvas {
   opacity: 0.8 !important;
 }
 
-/* Sidebar background image in dark mode */
-.dark [data-sidebar="sidebar"] {
-  position: relative;
-}
-
-.dark [data-sidebar="sidebar"]::before {
+/* Background image in dark mode - on body, bottom left, visible behind sidebar, slightly cropped */
+.dark body::before {
   content: "";
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background-image: url("/images/sidebar-bg-dark.png");
-  background-position: center bottom;
+  background-position: -10% 120%;
   background-repeat: no-repeat;
   background-size: auto 50%;
   opacity: 0.3;
   pointer-events: none;
-  z-index: 0;
-  transform: translateY(10%);
+  z-index: -1;
 }
+
+/* Ensure sidebar container allows background image to show through */
+.dark [data-slot="sidebar-container"] {
+  background-color: transparent !important;
+}
+
+/* Ensure sidebar inner is transparent so background image is visible through it */
+.dark [data-sidebar="sidebar"] {
+  background-color: transparent !important;
+}
+
+/* Header border replacement with gradient - dark mode */
+.dark header.border-b::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, #0000, #271e37, #0000);
+  pointer-events: none;
+}
+
+.dark header.border-b {
+  border-bottom: none;
+  position: relative;
+}
+
+/* Header border replacement with gradient - light mode */
+header.border-b::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, #ffffff, hsl(var(--border)), #ffffff);
+  pointer-events: none;
+}
+
+header.border-b {
+  border-bottom: none;
+  position: relative;
+}
+
+/* Make main content containers transparent - only body background should show */
+[data-slot="sidebar-inset"] {
+  background-color: transparent !important;
+}
+
+/* Make cards and containers semi-transparent - dark mode */
+.dark [data-slot="sidebar-inset"] .bg-card,
+.dark [data-slot="sidebar-inset"] .bg-muted,
+.dark [data-slot="sidebar-inset"] [class*="bg-card"],
+.dark [data-slot="sidebar-inset"] [class*="bg-muted"] {
+  background-color: rgba(23, 13, 39, 0.5) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Light mode - make cards and containers semi-transparent */
+[data-slot="sidebar-inset"] .bg-card,
+[data-slot="sidebar-inset"] .bg-muted,
+[data-slot="sidebar-inset"] [class*="bg-card"],
+[data-slot="sidebar-inset"] [class*="bg-muted"] {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Frost glass effect for floating navbar */
+.frost-navbar {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .frost-navbar {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
 

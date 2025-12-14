@@ -58,7 +58,7 @@ export function WordReveal({
   const words = text.split(' ')
 
   return (
-    <span ref={ref} className={className}>
+    <span ref={ref} className={className} aria-hidden="true">
       {words.map((word, index) => (
         <span
           key={index}

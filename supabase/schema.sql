@@ -285,6 +285,7 @@ create table public.plans (
   feature_3d_tours boolean default false,
   feature_pdf_flyers boolean default false,
   feature_crm_sync boolean default false,
+  feature_premium_fonts boolean default false,
   price_cents int default 0,
   annual_price_cents int default 0,
   created_at timestamp with time zone default now(),

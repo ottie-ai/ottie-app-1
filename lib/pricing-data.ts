@@ -110,6 +110,59 @@ function formatTeamSeats(maxUsers: number): string {
 }
 
 /**
+ * Database feature column order (as defined in schema.sql)
+ * This order determines how features are sorted in the pricing display
+ */
+const DATABASE_FEATURE_ORDER: Array<{
+  featureKey: keyof Plan
+  uiFeaturePatterns: string[] // Patterns to match UI feature names (case-insensitive)
+}> = [
+  { featureKey: 'feature_lead_generation', uiFeaturePatterns: ['lead management', 'lead sync', 'lead routing', 'content lock for leads'] },
+  { featureKey: 'feature_custom_brand_domain', uiFeaturePatterns: ['custom domain', 'white label'] },
+  { featureKey: 'feature_custom_property_domain', uiFeaturePatterns: [] }, // Not shown in UI currently
+  { featureKey: 'feature_analytics', uiFeaturePatterns: ['visitor analytics', 'analytics'] },
+  { featureKey: 'feature_api_access', uiFeaturePatterns: ['api access'] },
+  { featureKey: 'feature_priority_support', uiFeaturePatterns: ['dedicated account manager', 'priority support', 'sla guarantee'] },
+  { featureKey: 'feature_3d_tours', uiFeaturePatterns: ['3d tours', '3d tour'] },
+  { featureKey: 'feature_pdf_flyers', uiFeaturePatterns: ['pdf flyers', 'pdf'] },
+  { featureKey: 'feature_crm_sync', uiFeaturePatterns: ['lead sync', 'hubspot', 'pipedrive', 'crm'] },
+  { featureKey: 'feature_premium_fonts', uiFeaturePatterns: ['premium text', 'premium fonts'] },
+  { featureKey: 'feature_password_protection', uiFeaturePatterns: ['password protected'] },
+]
+
+/**
+ * Get the sort order for a feature based on database column order
+ * Returns a number representing the position in the database schema
+ * Features not matching any database feature return Infinity (sorted last)
+ */
+function getFeatureSortOrder(featureName: string): number {
+  const lowerName = featureName.toLowerCase()
+  
+  for (let i = 0; i < DATABASE_FEATURE_ORDER.length; i++) {
+    const { uiFeaturePatterns } = DATABASE_FEATURE_ORDER[i]
+    if (uiFeaturePatterns.some(pattern => lowerName.includes(pattern))) {
+      return i
+    }
+  }
+  
+  // Features not matching any database feature (e.g., "Real-time Editor", "Fast & Secure Hosting")
+  // are sorted last
+  return Infinity
+}
+
+/**
+ * Sort features according to database column order
+ * Features matching database columns are sorted first, then other features
+ */
+function sortFeaturesByDatabaseOrder(features: PricingFeature[]): PricingFeature[] {
+  return [...features].sort((a, b) => {
+    const orderA = getFeatureSortOrder(a.name)
+    const orderB = getFeatureSortOrder(b.name)
+    return orderA - orderB
+  })
+}
+
+/**
  * Transforms database Plan objects into PricingTier objects for display
  * Converts price_cents to dollars and calculates annual pricing (15% discount)
  * Uses max_sites for listings and max_users for team seats (999+ = unlimited)
@@ -126,12 +179,15 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
   // Order matters: free, starter, growth, agency, enterprise
   const planOrder = ['free', 'starter', 'growth', 'agency', 'enterprise']
   let firstPasswordProtectionPlan: string | null = null
+  let firstPremiumFontsPlan: string | null = null
   
   for (const planName of planOrder) {
     const plan = plans.find(p => p.name === planName)
-    if (plan?.feature_password_protection) {
+    if (plan?.feature_password_protection && !firstPasswordProtectionPlan) {
       firstPasswordProtectionPlan = planName
-      break
+    }
+    if (plan?.feature_premium_fonts && !firstPremiumFontsPlan) {
+      firstPremiumFontsPlan = planName
     }
   }
   
@@ -146,14 +202,16 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
       // Add password protection feature only to the first plan that has it
       let features = [...featureConfig.features]
       if (plan.name === firstPasswordProtectionPlan && plan.feature_password_protection) {
-        // Insert password protection feature after "Custom domain" if it exists, otherwise at the beginning
-        const customDomainIndex = features.findIndex(f => f.name.toLowerCase().includes('custom domain'))
-        if (customDomainIndex >= 0) {
-          features.splice(customDomainIndex + 1, 0, { name: 'Password protected site' })
-        } else {
-          features.unshift({ name: 'Password protected site' })
-        }
+        features.push({ name: 'Password protected site' })
       }
+      
+      // Add premium fonts feature only to the first plan that has it
+      if (plan.name === firstPremiumFontsPlan && plan.feature_premium_fonts) {
+        features.push({ name: 'Premium text & heading styles' })
+      }
+      
+      // Sort features according to database column order
+      features = sortFeaturesByDatabaseOrder(features)
       
       // Convert cents to dollars
       const monthlyPrice = plan.price_cents / 100

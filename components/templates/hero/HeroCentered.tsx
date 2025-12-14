@@ -5,6 +5,8 @@ import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { Button } from '@/components/ui/button'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { EditableText } from '@/components/ui/editable-text'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * HeroCentered - Centered layout hero with full-width background
@@ -65,28 +67,32 @@ export function HeroCentered({ data, theme, colorScheme = 'light', onDataChange 
               label="Edit Headline"
               description="Update the main headline text."
             >
-              <h1 
-                className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+              <SEOHeading
+                level={1}
+                text={headline}
+                className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${getTextCaseClass(theme?.titleCase)}`}
                 style={{ 
                   fontFamily: headingFont,
                   transform: `scale(${theme?.headingFontSize || 1})`,
                   letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
                 }}
               >
-                {headline}
-              </h1>
+                {applyTextCase(headline, theme?.titleCase)}
+              </SEOHeading>
             </EditableText>
           ) : (
-          <h1 
-            className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+          <SEOHeading
+            level={1}
+            text={headline}
+            className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${getTextCaseClass(theme?.titleCase)}`}
             style={{ 
               fontFamily: headingFont,
               transform: `scale(${theme?.headingFontSize || 1})`,
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
             }}
           >
-            {headline}
-          </h1>
+            {applyTextCase(headline, theme?.titleCase)}
+          </SEOHeading>
           )}
           
           {subheadline && (

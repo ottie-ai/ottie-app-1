@@ -54,8 +54,8 @@ export interface ThemeConfig {
   headingFontSize: number
   /** Heading letter spacing (-0.05 to 0.1) */
   headingLetterSpacing: number
-  /** Whether headings should be uppercase */
-  uppercaseTitles: boolean
+  /** Text case for headings: uppercase, title case, or sentence case */
+  titleCase?: 'uppercase' | 'title' | 'sentence'
   /** Primary brand color (hex) */
   primaryColor: string
   /** Secondary/accent color (hex) */

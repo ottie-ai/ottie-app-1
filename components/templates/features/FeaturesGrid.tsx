@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import { AnimateOnScroll, StaggerContainer, StaggerItem } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -44,10 +46,12 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
       <div className="container mx-auto px-4 py-16 md:py-24">
         {title && (
           <AnimateOnScroll animation="fade-up" delay={0.5}>
-            <h2 
+            <SEOHeading
+              level={2}
+              text={title}
               className={cn(
                 'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                theme?.uppercaseTitles ? 'uppercase' : ''
+                getTextCaseClass(theme?.titleCase)
               )}
               style={{ 
                 fontFamily: headingFont,
@@ -57,8 +61,8 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
                 color: colors.textColor
               }}
             >
-              {title}
-            </h2>
+              {applyTextCase(title, theme?.titleCase)}
+            </SEOHeading>
           </AnimateOnScroll>
         )}
 

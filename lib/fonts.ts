@@ -9,7 +9,7 @@ export interface FontFile {
 export interface FontOption {
   name: string
   value: string
-  category: 'luxury' | 'modern' | 'corporate' | 'lifestyle'
+  category: 'standard' | 'premium'
   weights: number[]
   /** Default font weight for headings - user cannot change this */
   defaultWeight: number
@@ -22,16 +22,16 @@ export interface FontOption {
 
 /**
  * Curated list of Google Fonts for real estate headings
- * Organized by property type and style
+ * Standard fonts available to all users
  */
 export const headingFonts: FontOption[] = [
   // ============================================
-  // 1. Luxury & Elegant (Villas, Historic Estates, High-end)
+  // Standard Fonts
   // ============================================
   {
     name: 'Canela',
     value: 'Canela',
-    category: 'luxury',
+    category: 'standard',
     weights: [100],
     defaultWeight: 100,
     description: 'Ultra-thin, refined serif. Perfect for luxury brands.',
@@ -39,7 +39,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Playfair Display',
     value: 'Playfair Display',
-    category: 'luxury',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'The king of luxury websites. High contrast, bold.',
@@ -47,7 +47,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Cormorant Garamond',
     value: 'Cormorant Garamond',
-    category: 'luxury',
+    category: 'standard',
     weights: [300, 400, 500, 600, 700],
     defaultWeight: 300,
     description: 'Very elegant, thin, looks like a fashion magazine.',
@@ -55,7 +55,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Cinzel',
     value: 'Cinzel',
-    category: 'luxury',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'Classic, Roman style. For ultra-premium properties.',
@@ -63,7 +63,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Prata',
     value: 'Prata',
-    category: 'luxury',
+    category: 'standard',
     weights: [400],
     defaultWeight: 400,
     description: 'Sophisticated serif that looks great in large sizes.',
@@ -71,7 +71,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Bodoni Moda',
     value: 'Bodoni Moda',
-    category: 'luxury',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'Extreme contrast, very fashionable and modern luxury.',
@@ -83,7 +83,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Inter',
     value: 'Inter',
-    category: 'modern',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'The standard for modern web. Readable, neutral.',
@@ -91,7 +91,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Montserrat',
     value: 'Montserrat',
-    category: 'modern',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'Geometric, wide. Feels confident and urban.',
@@ -99,7 +99,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Plus Jakarta Sans',
     value: 'Plus Jakarta Sans',
-    category: 'modern',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'Very popular in tech. Feels fresh and modern.',
@@ -107,7 +107,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Manrope',
     value: 'Manrope',
-    category: 'modern',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'Modern grotesque, pleasant for reading numbers.',
@@ -115,7 +115,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Outfit',
     value: 'Outfit',
-    category: 'modern',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'A bit bolder, geometric. Great for modern brands.',
@@ -127,7 +127,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Lato',
     value: 'Lato',
-    category: 'corporate',
+    category: 'standard',
     weights: [400, 700],
     defaultWeight: 400,
     description: 'Very friendly, rounded, but still professional.',
@@ -135,7 +135,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Roboto',
     value: 'Roboto',
-    category: 'corporate',
+    category: 'standard',
     weights: [400, 500, 700],
     defaultWeight: 500,
     description: 'A classic. Offends no one, works everywhere.',
@@ -143,7 +143,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Open Sans',
     value: 'Open Sans',
-    category: 'corporate',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 600,
     description: 'Neutral, open, very readable on mobile.',
@@ -151,7 +151,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Merriweather',
     value: 'Merriweather',
-    category: 'corporate',
+    category: 'standard',
     weights: [400, 700],
     defaultWeight: 400,
     description: 'A serif built for screen reading. Feels serious.',
@@ -159,7 +159,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Libre Baskerville',
     value: 'Libre Baskerville',
-    category: 'corporate',
+    category: 'standard',
     weights: [400, 700],
     defaultWeight: 400,
     description: 'Traditional, banking style. Feels solid.',
@@ -171,7 +171,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'DM Sans',
     value: 'DM Sans',
-    category: 'lifestyle',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 500,
     description: 'Modern, but friendlier than Inter. Airbnb vibe.',
@@ -179,7 +179,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Fraunces',
     value: 'Fraunces',
-    category: 'lifestyle',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'Old-school serif with modern twist. Boutique feel.',
@@ -187,7 +187,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Josefin Sans',
     value: 'Josefin Sans',
-    category: 'lifestyle',
+    category: 'standard',
     weights: [300, 400, 500, 600, 700],
     defaultWeight: 300,
     description: 'Geometric, thin, elegant. Feels feminine and soft.',
@@ -195,7 +195,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Archivo',
     value: 'Archivo',
-    category: 'lifestyle',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 600,
     description: 'Strong, American style. Good for industrial lofts.',
@@ -203,7 +203,7 @@ export const headingFonts: FontOption[] = [
   {
     name: 'Lora',
     value: 'Lora',
-    category: 'lifestyle',
+    category: 'standard',
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'Beautiful serif with calligraphic elements.',
@@ -216,12 +216,12 @@ export const headingFonts: FontOption[] = [
  */
 export const premiumFonts: FontOption[] = [
   // ============================================
-  // 1. Jedira - Elegant serif with italic support
+  // Premium Fonts
   // ============================================
   {
     name: 'Jedira',
     value: 'Jedira',
-    category: 'luxury',
+    category: 'premium',
     weights: [400],
     defaultWeight: 400,
     description: 'Elegant serif with italic support. Perfect for luxury properties.',
@@ -232,13 +232,10 @@ export const premiumFonts: FontOption[] = [
     ],
   },
 
-  // ============================================
-  // 2. Prettywise - Complete modern sans family
-  // ============================================
   {
     name: 'Prettywise',
     value: 'Prettywise',
-    category: 'modern',
+    category: 'premium',
     weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
     defaultWeight: 400,
     description: 'Complete modern sans family. Versatile and elegant.',
@@ -256,13 +253,10 @@ export const premiumFonts: FontOption[] = [
     ],
   },
 
-  // ============================================
-  // 3. Poria - Luxury sans with complete weights
-  // ============================================
   {
     name: 'Poria',
     value: 'Poria',
-    category: 'luxury',
+    category: 'premium',
     weights: [100, 300, 400, 500, 700, 800, 900],
     defaultWeight: 400,
     description: 'Luxury sans with complete weight range. Bold and sophisticated.',
@@ -283,21 +277,13 @@ export const premiumFonts: FontOption[] = [
  * Category labels and descriptions
  */
 export const categoryInfo: Record<string, { label: string; description: string }> = {
-  luxury: {
-    label: 'Luxury & Elegant',
-    description: 'Villas, Historic Estates, High-end',
+  standard: {
+    label: 'Standard',
+    description: 'Free Google Fonts available to all users',
   },
-  modern: {
-    label: 'Modern & Minimalist',
-    description: 'Apartments, New Developments, Penthouses',
-  },
-  corporate: {
-    label: 'Trustworthy & Corporate',
-    description: 'Family Homes, Classic Sales',
-  },
-  lifestyle: {
-    label: 'Vacation & Lifestyle',
-    description: 'Airbnb, Cabins, Boutique Hotels',
+  premium: {
+    label: 'Premium',
+    description: 'Exclusive fonts for premium plans',
   },
 }
 

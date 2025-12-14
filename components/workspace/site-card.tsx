@@ -182,7 +182,7 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
     <div className="group">
       {/* Card with Thumbnail */}
       <Link href={href}>
-        <div className="relative aspect-[4/3] bg-muted dark:bg-transparent rounded-2xl overflow-hidden">
+        <div className="relative aspect-[4/3] bg-muted dark:bg-transparent rounded-2xl overflow-hidden group-hover:bg-[var(--hover-bg)] transition-colors duration-200">
           {site.thumbnail ? (
             <img 
               src={site.thumbnail} 
@@ -190,7 +190,7 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
               className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-accent dark:bg-white/10">
+            <div className="w-full h-full flex items-center justify-center bg-muted group-hover:bg-[var(--hover-bg)] transition-colors duration-200">
                 <LottiePhotoIcon className="text-muted-foreground" size={24} />
             </div>
           )}

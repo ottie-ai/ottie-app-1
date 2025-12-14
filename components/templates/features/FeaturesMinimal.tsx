@@ -3,6 +3,8 @@
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * FeaturesMinimal - Clean minimal layout with large numbers
@@ -21,8 +23,10 @@ export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionC
     >
       <div className="container mx-auto px-4">
         {title && (
-          <h2 
-            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-16 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+          <SEOHeading
+            level={2}
+            text={title}
+            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-16 ${getTextCaseClass(theme?.titleCase)}`}
             style={{ 
               color: colors.textColor,
               fontFamily: headingFont,
@@ -30,8 +34,8 @@ export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionC
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
             }}
           >
-            {title}
-          </h2>
+            {applyTextCase(title, theme?.titleCase)}
+          </SEOHeading>
         )}
 
         <div 
@@ -53,7 +57,7 @@ export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionC
                 {feature.value}
               </span>
               <span 
-                className={`text-sm md:text-base tracking-wide ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+                className={`text-sm md:text-base tracking-wide ${getTextCaseClass(theme?.titleCase)}`}
                 style={{ color: colors.secondaryTextColor }}
               >
                 {feature.label}

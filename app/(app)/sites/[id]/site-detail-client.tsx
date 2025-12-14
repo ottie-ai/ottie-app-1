@@ -43,6 +43,7 @@ import { ChevronsUpDown, ChevronDown, ExternalLink, Menu, PanelLeft } from 'luci
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { useIsMobile } from '@/hooks/use-mobile'
+import type { ThemeConfig } from '@/types/builder'
 import * as React from 'react'
 
 const SIDEBAR_RESTORE_KEY = 'site_detail_restore_sidebar'
@@ -228,6 +229,8 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
   const router = useRouter()
   const sidebar = useSidebar()
   const isMobile = useIsMobile()
+  const saveChangesRef = useRef<(() => Promise<void>) | null>(null)
+  const themeRef = useRef<ThemeConfig | null>(null)
   
   // Determine current button text
   const currentButtonText = hasUnsavedChanges 
@@ -278,10 +281,8 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
 
   return (
     <div className="flex h-full">
-      {/* Fullscreen Preview with Floating Navbar */}
-      <div className="flex-1 relative flex flex-col min-h-0">
-        {/* Floating Navbar with Reveal Effect - Only over preview area (not over sidebar) */}
-        <motion.nav
+      {/* Floating Navbar with Reveal Effect - OUTSIDE of overflow container for backdrop-filter to work */}
+      <motion.nav
           className="fixed top-2 z-50"
           style={{ 
             left: isMobile 
@@ -301,7 +302,9 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
             filter: { duration: 0.6 }
           }}
         >
-          <div className={`flex h-12 items-center rounded-lg border bg-background shadow-lg ${isMobile ? 'pl-3 pr-2 gap-1' : 'px-2'}`}>
+          <div 
+            className={`frost-navbar flex h-12 items-center rounded-lg ${isMobile ? 'pl-3 pr-2 gap-1' : 'px-2'}`}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -375,14 +378,20 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
                   onClick={async () => {
                     if (hasUnsavedChanges) {
                       setIsSaving(true)
-                      // Trigger save (PreviewSitePage will handle it internally)
-                      // Since we're using direct rendering, no need for postMessage
-                      // Just wait a bit and refresh
-                      setTimeout(() => {
+                      // Call save function from PreviewSitePage
+                      if (saveChangesRef.current) {
+                        try {
+                          await saveChangesRef.current()
+                          setIsSaving(false)
+                          setHasUnsavedChanges(false)
+                        } catch (error) {
+                          console.error('Error saving changes:', error)
+                          setIsSaving(false)
+                        }
+                      } else {
+                        console.warn('Save function not available')
                         setIsSaving(false)
-                        setHasUnsavedChanges(false)
-                        router.refresh()
-                      }, 1000)
+                      }
                     } else {
                       if (site.status === 'published') {
                         const result = await handleUnpublishSite(site.id)
@@ -456,6 +465,8 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
           </div>
         </motion.nav>
 
+      {/* Fullscreen Preview */}
+      <div className="flex-1 relative flex flex-col min-h-0">
         {/* Tab Content */}
         <div className="flex-1 relative min-h-0">
           {/* Placeholder to maintain height when all tabs are hidden */}
@@ -467,11 +478,21 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
               site={site} 
               canEdit={true} 
               onHasUnsavedChanges={setHasUnsavedChanges}
+              saveChangesRef={saveChangesRef}
+              themeRef={themeRef}
             />
           </div>
           {/* Settings Tab */}
           <div className={`absolute inset-0 overflow-y-auto pt-24 ${activeTab === 'settings' ? 'z-10' : 'hidden'}`}>
-            <SiteSettingsPanel site={site} members={members} />
+            <SiteSettingsPanel 
+              site={site} 
+              members={members}
+              themeRef={themeRef}
+              onThemeChange={(theme) => {
+                themeRef.current = theme
+                setHasUnsavedChanges(true)
+              }}
+            />
           </div>
           {/* Analytics Tab */}
           <div className={`absolute inset-0 flex items-center justify-center pt-24 p-8 ${activeTab === 'analytics' ? 'z-10' : 'hidden'}`}>

@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
 import { getFontWeight } from '@/lib/fonts'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 /**
  * ContactSimple - Simple contact form section
@@ -31,10 +33,12 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
         <AnimateOnScroll animation="fade-up" delay={0.5}>
           <div className="max-w-2xl mx-auto text-center mb-12">
             {title && (
-              <h2 
+              <SEOHeading
+                level={2}
+                text={title}
                 className={cn(
                   'text-[clamp(2rem,5vw,4rem)] mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                  theme?.uppercaseTitles ? 'uppercase' : ''
+                  getTextCaseClass(theme?.titleCase)
                 )}
                 style={{ 
                   fontFamily: headingFont,
@@ -42,8 +46,8 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
                   color: colors.textColor
                 }}
               >
-                {title}
-              </h2>
+                {applyTextCase(title, theme?.titleCase)}
+              </SEOHeading>
             )}
             
             {subtitle && (
@@ -59,14 +63,18 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
           <div className="grid md:grid-cols-2 gap-12">
             {/* Contact Info */}
             <AnimateOnScroll animation="fade-right" delay={0.6} className="space-y-6">
-              <h3 
+              <SEOHeading
+                level={3}
+                text="Get in Touch"
                 className="text-lg font-medium mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                 style={{ 
                   color: colors.textColor,
                   fontFamily: headingFont,
                   fontWeight: fontWeight,
                 }}
-              >Get in Touch</h3>
+              >
+                Get in Touch
+              </SEOHeading>
               
               {address && (
                 <div className="flex items-start gap-3">

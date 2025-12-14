@@ -89,7 +89,7 @@ STRICT RULES FOR HIGHLIGHTS:
 
 3. **NO FLUFF:** Banned words: "Beautiful", "Stunning", "Amazing", "Perfect", "Nice". Use descriptive words instead.
 
-4. **DIVERSITY:** Do not generate 2 highlights about the same thing (e.g., don't have "Pool" and "Exterior" if they mean the same).
+4. **DIVERSITY:** Do not generate 2 highlights about the same thing (e.g., don't have "Pool" and "Exterior" if they mean the same). do not use the same words in both title and value
 
 EXAMPLES:
 

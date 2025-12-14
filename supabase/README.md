@@ -32,6 +32,8 @@ This directory contains SQL migration files for the Supabase database.
 - **`add-sites-columns.sql`** - Adds thumbnail_url, published_at, and description columns to sites table
 - **`create-plans-table.sql`** - Creates plans table for subscription plans (free, starter, growth, agency, enterprise) with RLS policies
 - **`add-annual-price-to-plans.sql`** - Adds annual_price_cents column to plans table (monthly price when paid annually with 15% discount)
+- **`add-password-protection-feature.sql`** - Adds feature_password_protection column to plans table
+- **`add-premium-fonts-feature.sql`** - Adds feature_premium_fonts column to plans table
 - **`update-invitations-rls-to-use-plans.sql`** - Updates invitations RLS policy to use plans table as single source of truth
 - **`hybrid-soft-delete-setup.sql`** - **IMPORTANT**: Hybrid soft delete setup with automatic hard delete after 90 days
   - Creates partial indexes on active rows only (deleted_at IS NULL)

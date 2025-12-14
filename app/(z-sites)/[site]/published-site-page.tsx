@@ -135,7 +135,7 @@ export function PublishedSitePage({ site }: PublishedSitePageProps) {
       headingFontFamily: 'Inter',
       headingFontSize: 1,
       headingLetterSpacing: 0,
-      uppercaseTitles: false,
+      titleCase: 'sentence',
       primaryColor: '#000000',
       secondaryColor: '#666666',
       backgroundColor: '#ffffff',

@@ -156,7 +156,7 @@ function AppContent({
       {isWorkspaceRoute ? (
         <SidebarProvider>
           <DashboardSidebar />
-          <SidebarInset className="h-screen overflow-hidden">
+          <SidebarInset className="h-screen">
             {isWorkspaceLocked && currentWorkspace && (
               <>
                 <WorkspaceLockBanner workspaceId={currentWorkspace.id} />

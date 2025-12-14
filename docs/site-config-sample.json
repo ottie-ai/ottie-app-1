@@ -62,6 +62,7 @@
     
   "features_amenities": {
     "interior": {
+      "amenities": [],
       "floor_covering": [],
       "kitchen_features": [],
       "heating": [],

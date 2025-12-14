@@ -6,6 +6,8 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
+import { SEOHeading } from '@/components/ui/seo-heading'
+import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<IconProps>> = {
@@ -40,8 +42,10 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
     >
       <div className="container mx-auto px-4">
         {title && (
-          <h2 
-            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-12 ${theme?.uppercaseTitles ? 'uppercase' : ''}`}
+          <SEOHeading
+            level={2}
+            text={title}
+            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-12 ${getTextCaseClass(theme?.titleCase)}`}
             style={{ 
               color: colors.textColor,
               fontFamily: headingFont,
@@ -49,8 +53,8 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
               letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
             }}
           >
-            {title}
-          </h2>
+            {applyTextCase(title, theme?.titleCase)}
+          </SEOHeading>
         )}
 
         <div className="flex flex-wrap justify-center gap-8 md:gap-12 max-w-5xl mx-auto">

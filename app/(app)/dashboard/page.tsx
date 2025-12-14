@@ -162,7 +162,7 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
-            <Card key={stat.label}>
+            <Card key={stat.label} className="bg-muted">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.label}
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Quick Actions</h2>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="hover:bg-muted/50 transition-colors">
+            <Card className="bg-muted hover:bg-[var(--hover-bg)] transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Generate with AI</CardTitle>
                 <CardDescription>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="hover:bg-muted/50 transition-colors">
+            <Card className="bg-muted hover:bg-[var(--hover-bg)] transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Import from URL</CardTitle>
                 <CardDescription>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="hover:bg-muted/50 transition-colors">
+            <Card className="bg-muted hover:bg-[var(--hover-bg)] transition-colors">
               <CardHeader>
                 <CardTitle className="text-base">Browse Templates</CardTitle>
                 <CardDescription>

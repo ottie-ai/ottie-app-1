@@ -4,6 +4,7 @@ import { useEffect, useCallback, useState } from 'react'
 import { ThemeConfig, HeroSectionData, CTAType, ColorScheme } from '@/types/builder'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { 
   Field, 
   FieldGroup, 
@@ -31,6 +32,7 @@ import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SitePasswordSettings } from '@/components/site-password-settings'
+import type { TitleCase } from '@/lib/text-case'
 
 // ============================================
 // Color Scheme Selector Component
@@ -150,6 +152,25 @@ export function HeroRemixPanel({
       </Field>
 
       <Field>
+        <FieldLabel>Title</FieldLabel>
+        <Input
+          value={data.headline || ''}
+          onChange={(e) => onDataChange({ ...data, headline: e.target.value })}
+          placeholder="Enter title"
+        />
+      </Field>
+
+      <Field>
+        <FieldLabel>Subtitle</FieldLabel>
+        <Textarea
+          value={data.subheadline || ''}
+          onChange={(e) => onDataChange({ ...data, subheadline: e.target.value })}
+          placeholder="Enter subtitle"
+          rows={3}
+        />
+      </Field>
+
+      <Field>
         <FieldLabel>Color Scheme</FieldLabel>
         <ColorSchemeSelector 
           value={colorScheme} 
@@ -208,7 +229,7 @@ export function PageSettingsPanel({
     headingFontFamily: 'Inter',
     headingFontSize: 1,
     headingLetterSpacing: 0,
-    uppercaseTitles: false,
+    titleCase: 'sentence' as TitleCase,
     primaryColor: '#000000',
     secondaryColor: '#666666',
     backgroundColor: '#ffffff',
@@ -229,13 +250,25 @@ export function PageSettingsPanel({
           />
       </Field>
 
-      <Field orientation="horizontal">
-        <FieldLabel htmlFor="uppercase-hero">Uppercase Titles</FieldLabel>
-            <Switch
-              id="uppercase-hero"
-              checked={safeTheme.uppercaseTitles}
-              onCheckedChange={(checked) => onThemeChange({ ...safeTheme, uppercaseTitles: checked })}
-            />
+      <Field>
+        <FieldLabel>Title Case</FieldLabel>
+        <Select 
+          value={safeTheme.titleCase || 'sentence'}
+          onValueChange={(value: 'uppercase' | 'title' | 'sentence') => {
+            const updatedTheme = { ...safeTheme }
+            updatedTheme.titleCase = value
+            onThemeChange(updatedTheme)
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select title case" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sentence">Sentence Case</SelectItem>
+            <SelectItem value="title">Title Case</SelectItem>
+            <SelectItem value="uppercase">Uppercase</SelectItem>
+          </SelectContent>
+        </Select>
       </Field>
 
       <FieldSeparator />

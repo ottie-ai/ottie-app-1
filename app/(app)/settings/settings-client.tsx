@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -143,6 +144,10 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [savingWorkspace, setSavingWorkspace] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  
+  // SMS notifications state
+  const [smsPhoneNumber, setSmsPhoneNumber] = useState('')
+  const [smsEnabled, setSmsEnabled] = useState(false)
   
   // Brand domain state
   const brandingConfig = (workspace?.branding_config || {}) as {
@@ -1636,6 +1641,47 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </div>
                     <Switch />
                   </div>
+
+                  <Separator />
+
+                  {/* SMS Alerts */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>SMS alerts for new leads</Label>
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="sms-phone" className="text-sm font-normal text-muted-foreground">
+                            Phone number for SMS alerts:
+                          </Label>
+                          <Input
+                            id="sms-phone"
+                            type="tel"
+                            placeholder="+1 555 123 4567"
+                            value={smsPhoneNumber}
+                            onChange={(e) => setSmsPhoneNumber(e.target.value)}
+                            disabled={!smsEnabled}
+                          />
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <Checkbox
+                            id="sms-consent"
+                            checked={smsEnabled}
+                            onCheckedChange={(checked) => setSmsEnabled(checked as boolean)}
+                            className="mt-0.5"
+                          />
+                          <Label
+                            htmlFor="sms-consent"
+                            className="text-sm font-normal leading-relaxed cursor-pointer"
+                          >
+                            By enabling SMS alerts you agree to receive text messages about new leads for your listings.
+                          </Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          We will send you a text message when a new lead submits a form on your property websites.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                   </CardContent>
                 </Card>
@@ -1677,6 +1723,45 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       </p>
                     </div>
                     <Switch />
+                  </div>
+                    <Separator />
+                  {/* SMS Alerts */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>SMS alerts for new leads</Label>
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="sms-phone-desktop" className="text-sm font-normal text-muted-foreground">
+                            Phone number for SMS alerts:
+                          </Label>
+                          <Input
+                            id="sms-phone-desktop"
+                            type="tel"
+                            placeholder="+1 555 123 4567"
+                            value={smsPhoneNumber}
+                            onChange={(e) => setSmsPhoneNumber(e.target.value)}
+                            disabled={!smsEnabled}
+                          />
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <Checkbox
+                            id="sms-consent-desktop"
+                            checked={smsEnabled}
+                            onCheckedChange={(checked) => setSmsEnabled(checked as boolean)}
+                            className="mt-0.5"
+                          />
+                          <Label
+                            htmlFor="sms-consent-desktop"
+                            className="text-sm font-normal leading-relaxed cursor-pointer"
+                          >
+                            By enabling SMS alerts you agree to receive text messages about new leads for your listings.
+                          </Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          We will send you a text message when a new lead submits a form on your property websites.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

@@ -255,6 +255,52 @@ export async function handleUpdateSiteFont(siteId: string, headingFontFamily: st
 }
 
 /**
+ * Update site title case
+ * Updates config.theme.titleCase in site config
+ * Note: We don't revalidate here - the client will refresh React Query cache
+ */
+export async function handleUpdateSiteTitleCase(siteId: string, titleCase: 'uppercase' | 'title' | 'sentence') {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
+  const supabase = await createClient()
+  
+  // Get current site config
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('config')
+    .eq('id', siteId)
+    .single()
+  
+  if (siteError || !site) {
+    return { error: 'Site not found' }
+  }
+  
+  // Merge new titleCase into existing config
+  const currentConfig = (site.config as any) || {}
+  const updatedTheme = {
+    ...currentConfig.theme,
+    titleCase,
+  }
+  
+  const updatedConfig = {
+    ...currentConfig,
+    theme: updatedTheme,
+  }
+  
+  const result = await updateSite(siteId, { config: updatedConfig })
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
+}
+
+/**
  * Set password protection for a site
  * Hashes the password and stores it in the database
  * Note: We don't revalidate here - the client will refresh React Query cache
