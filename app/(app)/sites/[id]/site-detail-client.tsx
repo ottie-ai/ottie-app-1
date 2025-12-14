@@ -11,7 +11,6 @@ import { handlePublishSite, handleUnpublishSite } from '@/app/actions/site-actio
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { useRouter } from 'next/navigation'
-import { Breadcrumbs } from '@/components/ui/breadcrumbs'
 import { useSidebar } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -43,7 +42,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ChevronsUpDown, ChevronDown, ExternalLink } from 'lucide-react'
+import { ChevronsUpDown, ChevronDown, ExternalLink, ArrowLeft } from 'lucide-react'
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -311,15 +310,27 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
           }}
         >
           <div 
-            className={`bg-background border flex h-12 items-center rounded-full shadow-xl ${isMobile ? 'pl-3 pr-2 gap-1' : 'pl-4 pr-2'}`}
+            className={`bg-background border flex h-12 items-center rounded-full shadow-xl ${isMobile ? 'pl-3 pr-2 gap-1' : 'pl-1.5 pr-2'}`}
           >
             {!isMobile && (
-              <Breadcrumbs
-                items={[
-                      { label: 'Back to Sites', href: '/sites' },
-                  { label: site.title, href: `/sites/${site.id}` },
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => router.push('/sites')}
+                    >
+                      <ArrowLeft className="size-4" />
+                      <span className="sr-only">Back to Sites</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Back to Sites</p>
+                  </TooltipContent>
+                </Tooltip>
+                <span className="text-sm font-medium">{site.title}</span>
+              </div>
             )}
             
             {/* Center - Tabs */}
