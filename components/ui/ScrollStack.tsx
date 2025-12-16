@@ -152,9 +152,9 @@ const ScrollStack = ({
               }
             }
             
-            if (lastCardsStack) {
+            if (lastCardsStack !== null) {
               // Use the last card's position to determine when title should stop being sticky
-              const lastCard: HTMLElement | null = lastCardsStack.querySelector('.scroll-stack-card:last-child')
+              const lastCard: HTMLElement | null = lastCardsStack.querySelector<HTMLElement>('.scroll-stack-card:last-child')
               if (lastCard) {
                 const lastCardRect = lastCard.getBoundingClientRect()
                 const lastCardBottom = isWindow

@@ -479,7 +479,7 @@ export function DashboardSidebar() {
                     tooltip={item.title}
                   >
                     <Link href={item.url} onClick={handleLinkClick}>
-                      <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" forceLightMode={isActive} />
+                      <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" {...({ invertTheme: isActive, forceLightMode: isActive } as any)} />
                       <span className="flex-1">{item.title}</span>
                       {'badge' in item && item.badge && (
                         <Badge className="text-[10px] px-1.5 py-0 h-5 gradient-ottie hover:opacity-90 text-white border-0">
@@ -514,7 +514,7 @@ export function DashboardSidebar() {
                       </a>
                     ) : (
                       <Link href={item.url} onClick={handleLinkClick}>
-                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" forceLightMode={!('external' in item) && pathname === item.url} />
+                        <item.icon className="size-[18px] group-data-[collapsible=icon]:-ml-px" {...({ invertTheme: !('external' in item) && pathname === item.url, forceLightMode: !('external' in item) && pathname === item.url } as any)} />
                         <span className="flex-1">{item.title}</span>
                       </Link>
                     )}
