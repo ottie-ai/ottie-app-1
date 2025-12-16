@@ -412,9 +412,6 @@ export function BuilderClient({ site }: BuilderClientProps) {
         style={{
           left: isMobile ? '1rem' : '15vw',
           width: isMobile ? 'calc(100vw - 2rem)' : '70vw',
-          backdropFilter: 'blur(4px) saturate(125%)',
-          WebkitBackdropFilter: 'blur(4px) saturate(125%)',
-          background: 'rgba(255, 255, 255, 0.4)',
         }}
         initial={{ y: -100, opacity: 0, scale: 0.95 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
