@@ -140,20 +140,20 @@ const ScrollStack = ({
           
           if (sectionContainer) {
             // Find the last ScrollStack container in the section (cards section)
-            const allScrollStacks = sectionContainer.querySelectorAll('.scroll-stack-container')
+            const allScrollStacks = sectionContainer.querySelectorAll<HTMLElement>('.scroll-stack-container')
             let lastCardsStack: HTMLElement | null = null
             
             // Find the last ScrollStack that has multiple cards (not the title)
             allScrollStacks.forEach((stack) => {
               const stackCards = stack.querySelectorAll('.scroll-stack-card')
               if (stackCards.length > 1) {
-                lastCardsStack = stack as HTMLElement
+                lastCardsStack = stack
               }
             })
             
             if (lastCardsStack) {
               // Use the last card's position to determine when title should stop being sticky
-              const lastCard = lastCardsStack.querySelector('.scroll-stack-card:last-child') as HTMLElement
+              const lastCard = lastCardsStack.querySelector<HTMLElement>('.scroll-stack-card:last-child')
               if (lastCard) {
                 const lastCardRect = lastCard.getBoundingClientRect()
                 const lastCardBottom = isWindow
