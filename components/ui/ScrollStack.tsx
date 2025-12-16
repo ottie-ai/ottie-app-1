@@ -144,16 +144,17 @@ const ScrollStack = ({
             let lastCardsStack: HTMLElement | null = null
             
             // Find the last ScrollStack that has multiple cards (not the title)
-            allScrollStacks.forEach((stack) => {
+            for (let i = 0; i < allScrollStacks.length; i++) {
+              const stack = allScrollStacks[i]
               const stackCards = stack.querySelectorAll('.scroll-stack-card')
               if (stackCards.length > 1) {
                 lastCardsStack = stack
               }
-            })
+            }
             
             if (lastCardsStack) {
               // Use the last card's position to determine when title should stop being sticky
-              const lastCard = lastCardsStack.querySelector<HTMLElement>('.scroll-stack-card:last-child')
+              const lastCard: HTMLElement | null = lastCardsStack.querySelector('.scroll-stack-card:last-child')
               if (lastCard) {
                 const lastCardRect = lastCard.getBoundingClientRect()
                 const lastCardBottom = isWindow
@@ -219,12 +220,12 @@ const ScrollStack = ({
             const finalStackedOffset = index === 0 ? 0 : equalGap * index
             // Lock cards at their final stacked position (relative to their initial position)
             // This is the position they were at when stickyEndPoint was reached
-            const finalTranslateY = stickyEndPoint - cardInitialTop + stackPosY + finalStackedOffset
+            const finalTranslateY = stickyEndPoint !== null ? stickyEndPoint - cardInitialTop + stackPosY + finalStackedOffset : 0
             card.style.transform = `translate3d(0, ${finalTranslateY}px, 0)`
           } else {
             // For single cards (like title), just reset transform to let it scroll normally
             // but keep it at the position where sticky ended
-            const finalTranslateY = stickyEndPoint - cardInitialTop + stackPosY
+            const finalTranslateY = stickyEndPoint !== null ? stickyEndPoint - cardInitialTop + stackPosY : 0
             card.style.transform = `translate3d(0, ${finalTranslateY}px, 0)`
           }
         } else {

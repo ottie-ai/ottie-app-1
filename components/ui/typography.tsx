@@ -39,7 +39,7 @@ export interface TypographyProps
 
 const Typography = React.forwardRef<HTMLElement, TypographyProps>(
   ({ className, variant, as, ...props }, ref) => {
-    const Component = as || (variant === "h1" ? "h1" : 
+    const Component = (as || (variant === "h1" ? "h1" : 
                             variant === "h2" ? "h2" : 
                             variant === "h3" ? "h3" : 
                             variant === "h4" ? "h4" : 
@@ -56,14 +56,15 @@ const Typography = React.forwardRef<HTMLElement, TypographyProps>(
                             variant === "muted" ? "p" : 
                             variant === "lead" ? "p" : 
                             variant === "large" ? "div" : 
-                            "p") as React.ElementType
+                            "p")) as React.ElementType
 
-    return (
-      <Component
-        ref={ref}
-        className={cn(typographyVariants({ variant }), className)}
-        {...props}
-      />
+    return React.createElement(
+      Component,
+      {
+        ref: ref as any,
+        className: cn(typographyVariants({ variant }), className),
+        ...props,
+      } as any
     )
   }
 )

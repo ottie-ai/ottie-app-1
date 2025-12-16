@@ -81,7 +81,10 @@ export function IconPicker({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {selectedIcon ? (
             <>
-              <selectedIcon className="size-4 shrink-0" weight="light" />
+              {(() => {
+                const IconComponent = selectedIcon
+                return <IconComponent className="size-4 shrink-0" weight="light" />
+              })()}
               <span className="truncate">{selectedLabel}</span>
             </>
           ) : (

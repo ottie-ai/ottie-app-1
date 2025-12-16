@@ -35,20 +35,29 @@ export const SEOHeading = forwardRef<HTMLElement, SEOHeadingProps>(
     className,
     ...props 
   }, ref) {
-    const HeadingTag = `h${level}` as keyof JSX.IntrinsicElements
+    const headingProps = {
+      ref: ref as any,
+      'aria-label': text,
+      className: cn(className),
+      ...props,
+    }
 
-    return (
-      <HeadingTag
-        ref={ref as any}
-        aria-label={text}
-        className={cn(className)}
-        {...props}
-      >
-        <span aria-hidden="true">
-          {children}
-        </span>
-      </HeadingTag>
-    )
+    switch (level) {
+      case 1:
+        return <h1 {...headingProps}><span aria-hidden="true">{children}</span></h1>
+      case 2:
+        return <h2 {...headingProps}><span aria-hidden="true">{children}</span></h2>
+      case 3:
+        return <h3 {...headingProps}><span aria-hidden="true">{children}</span></h3>
+      case 4:
+        return <h4 {...headingProps}><span aria-hidden="true">{children}</span></h4>
+      case 5:
+        return <h5 {...headingProps}><span aria-hidden="true">{children}</span></h5>
+      case 6:
+        return <h6 {...headingProps}><span aria-hidden="true">{children}</span></h6>
+      default:
+        return <h1 {...headingProps}><span aria-hidden="true">{children}</span></h1>
+    }
   }
 )
 
