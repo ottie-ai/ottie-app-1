@@ -46,7 +46,7 @@ import { ChevronsUpDown, ChevronDown, ExternalLink, ArrowLeft } from 'lucide-rea
 import { normalizePlan } from '@/lib/utils'
 import { useAppData, useUserProfile, useWorkspace } from '@/contexts/app-context'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { ThemeConfig } from '@/types/builder'
+import type { ThemeConfig, LoaderConfig, PageConfig, Section } from '@/types/builder'
 import * as React from 'react'
 
 const SIDEBAR_RESTORE_KEY = 'site_detail_restore_sidebar'
@@ -234,6 +234,18 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
   const isMobile = useIsMobile()
   const saveChangesRef = useRef<(() => Promise<void>) | null>(null)
   const themeRef = useRef<ThemeConfig | null>(null)
+  const loaderRef = useRef<LoaderConfig | null>(null)
+  const sectionsRef = useRef<Section[] | null>(null)
+  
+  // Initialize loader ref from site config
+  useEffect(() => {
+    const siteConfig = site.config as PageConfig | null
+    // Always set loaderRef, even if loader is undefined (will use default)
+    loaderRef.current = siteConfig?.loader || {
+      type: 'none',
+      colorScheme: 'light',
+    }
+  }, [site.config])
   
   // Determine current button text
   const currentButtonText = hasUnsavedChanges 
@@ -494,6 +506,8 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
               onHasUnsavedChanges={setHasUnsavedChanges}
               saveChangesRef={saveChangesRef}
               themeRef={themeRef}
+              loaderRef={loaderRef}
+              sectionsRef={sectionsRef}
             />
           </div>
           {/* Settings Tab */}
@@ -506,6 +520,14 @@ export function SiteDetailClient({ site, members }: SiteDetailClientProps) {
                 themeRef.current = theme
                 setHasUnsavedChanges(true)
               }}
+              loaderRef={loaderRef}
+              onLoaderChange={(loader) => {
+                loaderRef.current = loader
+                setHasUnsavedChanges(true)
+              }}
+              sectionsRef={sectionsRef}
+              saveChangesRef={saveChangesRef}
+              onHasUnsavedChanges={setHasUnsavedChanges}
             />
           </div>
           {/* Analytics Tab */}

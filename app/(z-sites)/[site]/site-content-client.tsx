@@ -20,9 +20,11 @@
  * 4. This component renders the site using PublishedSitePage
  */
 
+import { useState, useEffect } from 'react'
 import type { Site } from '@/types/database'
 import type { PageConfig } from '@/types/builder'
 import { PublishedSitePage, type PublishedSiteData } from './published-site-page'
+import { SiteLoader } from '@/components/site-loader'
 
 interface SiteContentClientProps {
   site: Site
@@ -31,6 +33,17 @@ interface SiteContentClientProps {
 }
 
 export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) {
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Show loader briefly while React hydrates
+  useEffect(() => {
+    // Small delay to ensure smooth transition
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
   // SECURITY: Only pass public data to PublishedSitePage
   // Do NOT pass sensitive fields like workspace_id, creator_id, password_hash
   // PublishedSitePage only needs: id, title, config
@@ -38,6 +51,14 @@ export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) 
     id: site.id, // Needed for password check component (if needed in future)
     title: site.title, // Public title
     config: siteConfig, // Public config (theme, sections)
+  }
+
+  // Get loader config from site config
+  const loaderConfig = siteConfig?.loader
+
+  // Show loader if configured and still loading
+  if (isLoading && loaderConfig && loaderConfig.type !== 'none') {
+    return <SiteLoader config={loaderConfig} />
   }
   
   // Use clean PublishedSitePage for public sites

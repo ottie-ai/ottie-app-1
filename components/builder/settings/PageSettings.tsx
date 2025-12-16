@@ -271,6 +271,28 @@ export function PageSettingsPanel({
         </Select>
       </Field>
 
+      <Field>
+        <FieldLabel>Animation Style</FieldLabel>
+        <Select 
+          value={safeTheme.animationStyle || 'word-reveal'}
+          onValueChange={(value: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => {
+            const updatedTheme = { ...safeTheme }
+            updatedTheme.animationStyle = value
+            onThemeChange(updatedTheme)
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select animation style" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="word-reveal">Word Reveal</SelectItem>
+            <SelectItem value="fade-in">Fade In</SelectItem>
+            <SelectItem value="slide-up">Slide Up</SelectItem>
+            <SelectItem value="none">None</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+
       <FieldSeparator />
 
       <Field>

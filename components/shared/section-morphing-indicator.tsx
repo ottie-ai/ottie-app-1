@@ -1,13 +1,15 @@
 'use client'
 
 import * as React from 'react'
+import { usePathname } from 'next/navigation'
 import useMeasure from 'react-use-measure'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useClickOutside } from '@/hooks/use-click-outside'
 import { cn } from '@/lib/utils'
-import type { Section, HeroSectionData, FeaturesSectionData, ColorScheme } from '@/types/builder'
+import type { Section, HeroSectionData, FeaturesSectionData, HighlightsSectionData, ColorScheme } from '@/types/builder'
 import { HeroRemixPanel } from '@/components/builder/settings/PageSettings'
 import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
+import { HighlightsRemixPanel } from '@/components/builder/settings/HighlightsSettings'
 import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
 
 interface SectionMorphingIndicatorProps {
@@ -15,6 +17,7 @@ interface SectionMorphingIndicatorProps {
   originalSection?: Section | null // Original section values to compare against
   onSectionChange?: (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => void
   onEditingStateChange?: (sectionId: string, editingState: { variant: string; data: any; colorScheme: ColorScheme }) => void
+  isPublicSite?: boolean // Explicit flag to prevent rendering on public sites (default: false)
 }
 
 const FEEDBACK_WIDTH = 360
@@ -31,8 +34,69 @@ const LOGO_SPRING = {
  * Sticky morphing indicator that shows current section name
  * Positioned at the bottom center of the screen
  * Includes Settings button that opens section-specific settings panel
+ * 
+ * SECURITY: This is an ADMIN-ONLY component. It must NEVER render on public sites.
+ * It only renders in admin/editor contexts (e.g., /preview/[id] with canEdit=true).
  */
-export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange }: SectionMorphingIndicatorProps) {
+export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false }: SectionMorphingIndicatorProps) {
+  const pathname = usePathname()
+  const [isPublishedSite, setIsPublishedSite] = React.useState(false)
+  
+  // SECURITY: Never render on public sites
+  // This ensures the morphing indicator is NEVER visible to public visitors
+  
+  // Check 1: Explicit prop flag
+  if (isPublicSite) {
+    return null
+  }
+  
+  // Check 2: Detect published site marker in DOM (runs after mount)
+  React.useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const checkPublishedSite = () => {
+        const publishedSiteElement = document.querySelector('[data-published-site]')
+        if (publishedSiteElement) {
+          console.warn('[SectionMorphingIndicator] SECURITY: Detected published site context. This admin component should never be used on public sites.')
+          setIsPublishedSite(true)
+        }
+      }
+      
+      // Check immediately
+      checkPublishedSite()
+      
+      // Also watch for changes (in case DOM updates)
+      const observer = new MutationObserver(checkPublishedSite)
+      observer.observe(document.body, { childList: true, subtree: true })
+      
+      return () => observer.disconnect()
+    }
+  }, [])
+  
+  // Check 3: Pathname-based detection (synchronous check)
+  if (typeof window !== 'undefined' && pathname) {
+    const isAdminRoute = pathname.startsWith('/preview/') || 
+                        pathname.startsWith('/builder/') || 
+                        pathname.startsWith('/overview') ||
+                        pathname.startsWith('/sites') ||
+                        pathname.startsWith('/settings') ||
+                        pathname.startsWith('/client-portals') ||
+                        pathname.startsWith('/login') ||
+                        pathname.startsWith('/signup')
+    
+    // If we're not on an admin route, check for published site marker synchronously
+    if (!isAdminRoute && typeof document !== 'undefined') {
+      const hasPublishedSiteMarker = document.querySelector('[data-published-site]') !== null
+      if (hasPublishedSiteMarker) {
+        return null
+      }
+    }
+  }
+  
+  // Check 4: State-based check (after DOM check completes)
+  if (isPublishedSite) {
+    return null
+  }
+  
   const [ref, bounds] = useMeasure()
   const rootRef = React.useRef<HTMLDivElement>(null)
   const [showSettings, setShowSettings] = React.useState(false)
@@ -208,6 +272,51 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
           }}
           onDataChange={(data) => {
             console.log('[SectionMorphingIndicator] onDataChange called (features):', {
+              sectionId: activeSection?.id,
+              newData: data,
+            })
+            setEditingData(data)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onColorSchemeChange={(colorScheme) => {
+            setEditingColorScheme(colorScheme)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data: editingData,
+                colorScheme,
+              })
+            }
+          }}
+        />
+      )
+    }
+
+    if (activeSection.type === 'highlights') {
+      return (
+        <HighlightsRemixPanel
+          variant={editingVariant}
+          data={editingData as HighlightsSectionData}
+          colorScheme={editingColorScheme}
+          onVariantChange={(variant) => {
+            isInternalChange.current = true
+            setEditingVariant(variant)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant,
+                data: editingData,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onDataChange={(data) => {
+            console.log('[SectionMorphingIndicator] onDataChange called (highlights):', {
               sectionId: activeSection?.id,
               newData: data,
             })

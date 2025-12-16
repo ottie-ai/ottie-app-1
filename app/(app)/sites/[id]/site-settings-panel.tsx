@@ -1,7 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Site } from '@/types/database'
 import { 
   handleArchiveSite, 
@@ -12,6 +29,7 @@ import {
   handleUpdateSiteTitle,
   handleSetSitePassword,
   handleRemoveSitePassword,
+  handleReorderSections,
 } from '@/app/actions/site-actions'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
@@ -71,6 +89,9 @@ import {
   Archive,
   ArchiveRestore,
   User,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react'
 import { LottieCopyIcon } from '@/components/ui/lottie-copy-icon'
 import { LottieTrashIcon } from '@/components/ui/lottie-trash-icon'
@@ -81,7 +102,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
 import { useMemo } from 'react'
 import { FontSelector } from '@/components/builder/FontSelector'
-import type { PageConfig, ThemeConfig } from '@/types/builder'
+import type { PageConfig, ThemeConfig, Section, LoaderConfig } from '@/types/builder'
 
 interface SiteSettingsPanelProps {
   site: Site
@@ -91,6 +112,11 @@ interface SiteSettingsPanelProps {
   }>
   themeRef?: React.MutableRefObject<ThemeConfig | null>
   onThemeChange?: (theme: ThemeConfig) => void
+  saveChangesRef?: React.MutableRefObject<(() => Promise<void>) | null>
+  onHasUnsavedChanges?: (hasChanges: boolean) => void
+  loaderRef?: React.MutableRefObject<LoaderConfig | null>
+  onLoaderChange?: (loader: LoaderConfig) => void
+  sectionsRef?: React.MutableRefObject<Section[] | null>
 }
 
 // Helper to get user initials
@@ -108,7 +134,79 @@ function getUserInitials(fullName: string | null, email: string | null): string 
   return 'U'
 }
 
-export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: SiteSettingsPanelProps) {
+// Sortable Item Component
+interface SortableItemProps {
+  section: Section
+  index: number
+  onMove: (index: number, direction: 'up' | 'down') => void
+  totalSections: number
+  isReordering: boolean
+  getSectionTypeLabel: (type: string) => string
+}
+
+function SortableItem({ section, index, onMove, totalSections, isReordering, getSectionTypeLabel }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="size-4 text-muted-foreground" />
+      </div>
+      <span className="flex-1 text-sm font-medium capitalize">
+        {getSectionTypeLabel(section.type)} - {section.variant}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={(e) => {
+            e.stopPropagation()
+            onMove(index, 'up')
+          }}
+          disabled={index === 0 || isReordering}
+        >
+          <ChevronUp className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          onClick={(e) => {
+            e.stopPropagation()
+            onMove(index, 'down')
+          }}
+          disabled={index === totalSections - 1 || isReordering}
+        >
+          <ChevronDown className="size-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, saveChangesRef, onHasUnsavedChanges, loaderRef, onLoaderChange, sectionsRef }: SiteSettingsPanelProps) {
   const router = useRouter()
   const { user } = useAuth()
   const { currentWorkspace, isMultiUserPlan, hasPlanFeature } = useAppData()
@@ -134,6 +232,45 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
   const [isUnarchiving, setIsUnarchiving] = useState(false)
   const [isAssignedToComboboxOpen, setIsAssignedToComboboxOpen] = useState(false)
   const [assignedToSearchQuery, setAssignedToSearchQuery] = useState('')
+  const [isReordering, setIsReordering] = useState(false)
+  
+  // Get sections from config
+  const siteConfig = site.config as PageConfig | null
+  const initialSections = siteConfig?.sections || []
+  
+  // Local state for sections order (will be saved on Save Changes)
+  const [localSections, setLocalSections] = useState<Section[]>(initialSections)
+  
+  // Update local sections when site config changes
+  useEffect(() => {
+    const currentSections = siteConfig?.sections || []
+    setLocalSections(currentSections)
+  }, [siteConfig?.sections])
+
+  // Sync localSections with sectionsRef so PreviewSitePage can access it
+  useEffect(() => {
+    if (sectionsRef) {
+      sectionsRef.current = localSections
+    }
+  }, [localSections, sectionsRef])
+
+  // Sync loaderRef with site config when it changes (after save/refresh)
+  useEffect(() => {
+    if (loaderRef) {
+      loaderRef.current = siteConfig?.loader || {
+        type: 'none',
+        colorScheme: 'light',
+      }
+    }
+  }, [loaderRef, siteConfig?.loader])
+  
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Sort members so current user is first
   const sortedMembers = useMemo(() => {
@@ -301,7 +438,6 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
   }
 
   // Get current font and title case from themeRef or site config
-  const siteConfig = site.config as PageConfig | null
   const currentTheme = themeRef?.current || siteConfig?.theme || {
     fontFamily: 'Inter',
     headingFontFamily: 'Inter',
@@ -318,6 +454,13 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
   }
   const currentFont = currentTheme.headingFontFamily || 'Inter'
   const currentTitleCase = currentTheme.titleCase || 'sentence'
+  const currentAnimation = currentTheme.animationStyle || 'word-reveal'
+
+  // Get current loader config
+  const currentLoaderConfig: LoaderConfig = loaderRef?.current || siteConfig?.loader || {
+    type: 'none',
+    colorScheme: 'light',
+  }
 
   const handleFontChange = (font: string) => {
     if (onThemeChange) {
@@ -335,6 +478,114 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
         titleCase,
       })
     }
+  }
+
+  const handleAnimationChange = (animation: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => {
+    if (onThemeChange) {
+      onThemeChange({
+        ...currentTheme,
+        animationStyle: animation,
+      })
+    }
+  }
+
+  const handleLoaderTypeChange = (type: 'circle' | 'none') => {
+    const newLoader: LoaderConfig = {
+      ...currentLoaderConfig,
+      type,
+    }
+    if (loaderRef) {
+      loaderRef.current = newLoader
+    }
+    if (onLoaderChange) {
+      onLoaderChange(newLoader)
+    }
+    onHasUnsavedChanges?.(true)
+  }
+
+  const handleLoaderColorSchemeChange = (colorScheme: 'light' | 'dark') => {
+    const newLoader: LoaderConfig = {
+      ...currentLoaderConfig,
+      colorScheme,
+    }
+    if (loaderRef) {
+      loaderRef.current = newLoader
+    }
+    if (onLoaderChange) {
+      onLoaderChange(newLoader)
+    }
+    onHasUnsavedChanges?.(true)
+  }
+
+  const handleMoveSection = (index: number, direction: 'up' | 'down') => {
+    if (localSections.length === 0) return
+    
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= localSections.length) return
+    
+    const newSections = [...localSections]
+    const [movedSection] = newSections.splice(index, 1)
+    newSections.splice(newIndex, 0, movedSection)
+    
+    setLocalSections(newSections)
+    onHasUnsavedChanges?.(true)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = localSections.findIndex(s => s.id === active.id)
+      const newIndex = localSections.findIndex(s => s.id === over.id)
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newSections = arrayMove(localSections, oldIndex, newIndex)
+        setLocalSections(newSections)
+        onHasUnsavedChanges?.(true)
+      }
+    }
+  }
+
+  // Save function that will be called from parent
+  const saveSectionsOrder = useCallback(async () => {
+    if (localSections.length === 0) return
+    
+    setIsReordering(true)
+    try {
+      const sectionIds = localSections.map(s => s.id)
+      const result = await handleReorderSections(site.id, sectionIds)
+      
+      if ('error' in result) {
+        toast.error(result.error || 'Failed to reorder sections')
+        return false
+      } else {
+        toastSuccess('Sections reordered successfully')
+        onHasUnsavedChanges?.(false)
+        router.refresh()
+        return true
+      }
+    } catch (error) {
+      console.error('Error reordering sections:', error)
+      toast.error('Failed to reorder sections')
+      return false
+    } finally {
+      setIsReordering(false)
+    }
+  }, [localSections, site.id, onHasUnsavedChanges, router])
+
+  // Note: We don't register saveSectionsOrder to saveChangesRef anymore
+  // Instead, sections order is saved as part of the main save in PreviewSitePage via sectionsRef
+
+  const getSectionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      hero: 'Hero',
+      features: 'Features',
+      gallery: 'Gallery',
+      agent: 'Agent',
+      contact: 'Contact',
+      highlights: 'Highlights',
+    }
+    return labels[type] || type.charAt(0).toUpperCase() + type.slice(1)
   }
 
   const getAvailabilityBadgeClass = (availability: string) => {
@@ -391,7 +642,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-6 space-y-6 overflow-y-auto">
+      <div className="p-6 space-y-6 overflow-y-auto max-w-[800px] mx-auto w-full">
         {/* Basic Info */}
         <div className="space-y-4">
           <div>
@@ -579,6 +830,63 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <Label>Section Animations</Label>
+            <Select
+              value={currentAnimation}
+              onValueChange={(value: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => handleAnimationChange(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select animation style" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="word-reveal">Word Reveal (default)</SelectItem>
+                <SelectItem value="fade-in">Fade In</SelectItem>
+                <SelectItem value="slide-up">Slide Up</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">Affects section reveal effects (e.g. titles, highlights).</p>
+          </div>
+        </div>
+
+        {/* Loader Settings */}
+        <Separator />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Loading Animation</Label>
+            <Select 
+              value={currentLoaderConfig.type}
+              onValueChange={(value: 'circle' | 'none') => handleLoaderTypeChange(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select loader type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="circle">Circle</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {currentLoaderConfig.type !== 'none' && (
+            <div className="space-y-2">
+              <Label>Loader Color Scheme</Label>
+              <Select 
+                value={currentLoaderConfig.colorScheme}
+                onValueChange={(value: 'light' | 'dark') => handleLoaderColorSchemeChange(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select color scheme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Password Protection */}
@@ -604,6 +912,40 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange }: Si
             </div>
           </div>
         </>
+        )}
+
+        {/* Sections Order */}
+        {localSections.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <Label>Sections Order</Label>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={localSections.map(s => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1.5">
+                    {localSections.map((section, index) => (
+                      <SortableItem
+                        key={section.id}
+                        section={section}
+                        index={index}
+                        onMove={handleMoveSection}
+                        totalSections={localSections.length}
+                        isReordering={isReordering}
+                        getSectionTypeLabel={getSectionTypeLabel}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </>
         )}
 
         <Separator />

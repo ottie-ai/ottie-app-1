@@ -301,6 +301,56 @@ export async function handleUpdateSiteTitleCase(siteId: string, titleCase: 'uppe
 }
 
 /**
+ * Reorder sections in site config
+ * Updates the order of sections in config.sections array
+ */
+export async function handleReorderSections(siteId: string, sectionIds: string[]) {
+  // Verify user has access to this site
+  const access = await verifySiteAccess(siteId)
+  if (!access) {
+    return { error: 'Unauthorized: You do not have access to this site' }
+  }
+  
+  const supabase = await createClient()
+  
+  // Get current site config
+  const { data: site, error: siteError } = await supabase
+    .from('sites')
+    .select('config')
+    .eq('id', siteId)
+    .single()
+  
+  if (siteError || !site) {
+    return { error: 'Site not found' }
+  }
+  
+  const currentConfig = (site.config as any) || {}
+  const currentSections = currentConfig.sections || []
+  
+  // Reorder sections based on provided order
+  const reorderedSections = sectionIds
+    .map(id => currentSections.find((s: any) => s.id === id))
+    .filter(Boolean)
+  
+  // Keep any sections that weren't in the provided list (shouldn't happen, but safety check)
+  const remainingSections = currentSections.filter((s: any) => !sectionIds.includes(s.id))
+  const finalSections = [...reorderedSections, ...remainingSections]
+  
+  const updatedConfig = {
+    ...currentConfig,
+    sections: finalSections,
+  }
+  
+  const result = await updateSite(siteId, { config: updatedConfig })
+  
+  if ('error' in result) {
+    return result
+  }
+  
+  return result
+}
+
+/**
  * Set password protection for a site
  * Hashes the password and stores it in the database
  * Note: We don't revalidate here - the client will refresh React Query cache

@@ -1,0 +1,28 @@
+.scroll-stack-container {
+  position: relative;
+  width: 100%;
+}
+
+.scroll-stack-card {
+  transform-origin: top center;
+  will-change: transform, filter;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  width: 100%;
+  margin-bottom: 100px;
+  box-sizing: border-box;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  position: relative;
+  overflow: hidden;
+  /* No transition - transforms should be instant */
+}
+
+.scroll-stack-card:last-child {
+  margin-bottom: 50vh;
+}
+
+.shadow-card {
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+}
+

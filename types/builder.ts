@@ -13,7 +13,7 @@ export type ColorScheme = 'light' | 'dark'
 /**
  * Available section types in the site builder
  */
-export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact'
+export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact' | 'highlights'
 
 /**
  * Section variant identifier (e.g., 'split', 'centered', 'minimal')
@@ -70,6 +70,18 @@ export interface ThemeConfig {
   ctaType?: CTAType
   /** CTA value (phone number, email, etc.) */
   ctaValue?: string
+  /** Animation style for reveal animations (word-reveal, fade-in, etc.) */
+  animationStyle?: 'word-reveal' | 'fade-in' | 'slide-up' | 'none'
+}
+
+/**
+ * Loader configuration for site loading animation
+ */
+export interface LoaderConfig {
+  /** Type of loader animation */
+  type: 'circle' | 'none'
+  /** Color scheme for the loader (light/dark) */
+  colorScheme: 'light' | 'dark'
 }
 
 /**
@@ -85,6 +97,8 @@ export interface PageConfig {
     title?: string
     description?: string
   }
+  /** Loader configuration for site loading animation */
+  loader?: LoaderConfig
 }
 
 // ============================================
@@ -157,6 +171,21 @@ export interface ContactSectionData extends SectionData {
   email?: string
 }
 
+/**
+ * Highlights section data
+ */
+export interface HighlightsSectionData extends SectionData {
+  title?: string
+  image?: string
+  highlights: Array<{
+    title: string
+    text: string
+    number: string
+    image?: string
+    icon?: string // Phosphor icon name (e.g., 'bed', 'bath', 'car')
+  }>
+}
+
 // ============================================
 // Helper types
 // ============================================
@@ -170,6 +199,7 @@ export interface SectionVariants {
   gallery: 'grid' | 'masonry' | 'carousel' | 'lightbox'
   agent: 'card' | 'split' | 'minimal' | 'detailed'
   contact: 'simple' | 'split' | 'map' | 'full'
+  highlights: 'cards'
 }
 
 /**

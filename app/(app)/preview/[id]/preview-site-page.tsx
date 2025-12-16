@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Site } from '@/types/database'
-import type { PageConfig, Section, ColorScheme, ThemeConfig } from '@/types/builder'
+import type { PageConfig, Section, ColorScheme, ThemeConfig, LoaderConfig } from '@/types/builder'
+import { toastSuccess } from '@/lib/toast-helpers'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { SectionMorphingIndicator } from '@/components/shared/section-morphing-indicator'
+import { SiteLoader } from '@/components/site-loader'
 
 // Test sections (hardcoded for testing when site has no sections)
 const testSections: Section[] = [
@@ -45,6 +47,57 @@ const testSections: Section[] = [
     },
   },
   {
+    id: 'highlights-1',
+    type: 'highlights',
+    variant: 'cards',
+    colorScheme: 'light',
+    data: {
+      title: 'Property Highlights',
+      image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+      highlights: [
+        {
+          title: 'COVERAGE',
+          text: 'Access 100M+ candidates from verified job boards, niche sites, and professional networks. We ensure your job gets seen, remembered, and chosen by the top talent.',
+          number: '1',
+          image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
+        },
+        {
+          title: 'CUSTOMIZATION',
+          text: 'No generic templates. Every job posting is tailored to your company culture, role requirements, and target audience for maximum impact.',
+          number: '2',
+          image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800',
+        },
+        {
+          title: 'ANALYTICS',
+          text: 'Track performance with detailed analytics. See which channels drive the best candidates and optimize your recruitment strategy in real-time.',
+          number: '3',
+          image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
+        },
+        {
+          title: 'SUPPORT',
+          text: 'Dedicated account manager and 24/7 support to help you find the perfect candidates and streamline your hiring process from start to finish.',
+          number: '4',
+          image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+        },
+      ],
+    },
+  },
+  {
+    id: 'contact-1',
+    type: 'contact',
+    variant: 'simple',
+    colorScheme: 'dark',
+    data: {
+      title: 'Schedule a Viewing',
+      subtitle: 'Interested in this property? Get in touch with us to schedule a private viewing.',
+      showForm: true,
+      showMap: false,
+      address: '21 Maine Street, Delaware',
+      phone: '+1 (555) 123-4567',
+      email: 'info@luxuryhomes.com',
+    },
+  },
+  {
     id: 'gallery-1',
     type: 'gallery',
     variant: 'grid',
@@ -76,21 +129,6 @@ const testSections: Section[] = [
       license: 'DRE# 01234567',
     },
   },
-  {
-    id: 'contact-1',
-    type: 'contact',
-    variant: 'simple',
-    colorScheme: 'dark',
-    data: {
-      title: 'Schedule a Viewing',
-      subtitle: 'Interested in this property? Get in touch with us to schedule a private viewing.',
-      showForm: true,
-      showMap: false,
-      address: '21 Maine Street, Delaware',
-      phone: '+1 (555) 123-4567',
-      email: 'info@luxuryhomes.com',
-    },
-  },
 ]
 
 interface PreviewSitePageProps {
@@ -100,6 +138,8 @@ interface PreviewSitePageProps {
   saveChangesRef?: React.MutableRefObject<(() => Promise<void>) | null>
   onThemeChange?: (theme: ThemeConfig) => void
   themeRef?: React.MutableRefObject<ThemeConfig | null>
+  loaderRef?: React.MutableRefObject<LoaderConfig | null>
+  sectionsRef?: React.MutableRefObject<Section[] | null>
 }
 
 /**
@@ -113,7 +153,7 @@ interface PreviewSitePageProps {
  * 
  * Archived version with admin elements: preview-site-page-archived-with-admin.tsx
  */
-export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, saveChangesRef, onThemeChange, themeRef }: PreviewSitePageProps) {
+export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, saveChangesRef, onThemeChange, themeRef, loaderRef, sectionsRef }: PreviewSitePageProps) {
   const config = site.config as PageConfig | null
 
   // Default config if missing
@@ -133,7 +173,20 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       ctaValue: '',
     },
     sections: [],
+    loader: {
+      type: 'none',
+      colorScheme: 'light',
+    },
   }
+
+  // Loader config for preview (default none if missing)
+  const loaderConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Use local theme state that can be updated without saving
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(siteConfig.theme || {
@@ -172,6 +225,18 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     }
   }, [config?.theme])
 
+  // Initialize loader ref with config value - update whenever config changes
+  useEffect(() => {
+    if (loaderRef) {
+      // Always set loaderRef from config, even if it's undefined (will use default in save)
+      const loaderFromConfig = config?.loader || siteConfig.loader || {
+        type: 'none',
+        colorScheme: 'light',
+      }
+      loaderRef.current = loaderFromConfig
+    }
+  }, [loaderRef, config?.loader, siteConfig.loader])
+
   const theme = localTheme
   const { sections: initialSections } = siteConfig
   const ctaType = theme?.ctaType || 'none'
@@ -185,6 +250,12 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
 
   const [sections, setSections] = useState<Section[]>(actualSections)
   const [activeSection, setActiveSection] = useState<Section | null>(sections[0] || null)
+  
+  // Use ref to store sections for stable scroll detection callback
+  const sectionsForScrollRef = useRef<Section[]>(sections)
+  useEffect(() => {
+    sectionsForScrollRef.current = sections
+  }, [sections])
   
   // Track site config to detect changes after refresh
   const [lastConfig, setLastConfig] = useState<string>(JSON.stringify(config))
@@ -225,7 +296,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     
     // Check if theme has changed
     const themeChanged = themeRef?.current && JSON.stringify(themeRef.current) !== JSON.stringify(siteConfig.theme)
-    const hasChanges = hasAnyChanges || themeChanged
+    const hasChanges = hasAnyChanges || !!themeChanged
     
     setHasUnsavedChanges(hasChanges)
     
@@ -244,13 +315,16 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
   const handleSaveAllChanges = useCallback(async () => {
     // Check if theme has changed
     const themeChanged = themeRef?.current && JSON.stringify(themeRef.current) !== JSON.stringify(siteConfig.theme)
+    // Check if loader has changed - compare with current config or default
+    const currentLoaderInConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
+    const loaderChanged = loaderRef?.current && JSON.stringify(loaderRef.current) !== JSON.stringify(currentLoaderInConfig)
     
-    if (!canEdit || (!hasUnsavedChanges && !themeChanged) || isSaving) return
+    if (!canEdit || (!hasUnsavedChanges && !themeChanged && !loaderChanged) || isSaving) return
     
     setIsSaving(true)
     
     // Save all sections with editing state
-    const updatedSections = sections.map(section => {
+    let updatedSections = sections.map(section => {
       const editing = editingState[section.id]
       if (editing) {
         return {
@@ -263,16 +337,37 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       return section
     })
     
+    // Check if sections order was changed in SiteSettingsPanel
+    if (sectionsRef?.current) {
+      const reorderedSections = sectionsRef.current
+      // Verify that all section IDs match (just reordered)
+      const currentIds = new Set(updatedSections.map(s => s.id))
+      const reorderedIds = new Set(reorderedSections.map(s => s.id))
+      const idsMatch = currentIds.size === reorderedIds.size && 
+        [...currentIds].every(id => reorderedIds.has(id))
+      
+      if (idsMatch) {
+        // Use reordered sections from SiteSettingsPanel
+        updatedSections = reorderedSections
+      }
+    }
+    
     setSections(updatedSections)
     setEditingState({})
     setHasUnsavedChanges(false)
     
-    // Save to database (sections + theme)
+    // Save to database (sections + theme + loader)
     const supabase = createClient()
+    // Get loader config - prioritize loaderRef, fallback to siteConfig.loader, then default
+    const loaderToSave = loaderRef?.current ?? siteConfig.loader ?? {
+      type: 'none',
+      colorScheme: 'light',
+    }
     const updatedConfig: PageConfig = {
       ...siteConfig,
       sections: updatedSections,
       theme: themeRef?.current || localTheme,
+      loader: loaderToSave,
     }
     
     const { error } = await supabase
@@ -286,9 +381,10 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       return
     }
     
+    toastSuccess('Changes saved successfully')
     router.refresh()
     setIsSaving(false)
-  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router, themeRef, localTheme])
+  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router, themeRef, loaderRef, localTheme])
 
   // Expose save function to parent via ref
   useEffect(() => {
@@ -470,6 +566,73 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
   }
 
   // Scroll detection for active section
+  const handleScrollDetection = useCallback(() => {
+    if (sectionRefs.current.size === 0) return
+    
+    // Find the scroll container (parent with overflow-y-auto or window)
+    const findScrollContainer = (): HTMLElement | Window | null => {
+      if (sectionRefs.current.size === 0) return null
+      
+      const firstSection = Array.from(sectionRefs.current.values())[0]
+      if (!firstSection) return window
+      
+      let parent: HTMLElement | null = firstSection.parentElement
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent)
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+          return parent
+        }
+        parent = parent.parentElement
+      }
+      return window
+    }
+    
+    const scrollContainer = findScrollContainer()
+    if (!scrollContainer) return
+    
+    const viewportHeight = scrollContainer === window
+      ? window.innerHeight
+      : (scrollContainer as HTMLElement).clientHeight
+    const viewportCenter = viewportHeight * 0.5
+    
+    let activeSectionId: string | null = null
+    let minDistance = Infinity
+    
+    // Find the section closest to viewport center using getBoundingClientRect
+    // This works for both window scroll and container scroll
+    for (const [id, element] of sectionRefs.current.entries()) {
+      const rect = element.getBoundingClientRect()
+      const elementTop = rect.top
+      const elementBottom = rect.bottom
+      const elementCenter = rect.top + rect.height / 2
+      
+      // Check if viewport center is within this section
+      if (viewportCenter >= elementTop && viewportCenter <= elementBottom) {
+        const distance = Math.abs(viewportCenter - elementCenter)
+        if (distance < minDistance) {
+          minDistance = distance
+          activeSectionId = id
+        }
+      }
+    }
+    
+    if (activeSectionId) {
+      setActiveSection(prev => {
+        // Only update if the section actually changed
+        if (prev?.id === activeSectionId) return prev
+        const section = sectionsForScrollRef.current.find(s => s.id === activeSectionId)
+        if (section) {
+          console.log('[PreviewSitePage] Active section changed:', {
+            from: prev?.type,
+            to: section?.type,
+            sectionId: activeSectionId
+          })
+        }
+        return section || prev
+      })
+    }
+  }, []) // Empty deps - use ref for sections to avoid re-creating callback
+
   useEffect(() => {
     // Find the scroll container (parent with overflow-y-auto or window)
     const findScrollContainer = (): HTMLElement | Window | null => {
@@ -488,73 +651,39 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       }
       return window
     }
-
-    const handleScroll = () => {
-      if (sectionRefs.current.size === 0) return
-      
-      const scrollContainer = findScrollContainer()
-      if (!scrollContainer) return
-      
-      const viewportHeight = scrollContainer === window
-        ? window.innerHeight
-        : (scrollContainer as HTMLElement).clientHeight
-      const viewportCenter = viewportHeight * 0.5
-      
-      let activeSectionId: string | null = null
-      let minDistance = Infinity
-      
-      // Find the section closest to viewport center using getBoundingClientRect
-      // This works for both window scroll and container scroll
-      for (const [id, element] of sectionRefs.current.entries()) {
-        const rect = element.getBoundingClientRect()
-        const elementTop = rect.top
-        const elementBottom = rect.bottom
-        const elementCenter = rect.top + rect.height / 2
-        
-        // Check if viewport center is within this section
-        if (viewportCenter >= elementTop && viewportCenter <= elementBottom) {
-          const distance = Math.abs(viewportCenter - elementCenter)
-          if (distance < minDistance) {
-            minDistance = distance
-            activeSectionId = id
-          }
-        }
-      }
-      
-      if (activeSectionId) {
-        const section = sections.find(s => s.id === activeSectionId)
-        if (section && section.id !== activeSection?.id) {
-          setActiveSection(section)
-        }
-      }
-    }
     
     // Listen to both window and scroll container
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('scroll', handleScrollDetection, { passive: true })
     
     // Also listen to scroll container if it exists
     let scrollContainer: HTMLElement | Window | null = null
     const timeoutId = setTimeout(() => {
       scrollContainer = findScrollContainer()
       if (scrollContainer && scrollContainer !== window) {
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
+        scrollContainer.addEventListener('scroll', handleScrollDetection, { passive: true })
       }
-      handleScroll() // Initial check
+      handleScrollDetection() // Initial check
     }, 100)
     
-    handleScroll() // Initial check
+    handleScrollDetection() // Initial check
     
     return () => {
-      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('scroll', handleScrollDetection)
       clearTimeout(timeoutId)
       if (scrollContainer && scrollContainer !== window) {
-        scrollContainer.removeEventListener('scroll', handleScroll)
+        scrollContainer.removeEventListener('scroll', handleScrollDetection)
       }
     }
-  }, [sections, activeSection])
+  }, [handleScrollDetection])
 
   const fonts = [theme?.fontFamily, theme?.headingFontFamily].filter(Boolean) as string[]
   const primaryFont = theme?.fontFamily || 'Inter'
+
+  const showPreviewLoader = isLoading && loaderConfig.type !== 'none'
+
+  if (showPreviewLoader) {
+    return <SiteLoader config={loaderConfig} />
+  }
 
   // If no sections, show a placeholder message
   if (!sections || sections.length === 0) {
@@ -684,7 +813,8 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
           })}
         </div>
         <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
-        {canEdit && (
+        {/* ADMIN-ONLY: Morphing indicator is only visible when embedded in editor (has onHasUnsavedChanges/saveChangesRef), not in standalone preview */}
+        {canEdit && (onHasUnsavedChanges || saveChangesRef) && (
           <SectionMorphingIndicator 
             activeSection={activeSection}
             originalSection={sections.find(s => s.id === activeSection?.id) || null}
