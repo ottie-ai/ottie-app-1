@@ -43,8 +43,8 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
     const baseUrl = port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`
     
     // TODO: Handle custom domains
-    if (site.custom_domain) {
-      return `https://${site.custom_domain}`
+    if (site.domain && site.domain !== 'ottie.site') {
+      return `https://${site.domain}`
     }
     
     // Default: use slug on current domain
