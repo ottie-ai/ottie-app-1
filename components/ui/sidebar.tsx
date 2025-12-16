@@ -214,16 +214,6 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
-      onMouseEnter={() => {
-        if (!isMobile && state === "collapsed" && collapsible === "icon") {
-          setOpen(true)
-        }
-      }}
-      onMouseLeave={() => {
-        if (!isMobile && state === "expanded" && collapsible === "icon") {
-          setOpen(false)
-        }
-      }}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
@@ -236,16 +226,6 @@ function Sidebar({
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
         )}
-        onMouseEnter={() => {
-          if (!isMobile && state === "collapsed" && collapsible === "icon") {
-            setOpen(true)
-          }
-        }}
-        onMouseLeave={() => {
-          if (!isMobile && state === "expanded" && collapsible === "icon") {
-            setOpen(false)
-          }
-        }}
       />
       <div
         data-slot="sidebar-container"
@@ -260,11 +240,6 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
           className
         )}
-        onMouseLeave={() => {
-          if (!isMobile && state === "expanded" && collapsible === "icon") {
-            setOpen(false)
-          }
-        }}
         {...props}
       >
         <div

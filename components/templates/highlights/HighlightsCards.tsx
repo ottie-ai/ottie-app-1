@@ -61,13 +61,32 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
 
     const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
+    // Find scroll container (parent with overflow or window)
+    const findScrollContainer = (): HTMLElement | Window => {
+      if (!firstCardRef.current) return window
+      let parent: HTMLElement | null = firstCardRef.current.parentElement
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent)
+        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+          return parent
+        }
+        parent = parent.parentElement
+      }
+      return window
+    }
+
     const handleScroll = () => {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
         if (firstCardRef.current) {
+          const scrollContainer = findScrollContainer()
+          const isWindow = scrollContainer === window
+          const viewportHeight = isWindow
+            ? window.innerHeight
+            : (scrollContainer as HTMLElement).clientHeight
+          
           const rect = firstCardRef.current.getBoundingClientRect()
-          const viewportHeight = window.innerHeight
           // Start fading when card top hits 70% of viewport, end at 55%
           const startPoint = viewportHeight * 0.7
           const endPoint = viewportHeight * 0.55
@@ -80,8 +99,20 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
     }
 
     handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    const scrollContainer = findScrollContainer()
+    if (scrollContainer === window) {
+      window.addEventListener('scroll', handleScroll, { passive: true })
+    } else {
+      (scrollContainer as HTMLElement).addEventListener('scroll', handleScroll, { passive: true })
+    }
+    
+    return () => {
+      if (scrollContainer === window) {
+        window.removeEventListener('scroll', handleScroll)
+      } else {
+        (scrollContainer as HTMLElement).removeEventListener('scroll', handleScroll)
+      }
+    }
   }, [])
 
   const titleSizeClass = 'text-[clamp(2.5rem,10vw,9rem)] leading-none tracking-[0.04em] whitespace-nowrap'

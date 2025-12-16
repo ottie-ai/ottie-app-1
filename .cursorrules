@@ -12,15 +12,17 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 - **Theme:** Uses `next-themes`. MUST use semantic classes (`bg-background`, `text-foreground`, `border-input`).
 - **Icons:** `lucide-react` ONLY.
 - **Forbidden:** Do NOT use hardcoded colors (e.g., `bg-white`). Always verify dark mode compatibility.
+- **IMPORTANT:** ONLY this zone has dark/light mode. Builder and Marketing do NOT have theme switching.
 
 ### 2. 🟢 TEMPLATE RENDERER (The "Elementor" Part)
-- **Paths:** `/app/(app)/builder/**/*`, `/components/templates/**/*`, `/components/builder/FontLoader.tsx`, `/components/builder/FontTransition.tsx`
+- **Paths:** `/app/(builder)/builder/**/*`, `/components/templates/**/*`, `/components/builder/FontLoader.tsx`, `/components/builder/FontTransition.tsx`
 - **Note:** 
-  - `/components/workspace/SectionEditor.tsx` is ADMIN UI (edit buttons)
-  - `/components/builder/settings/**/*` is ADMIN UI (settings panels)
+ - `/components/workspace/SectionEditor.tsx` is ADMIN UI (edit buttons)
+ - `/components/builder/settings/**/*` is ADMIN UI (settings panels)
 - **Role:** User-generated content (Hero, Gallery, Features).
 - **Styling:** ISOLATED component styling.
-- **Theme:** IGNORES global theme/dark mode. Controlled solely by `colorScheme` prop (`'light' | 'dark'`).
+- **Theme:** Builder has NO dark/light mode. Builder always uses fixed styling (dark luxury theme for admin UI, but site content uses its own `colorScheme`).
+- **Site colorScheme:** Sections use `colorScheme` prop (`'light' | 'dark'`) to determine background/text colors - this is about SITE styling, NOT builder theme.
 - **Icons:** `@phosphor-icons/react` (Always use `weight="light"`).
 - **Rule:** Never apply `bg-background` or global theme classes here. These sections must look identical regardless of the Admin UI theme.
 
@@ -28,7 +30,7 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 - **Paths:** `/app/(marketing)/**/*` (includes `/app/(marketing)/page.tsx`, `/app/(marketing)/privacy/page.tsx`, `/app/(marketing)/terms/page.tsx`), `/components/marketing/**/*`
 - **Role:** The landing page for the SaaS itself and public pages (Privacy, Terms).
 - **Styling:** Custom, hardcoded aesthetic.
-- **Theme:** NO ThemeProvider. Hardcoded dark style (`bg-[#08000d]`).
+- **Theme:** NO ThemeProvider. NO dark/light mode. Hardcoded dark style (`bg-[#08000d]`).
 
 ---
 
@@ -73,15 +75,17 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 ## ⚡️ Workflow Rules
 1. **New Template Sections:** When asked to create a section (e.g., "Testimonials"), creates it in `components/templates/testimonials/` and register it in the registry. Use **Phosphor Icons**.
 2. **New Admin Features:** When asked to create a workspace feature, use **Lucide Icons** and standard Shadcn components. All platform routes are in `/app/(app)/` route group.
-3. **Inline Editing:** In the Template Editor (`/app/(app)/builder/[id]`), use `EditableText` for text elements to allow inline editing.
+3. **Inline Editing:** In the Layout Builder (`/app/(builder)/builder/[id]`), use `EditableText` for text elements to allow inline editing.
 4. **Route Groups & URLs:** 
    - `/app/(marketing)/` - Public pages (homepage, privacy, terms) → URLs: `/`, `/privacy`, `/terms`
    - `/app/(app)/` - Protected platform routes - requires authentication via `(app)/layout.tsx`
      - `/app/(app)/overview/` - Overview page → URL: `/overview`
-     - `/app/(app)/sites/` - Sites page → URL: `/sites`
+     - `/app/(app)/sites/` - Sites list page → URL: `/sites`
+     - `/app/(app)/sites/[id]/` - Site backend (Settings/Analytics/Leads + mini preview) → URL: `/sites/[id]`
+     - `/app/(builder)/builder/[id]/` - Layout builder (Full-screen editor) → URL: `/builder/[id]`
+     - `/app/(app)/preview/[id]/` - Preview route (opens in new tab) → URL: `/preview/[id]`
      - `/app/(app)/settings/` - Settings page → URL: `/settings`
      - `/app/(app)/client-portals/` - Client portals page → URL: `/client-portals`
      - `/app/(app)/login/` - Login page → URL: `/login`
      - `/app/(app)/signup/` - Signup page → URL: `/signup`
-     - `/app/(app)/builder/[id]/` - Builder routes → URL: `/builder/[id]`
    - `/app/(z-sites)/[site]/` - Client subdomain routes → URLs: `client.ottie.com/*` (z- prefix ensures lower priority than (app) routes)

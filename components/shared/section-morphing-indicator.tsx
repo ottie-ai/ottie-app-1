@@ -487,7 +487,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                       className="m-[-8px] flex items-center justify-end rounded-full p-2 flex-1 gap-1.5 -outline-offset-2 hover:bg-accent transition-colors group"
                       onClick={openSettings}
                     >
-                      <LottieSettingsIcon className="size-4 shrink-0" />
+                      <LottieSettingsIcon className="size-4 shrink-0" forceLightMode={true} />
                       <span className="ml-1 max-w-[20ch] truncate">Section Settings</span>
                     </button>
                   </motion.div>

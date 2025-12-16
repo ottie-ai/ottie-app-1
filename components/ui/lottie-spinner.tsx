@@ -18,7 +18,6 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
   const { resolvedTheme } = useTheme()
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const [isMounted, setIsMounted] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
 
   // Determine if dark mode is active
   const isDark = useMemo(() => {
@@ -116,8 +115,8 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
     if (!lottieRef.current || !isMounted) return
 
     const lottieInstance = lottieRef.current
-    // Set slower speed (0.4 = 40% of original speed - much slower)
-    lottieInstance.setSpeed(0.4)
+    // Set slower speed (0.6 = 60% of original speed)
+    lottieInstance.setSpeed(0.6)
     // Play animation continuously
     lottieInstance.play()
   }, [isMounted])
@@ -131,31 +130,12 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
         position: 'relative',
       }}
     >
-      {/* Placeholder spinner - hidden once Lottie is loaded */}
-      {!isLoaded && (
-        <div 
-          className="absolute inset-0"
-          style={{ 
-            width: size, 
-            height: size,
-            opacity: isLoaded ? 0 : 1,
-            transition: 'opacity 0.2s ease-out'
-          }} 
-          role="status" 
-          aria-label="Loading"
-        >
-          <div className="w-full h-full border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-        </div>
-      )}
-      
-      {/* Lottie animation - shown once mounted */}
+      {/* Lottie animation */}
       {isMounted && (
         <div
           style={{ 
             width: size, 
             height: size,
-            opacity: isLoaded ? 1 : 0,
-            transition: 'opacity 0.2s ease-in'
           }}
         >
           <Lottie
@@ -164,9 +144,6 @@ export function LottieSpinner({ className = '', size = 24 }: LottieSpinnerProps)
             style={{ width: size, height: size }}
             loop={true}
             autoplay={true}
-            onLoadedData={() => {
-              setIsLoaded(true)
-            }}
           />
         </div>
       )}

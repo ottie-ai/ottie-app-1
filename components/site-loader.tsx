@@ -33,7 +33,6 @@ interface SiteLoaderProps {
 export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProps) {
   const lottieRef = useRef<LottieRefCurrentProps>(null)
   const [isMounted, setIsMounted] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
 
   // Default config: circle loader with light color scheme
   const loaderConfig: LoaderConfig = config || {
@@ -47,13 +46,18 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
   }
 
   // Determine target color based on colorScheme
-  // Light: darker gray for light backgrounds
-  // Dark: lighter gray for dark backgrounds
+  // IMPORTANT: colorScheme determines BOTH background AND icon color
+  // - colorScheme: 'light' = WHITE background + BLACK icon
+  // - colorScheme: 'dark' = BLACK background + WHITE icon
+  // Lottie uses RGB values in 0-1 range (normalized 0-1, not 0-255)
   const targetColor = useMemo(() => {
     return loaderConfig.colorScheme === 'dark'
-      ? [0.85, 0.85, 0.9] // Light gray for dark backgrounds
-      : [0.2, 0.2, 0.25]  // Dark gray for light backgrounds
+      ? [1.0, 1.0, 1.0] // White icon for dark background
+      : [0.0, 0.0, 0.0]  // Black icon for light background
   }, [loaderConfig.colorScheme])
+  
+  // Background color based on colorScheme
+  const backgroundColor = loaderConfig.colorScheme === 'dark' ? '#000000' : '#ffffff'
 
   // Helper function to update colors recursively
   const updateColorsInObject = useCallback((obj: any) => {
@@ -154,6 +158,7 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
         height: '100%',
         minHeight: '100vh',
         position: 'relative',
+        backgroundColor: backgroundColor,
       }}
     >
       <div
@@ -163,43 +168,12 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
           position: 'relative',
         }}
       >
-        {/* Placeholder spinner - hidden once Lottie is loaded */}
-        {!isLoaded && (
-          <div
-            className="absolute inset-0"
-            style={{
-              width: size,
-              height: size,
-              opacity: isLoaded ? 0 : 1,
-              transition: 'opacity 0.2s ease-out',
-            }}
-            role="status"
-            aria-label="Loading"
-          >
-            <div
-              className="w-full h-full rounded-full animate-spin"
-              style={{
-                borderWidth: '2px',
-                borderStyle: 'solid',
-                borderColor: loaderConfig.colorScheme === 'dark'
-                  ? 'rgba(255, 255, 255, 0.2)'
-                  : 'rgba(0, 0, 0, 0.2)',
-                borderTopColor: loaderConfig.colorScheme === 'dark'
-                  ? 'rgba(255, 255, 255, 0.6)'
-                  : 'rgba(0, 0, 0, 0.6)',
-              }}
-            />
-          </div>
-        )}
-
-        {/* Lottie animation - shown once mounted */}
+        {/* Lottie animation */}
         {isMounted && (
           <div
             style={{
               width: size,
               height: size,
-              opacity: isLoaded ? 1 : 0,
-              transition: 'opacity 0.2s ease-in',
             }}
           >
             <Lottie
@@ -208,9 +182,6 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
               style={{ width: size, height: size }}
               loop={true}
               autoplay={true}
-              onLoadedData={() => {
-                setIsLoaded(true)
-              }}
             />
           </div>
         )}

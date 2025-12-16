@@ -21,8 +21,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   // /invite routes are public because non-authenticated users need to see the invitation
   const publicRoutes = ['/login', '/signup', '/auth', '/forgot-password', '/reset-password', '/invite']
   const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+  
+  // Preview routes need white background during loading, not workspace background
+  // Builder routes are in separate (builder) route group, so they don't use this AuthGuard
+  const isPreviewRoute = pathname?.startsWith('/preview/')
 
-  console.log('[AuthGuard] State:', { pathname, loading, user: user?.email, isPublicRoute })
+  console.log('[AuthGuard] State:', { pathname, loading, user: user?.email, isPublicRoute, isPreviewRoute })
 
   useEffect(() => {
     // Only redirect if not on a public route
@@ -42,6 +46,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     console.log('[AuthGuard] Loading...')
+    // For preview routes, return null - their own loading will run
+    // Builder routes are in separate (builder) route group, so they don't use this AuthGuard
+    if (isPreviewRoute) return null
+    // For workspace routes, show loader
     return (
       <div className="flex h-screen items-center justify-center">
         <LottieSpinner size={32} />

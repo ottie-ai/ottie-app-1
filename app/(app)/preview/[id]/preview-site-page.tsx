@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import Script from 'next/script'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -154,6 +155,32 @@ interface PreviewSitePageProps {
  * Archived version with admin elements: preview-site-page-archived-with-admin.tsx
  */
 export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, saveChangesRef, onThemeChange, themeRef, loaderRef, sectionsRef }: PreviewSitePageProps) {
+  // Add site-route class before hydration to avoid admin background flash
+  const siteRouteScript = (
+    <Script
+      id="preview-site-route-class"
+      strategy="beforeInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
+          if (typeof document !== 'undefined') {
+            document.body.classList.add('site-route');
+            document.documentElement.classList.add('site-route');
+          }
+        `,
+      }}
+    />
+  )
+
+  // Fallback: ensure class stays during client lifecycle
+  useEffect(() => {
+    document.body.classList.add('site-route')
+    document.documentElement.classList.add('site-route')
+    return () => {
+      document.body.classList.remove('site-route')
+      document.documentElement.classList.remove('site-route')
+    }
+  }, [])
+
   const config = site.config as PageConfig | null
 
   // Default config if missing
@@ -182,6 +209,15 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
   // Loader config for preview (default none if missing)
   const loaderConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
   const [isLoading, setIsLoading] = useState(true)
+
+  // Cache loader config to localStorage for loading.tsx
+  useEffect(() => {
+    try {
+      localStorage.setItem(`loader-config-${site.id}`, JSON.stringify(loaderConfig))
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, [loaderConfig, site.id])
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 100)
@@ -590,10 +626,15 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     const scrollContainer = findScrollContainer()
     if (!scrollContainer) return
     
-    const viewportHeight = scrollContainer === window
-      ? window.innerHeight
-      : (scrollContainer as HTMLElement).clientHeight
-    const viewportCenter = viewportHeight * 0.5
+    // Calculate viewport center - for container scroll, need to account for container's position
+    let viewportCenter: number
+    if (scrollContainer === window) {
+      viewportCenter = window.innerHeight * 0.5
+    } else {
+      const container = scrollContainer as HTMLElement
+      const containerRect = container.getBoundingClientRect()
+      viewportCenter = containerRect.top + container.clientHeight * 0.5
+    }
     
     let activeSectionId: string | null = null
     let minDistance = Infinity
@@ -612,6 +653,23 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
         if (distance < minDistance) {
           minDistance = distance
           activeSectionId = id
+        }
+      }
+    }
+    
+    // Fallback: if no section is in viewport center, find the closest one
+    if (!activeSectionId) {
+      for (const [id, element] of sectionRefs.current.entries()) {
+        const rect = element.getBoundingClientRect()
+        const elementCenter = rect.top + rect.height / 2
+        const distance = Math.abs(viewportCenter - elementCenter)
+        
+        // Only consider sections that are at least partially visible
+        if (rect.bottom > 0 && rect.top < (scrollContainer === window ? window.innerHeight : (scrollContainer as HTMLElement).clientHeight)) {
+          if (distance < minDistance) {
+            minDistance = distance
+            activeSectionId = id
+          }
         }
       }
     }
@@ -728,7 +786,21 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
   const headingFont = theme?.headingFontFamily || 'Inter'
 
   return (
-    <div data-site-wrapper>
+    <>
+      {/* Force white background immediately */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          body {
+            background-color: #ffffff !important;
+            background-image: none !important;
+          }
+          html {
+            background-color: #ffffff !important;
+          }
+        `
+      }} />
+      {siteRouteScript}
+      <div data-site-wrapper>
       <FontLoader fonts={fonts} />
       <FontTransition font={primaryFont}>
         {/* Global style for all headings - ONLY applies to site content, not admin UI */}
@@ -748,7 +820,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
         <div 
           data-site-content
           className="site-content"
-          style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor, color: theme?.textColor }}
+          style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor || '#ffffff', color: theme?.textColor }}
         >
           {sections?.map((section: Section) => {
             // Use editing state if available (for preview), otherwise use saved section
@@ -768,6 +840,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
             return (
               <div
                 key={section.id}
+                data-section-id={section.id}
                 ref={(el) => {
                   const sectionElement = el as HTMLDivElement | null
                   registerSectionRef(section.id, sectionElement)
@@ -823,6 +896,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
           />
         )}
       </FontTransition>
-    </div>
+      </div>
+    </>
   )
 }

@@ -61,8 +61,20 @@ export default function AppRootLayout({
   const pathname = usePathname()
 
   // Workspace routes that should have sidebar
+  // Builder routes are in separate (builder) route group, so they don't inherit this layout
+  // Preview routes have their own full-screen layout
   const workspaceRoutes = ['/dashboard', '/sites', '/leads', '/settings', '/client-portals']
-  const isWorkspaceRoute = workspaceRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+  const isPreviewRoute = pathname?.startsWith('/preview/')
+  const isWorkspaceRoute = !isPreviewRoute && workspaceRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+
+  // Apply workspace-body class only for workspace routes (for background)
+  useEffect(() => {
+    if (isWorkspaceRoute) {
+      document.body.classList.add('workspace-body')
+    } else {
+      document.body.classList.remove('workspace-body')
+    }
+  }, [isWorkspaceRoute])
 
   return (
     <QueryProvider>
@@ -75,7 +87,7 @@ export default function AppRootLayout({
         <AuthGuard>
           {/* AppProvider without initialData - fetches via React Query (cached) */}
           <AppProvider>
-            <AppContent isWorkspaceRoute={isWorkspaceRoute}>
+            <AppContent isWorkspaceRoute={isWorkspaceRoute} isPreviewRoute={isPreviewRoute}>
               {children}
             </AppContent>
           </AppProvider>
@@ -89,10 +101,12 @@ export default function AppRootLayout({
 // AppContent - Shows loading screen while app data is loading
 function AppContent({ 
   children, 
-  isWorkspaceRoute 
+  isWorkspaceRoute,
+  isPreviewRoute
 }: { 
   children: React.ReactNode
   isWorkspaceRoute: boolean
+  isPreviewRoute: boolean
 }) {
   const { loading: appDataLoading, currentWorkspace, profile } = useAppData()
   const { user, loading: authLoading, initialized } = useAuth()
@@ -104,13 +118,22 @@ function AppContent({
   // This prevents showing empty UI with missing data and flickering between states
   const hasEssentialData = !!(profile && currentWorkspace)
   
-  // Single loading condition: show loading until we have everything we need
-  // - Not initialized: show loading (auth not ready)
-  // - Auth loading: show loading (still checking auth)
-  // - User exists but no essential data: show loading (app data not ready)
-  const shouldShowLoading = !initialized || authLoading || (user?.id && !hasEssentialData)
+  // For preview routes, only wait for auth to load
+  // They don't need workspace data to render (they fetch site data themselves)
+  // Builder routes are in separate (builder) route group, so they don't use this layout
+  const shouldShowLoadingForPreview = !initialized || authLoading
+  
+  // For workspace routes, wait for auth + workspace data
+  const shouldShowLoadingForWorkspace = !initialized || authLoading || (user?.id && !hasEssentialData)
 
-  if (shouldShowLoading) {
+  if (isPreviewRoute && shouldShowLoadingForPreview) {
+    // For preview routes, show nothing while auth is loading
+    // Preview will handle its own loading state once auth is ready
+    return null
+  }
+
+  if (!isPreviewRoute && shouldShowLoadingForWorkspace) {
+    // For workspace routes, show full loading with workspace background
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

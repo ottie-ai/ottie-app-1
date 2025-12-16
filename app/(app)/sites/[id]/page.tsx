@@ -1,7 +1,19 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { SiteDetailClient } from './site-detail-client'
+import { SiteBackendClient } from './site-backend-client'
 
+/**
+ * Site Backend Page - Admin view pre site management
+ * 
+ * URL: /sites/[id]
+ * 
+ * Tento view zobrazuje backend admin interface s tabs:
+ * - Settings (name, slug, password, domain, status, delete)
+ * - Analytics (charts, metrics)
+ * - Leads (leads table)
+ * 
+ * Plus mini preview vpravo s linkom na builder.
+ */
 export default async function SiteDetailPage({
   params,
 }: {
@@ -9,6 +21,12 @@ export default async function SiteDetailPage({
 }) {
   const { id } = await params
   const supabase = await createClient()
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    notFound()
+  }
 
   // Fetch site data
   const { data: site, error } = await supabase
@@ -19,6 +37,22 @@ export default async function SiteDetailPage({
     .single()
 
   if (error || !site) {
+    notFound()
+  }
+
+  // Check permissions
+  const { data: membership } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', site.workspace_id)
+    .eq('user_id', user.id)
+    .single()
+
+  const isOwnerOrAdmin = membership?.role === 'owner' || membership?.role === 'admin'
+  const isCreator = site.creator_id === user.id
+  const isAssignedAgent = site.assigned_agent_id === user.id
+
+  if (!isOwnerOrAdmin && !isCreator && !isAssignedAgent) {
     notFound()
   }
 
@@ -44,6 +78,6 @@ export default async function SiteDetailPage({
     },
   })) || []
 
-  return <SiteDetailClient site={site} members={membersData} />
+  return <SiteBackendClient site={site} members={membersData} />
 }
 

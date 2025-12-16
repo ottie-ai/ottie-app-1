@@ -1,0 +1,293 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Custom Fonts */
+@font-face {
+  font-family: 'Canela';
+  src: url('/font/Canela/Canela-Thin-Web.woff2') format('woff2'),
+       url('/font/Canela/Canela-Thin-Web.woff') format('woff');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Builder CSS Variables - Fixed light colors, no dark/light mode */
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --radius: 0.625rem;
+  --background: rgba(255, 255, 255, 1);
+  --foreground: rgba(0, 0, 0, 1);
+  --card: rgba(255, 255, 255, 1);
+  --card-foreground: rgba(0, 0, 0, 1);
+  --popover: rgba(255, 255, 255, 1);
+  --popover-foreground: rgba(0, 0, 0, 1);
+  --primary: rgba(0, 0, 0, 1);
+  --primary-foreground: rgba(255, 255, 255, 1);
+  --secondary: rgba(245, 245, 245, 1);
+  --secondary-foreground: rgba(0, 0, 0, 1);
+  --muted: rgba(245, 245, 245, 1);
+  --muted-foreground: rgba(100, 100, 100, 1);
+  --accent: rgba(245, 245, 245, 1);
+  --accent-foreground: rgba(0, 0, 0, 1);
+  --destructive: rgba(220, 38, 38, 1);
+  --destructive-foreground: rgba(255, 255, 255, 1);
+  --border: rgba(230, 230, 230, 1);
+  --input: rgba(230, 230, 230, 1);
+  --ring: rgba(150, 150, 150, 1);
+  --chart-1: rgba(251, 146, 60, 1);
+  --chart-2: rgba(34, 197, 94, 1);
+  --chart-3: rgba(59, 130, 246, 1);
+  --chart-4: rgba(168, 85, 247, 1);
+  --chart-5: rgba(236, 72, 153, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Force light border colors for all elements in builder */
+  *,
+  *::before,
+  *::after {
+    border-color: rgba(230, 230, 230, 1) !important;
+  }
+  
+  body {
+    @apply text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: #ffffff;
+  }
+  
+  /* Force light colors on all UI elements */
+  .border {
+    border-color: rgba(230, 230, 230, 1) !important;
+  }
+  
+  [class*="border"] {
+    border-color: rgba(230, 230, 230, 1) !important;
+  }
+  
+  /* Floating navbar - allow transparent white border */
+  body.site-route nav[class*="fixed"][class*="top-2"] {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* Custom Heading Styles */
+  .heading-xl {
+    @apply scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl;
+  }
+
+  .heading-lg {
+    @apply scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0;
+  }
+
+  .heading-md {
+    @apply scroll-m-20 text-2xl font-semibold tracking-tight;
+  }
+
+  .heading-sm {
+    @apply scroll-m-20 text-xl font-semibold tracking-tight;
+  }
+
+  /* Utility Classes */
+  .muted {
+    @apply text-sm text-muted-foreground;
+  }
+
+  .lead {
+    @apply text-xl text-muted-foreground;
+  }
+
+  .large {
+    @apply text-lg font-semibold;
+  }
+
+  /* Pill border-radius for buttons and inputs */
+  button,
+  [data-slot="button"] {
+    border-radius: 9999px !important;
+  }
+  
+  input,
+  [data-slot="input"] {
+    border-radius: 9999px !important;
+  }
+  
+  textarea,
+  [data-slot="textarea"] {
+    border-radius: 9999px !important;
+  }
+  
+  [data-slot="select-trigger"] {
+    border-radius: 9999px !important;
+  }
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  letter-spacing: 0;
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Site route - always white background */
+body.site-route {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh !important;
+  height: auto !important;
+}
+
+html.site-route {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100% !important;
+}
+
+/* Remove any padding/margin from site wrapper and content in builder */
+body.site-route [data-site-wrapper] {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+body.site-route [data-site-content] {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important;
+}
+
+/* Remove spacing from all children */
+body.site-route [data-site-content] > * {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Force dark color for Lottie icons in builder */
+body.site-route svg,
+body.site-route [class*="lottie"] {
+  color: rgba(0, 0, 0, 1) !important;
+}
+
+/* Force text colors to be dark in builder */
+body.site-route .text-muted-foreground {
+  color: rgba(100, 100, 100, 1) !important;
+}
+
+/* Apple liquid glass border effect for floating navbar */
+.builder-floating-nav {
+  border: none !important;
+  z-index: 9999 !important;
+}
+
+.builder-floating-nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: 
+    /* Top border - solid */
+    linear-gradient(to bottom, 
+      rgba(255, 255, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.4) 1px,
+      transparent 1px
+    ),
+    /* Bottom border - solid */
+    linear-gradient(to top, 
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(255, 255, 255, 0.3) 1px,
+      transparent 1px
+    ),
+    /* Left and right borders - gradient fade to transparent */
+    linear-gradient(to right,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 8%,
+      rgba(255, 255, 255, 0.25) 50%,
+      rgba(255, 255, 255, 0.15) 92%,
+      transparent 100%
+    );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.builder-floating-nav::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+

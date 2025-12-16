@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import './ScrollStack.css'
 
 export const ScrollStackItem = ({ 
@@ -53,7 +53,27 @@ const ScrollStack = ({
     if (cards.length === 0) return
 
     // Find scroll container (parent with overflow or window)
+    // In builder/preview, always use window scroll (check for data-site-wrapper or data-site-content)
     const findScrollContainer = (): HTMLElement | Window => {
+      // Check if we're in builder/preview (has data-site-wrapper or data-site-content ancestor)
+      // Start from container itself, then check parents
+      let element: HTMLElement | null = container
+      let foundSiteWrapper = false
+      
+      while (element && element !== document.body) {
+        if (element.hasAttribute('data-site-wrapper') || element.hasAttribute('data-site-content')) {
+          foundSiteWrapper = true
+          break
+        }
+        element = element.parentElement
+      }
+      
+      // In builder/preview (has site wrapper), always use window scroll
+      if (foundSiteWrapper) {
+        return window
+      }
+      
+      // Otherwise, find scroll container normally
       let parent: HTMLElement | null = container.parentElement
       while (parent && parent !== document.body) {
         const style = window.getComputedStyle(parent)
@@ -62,6 +82,7 @@ const ScrollStack = ({
         }
         parent = parent.parentElement
       }
+      
       return window
     }
 
@@ -284,18 +305,26 @@ const ScrollStack = ({
     })
 
     // Store initial positions - wait for layout to settle
+    // Use double RAF to ensure DOM is fully settled (especially in builder)
     requestAnimationFrame(() => {
-      cardsInitialTopRef.current = cards.map(card => getCardTop(card))
-      
-      // Add scroll listener
-      if (isWindow) {
-        window.addEventListener('scroll', handleScroll, { passive: true })
-      } else {
-        (scrollContainer as HTMLElement).addEventListener('scroll', handleScroll, { passive: true })
-      }
+      requestAnimationFrame(() => {
+        // Re-query cards in case they changed
+        const currentCards = Array.from(container.querySelectorAll<HTMLElement>('.scroll-stack-card'))
+        if (currentCards.length === 0) return
+        
+        cardsRef.current = currentCards
+        cardsInitialTopRef.current = currentCards.map(card => getCardTop(card))
+        
+        // Add scroll listener
+        if (isWindow) {
+          window.addEventListener('scroll', handleScroll, { passive: true })
+        } else {
+          (scrollContainer as HTMLElement).addEventListener('scroll', handleScroll, { passive: true })
+        }
 
-      // Initial update
-      handleScroll()
+        // Initial update
+        handleScroll()
+      })
     })
 
     return () => {

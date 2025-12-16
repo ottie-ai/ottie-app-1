@@ -175,11 +175,20 @@
     display: none;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* No default background; workspace bg applied via .workspace-body */
+  }
+  
+  /* Workspace background only when body has workspace-body */
+  body.workspace-body {
+    background-color: oklch(1 0 0);
+  }
+  .dark body.workspace-body {
+    background-color: var(--dark-bg);
   }
 
   /* Custom Heading Styles */
@@ -549,9 +558,7 @@ canvas {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* Body background handled above in @layer base */
   
   /* Pill border-radius for buttons and inputs (exclude published sites) */
   /* Apply pill radius to all buttons and inputs globally */
@@ -1079,6 +1086,7 @@ canvas {
 }
 
 /* Background image in dark mode - on body, bottom left, visible behind sidebar, slightly cropped */
+/* Hidden on site routes (builder/preview) via .site-route class on body */
 .dark body::before {
   content: "";
   position: fixed;
@@ -1093,6 +1101,26 @@ canvas {
   opacity: 0.3;
   pointer-events: none;
   z-index: -1;
+}
+
+/* Hide workspace background image on site routes (builder/preview) */
+.dark body.site-route::before {
+  display: none !important;
+}
+
+/* Override body background for site routes (builder/preview) - always white */
+body.site-route {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+.dark body.site-route {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+html.site-route {
+  background-color: #ffffff !important;
+  background-image: none !important;
 }
 
 /* Ensure sidebar container allows background image to show through */
@@ -1175,6 +1203,37 @@ header.border-b {
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
 }
+
+/* Force light mode - Override all CSS variables to light mode values */
+/* Used for builder floating navbar to ensure it's always light regardless of theme */
+.force-light-mode {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+/* Force light mode - override dark mode borders */
+.force-light-mode,
+.force-light-mode * {
+  border-color: oklch(0.922 0 0) !important;
+}
+
 
 /* CRITICAL: Active sidebar menu button text color - highest priority, must be at the end */
 /* Light mode: white text on black pill */
