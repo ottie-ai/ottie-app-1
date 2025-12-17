@@ -18,6 +18,7 @@ interface SectionMorphingIndicatorProps {
   onSectionChange?: (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => void
   onEditingStateChange?: (sectionId: string, editingState: { variant: string; data: any; colorScheme: ColorScheme }) => void
   isPublicSite?: boolean // Explicit flag to prevent rendering on public sites (default: false)
+  isVisible?: boolean // Control visibility via keyboard shortcut (default: true)
 }
 
 const FEEDBACK_WIDTH = 360
@@ -99,8 +100,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
   
   const [ref, bounds] = useMeasure()
   const rootRef = React.useRef<HTMLDivElement>(null)
+  const contentRef = React.useRef<HTMLDivElement>(null)
   const [showSettings, setShowSettings] = React.useState(false)
   const [success, setSuccess] = React.useState(false)
+  const [contentHeight, setContentHeight] = React.useState(0)
 
   // Editing state for current section
   const [editingVariant, setEditingVariant] = React.useState<string>(activeSection?.variant || '')
@@ -351,6 +354,45 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
   // Calculate max height (90vh)
   const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.9 : 600
 
+  // Measure content height when settings panel opens
+  React.useEffect(() => {
+    if (showSettings && contentRef.current) {
+      const measureHeight = () => {
+        if (contentRef.current) {
+          // Use scrollHeight to get full content height
+          const height = contentRef.current.scrollHeight
+          setContentHeight(height)
+        }
+      }
+
+      // Initial measurement after render
+      const timeoutId = setTimeout(measureHeight, 50)
+
+      // Watch for content changes
+      const resizeObserver = new ResizeObserver(() => {
+        measureHeight()
+      })
+      
+      if (contentRef.current) {
+        resizeObserver.observe(contentRef.current)
+      }
+      
+      return () => {
+        clearTimeout(timeoutId)
+        resizeObserver.disconnect()
+      }
+    } else {
+      setContentHeight(0)
+    }
+  }, [showSettings, settingsPanel])
+
+  // Calculate actual height: content height + header (44px) + padding, but max 90vh
+  const headerHeight = 44
+  const padding = 8 // p-1 = 4px top + 4px bottom
+  const calculatedHeight = showSettings && contentHeight > 0 
+    ? Math.min(contentHeight + headerHeight + padding, maxHeight)
+    : 48
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -359,7 +401,6 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
             className="flex items-end justify-center"
             style={{
               width: showSettings ? FEEDBACK_WIDTH : 'auto',
-              height: showSettings ? FEEDBACK_HEIGHT : 48,
             }}
           >
             <motion.div
@@ -377,7 +418,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                 opacity: 1,
                 filter: 'blur(0px)',
                 width: showSettings ? FEEDBACK_WIDTH : 'auto',
-                height: showSettings ? FEEDBACK_HEIGHT : 48,
+                height: calculatedHeight,
                 borderRadius: showSettings ? 14 : 9999, // Pill shape when closed, rounded when open
               }}
               exit={{ y: 100, opacity: 0, filter: 'blur(20px)' }}
@@ -401,8 +442,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                   delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
                 height: { 
-                  duration: 0.3, 
-                  ease: [0.16, 1, 0.3, 1],
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 40,
+                  mass: 0.8,
                   delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
               }}
@@ -537,7 +580,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
               className="absolute bottom-0 w-full"
               style={{
                 width: showSettings ? FEEDBACK_WIDTH : 0,
-                height: showSettings ? FEEDBACK_HEIGHT : 0,
+                height: showSettings ? 'auto' : 0,
                 maxHeight: showSettings ? maxHeight : 'none',
                 pointerEvents: showSettings ? 'all' : 'none',
               }}
@@ -583,7 +626,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                       damping: 45,
                       mass: 0.7,
                     }}
-                    className="p-1 flex flex-col h-full"
+                    className="p-1 flex flex-col"
                   >
                     <div className="flex justify-between items-center py-1">
                       <p className="flex gap-[6px] text-sm items-center text-muted-foreground select-none z-2 ml-[25px]">
@@ -609,9 +652,13 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                       }}
                     />
                     <div 
-                      className="flex-1 overflow-y-auto scroll-py-2 p-4"
+                      ref={contentRef}
+                      className={cn(
+                        "p-4",
+                        contentHeight > maxHeight - headerHeight - padding ? "overflow-y-auto scroll-py-2" : ""
+                      )}
                       style={{ 
-                        maxHeight: `${maxHeight - 44 - 8}px`
+                        maxHeight: contentHeight > maxHeight - headerHeight - padding ? `${maxHeight - headerHeight - padding}px` : 'none'
                       }}
                     >
                       {settingsPanel}
