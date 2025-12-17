@@ -11,11 +11,6 @@ import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { Button } from '@/components/ui/button'
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs'
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -38,7 +33,7 @@ interface BuilderClientProps {
  * Builder Client - Full-screen layout editor
  * 
  * Renderuje site priamo s admin controls on top:
- * - Floating top navbar (Back, Tabs, Preview, Publish)
+ * - Floating top navbar (Back, Logo + Title, Preview, Publish)
  * - Site content (window scroll - aby highlights fungovalo)
  * - Floating bottom bar (SectionMorphingIndicator)
  */
@@ -46,9 +41,12 @@ export function BuilderClient({ site }: BuilderClientProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [buttonRef, buttonBounds] = useMeasure()
-  const [activeTab, setActiveTab] = useState('layout')
+  const [isUIVisible, setIsUIVisible] = useState(true)
   const router = useRouter()
   const isMobile = useIsMobile()
+  
+  // Detect platform for keyboard shortcut display
+  const isMac = typeof window !== 'undefined' && (navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0)
   
   // Refs for save/theme/loader/sections
   const saveChangesRef = useRef<(() => Promise<void>) | null>(null)
@@ -95,6 +93,20 @@ export function BuilderClient({ site }: BuilderClientProps) {
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 100)
     return () => clearTimeout(timer)
+  }, [])
+
+  // Keyboard shortcut: Ctrl+E / Cmd+E to toggle UI visibility
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsUIVisible(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true) // Use capture phase
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [])
 
   // Initialize loader ref
@@ -407,24 +419,28 @@ export function BuilderClient({ site }: BuilderClientProps) {
   return (
     <>
       {/* Floating Top Navbar */}
-      <motion.nav
-        className="fixed top-2 z-50 rounded-full builder-floating-nav"
-        style={{
-          left: isMobile ? '1rem' : '15vw',
-          width: isMobile ? 'calc(100vw - 2rem)' : '70vw',
-          background: 'rgba(255, 255, 255, 1)',
-          border: '1px solid rgba(230, 230, 230, 1)',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-        } as React.CSSProperties}
-        initial={{ y: -100, opacity: 0, scale: 0.95 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        transition={{
-          duration: 1.2,
-          ease: [0.16, 1, 0.3, 1],
-          opacity: { duration: 0.8 },
-          scale: { duration: 1, ease: [0.16, 1, 0.3, 1] },
-        }}
-      >
+      <AnimatePresence>
+        {isUIVisible && (
+          <motion.nav
+            className="fixed top-2 z-50 rounded-full builder-floating-nav"
+            style={{
+              left: isMobile ? '1rem' : '15vw',
+              width: isMobile ? 'calc(100vw - 2rem)' : '70vw',
+              background: 'rgba(255, 255, 255, 1)',
+              border: '1px solid rgba(230, 230, 230, 1)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+            } as React.CSSProperties}
+            initial={{ y: -100, opacity: 0, scale: 0.95, filter: 'blur(20px)' }}
+            animate={{ y: 0, opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ y: -100, opacity: 0, scale: 0.95, filter: 'blur(20px)' }}
+            transition={{
+              duration: 1.2,
+              ease: [0.16, 1, 0.3, 1],
+              opacity: { duration: 0.8 },
+              scale: { duration: 1, ease: [0.16, 1, 0.3, 1] },
+              filter: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+            }}
+          >
         <div className={`flex h-12 items-center ${isMobile ? 'pl-3 pr-2 gap-1' : 'pl-1.5 pr-2'}`}>
             {/* Left - Back button */}
             <Tooltip>
@@ -447,40 +463,48 @@ export function BuilderClient({ site }: BuilderClientProps) {
               </TooltipContent>
             </Tooltip>
 
-            {/* Center - Tabs */}
+            {/* Center - Logo + Title */}
             {!isMobile && (
-              <div className="absolute left-1/2 -translate-x-1/2">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList>
-                    <TabsTrigger value="layout">Layout</TabsTrigger>
-                    <TabsTrigger value="styles">Global Styles</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+                <svg width="60" height="22" viewBox="0 0 389 145" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4">
+                  <path d="M283.836 90.992C283.836 84.224 285.027 77.7067 287.408 71.44C289.789 65.048 293.236 59.408 297.748 54.52C302.26 49.632 307.712 45.7467 314.104 42.864C320.496 39.9814 327.703 38.54 335.724 38.54C343.62 38.54 350.827 39.9187 357.344 42.676C363.861 45.308 369.439 49.0054 374.076 53.768C378.713 58.5307 382.285 64.2334 384.792 70.876C387.424 77.5187 388.74 84.788 388.74 92.684C388.74 93.812 388.74 94.752 388.74 95.504C388.74 96.256 388.677 97.196 388.552 98.324H308.088C309.341 105.844 312.537 111.609 317.676 115.62C322.815 119.505 328.956 121.448 336.1 121.448C342.116 121.448 347.192 120.508 351.328 118.628C355.464 116.748 359.663 113.991 363.924 110.356L381.784 125.208C379.528 127.715 376.896 130.096 373.888 132.352C370.88 134.483 367.496 136.425 363.736 138.18C359.976 139.809 355.777 141.125 351.14 142.128C346.628 143.131 341.615 143.632 336.1 143.632C328.204 143.632 320.997 142.253 314.48 139.496C308.088 136.739 302.573 133.041 297.936 128.404C293.424 123.641 289.915 118.064 287.408 111.672C285.027 105.155 283.836 98.2614 283.836 90.992ZM309.216 78.584H363.548C361.793 72.6934 358.472 68.1187 353.584 64.86C348.696 61.476 342.868 59.784 336.1 59.784C329.833 59.784 324.381 61.3507 319.744 64.484C315.232 67.492 311.723 72.192 309.216 78.584Z" fill="currentColor" className="text-foreground"/>
+                  <path d="M238.797 141V41.172H263.801V141H238.797ZM235.225 15.228C235.225 10.8413 236.791 7.20667 239.925 4.324C243.058 1.44133 246.818 0 251.205 0C255.717 0 259.477 1.62933 262.485 4.888C265.618 8.14667 267.185 12.032 267.185 16.544C267.185 20.9307 265.618 24.6907 262.485 27.824C259.351 30.9573 255.591 32.524 251.205 32.524C246.567 32.524 242.745 30.832 239.737 27.448C236.729 23.9387 235.225 19.8653 235.225 15.228Z" fill="currentColor" className="text-foreground"/>
+                  <path d="M172.469 41.172H185.253V4.32397H210.257V41.172H225.109V62.792H210.257V141H185.253V62.792H172.469V41.172Z" fill="currentColor" className="text-foreground"/>
+                  <path d="M113.352 41.172H126.136V4.32397H151.14V41.172H165.992V62.792H151.14V141H126.136V62.792H113.352V41.172Z" fill="currentColor" className="text-foreground"/>
+                  <path d="M0 91.452C0 84.0573 1.37867 77.164 4.136 70.772C6.89333 64.38 10.6533 58.8653 15.416 54.228C20.304 49.4653 25.8813 45.768 32.148 43.136C38.54 40.3787 45.308 39 52.452 39C59.596 39 66.3013 40.3787 72.568 43.136C78.96 45.768 84.5373 49.4653 89.3 54.228C94.188 58.8653 98.0107 64.38 100.768 70.772C103.525 77.164 104.904 84.0573 104.904 91.452C104.904 98.7213 103.588 105.552 100.956 111.944C98.324 118.336 94.6267 123.913 89.864 128.676C85.2267 133.439 79.712 137.199 73.32 139.956C66.928 142.713 59.972 144.092 52.452 144.092C44.932 144.092 37.976 142.713 31.584 139.956C25.192 137.199 19.6147 133.439 14.852 128.676C10.2147 123.913 6.58 118.336 3.948 111.944C1.316 105.552 0 98.7213 0 91.452ZM25.192 91.64C25.192 96.0267 25.8813 99.9747 27.26 103.484C28.764 106.993 30.7067 110.001 33.088 112.508C35.5947 115.015 38.4773 116.957 41.736 118.336C45.12 119.715 48.692 120.404 52.452 120.404C56.212 120.404 59.7213 119.715 62.98 118.336C66.364 116.957 69.2467 115.015 71.628 112.508C74.1347 110.001 76.0773 106.993 77.456 103.484C78.96 99.9747 79.712 96.0267 79.712 91.64C79.712 87.3787 79.0227 83.4933 77.644 79.984C76.3907 76.4747 74.5733 73.4667 72.192 70.96C69.8107 68.328 66.928 66.3227 63.544 64.944C60.16 63.44 56.4627 62.688 52.452 62.688C48.4413 62.688 44.744 63.44 41.36 64.944C37.976 66.3227 35.0933 68.328 32.712 70.96C30.3307 73.4667 28.4507 76.4747 27.072 79.984C25.8187 83.4933 25.192 87.3787 25.192 91.64Z" fill="currentColor" className="text-foreground"/>
+                </svg>
+                <span className="text-xs text-muted-foreground ml-1">×</span>
+                <span className="text-sm font-medium text-foreground ml-2">{site.title}</span>
               </div>
             )}
 
             {/* Right - Preview & Publish */}
             <div className={`${isMobile ? '' : 'ml-auto'} flex items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
               {!isMobile && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handlePreview}
-                      className="rounded-full h-9 w-9"
-                      style={{
-                        background: 'rgba(255, 255, 255, 1)',
-                      }}
-                    >
-                      <ExternalLink className="size-4" />
-                      <span className="sr-only">Preview</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Preview site in a new tab</p>
-                  </TooltipContent>
-                </Tooltip>
+                <>
+                  <span className="text-xs text-muted-foreground/60 px-2">
+                    {isMac ? '⌘+E to hide' : 'Ctrl+E to hide'}
+                  </span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={handlePreview}
+                        className="rounded-full h-9 w-9"
+                        style={{
+                          background: 'rgba(255, 255, 255, 1)',
+                        }}
+                      >
+                        <ExternalLink className="size-4" />
+                        <span className="sr-only">Preview</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Preview site in a new tab</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </>
               )}
 
               {/* Morphing Publish/Save button */}
@@ -550,10 +574,12 @@ export function BuilderClient({ site }: BuilderClientProps) {
               </motion.div>
             </div>
         </div>
-      </motion.nav>
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       {/* Site Content - Window scroll (no overflow wrapper) */}
-      {activeTab === 'layout' && (
+      {(
         <div data-site-wrapper>
           <FontLoader fonts={fonts} />
           <FontTransition font={primaryFont}>
@@ -641,24 +667,14 @@ export function BuilderClient({ site }: BuilderClientProps) {
         </div>
       )}
 
-      {activeTab === 'styles' && (
-        <div className="flex items-center justify-center min-h-screen p-8">
-          <div className="text-center space-y-4">
-            <h2 className="text-2xl font-semibold">Global Styles</h2>
-            <p className="text-muted-foreground">
-              Global styling options will be available here soon.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Floating Bottom Bar - SectionMorphingIndicator */}
-      {activeTab === 'layout' && (
+      {(
         <SectionMorphingIndicator
           activeSection={activeSection}
           originalSection={sections.find(s => s.id === activeSection?.id) || null}
           onSectionChange={handleSectionChange}
           onEditingStateChange={handleEditingStateChange}
+          isVisible={isUIVisible}
         />
       )}
     </>

@@ -38,7 +38,7 @@ const LOGO_SPRING = {
  * SECURITY: This is an ADMIN-ONLY component. It must NEVER render on public sites.
  * It only renders in admin/editor contexts (e.g., /preview/[id] with canEdit=true).
  */
-export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false }: SectionMorphingIndicatorProps) {
+export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false, isVisible = true }: SectionMorphingIndicatorProps) {
   const pathname = usePathname()
   const [isPublishedSite, setIsPublishedSite] = React.useState(false)
   
@@ -352,37 +352,61 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
   const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.9 : 600
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-      <div
-        className="flex items-end justify-center"
-        style={{
-          width: showSettings ? FEEDBACK_WIDTH : 'auto',
-          height: showSettings ? FEEDBACK_HEIGHT : 48,
-        }}
-      >
-        <motion.div
-          ref={rootRef}
-          className={cn(
-            'border border-border relative flex flex-col items-center overflow-hidden pointer-events-auto builder-floating-nav-button'
-          )}
-          style={{
-            background: 'rgba(255, 255, 255, 1)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-          }}
-          initial={false}
-          animate={{
-            width: showSettings ? FEEDBACK_WIDTH : 'auto',
-            height: showSettings ? FEEDBACK_HEIGHT : 48,
-            borderRadius: showSettings ? 14 : 20,
-          }}
-          transition={{
-            type: 'spring',
-            stiffness: 550 / SPEED,
-            damping: 45,
-            mass: 0.7,
-            delay: showSettings ? 0 : 0.08,
-          }}
-        >
+    <AnimatePresence>
+      {isVisible && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+          <div
+            className="flex items-end justify-center"
+            style={{
+              width: showSettings ? FEEDBACK_WIDTH : 'auto',
+              height: showSettings ? FEEDBACK_HEIGHT : 48,
+            }}
+          >
+            <motion.div
+              ref={rootRef}
+              className={cn(
+                'border border-border relative flex flex-col items-center overflow-hidden pointer-events-auto builder-floating-nav-button'
+              )}
+              style={{
+                background: 'rgba(255, 255, 255, 1)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              }}
+              initial={{ y: 100, opacity: 0, filter: 'blur(20px)' }}
+              animate={{
+                y: 0,
+                opacity: 1,
+                filter: 'blur(0px)',
+                width: showSettings ? FEEDBACK_WIDTH : 'auto',
+                height: showSettings ? FEEDBACK_HEIGHT : 48,
+                borderRadius: showSettings ? 14 : 9999, // Pill shape when closed, rounded when open
+              }}
+              exit={{ y: 100, opacity: 0, filter: 'blur(20px)' }}
+              transition={{
+                type: 'spring',
+                stiffness: 550 / SPEED,
+                damping: 45,
+                mass: 0.7,
+                delay: showSettings ? 0 : 0.08,
+                y: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.8 },
+                filter: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
+                borderRadius: { 
+                  duration: 0.25, 
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: showSettings ? 0 : 0
+                },
+                width: { 
+                  duration: 0.3, 
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
+                },
+                height: { 
+                  duration: 0.3, 
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
+                },
+              }}
+            >
           {/* Dock with section name and settings button */}
           <footer className="flex items-center justify-center select-none whitespace-nowrap mt-auto h-12">
             <div className="flex items-center justify-center gap-6 pl-1.5 pr-2">
@@ -604,9 +628,11 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
               )}
             </form>
           )}
-        </motion.div>
-      </div>
-    </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }
 
