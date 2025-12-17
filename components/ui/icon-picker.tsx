@@ -6,16 +6,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { LucideProps, LucideIcon } from 'lucide-react';
-import { DynamicIcon, dynamicIconImports, IconName } from 'lucide-react/dynamic';
+import { IconProps } from '@phosphor-icons/react';
+import * as PhosphorIcons from '@phosphor-icons/react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { iconsData } from "./icons-data";
 import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 import { Skeleton } from "@/components/ui/skeleton";
 import Fuse from 'fuse.js';
 import { useDebounceValue } from "usehooks-ts";
+import { kebabToPascalCase } from "@/lib/icon-mapping";
 
 export type IconData = typeof iconsData[number];
+export type IconName = string;
 
 interface IconPickerProps extends Omit<React.ComponentPropsWithoutRef<typeof PopoverTrigger>, 'onSelect' | 'onOpenChange'> {
   value?: IconName
@@ -32,8 +34,19 @@ interface IconPickerProps extends Omit<React.ComponentPropsWithoutRef<typeof Pop
   modal?: boolean
 }
 
+/**
+ * Get Phosphor icon component by name (kebab-case)
+ */
+function getPhosphorIconComponent(iconName: string): React.ComponentType<IconProps> | null {
+  const pascalName = kebabToPascalCase(iconName);
+  const IconComponent = (PhosphorIcons as any)[pascalName];
+  return IconComponent || null;
+}
+
 const IconRenderer = React.memo(({ name }: { name: IconName }) => {
-  return <Icon name={name} />;
+  const IconComponent = getPhosphorIconComponent(name);
+  if (!IconComponent) return null;
+  return <IconComponent className="w-5 h-5" weight="light" />;
 });
 IconRenderer.displayName = "IconRenderer";
 
@@ -64,9 +77,12 @@ const useIconsData = () => {
 
       const { iconsData } = await import('./icons-data');
       if (isMounted) {
-        setIcons(iconsData.filter((icon: IconData) => {
-          return icon.name in dynamicIconImports;
-        }));
+        // Filter icons that exist in Phosphor Icons library
+        const availableIcons = iconsData.filter((icon: IconData) => {
+          const pascalName = kebabToPascalCase(icon.name);
+          return pascalName in PhosphorIcons;
+        });
+        setIcons(availableIcons);
         setIsLoading(false);
       }
     };
@@ -400,7 +416,18 @@ const IconPicker = React.forwardRef<
           </Button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2">
+      <PopoverContent 
+        className="w-64 p-2"
+        onKeyDown={(e) => {
+          // Allow Ctrl+A / Cmd+A for inputs inside popover
+          const target = e.target as HTMLElement;
+          if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') && 
+              (e.ctrlKey || e.metaKey) && e.key === 'a') {
+            // Let it work naturally - don't stop propagation
+            return;
+          }
+        }}
+      >
         {searchable && (
           <Input
             placeholder={searchPlaceholder}
@@ -430,16 +457,21 @@ const IconPicker = React.forwardRef<
 });
 IconPicker.displayName = "IconPicker";
 
-interface IconProps extends Omit<LucideProps, 'ref'> {
+interface PhosphorIconProps extends Omit<IconProps, 'ref'> {
   name: IconName;
 }
 
-const Icon = React.forwardRef<
-  React.ComponentRef<LucideIcon>,
-  IconProps
->(({ name, ...props }, ref) => {
-  return <DynamicIcon name={name} {...props} ref={ref} />;
+const PhosphorIcon = React.forwardRef<
+  SVGSVGElement,
+  PhosphorIconProps
+>(({ name, className, ...props }, ref) => {
+  const IconComponent = getPhosphorIconComponent(name);
+  if (!IconComponent) return null;
+  return <IconComponent className={cn("w-5 h-5", className)} weight="light" {...props} ref={ref} />;
 });
-Icon.displayName = "Icon";
+PhosphorIcon.displayName = "PhosphorIcon";
+
+// Export as Icon for backward compatibility
+const Icon = PhosphorIcon;
 
 export { IconPicker, Icon, type IconName };

@@ -518,6 +518,26 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                 pointerEvents: showSettings ? 'all' : 'none',
               }}
               onKeyDown={(e) => {
+                // If target is an input/textarea, allow all keyboard shortcuts to work naturally
+                const target = e.target as HTMLElement;
+                const isInputElement = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+                
+                // For input elements, only handle Escape and Cmd/Ctrl+Enter
+                if (isInputElement) {
+                  if (e.key === 'Escape') {
+                    closeSettings()
+                    return;
+                  }
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    onSave()
+                    return;
+                  }
+                  // For all other keys (including Ctrl+A), let them work naturally
+                  return;
+                }
+                
+                // For non-input elements, handle normally
                 if (e.key === 'Escape') {
                   closeSettings()
                 }

@@ -88,3 +88,31 @@ export function getPhosphorIcon(lucideIconName: string | undefined): ComponentTy
 export function getAvailableIconMappings(): string[] {
   return Object.keys(lucideToPhosphorMap)
 }
+
+/**
+ * Convert kebab-case to PascalCase
+ * Example: "alarm-clock" -> "AlarmClock"
+ */
+export function kebabToPascalCase(kebab: string): string {
+  return kebab
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('')
+}
+
+/**
+ * Get Phosphor icon component directly by icon name (kebab-case)
+ * This tries to find the icon in the Phosphor icons library
+ * Returns null if icon doesn't exist
+ */
+export function getPhosphorIconByName(iconName: string | undefined): ComponentType<IconProps> | null {
+  if (!iconName) return null
+  
+  // First try the mapping
+  const mapped = getPhosphorIcon(iconName)
+  if (mapped) return mapped
+  
+  // Then try direct lookup by converting to PascalCase
+  // This will be used dynamically in the icon picker
+  return null // Will be handled dynamically via import
+}
