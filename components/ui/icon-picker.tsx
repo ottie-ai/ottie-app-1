@@ -474,4 +474,4 @@ PhosphorIcon.displayName = "PhosphorIcon";
 // Export as Icon for backward compatibility
 const Icon = PhosphorIcon;
 
-export { IconPicker, Icon, type IconName };
+export { IconPicker, Icon };
