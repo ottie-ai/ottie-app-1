@@ -1,7 +1,7 @@
 'use client'
 
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
-import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
+import { IconProps } from '@phosphor-icons/react'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
@@ -10,22 +10,7 @@ import { getFontWeight } from '@/lib/fonts'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
 import { SEOHeading } from '@/components/ui/seo-heading'
 import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
-
-// Icon mapping
-const iconMap: Record<string, ComponentType<IconProps>> = {
-  bed: Bed,
-  bath: Bathtub,
-  ruler: Ruler,
-  car: Car,
-  home: House,
-  trees: Tree,
-  pool: SwimmingPool,
-  wifi: WifiHigh,
-  ac: Fan,
-  heating: Fire,
-  tv: Television,
-  kitchen: ForkKnife,
-}
+import { getPhosphorIcon } from '@/lib/icon-mapping'
 
 /**
  * FeaturesGrid - Grid layout for property features
@@ -68,7 +53,7 @@ export function FeaturesGrid({ data, theme, colorScheme = 'light' }: SectionComp
 
         <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto" staggerDelay={0.1} baseDelay={0.7}>
           {features.map((feature, index) => {
-            const IconComponent = feature.icon ? iconMap[feature.icon.toLowerCase()] : null
+            const IconComponent = feature.icon ? getPhosphorIcon(feature.icon) : null
 
             return (
               <StaggerItem key={index}>

@@ -18,10 +18,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { IconPicker } from '@/components/ui/icon-picker'
+import { IconPicker, Icon, type IconName } from '@/components/ui/icon-picker'
 import { Sun, Moon, Plus, Trash2 } from 'lucide-react'
-import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
-import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
 
 // ============================================
@@ -65,37 +63,6 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
     </div>
   )
 }
-
-// Icon mapping for Phosphor icons
-const iconMap: Record<string, ComponentType<IconProps>> = {
-  bed: Bed,
-  bath: Bathtub,
-  ruler: Ruler,
-  car: Car,
-  home: House,
-  trees: Tree,
-  pool: SwimmingPool,
-  wifi: WifiHigh,
-  ac: Fan,
-  heating: Fire,
-  tv: Television,
-  kitchen: ForkKnife,
-}
-
-const iconOptions = [
-  { value: 'bed', label: 'Bed' },
-  { value: 'bath', label: 'Bath' },
-  { value: 'ruler', label: 'Ruler' },
-  { value: 'car', label: 'Car' },
-  { value: 'home', label: 'Home' },
-  { value: 'trees', label: 'Trees' },
-  { value: 'pool', label: 'Pool' },
-  { value: 'wifi', label: 'WiFi' },
-  { value: 'ac', label: 'AC' },
-  { value: 'heating', label: 'Heating' },
-  { value: 'tv', label: 'TV' },
-  { value: 'kitchen', label: 'Kitchen' },
-]
 
 // ============================================
 // Remix Panel - Highlights
@@ -184,13 +151,12 @@ export function HighlightsRemixPanel({
         
         <Accordion type="single" collapsible className="w-full">
           {highlights.map((card, index) => {
-            const IconComponent = card.icon ? iconMap[card.icon.toLowerCase()] : null
             return (
               <AccordionItem key={index} value={`card-${index}`}>
                 <AccordionTrigger className="text-sm font-medium">
                   <div className="flex items-center gap-2">
-                    {IconComponent && (
-                      <IconComponent className="size-4" weight="light" />
+                    {card.icon && (
+                      <Icon name={card.icon as IconName} className="size-4" />
                     )}
                     <span>
                       {card.title || `Card ${index + 1}`}
@@ -230,11 +196,9 @@ export function HighlightsRemixPanel({
                     <Field>
                       <FieldLabel>Icon</FieldLabel>
                       <IconPicker
-                        value={card.icon}
-                        onChange={(value) => updateCard(index, { icon: value })}
-                        iconMap={iconMap}
-                        iconOptions={iconOptions}
-                        placeholder="Select icon"
+                        value={card.icon as IconName | undefined}
+                        onValueChange={(value) => updateCard(index, { icon: value || undefined })}
+                        triggerPlaceholder="Select icon"
                       />
                     </Field>
 

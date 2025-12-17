@@ -1,29 +1,14 @@
 'use client'
 
 import { SectionComponentProps, FeaturesSectionData } from '@/types/builder'
-import { Bed, Bathtub, Ruler, Car, House, Tree, SwimmingPool, WifiHigh, Fan, Fire, Television, ForkKnife, IconProps } from '@phosphor-icons/react'
+import { IconProps } from '@phosphor-icons/react'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { ComponentType } from 'react'
 import { cn } from '@/lib/utils'
 import { getSectionColors, getPrimaryColor } from '@/lib/section-colors'
 import { SEOHeading } from '@/components/ui/seo-heading'
 import { getTextCaseClass, applyTextCase } from '@/lib/text-case'
-
-// Icon mapping
-const iconMap: Record<string, ComponentType<IconProps>> = {
-  bed: Bed,
-  bath: Bathtub,
-  ruler: Ruler,
-  car: Car,
-  home: House,
-  trees: Tree,
-  pool: SwimmingPool,
-  wifi: WifiHigh,
-  ac: Fan,
-  heating: Fire,
-  tv: Television,
-  kitchen: ForkKnife,
-}
+import { getPhosphorIcon } from '@/lib/icon-mapping'
 
 /**
  * FeaturesList - Horizontal list layout for property features
@@ -59,7 +44,7 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
 
         <div className="flex flex-wrap justify-center gap-8 md:gap-12 max-w-5xl mx-auto">
           {features.map((feature, index) => {
-            const IconComponent = feature.icon ? iconMap[feature.icon.toLowerCase()] : null
+            const IconComponent = feature.icon ? getPhosphorIcon(feature.icon) : null
 
             return (
               <div 

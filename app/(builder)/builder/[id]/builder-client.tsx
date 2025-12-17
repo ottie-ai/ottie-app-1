@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import useMeasure from 'react-use-measure'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
@@ -133,13 +133,13 @@ export function BuilderClient({ site }: BuilderClientProps) {
   const [activeSection, setActiveSection] = useState<Section | null>(sections[0] || null)
   const [editingState, setEditingState] = useState<Record<string, { variant: string; data: any; colorScheme: ColorScheme }>>({})
   
+  
   // Section refs for scroll detection
   const sectionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const sectionsForScrollRef = useRef<Section[]>(sections)
   
   useEffect(() => {
     sectionsForScrollRef.current = sections
-    sectionsRef.current = sections
   }, [sections])
 
   // Register section refs
@@ -412,10 +412,10 @@ export function BuilderClient({ site }: BuilderClientProps) {
         style={{
           left: isMobile ? '1rem' : '15vw',
           width: isMobile ? 'calc(100vw - 2rem)' : '70vw',
-          backdropFilter: 'blur(12px) saturate(150%)',
-          WebkitBackdropFilter: 'blur(12px) saturate(150%)',
-          background: 'rgba(255, 255, 255, 0.25)',
-        }}
+          background: 'rgba(255, 255, 255, 1)',
+          border: '1px solid rgba(230, 230, 230, 1)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        } as React.CSSProperties}
         initial={{ y: -100, opacity: 0, scale: 0.95 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
         transition={{
@@ -433,6 +433,10 @@ export function BuilderClient({ site }: BuilderClientProps) {
                   variant="outline"
                   size="icon"
                   onClick={handleBack}
+                  className="rounded-full h-9 w-9"
+                  style={{
+                    background: 'rgba(255, 255, 255, 1)',
+                  }}
                 >
                   <ArrowLeft className="size-4" />
                   <span className="sr-only">Back</span>
@@ -464,6 +468,10 @@ export function BuilderClient({ site }: BuilderClientProps) {
                       variant="outline"
                       size="icon"
                       onClick={handlePreview}
+                      className="rounded-full h-9 w-9"
+                      style={{
+                        background: 'rgba(255, 255, 255, 1)',
+                      }}
                     >
                       <ExternalLink className="size-4" />
                       <span className="sr-only">Preview</span>

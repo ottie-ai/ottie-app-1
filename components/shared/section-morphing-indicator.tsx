@@ -357,18 +357,22 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
         className="flex items-end justify-center"
         style={{
           width: showSettings ? FEEDBACK_WIDTH : 'auto',
-          height: showSettings ? FEEDBACK_HEIGHT : 44,
+          height: showSettings ? FEEDBACK_HEIGHT : 48,
         }}
       >
         <motion.div
           ref={rootRef}
           className={cn(
-            'bg-background border relative flex flex-col items-center shadow-xl overflow-hidden pointer-events-auto'
+            'border border-border relative flex flex-col items-center overflow-hidden pointer-events-auto builder-floating-nav-button'
           )}
+          style={{
+            background: 'rgba(255, 255, 255, 1)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          }}
           initial={false}
           animate={{
             width: showSettings ? FEEDBACK_WIDTH : 'auto',
-            height: showSettings ? FEEDBACK_HEIGHT : 44,
+            height: showSettings ? FEEDBACK_HEIGHT : 48,
             borderRadius: showSettings ? 14 : 20,
           }}
           transition={{
@@ -380,8 +384,8 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
           }}
         >
           {/* Dock with section name and settings button */}
-          <footer className="flex items-center justify-center select-none whitespace-nowrap mt-auto h-[44px]">
-            <div className="flex items-center justify-center gap-6 px-3">
+          <footer className="flex items-center justify-center select-none whitespace-nowrap mt-auto h-12">
+            <div className="flex items-center justify-center gap-6 pl-1.5 pr-2">
               <AnimatePresence mode="wait">
                 {!showSettings && (
                   <motion.div
@@ -481,14 +485,17 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                       stiffness: 350,
                       damping: 35,
                     }}
-                    className="text-muted-foreground text-[14px] flex items-center z-2"
+                    className="flex items-center z-2"
                   >
                     <button
-                      className="m-[-8px] flex items-center justify-end rounded-full p-2 flex-1 gap-1.5 -outline-offset-2 hover:bg-accent transition-colors group"
+                      className="rounded-full h-9 pl-2 pr-2 flex items-center gap-1.5 border border-border bg-white"
+                      style={{
+                        background: 'rgba(255, 255, 255, 1)',
+                      }}
                       onClick={openSettings}
                     >
                       <LottieSettingsIcon className="size-4 shrink-0" forceLightMode={true} />
-                      <span className="ml-1 max-w-[20ch] truncate">Section Settings</span>
+                      <span className="text-[14px] max-w-[20ch] truncate">Section Settings</span>
                     </button>
                   </motion.div>
                 )}
