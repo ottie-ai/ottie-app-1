@@ -125,19 +125,30 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
     isInternalChange.current = false
   }, [activeSection?.id]) // Only update when section ID changes, not when variant changes
 
-  // Auto-save function for images only
+  // Auto-save function for images - called directly after upload/delete
+  // Uses editingDataRef to get the latest data (after onChange updated it)
+  const editingDataRef = React.useRef(editingData)
+  React.useEffect(() => {
+    editingDataRef.current = editingData
+  }, [editingData])
+  
   const handleImageAutoSave = React.useCallback(() => {
-    if (activeSection && onSectionChange) {
-      console.log('[SectionMorphingIndicator] Image auto-save triggered:', {
-        sectionId: activeSection.id,
-      })
-      onSectionChange(activeSection.id, {
-        variant: editingVariant,
-        data: editingData,
-        colorScheme: editingColorScheme,
-      })
-    }
-  }, [activeSection, onSectionChange, editingVariant, editingData, editingColorScheme])
+    if (!activeSection || !onSectionChange) return
+    
+    // Use ref to get the latest editingData (already includes the new image value from onChange)
+    const currentData = editingDataRef.current
+    
+    console.log('[SectionMorphingIndicator] Image auto-save triggered:', {
+      sectionId: activeSection.id,
+      dataKeys: currentData ? Object.keys(currentData) : [],
+    })
+    
+    onSectionChange(activeSection.id, {
+      variant: editingVariant,
+      data: currentData,
+      colorScheme: editingColorScheme,
+    })
+  }, [activeSection, onSectionChange, editingVariant, editingColorScheme])
 
 
   // Close settings when section changes (don't save)

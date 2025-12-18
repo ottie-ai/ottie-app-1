@@ -270,13 +270,8 @@ export function HighlightsRemixPanel({
                       <FieldLabel>Photo</FieldLabel>
                       <FileUpload
                         value={card.image}
-                        onChange={(value) => {
-                          updateCard(index, { image: value ?? undefined })
-                          // Auto-save after image change
-                          if (onImageAutoSave) {
-                            setTimeout(() => onImageAutoSave(), 100)
-                          }
-                        }}
+                        onChange={(value) => updateCard(index, { image: value ?? undefined })}
+                        onImageSaved={onImageAutoSave}
                         placeholder="Drop an image or click to upload"
                         siteId={siteId}
                       />

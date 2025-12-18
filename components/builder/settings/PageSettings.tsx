@@ -186,13 +186,8 @@ export function HeroRemixPanel({
         <FieldLabel>Background Image</FieldLabel>
         <FileUpload
           value={data.backgroundImage}
-          onChange={(value) => {
-            onDataChange({ ...data, backgroundImage: value ?? undefined })
-            // Auto-save after image change
-            if (onImageAutoSave) {
-              setTimeout(() => onImageAutoSave(), 100)
-            }
-          }}
+          onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
+          onImageSaved={onImageAutoSave}
           placeholder="Drop an image or click to upload"
           siteId={siteId}
         />

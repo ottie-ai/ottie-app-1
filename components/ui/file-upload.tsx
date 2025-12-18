@@ -11,6 +11,7 @@ import type { ImageUploadResponse } from '@/types/image'
 interface FileUploadProps extends Omit<DropzoneOptions, 'onDrop'> {
   value?: string | null
   onChange?: (value: string | null) => void
+  onImageSaved?: () => void // Called after successful upload or delete - use for auto-saving config
   className?: string
   placeholder?: string
   siteId: string // REQUIRED: Site ID for uploading to Supabase Storage with Sharp.js optimization
@@ -25,6 +26,7 @@ interface FileUploadProps extends Omit<DropzoneOptions, 'onDrop'> {
 export function FileUpload({
   value,
   onChange,
+  onImageSaved,
   className,
   placeholder = 'Drop an image here or click to upload',
   accept = { 'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'] },
@@ -96,6 +98,11 @@ export function FileUpload({
         const uploadedImage = result.images[0]
         setPreview(uploadedImage.url)
         onChange?.(uploadedImage.url)
+        
+        // Trigger auto-save after successful upload
+        if (onImageSaved) {
+          setTimeout(() => onImageSaved(), 100)
+        }
         
         toast.success('Image uploaded and optimized')
       } catch (error) {
@@ -196,9 +203,14 @@ export function FileUpload({
             filePath: filePathFromUrl
           })
           
-          // Clear preview and trigger onChange to auto-save config
+          // Clear preview and trigger onChange
           setPreview(null)
           onChange?.(null)
+          
+          // Trigger auto-save after successful delete
+          if (onImageSaved) {
+            setTimeout(() => onImageSaved(), 100)
+          }
           
           toast.success('Image deleted')
         }
