@@ -15,7 +15,7 @@ import {
 } from './security'
 
 const BUCKET_NAME = 'site-images'
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 const FETCH_TIMEOUT = 30000 // 30 seconds
 
 export type ImageUploadResult =
@@ -105,7 +105,7 @@ export async function downloadAndUploadImage(
 
     // Check size before processing
     if (buffer.length > MAX_IMAGE_SIZE) {
-      return { success: false, error: `Image too large (max 10MB)` }
+      return { success: false, error: `Image too large (max 5MB)` }
     }
 
     // Validate magic bytes to prevent MIME type spoofing
@@ -139,7 +139,7 @@ export async function downloadAndUploadImage(
       .upload(finalSanitizedPath, buffer, {
         contentType: detectedType,
         cacheControl: '3600',
-        upsert: false, // Don't allow overwriting (security)
+        upsert: true, // Allow overwriting - Supabase will add suffix if needed
       })
 
     if (error) {

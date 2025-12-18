@@ -31,6 +31,7 @@ import type { Site } from '@/types/database'
 import type { PageConfig, Section, ThemeConfig } from '@/types/builder'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
+import { LenisProvider } from '@/components/providers/LenisProvider'
 import { useEffect } from 'react'
 import { getFontByValue, getGoogleFontsUrl } from '@/lib/fonts'
 
@@ -196,44 +197,46 @@ export function PublishedSitePage({ site }: PublishedSitePageProps) {
   }
 
   return (
-    <div 
-      data-published-site
-      style={{ 
-        fontFamily: `'${bodyFont}', system-ui, sans-serif`,
-        backgroundColor: theme?.backgroundColor,
-        color: theme?.textColor,
-      }}
-    >
-      {/* Global heading font style - scoped to this site only */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          [data-published-site] h1,
-          [data-published-site] h2,
-          [data-published-site] h3,
-          [data-published-site] h4,
-          [data-published-site] h5,
-          [data-published-site] h6 {
-            font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
-          }
-        `
-      }} />
-      
-      {/* Site sections */}
-      {sections.map((section: Section) => (
-        <SectionRenderer 
-          key={section.id} 
-          section={section} 
-          theme={theme} 
-          colorScheme={section.colorScheme || 'light'} 
+    <LenisProvider>
+      <div 
+        data-published-site
+        style={{ 
+          fontFamily: `'${bodyFont}', system-ui, sans-serif`,
+          backgroundColor: theme?.backgroundColor,
+          color: theme?.textColor,
+        }}
+      >
+        {/* Global heading font style - scoped to this site only */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            [data-published-site] h1,
+            [data-published-site] h2,
+            [data-published-site] h3,
+            [data-published-site] h4,
+            [data-published-site] h5,
+            [data-published-site] h6 {
+              font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
+            }
+          `
+        }} />
+        
+        {/* Site sections */}
+        {sections.map((section: Section) => (
+          <SectionRenderer 
+            key={section.id} 
+            section={section} 
+            theme={theme} 
+            colorScheme={section.colorScheme || 'light'} 
+          />
+        ))}
+        
+        {/* Floating CTA button */}
+        <FloatingCTAButton 
+          type={ctaType} 
+          value={ctaValue} 
+          colorScheme={sections[0]?.colorScheme || 'light'} 
         />
-      ))}
-      
-      {/* Floating CTA button */}
-      <FloatingCTAButton 
-        type={ctaType} 
-        value={ctaValue} 
-        colorScheme={sections[0]?.colorScheme || 'light'} 
-      />
-    </div>
+      </div>
+    </LenisProvider>
   )
 }

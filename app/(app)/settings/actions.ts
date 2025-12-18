@@ -160,7 +160,7 @@ export async function updateUserProfile(userId: string, formData: FormData) {
       .from('avatars')
         .upload(filePath, avatarFile, {
         cacheControl: '3600',
-        upsert: false, // Don't overwrite existing files
+        upsert: true, // Allow overwriting - Supabase will add suffix if needed
       })
 
     if (uploadError) {
@@ -587,7 +587,7 @@ export async function uploadWorkspaceLogo(
       .from('workspace-logos')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false, // Don't overwrite existing files
+        upsert: true, // Allow overwriting - Supabase will add suffix if needed
       })
 
     if (uploadError) {

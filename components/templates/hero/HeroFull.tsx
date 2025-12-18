@@ -101,7 +101,7 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
                 className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
                 style={{ 
                   fontFamily: headingFont,
-                  fontWeight: fontWeight,
+                  fontWeight: 400,
                   letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
                   wordBreak: 'break-word',
                 }}

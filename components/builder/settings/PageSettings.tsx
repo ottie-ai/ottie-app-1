@@ -84,8 +84,10 @@ interface HeroRemixPanelProps {
   variant: string
   data: HeroSectionData
   colorScheme?: ColorScheme
+  siteId: string // REQUIRED: Site ID for image uploads to Supabase Storage
   onVariantChange: (variant: string) => void
   onDataChange: (data: HeroSectionData) => void
+  onImageAutoSave?: () => void // Auto-save callback for image changes
   onColorSchemeChange?: (colorScheme: ColorScheme) => void
 }
 
@@ -93,8 +95,10 @@ export function HeroRemixPanel({
   variant, 
   data,
   colorScheme = 'dark',
+  siteId,
   onVariantChange,
   onDataChange,
+  onImageAutoSave,
   onColorSchemeChange
 }: HeroRemixPanelProps) {
   const heroVariants = getVariants('hero')
@@ -182,8 +186,15 @@ export function HeroRemixPanel({
         <FieldLabel>Background Image</FieldLabel>
         <FileUpload
           value={data.backgroundImage}
-          onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
+          onChange={(value) => {
+            onDataChange({ ...data, backgroundImage: value ?? undefined })
+            // Auto-save after image change
+            if (onImageAutoSave) {
+              setTimeout(() => onImageAutoSave(), 100)
+            }
+          }}
           placeholder="Drop an image or click to upload"
+          siteId={siteId}
         />
       </Field>
     </FieldGroup>

@@ -26,51 +26,50 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
 
   return (
     <section 
-      className="min-h-screen flex items-center"
+      className="w-full min-h-screen flex items-center"
       style={{ backgroundColor: colors.backgroundColor }}
     >
-      <div className="container mx-auto px-4 py-16 md:py-24">
-        <AnimateOnScroll animation="fade-up" delay={0.5}>
-          <div className="max-w-2xl mx-auto text-center mb-12">
-            {title && (
-              <SEOHeading
-                level={2}
-                text={title}
-                className={cn(
-                  'text-[clamp(2rem,5vw,4rem)] mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                  getTextCaseClass(theme?.titleCase)
-                )}
-                style={{ 
-                  fontFamily: headingFont,
-                  fontWeight: fontWeight,
-                  color: colors.textColor
-                }}
-              >
-                {applyTextCase(title, theme?.titleCase)}
-              </SEOHeading>
-            )}
-            
-            {subtitle && (
-              <p 
-                className="text-lg transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{ color: colors.secondaryTextColor }}
-              >{subtitle}</p>
-            )}
-          </div>
-        </AnimateOnScroll>
+      <AnimateOnScroll animation="fade-up" delay={0.5}>
+        <div className="w-full text-center mb-12">
+          {title && (
+            <SEOHeading
+              level={2}
+              text={title}
+              className={cn(
+                'text-[clamp(2rem,5vw,4rem)] mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+                getTextCaseClass(theme?.titleCase)
+              )}
+              style={{ 
+                fontFamily: headingFont,
+                fontWeight: fontWeight,
+                color: colors.textColor
+              }}
+            >
+              {applyTextCase(title, theme?.titleCase)}
+            </SEOHeading>
+          )}
+          
+          {subtitle && (
+            <p 
+              className="text-lg transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              style={{ color: colors.secondaryTextColor }}
+            >{subtitle}</p>
+          )}
+        </div>
+      </AnimateOnScroll>
 
-        <div className="max-w-4xl mx-auto">
+      <div className="w-full">
           <div className="grid md:grid-cols-2 gap-12">
             {/* Contact Info */}
             <AnimateOnScroll animation="fade-right" delay={0.6} className="space-y-6">
               <SEOHeading
                 level={3}
                 text="Get in Touch"
-                className="text-lg font-medium mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                className="text-lg font-normal mb-4 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                 style={{ 
                   color: colors.textColor,
                   fontFamily: headingFont,
-                  fontWeight: fontWeight,
+                  fontWeight: 400,
                 }}
               >
                 Get in Touch
@@ -189,7 +188,6 @@ export function ContactSimple({ data, theme, colorScheme = 'light' }: SectionCom
               </AnimateOnScroll>
             )}
           </div>
-        </div>
       </div>
     </section>
   )

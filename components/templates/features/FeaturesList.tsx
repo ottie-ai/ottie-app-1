@@ -22,27 +22,26 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
 
   return (
     <section 
-      className="py-16 md:py-24"
+      className="w-full py-16 md:py-24"
       style={{ backgroundColor: colors.cardBg }}
     >
-      <div className="container mx-auto px-4">
-        {title && (
-          <SEOHeading
-            level={2}
-            text={title}
-            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-12 ${getTextCaseClass(theme?.titleCase)}`}
-            style={{ 
-              color: colors.textColor,
-              fontFamily: headingFont,
-              transform: `scale(${theme?.headingFontSize || 1})`,
-              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-            }}
-          >
-            {applyTextCase(title, theme?.titleCase)}
-          </SEOHeading>
-        )}
+      {title && (
+        <SEOHeading
+          level={2}
+          text={title}
+          className={`text-[clamp(2rem,5vw,4rem)] font-normal text-center mb-12 ${getTextCaseClass(theme?.titleCase)}`}
+          style={{ 
+            color: colors.textColor,
+            fontFamily: headingFont,
+            transform: `scale(${theme?.headingFontSize || 1})`,
+            letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+          }}
+        >
+          {applyTextCase(title, theme?.titleCase)}
+        </SEOHeading>
+      )}
 
-        <div className="flex flex-wrap justify-center gap-8 md:gap-12 max-w-5xl mx-auto">
+      <div className="w-full flex flex-wrap justify-center gap-8 md:gap-12">
           {features.map((feature, index) => {
             const IconComponent = feature.icon ? getPhosphorIcon(feature.icon) : null
 
@@ -67,7 +66,7 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
                 )}
                 <div className="flex flex-col">
                   <span 
-                    className="text-xl md:text-2xl font-bold"
+                    className="text-xl md:text-2xl font-normal"
                     style={{ color: colors.textColor }}
                   >
                     {feature.value}
@@ -82,7 +81,6 @@ export function FeaturesList({ data, theme, colorScheme = 'light' }: SectionComp
               </div>
             )
           })}
-        </div>
       </div>
     </section>
   )

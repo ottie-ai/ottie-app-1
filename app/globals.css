@@ -220,6 +220,13 @@
   .large {
     @apply text-lg font-semibold;
   }
+
+  /* Site max-width container - 80% of viewport width */
+  .site-container {
+    max-width: 80vw;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 /* Local font definitions */

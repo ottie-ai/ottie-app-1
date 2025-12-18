@@ -28,11 +28,10 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
 
   return (
     <section 
-      className="min-h-[80vh] flex items-center pt-12"
+      className="w-full min-h-[80vh] flex items-center pt-12"
       style={{ backgroundColor: colors.backgroundColor }}
     >
-      <div className="container mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <div className="w-full grid lg:grid-cols-2 gap-12 items-center">
           {/* Content Side */}
           <div className="space-y-6">
             {price && (
@@ -60,7 +59,7 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
                 <SEOHeading
                   level={1}
                   text={headline}
-                  className={`text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight ${getTextCaseClass(theme?.titleCase)} origin-left`}
+                  className={`text-4xl md:text-5xl lg:text-6xl font-normal leading-tight ${getTextCaseClass(theme?.titleCase)} origin-left`}
                   style={{ 
                     color: colors.textColor,
                     fontFamily: headingFont,
@@ -165,7 +164,6 @@ export function HeroSplit({ data, theme, colorScheme = 'light', onDataChange }: 
               </div>
             )}
           </div>
-        </div>
       </div>
     </section>
   )

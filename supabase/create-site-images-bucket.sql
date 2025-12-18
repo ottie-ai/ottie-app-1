@@ -2,17 +2,34 @@
 -- SITE IMAGES STORAGE BUCKET SETUP
 -- ==========================================
 -- 
--- INSTRUKCIE:
--- 1. Najprv vytvorte bucket cez Supabase Dashboard:
---    - Supabase Dashboard → Storage
---    - Kliknite na "New bucket"
---    - Názov bucketu: `site-images`
---    - Public bucket: **Zapnúť** (aby boli obrázky verejne dostupné)
---    - File size limit: 10MB
---    - Allowed MIME types: image/jpeg, image/jpg, image/png, image/gif, image/webp
---
--- 2. Potom spustite tento SQL skript na vytvorenie RLS policies
+-- Tento skript automaticky vytvorí bucket a nastaví RLS policies.
+-- Stačí ho spustiť v Supabase SQL Editor.
+-- 
+-- Bucket nastavenia:
+-- - Názov: `site-images`
+-- - Public bucket: **Zapnuté** (aby boli obrázky verejne dostupné)
+-- - File size limit: 5MB (5242880 bytes)
+-- - Allowed MIME types: image/jpeg, image/jpg, image/png, image/gif, image/webp
+-- 
+-- Štruktúra bucket:
+-- - `{site-id}/...` - Site images (owner/admin/assigned agent)
+-- - `temp-preview/{preview-id}/...` - Temp previews (service_role only)
+-- 
 -- ==========================================
+
+-- Create bucket if it doesn't exist
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'site-images',
+  'site-images',
+  true,
+  5242880, -- 5MB in bytes
+  ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 5242880,
+  allowed_mime_types = ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 
 -- Drop existing policies if they exist (idempotent)
 DROP POLICY IF EXISTS "Service role can upload site images" ON storage.objects;
@@ -21,50 +38,63 @@ DROP POLICY IF EXISTS "Service role can delete site images" ON storage.objects;
 DROP POLICY IF EXISTS "Users can upload site images" ON storage.objects;
 DROP POLICY IF EXISTS "Users can update site images" ON storage.objects;
 DROP POLICY IF EXISTS "Users can delete site images" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload to own folder" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update own folder" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete from own folder" ON storage.objects;
 DROP POLICY IF EXISTS "Public can view site images" ON storage.objects;
 
--- Allow service role to upload images (for scraping/processing)
+-- ==========================================
+-- SERVICE ROLE POLICIES (for server actions)
+-- ==========================================
+-- Service role can do everything - used for:
+-- - Scraping/processing (server-side)
+-- - Temp preview image uploads
+-- - Image cleanup jobs
+
 CREATE POLICY "Service role can upload site images"
 ON storage.objects FOR INSERT
 TO service_role
 WITH CHECK (bucket_id = 'site-images');
 
--- Allow service role to update images
 CREATE POLICY "Service role can update site images"
 ON storage.objects FOR UPDATE
 TO service_role
 USING (bucket_id = 'site-images');
 
--- Allow service role to delete images
 CREATE POLICY "Service role can delete site images"
 ON storage.objects FOR DELETE
 TO service_role
 USING (bucket_id = 'site-images');
 
+-- ==========================================
+-- USER POLICIES (for client-side uploads)
+-- ==========================================
+-- Only owner, admin, or assigned agent can upload/update/delete
+-- Temp previews are handled by service_role only (server actions)
+
 -- Allow authenticated users to upload images for sites they can edit
+-- ONLY for site folders - NOT for temp-preview or user folders
 CREATE POLICY "Users can upload site images"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (
   bucket_id = 'site-images' AND
+  -- Must be a site folder path (starts with site UUID)
+  name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/' AND
+  -- User must have edit access to the site
+  -- Extract site_id from path and check membership
   (
-    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
-    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
-    OR
-    -- For sites: allow if user has access to the site and path matches UUID pattern
-    EXISTS (
-      SELECT 1 FROM public.sites s
+    SUBSTRING(name FROM '^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')::uuid
+    IN (
+      SELECT s.id FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
       WHERE m.user_id = auth.uid()
       AND s.deleted_at IS NULL
       AND (
-        -- Owners/admins can upload for any site in workspace
         (m.role IN ('owner', 'admin'))
         OR
-        -- Agents can upload for sites they created or are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );
@@ -75,24 +105,22 @@ ON storage.objects FOR UPDATE
 TO authenticated
 USING (
   bucket_id = 'site-images' AND
+  -- Must be a site folder path (starts with site UUID)
+  name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/' AND
+  -- User must have edit access to the site
+  -- Extract site_id from path and check membership
   (
-    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
-    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
-    OR
-    -- For sites: allow if user has access to the site and path matches UUID pattern
-    EXISTS (
-      SELECT 1 FROM public.sites s
+    SUBSTRING(name FROM '^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')::uuid
+    IN (
+      SELECT s.id FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
       WHERE m.user_id = auth.uid()
       AND s.deleted_at IS NULL
       AND (
-        -- Owners/admins can update for any site in workspace
         (m.role IN ('owner', 'admin'))
         OR
-        -- Agents can update for sites they created or are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );
@@ -103,13 +131,15 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'site-images' AND
+  -- Must be a site folder path (starts with site UUID)
+  name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/' AND
+  -- User must have edit access to the site
+  -- Extract site_id from path (first part before /) and check membership
   (
-    -- For temp previews: allow if path starts with 'temp-preview/' and matches UUID pattern
-    (name LIKE 'temp-preview/%' AND name ~ '^temp-preview/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/')
-    OR
-    -- For sites: allow if user has access to the site and path matches UUID pattern
-    EXISTS (
-      SELECT 1 FROM public.sites s
+    -- Get first part of path (site UUID)
+    SUBSTRING(name FROM '^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})')::uuid
+    IN (
+      SELECT s.id FROM public.sites s
       INNER JOIN public.memberships m ON m.workspace_id = s.workspace_id
       WHERE m.user_id = auth.uid()
       AND s.deleted_at IS NULL
@@ -117,16 +147,40 @@ USING (
         -- Owners/admins can delete for any site in workspace
         (m.role IN ('owner', 'admin'))
         OR
-        -- Agents can delete for sites they created or are assigned to
+        -- Agents can delete ONLY for sites they created OR are assigned to
         (m.role = 'agent' AND (s.creator_id = auth.uid() OR s.assigned_agent_id = auth.uid()))
       )
-      AND name ~ ('^' || s.id::text || '/[0-9]+-[0-9a-f]+\.(jpg|jpeg|png|gif|webp)$')
     )
   )
 );
 
--- Allow public read access to site images
+-- ==========================================
+-- PUBLIC READ ACCESS
+-- ==========================================
+-- Anyone can view images (needed for displaying on public sites)
+
 CREATE POLICY "Public can view site images"
 ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'site-images');
+
+-- ==========================================
+-- SECURITY NOTES
+-- ==========================================
+-- 
+-- 1. Temp previews (temp-preview/*):
+--    - Upload/update/delete: ONLY service_role (server actions)
+--    - This prevents any authenticated user from tampering with temp previews
+-- 
+-- 2. Site images ({site-id}/*):
+--    - Upload/update/delete: owner, admin, OR assigned agent
+--    - Strict check that user has membership in workspace AND proper role
+-- 
+-- 3. No user folder support:
+--    - Users cannot upload to personal folders
+--    - All uploads must be tied to a specific site
+-- 
+-- 4. Public read:
+--    - All images are publicly readable (needed for displaying on sites)
+-- 
+-- ==========================================

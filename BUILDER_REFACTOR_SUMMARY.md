@@ -255,3 +255,4 @@ Shared hook for consistent site data fetching across both views:
 
 Refaktoring úspešne oddelil backend admin funkcie od layout editora, čím sa zlepšila UX a kód je teraz modulárnejší a ľahšie udržiavateľný. Všetky existujúce funkcie zostali zachované a permissions sú správne vynucované.
 
+

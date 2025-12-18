@@ -72,6 +72,73 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
 - **Data:** Use Server Actions for mutations.
 - **Types:** Strict TypeScript interfaces for all data props.
 
+### 🎬 Scroll Animations (Lenis + GSAP)
+For all **Template Renderer** sections (sites), use **Lenis** for smooth scrolling and **GSAP ScrollTrigger** for scroll-based animations and pinning.
+
+- **Lenis:** Smooth scroll library - provides buttery smooth scrolling experience
+- **GSAP ScrollTrigger:** For scroll-triggered animations, pinning, and scroll-linked effects
+
+#### Usage Pattern:
+```tsx
+'use client'
+
+import { useEffect, useRef } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+// Register plugin once
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger)
+}
+
+export function MySection() {
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const elementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!sectionRef.current || !elementRef.current) return
+
+    const ctx = gsap.context(() => {
+      // Pinning example
+      ScrollTrigger.create({
+        trigger: sectionRef.current,
+        start: 'top top',
+        end: 'bottom bottom',
+        pin: elementRef.current,
+        pinSpacing: false,
+      })
+
+      // Animation example
+      gsap.to('.animated-element', {
+        y: 100,
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top center',
+          end: 'bottom center',
+          scrub: true,
+        }
+      })
+    }, sectionRef)
+
+    return () => ctx.revert() // Cleanup
+  }, [])
+
+  return (...)
+}
+```
+
+#### Key Rules:
+1. **Always cleanup:** Use `gsap.context()` and call `ctx.revert()` in cleanup
+2. **Register plugin:** Register ScrollTrigger at module level with SSR check
+3. **Use refs:** Always use refs for trigger/pin elements, not selectors
+4. **Scrub:** Use `scrub: true` for scroll-linked animations
+5. **Pin:** Use `pin` option for sticky/pinned elements during scroll
+
+#### When to use what:
+- **GSAP ScrollTrigger:** Scroll pinning, scroll-linked animations, timeline progress
+- **Framer Motion:** Simple entrance animations, hover effects, layout animations
+- **CSS:** Static styles, simple transitions
+
 ## ⚡️ Workflow Rules
 1. **New Template Sections:** When asked to create a section (e.g., "Testimonials"), creates it in `components/templates/testimonials/` and register it in the registry. Use **Phosphor Icons**.
 2. **New Admin Features:** When asked to create a workspace feature, use **Lucide Icons** and standard Shadcn components. All platform routes are in `/app/(app)/` route group.

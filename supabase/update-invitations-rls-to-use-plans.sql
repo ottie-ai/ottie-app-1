@@ -35,3 +35,4 @@ CREATE POLICY "Admins manage invitations" ON invitations
 
 
 
+

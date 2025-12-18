@@ -4,6 +4,11 @@
 
 Tento dokument popisuje implementáciu automatického presúvania obrázkov do Supabase Storage bucketu. Všetky obrázky (uploadnuté používateľom alebo scrapnuté z webstránok) sa automaticky stiahnu a presunú do bucketu `site-images`, pričom sa nikdy nepoužívajú pôvodné linky priamo.
 
+**⚠️ DÔLEŽITÉ:**
+- **Bucket `site-images` MUSÍ existovať** pred použitím aplikácie
+- **Nikdy sa nepoužíva base64** - všetky obrázky musia byť v Supabase Storage
+- Ak bucket neexistuje, spusti SQL skript `supabase/create-site-images-bucket.sql`
+
 ## Funkcionalita
 
 ### 1. Automatické spracovanie obrázkov pri scraping
@@ -56,23 +61,36 @@ Tento dokument popisuje implementáciu automatického presúvania obrázkov do S
 
 ## Supabase Setup
 
-### 1. Vytvorenie Bucketu
+### ⚠️ KRITICKÉ: Bucket musí existovať
+
+**Bucket `site-images` MUSÍ existovať pred použitím aplikácie.** Ak bucket neexistuje, upload obrázkov zlyhá.
+
+### Vytvorenie Bucketu
+
+**Automatické vytvorenie (odporúčané):**
+
+Spustiť SQL skript: `supabase/create-site-images-bucket.sql`
+
+Tento skript:
+- **Automaticky vytvorí bucket** `site-images` (ak neexistuje)
+- Nastaví bucket ako public
+- Nastaví file size limit na 5MB
+- Nastaví allowed MIME types: `image/jpeg, image/jpg, image/png, image/gif, image/webp`
+- Vytvorí všetky RLS policies:
+  - Policies pre service role (pre scraping/processing)
+  - Policies pre authenticated users (pre manual uploads)
+  - Public read policy (pre zobrazenie obrázkov)
+
+**Manuálne vytvorenie (ak SQL nefunguje):**
 
 V Supabase Dashboard:
 1. Storage → New bucket
 2. Názov: `site-images`
 3. Public bucket: **Zapnúť** (aby boli obrázky verejne dostupné)
-4. File size limit: 10MB
+4. File size limit: 5MB
 5. Allowed MIME types: `image/jpeg, image/jpg, image/png, image/gif, image/webp`
 
-### 2. RLS Policies
-
-Spustiť SQL skript: `supabase/create-site-images-bucket.sql`
-
-Tento skript vytvorí:
-- Policies pre service role (pre scraping/processing)
-- Policies pre authenticated users (pre manual uploads)
-- Public read policy (pre zobrazenie obrázkov)
+Potom spustiť SQL skript len pre RLS policies (skript je idempotentný, bucket preskočí ak už existuje).
 
 ## Súbory
 
@@ -104,12 +122,13 @@ Presun obrázkov sa deje v `app/(marketing)/actions.ts`:
 - Po vytvorení site sa zavolá `moveTempPreviewImagesToSite`
 - Config sa aktualizuje s novými URLs
 
-## Manual Uploads (TODO)
+## Manual Uploads
 
-Pre manuálne uploady v builderi (FileUpload component):
-- `FileUpload` momentálne používa data URLs (base64)
-- Pre produkciu by malo používať `uploadSiteImage` z `app/actions/image-upload.ts`
-- Potrebné: Pridať `siteId` prop do FileUpload a integrovať upload
+Pre manuálne uploady v builderi používa komponent `FileUpload`:
+- **Vždy uploaduje do Supabase Storage** - nikdy nepoužíva base64 data URLs
+- Vyžaduje `siteId` prop (povinný)
+- Uploaduje cez `uploadSiteImage` z `app/actions/image-upload.ts`
+- Bucket `site-images` musí existovať, inak upload zlyhá
 
 ## Cron Jobs
 
@@ -131,8 +150,10 @@ await cleanupExpiredPreviewImages()
 
 ## Poznámky
 
-1. **Image Size Limit**: 10MB per image
+1. **Image Size Limit**: 5MB per image
 2. **Concurrent Processing**: Max 5 obrázkov naraz pri batch processing
-3. **Error Handling**: Ak sa obrázok nepodarí stiahnuť/uploadnúť, použije sa pôvodná URL (ale to by sa nemalo stať v produkcii)
+3. **Error Handling**: Ak sa obrázok nepodarí stiahnuť/uploadnúť, zobrazí sa error message. Pôvodná URL sa nepoužije.
 4. **Temp Preview Expiration**: Obrázky sa vymažú spolu s temp preview podľa `expires_at` (default 24 hodín)
 5. **Site Deletion**: Obrázky sa vymažú pri soft delete, ale site má 90 dní recovery window
+6. **⚠️ Bucket Requirement**: Bucket `site-images` MUSÍ existovať. Ak neexistuje, spusti `supabase/create-site-images-bucket.sql` skript.
+7. **No Base64 Fallback**: Aplikácia NIKDY nepoužíva base64 data URLs. Všetky obrázky musia byť v Supabase Storage.

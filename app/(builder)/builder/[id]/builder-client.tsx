@@ -23,6 +23,7 @@ import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { SectionMorphingIndicator } from '@/components/shared/section-morphing-indicator'
 import { SiteLoader } from '@/components/site-loader'
+import { LenisProvider } from '@/components/providers/LenisProvider'
 import { handlePublishSite, handleUnpublishSite } from '@/app/actions/site-actions'
 
 interface BuilderClientProps {
@@ -225,9 +226,10 @@ export function BuilderClient({ site }: BuilderClientProps) {
     }
   }, [handleScrollDetection])
 
-  // Handle section changes
-  const handleSectionChange = (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => {
-    setSections(prev => prev.map(s => {
+  // Handle section changes - auto-save to database
+  const handleSectionChange = async (sectionId: string, updates: { variant?: string; data?: any; colorScheme?: ColorScheme }) => {
+    // Update local state immediately
+    const updatedSections = sections.map(s => {
       if (s.id === sectionId) {
         return {
           ...s,
@@ -237,7 +239,9 @@ export function BuilderClient({ site }: BuilderClientProps) {
         }
       }
       return s
-    }))
+    })
+    
+    setSections(updatedSections)
     
     // Clear editing state for this section
     setEditingState(prev => {
@@ -245,6 +249,30 @@ export function BuilderClient({ site }: BuilderClientProps) {
       delete next[sectionId]
       return next
     })
+    
+    // Auto-save to database
+    try {
+      const supabase = createClient()
+      const updatedConfig: PageConfig = {
+        ...siteConfig,
+        sections: updatedSections,
+      }
+      
+      const { error } = await supabase
+        .from('sites')
+        .update({ config: updatedConfig })
+        .eq('id', site.id)
+      
+      if (error) {
+        console.error('[handleSectionChange] Error saving to database:', error)
+        toast.error(`Failed to save: ${error.message}`)
+      } else {
+        console.log('[handleSectionChange] Successfully saved to database')
+      }
+    } catch (error) {
+      console.error('[handleSectionChange] Error saving to database:', error)
+      toast.error('Failed to save changes')
+    }
   }
 
   // Handle editing state changes
@@ -580,91 +608,93 @@ export function BuilderClient({ site }: BuilderClientProps) {
 
       {/* Site Content - Window scroll (no overflow wrapper) */}
       {(
-        <div data-site-wrapper>
-          <FontLoader fonts={fonts} />
-          <FontTransition font={primaryFont}>
-            {/* Global style for headings */}
-            <style dangerouslySetInnerHTML={{
-              __html: `
-                [data-site-wrapper] [data-site-content] h1,
-                [data-site-wrapper] [data-site-content] h2,
-                [data-site-wrapper] [data-site-content] h3,
-                [data-site-wrapper] [data-site-content] h4,
-                [data-site-wrapper] [data-site-content] h5,
-                [data-site-wrapper] [data-site-content] h6 {
-                  font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
-                }
-              `
-            }} />
-            <div
-              data-site-content
-              className="site-content"
-              style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor || '#ffffff', color: theme?.textColor }}
-            >
-              {sections.map((section) => {
-                const editing = editingState[section.id]
-                const displaySection = editing ? {
-                  ...section,
-                  variant: editing.variant,
-                  data: editing.data,
-                  colorScheme: editing.colorScheme,
-                } : section
+        <LenisProvider>
+          <div data-site-wrapper>
+            <FontLoader fonts={fonts} />
+            <FontTransition font={primaryFont}>
+              {/* Global style for headings */}
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                  [data-site-wrapper] [data-site-content] h1,
+                  [data-site-wrapper] [data-site-content] h2,
+                  [data-site-wrapper] [data-site-content] h3,
+                  [data-site-wrapper] [data-site-content] h4,
+                  [data-site-wrapper] [data-site-content] h5,
+                  [data-site-wrapper] [data-site-content] h6 {
+                    font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
+                  }
+                `
+              }} />
+              <div
+                data-site-content
+                className="site-content"
+                style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor || '#ffffff', color: theme?.textColor }}
+              >
+                {sections.map((section) => {
+                  const editing = editingState[section.id]
+                  const displaySection = editing ? {
+                    ...section,
+                    variant: editing.variant,
+                    data: editing.data,
+                    colorScheme: editing.colorScheme,
+                  } : section
 
-                const sectionKey = section.type === 'hero'
-                  ? `${section.id}-${displaySection.variant}`
-                  : section.id
+                  const sectionKey = section.type === 'hero'
+                    ? `${section.id}-${displaySection.variant}`
+                    : section.id
 
-                return (
-                  <div
-                    key={section.id}
-                    data-section-id={section.id}
-                    ref={(el) => {
-                      const sectionElement = el as HTMLDivElement | null
-                      registerSectionRef(section.id, sectionElement)
-                    }}
-                  >
-                    {section.type === 'hero' ? (
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={sectionKey}
-                          initial={{
-                            opacity: 0,
-                            x: 50,
-                            scale: 0.95,
-                            filter: 'blur(4px)'
-                          }}
-                          animate={{
-                            opacity: 1,
-                            x: 0,
-                            scale: 1,
-                            filter: 'blur(0px)'
-                          }}
-                          exit={{
-                            opacity: 0,
-                            x: -50,
-                            scale: 0.95,
-                            filter: 'blur(4px)'
-                          }}
-                          transition={{
-                            type: 'spring',
-                            stiffness: 300,
-                            damping: 30,
-                            mass: 0.8,
-                          }}
-                        >
-                          <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
-                        </motion.div>
-                      </AnimatePresence>
-                    ) : (
-                      <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
-          </FontTransition>
-        </div>
+                  return (
+                    <div
+                      key={section.id}
+                      data-section-id={section.id}
+                      ref={(el) => {
+                        const sectionElement = el as HTMLDivElement | null
+                        registerSectionRef(section.id, sectionElement)
+                      }}
+                    >
+                      {section.type === 'hero' ? (
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={sectionKey}
+                            initial={{
+                              opacity: 0,
+                              x: 50,
+                              scale: 0.95,
+                              filter: 'blur(4px)'
+                            }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                              scale: 1,
+                              filter: 'blur(0px)'
+                            }}
+                            exit={{
+                              opacity: 0,
+                              x: -50,
+                              scale: 0.95,
+                              filter: 'blur(4px)'
+                            }}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 300,
+                              damping: 30,
+                              mass: 0.8,
+                            }}
+                          >
+                            <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                          </motion.div>
+                        </AnimatePresence>
+                      ) : (
+                        <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
+            </FontTransition>
+          </div>
+        </LenisProvider>
       )}
 
       {/* Floating Bottom Bar - SectionMorphingIndicator */}
@@ -675,6 +705,7 @@ export function BuilderClient({ site }: BuilderClientProps) {
           onSectionChange={handleSectionChange}
           onEditingStateChange={handleEditingStateChange}
           isVisible={isUIVisible}
+          siteId={site.id}
         />
       )}
     </>

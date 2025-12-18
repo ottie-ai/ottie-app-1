@@ -14,6 +14,7 @@ import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { SectionMorphingIndicator } from '@/components/shared/section-morphing-indicator'
 import { SiteLoader } from '@/components/site-loader'
+import { LenisProvider } from '@/components/providers/LenisProvider'
 
 // Test sections (hardcoded for testing when site has no sections)
 const testSections: Section[] = [
@@ -800,103 +801,105 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
         `
       }} />
       {siteRouteScript}
-      <div data-site-wrapper>
-      <FontLoader fonts={fonts} />
-      <FontTransition font={primaryFont}>
-        {/* Global style for all headings - ONLY applies to site content, not admin UI */}
-        {/* Using scoped style with unique ID to prevent affecting admin UI */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            [data-site-wrapper] [data-site-content] h1,
-            [data-site-wrapper] [data-site-content] h2,
-            [data-site-wrapper] [data-site-content] h3,
-            [data-site-wrapper] [data-site-content] h4,
-            [data-site-wrapper] [data-site-content] h5,
-            [data-site-wrapper] [data-site-content] h6 {
-              font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
-            }
-          `
-        }} />
-        <div 
-          data-site-content
-          className="site-content"
-          style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor || '#ffffff', color: theme?.textColor }}
-        >
-          {sections?.map((section: Section) => {
-            // Use editing state if available (for preview), otherwise use saved section
-            const editing = editingState[section.id]
-            const displaySection = editing ? {
-              ...section,
-              variant: editing.variant,
-              data: editing.data,
-              colorScheme: editing.colorScheme,
-            } : section
-            
-            // Create unique key that includes variant for hero sections to trigger animation
-            const sectionKey = section.type === 'hero' 
-              ? `${section.id}-${displaySection.variant}` 
-              : section.id
-            
-            return (
-              <div
-                key={section.id}
-                data-section-id={section.id}
-                ref={(el) => {
-                  const sectionElement = el as HTMLDivElement | null
-                  registerSectionRef(section.id, sectionElement)
-                }}
-              >
-                {section.type === 'hero' ? (
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={sectionKey}
-                      initial={{ 
-                        opacity: 0, 
-                        x: 50,
-                        scale: 0.95,
-                        filter: 'blur(4px)'
-                      }}
-                      animate={{ 
-                        opacity: 1, 
-                        x: 0,
-                        scale: 1,
-                        filter: 'blur(0px)'
-                      }}
-                      exit={{ 
-                        opacity: 0, 
-                        x: -50,
-                        scale: 0.95,
-                        filter: 'blur(4px)'
-                      }}
-                      transition={{
-                        type: 'spring',
-                        stiffness: 300,
-                        damping: 30,
-                        mass: 0.8,
-                      }}
-                    >
-                      <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
-                    </motion.div>
-                  </AnimatePresence>
-                ) : (
-                  <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
-                )}
-              </div>
-            )
-          })}
+      <LenisProvider>
+        <div data-site-wrapper>
+        <FontLoader fonts={fonts} />
+        <FontTransition font={primaryFont}>
+          {/* Global style for all headings - ONLY applies to site content, not admin UI */}
+          {/* Using scoped style with unique ID to prevent affecting admin UI */}
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              [data-site-wrapper] [data-site-content] h1,
+              [data-site-wrapper] [data-site-content] h2,
+              [data-site-wrapper] [data-site-content] h3,
+              [data-site-wrapper] [data-site-content] h4,
+              [data-site-wrapper] [data-site-content] h5,
+              [data-site-wrapper] [data-site-content] h6 {
+                font-family: '${headingFont}', system-ui, -apple-system, sans-serif !important;
+              }
+            `
+          }} />
+          <div 
+            data-site-content
+            className="site-content"
+            style={{ fontFamily: theme?.fontFamily, backgroundColor: theme?.backgroundColor || '#ffffff', color: theme?.textColor }}
+          >
+            {sections?.map((section: Section) => {
+              // Use editing state if available (for preview), otherwise use saved section
+              const editing = editingState[section.id]
+              const displaySection = editing ? {
+                ...section,
+                variant: editing.variant,
+                data: editing.data,
+                colorScheme: editing.colorScheme,
+              } : section
+              
+              // Create unique key that includes variant for hero sections to trigger animation
+              const sectionKey = section.type === 'hero' 
+                ? `${section.id}-${displaySection.variant}` 
+                : section.id
+              
+              return (
+                <div
+                  key={section.id}
+                  data-section-id={section.id}
+                  ref={(el) => {
+                    const sectionElement = el as HTMLDivElement | null
+                    registerSectionRef(section.id, sectionElement)
+                  }}
+                >
+                  {section.type === 'hero' ? (
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={sectionKey}
+                        initial={{ 
+                          opacity: 0, 
+                          x: 50,
+                          scale: 0.95,
+                          filter: 'blur(4px)'
+                        }}
+                        animate={{ 
+                          opacity: 1, 
+                          x: 0,
+                          scale: 1,
+                          filter: 'blur(0px)'
+                        }}
+                        exit={{ 
+                          opacity: 0, 
+                          x: -50,
+                          scale: 0.95,
+                          filter: 'blur(4px)'
+                        }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 300,
+                          damping: 30,
+                          mass: 0.8,
+                        }}
+                      >
+                        <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <SectionRenderer section={displaySection} theme={theme} colorScheme={displaySection.colorScheme || 'light'} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
+          {/* ADMIN-ONLY: Morphing indicator is only visible when embedded in editor (has onHasUnsavedChanges/saveChangesRef), not in standalone preview */}
+          {canEdit && (onHasUnsavedChanges || saveChangesRef) && (
+            <SectionMorphingIndicator 
+              activeSection={activeSection}
+              originalSection={sections.find(s => s.id === activeSection?.id) || null}
+              onSectionChange={handleSectionChange}
+              onEditingStateChange={handleEditingStateChange}
+            />
+          )}
+        </FontTransition>
         </div>
-        <FloatingCTAButton type={ctaType} value={ctaValue} colorScheme={sections?.[0]?.colorScheme || 'light'} />
-        {/* ADMIN-ONLY: Morphing indicator is only visible when embedded in editor (has onHasUnsavedChanges/saveChangesRef), not in standalone preview */}
-        {canEdit && (onHasUnsavedChanges || saveChangesRef) && (
-          <SectionMorphingIndicator 
-            activeSection={activeSection}
-            originalSection={sections.find(s => s.id === activeSection?.id) || null}
-            onSectionChange={handleSectionChange}
-            onEditingStateChange={handleEditingStateChange}
-          />
-        )}
-      </FontTransition>
-      </div>
+      </LenisProvider>
     </>
   )
 }

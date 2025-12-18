@@ -199,7 +199,7 @@ export interface SectionVariants {
   gallery: 'grid' | 'masonry' | 'carousel' | 'lightbox'
   agent: 'card' | 'split' | 'minimal' | 'detailed'
   contact: 'simple' | 'split' | 'map' | 'full'
-  highlights: 'cards'
+  highlights: 'cards' | 'simple' | 'timeline'
 }
 
 /**

@@ -22,31 +22,30 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
 
   return (
     <section 
-      className="min-h-screen flex items-center"
+      className="w-full min-h-screen flex items-center"
       style={{ backgroundColor: colors.backgroundColor }}
     >
-      <div className="container mx-auto px-4 py-16 md:py-24">
-        {title && (
-          <AnimateOnScroll animation="fade-up" delay={0.5}>
-            <SEOHeading
-              level={2}
-              text={title}
-              className={cn(
-                'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
-                getTextCaseClass(theme?.titleCase)
-              )}
-              style={{ 
-                fontFamily: headingFont,
-                fontWeight: fontWeight,
-                color: colors.textColor
-              }}
-            >
-              {applyTextCase(title, theme?.titleCase)}
-            </SEOHeading>
-          </AnimateOnScroll>
-        )}
+      {title && (
+        <AnimateOnScroll animation="fade-up" delay={0.5}>
+          <SEOHeading
+            level={2}
+            text={title}
+            className={cn(
+              'text-[clamp(2rem,5vw,4rem)] text-center mb-12 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              getTextCaseClass(theme?.titleCase)
+            )}
+            style={{ 
+              fontFamily: headingFont,
+              fontWeight: 400,
+              color: colors.textColor
+            }}
+          >
+            {applyTextCase(title, theme?.titleCase)}
+          </SEOHeading>
+        </AnimateOnScroll>
+      )}
 
-        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4" staggerDelay={0.08} baseDelay={0.7}>
+      <StaggerContainer className="w-full grid grid-cols-2 md:grid-cols-4 gap-4" staggerDelay={0.08} baseDelay={0.7}>
           {images.map((image, index) => (
             <StaggerItem key={index} animation="scale">
               <div 
@@ -68,8 +67,7 @@ export function GalleryGrid({ data, theme, colorScheme = 'light' }: SectionCompo
               </div>
             </StaggerItem>
           ))}
-        </StaggerContainer>
-      </div>
+      </StaggerContainer>
     </section>
   )
 }

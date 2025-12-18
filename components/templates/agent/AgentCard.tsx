@@ -24,12 +24,10 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
 
   return (
     <section 
-      className="min-h-screen flex items-center"
+      className="w-full min-h-screen flex items-center"
       style={{ backgroundColor: colors.backgroundColor }}
     >
-      <div className="container mx-auto px-4 py-16 md:py-24">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
+      <div className="w-full flex flex-col md:flex-row gap-8 items-center md:items-start">
             {/* Agent Photo */}
             {photo && (
               <AnimateOnScroll animation="fade-right" delay={0.5}>
@@ -56,7 +54,7 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                 )}
                 style={{ 
                   fontFamily: headingFont,
-                  fontWeight: fontWeight,
+                  fontWeight: 400,
                   color: colors.textColor
                 }}
               >
@@ -115,8 +113,6 @@ export function AgentCard({ data, theme, colorScheme = 'light' }: SectionCompone
                 >{license}</p>
               )}
             </AnimateOnScroll>
-          </div>
-        </div>
       </div>
     </section>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { HighlightsSectionData, ColorScheme } from '@/types/builder'
 import { 
   Field, 
@@ -19,6 +19,15 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { IconPicker, Icon, type IconName } from '@/components/ui/icon-picker'
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselPrevious, 
+  CarouselNext,
+  type CarouselApi 
+} from '@/components/ui/carousel'
+import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon, Plus, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -72,8 +81,10 @@ interface HighlightsRemixPanelProps {
   variant: string
   data: HighlightsSectionData
   colorScheme?: ColorScheme
+  siteId: string // REQUIRED: Site ID for image uploads to Supabase Storage
   onVariantChange: (variant: string) => void
   onDataChange: (data: HighlightsSectionData) => void
+  onImageAutoSave?: () => void // Auto-save callback for image changes
   onColorSchemeChange?: (colorScheme: ColorScheme) => void
 }
 
@@ -81,12 +92,42 @@ export function HighlightsRemixPanel({
   variant,
   data,
   colorScheme = 'light',
+  siteId,
   onVariantChange,
   onDataChange,
+  onImageAutoSave,
   onColorSchemeChange,
 }: HighlightsRemixPanelProps) {
+  const highlightsVariants = getVariants('highlights')
+  const [api, setApi] = useState<CarouselApi>()
   const highlights = data.highlights || []
   const maxCards = 6
+  
+  const currentIndex = highlightsVariants.indexOf(variant)
+
+  useEffect(() => {
+    if (!api) return
+    if (currentIndex >= 0) {
+      api.scrollTo(currentIndex)
+    }
+  }, [api, currentIndex])
+
+  const onSelect = useCallback(() => {
+    if (!api) return
+    const selectedIndex = api.selectedScrollSnap()
+    const selectedVariant = highlightsVariants[selectedIndex]
+    if (selectedVariant && selectedVariant !== variant) {
+      onVariantChange(selectedVariant)
+    }
+  }, [api, highlightsVariants, variant, onVariantChange])
+
+  useEffect(() => {
+    if (!api) return
+    api.on('select', onSelect)
+    return () => {
+      api.off('select', onSelect)
+    }
+  }, [api, onSelect])
 
   const addCard = () => {
     if (highlights.length >= maxCards) return
@@ -123,6 +164,29 @@ export function HighlightsRemixPanel({
 
   return (
     <FieldGroup className="gap-5">
+      <Field>
+        <FieldLabel>Layout</FieldLabel>
+        <Carousel setApi={setApi} opts={{ loop: true }}>
+          <div className="flex items-center justify-between p-2 rounded-md border bg-muted">
+            <CarouselPrevious 
+              className="static translate-y-0 size-7 text-foreground hover:text-foreground border rounded-full shadow-sm disabled:opacity-100 disabled:border-border disabled:text-muted-foreground bg-background" 
+            />
+            <CarouselContent className="flex-1 mx-2">
+              {highlightsVariants.map((v) => (
+                <CarouselItem key={v} className="pl-0">
+                  <div className="flex items-center justify-center">
+                    <span className="text-sm font-medium capitalize text-foreground">{v}</span>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselNext 
+              className="static translate-y-0 size-7 text-foreground hover:text-foreground border rounded-full shadow-sm disabled:opacity-100 disabled:border-border disabled:text-muted-foreground bg-background" 
+            />
+          </div>
+        </Carousel>
+      </Field>
+
       <Field>
         <FieldLabel>Color Scheme</FieldLabel>
         <ColorSchemeSelector 
@@ -206,8 +270,15 @@ export function HighlightsRemixPanel({
                       <FieldLabel>Photo</FieldLabel>
                       <FileUpload
                         value={card.image}
-                        onChange={(value) => updateCard(index, { image: value ?? undefined })}
+                        onChange={(value) => {
+                          updateCard(index, { image: value ?? undefined })
+                          // Auto-save after image change
+                          if (onImageAutoSave) {
+                            setTimeout(() => onImageAutoSave(), 100)
+                          }
+                        }}
                         placeholder="Drop an image or click to upload"
+                        siteId={siteId}
                       />
                     </Field>
 

@@ -223,11 +223,11 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
                     <div>
                       {/* Title - Large, bold */}
                       <h3
-                        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 lg:mb-8 leading-[1.1] transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-normal mb-4 md:mb-6 lg:mb-8 leading-[1.1] transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                         style={{
                           color: colors.textColor,
                           fontFamily: headingFont,
-                          fontWeight: fontWeight,
+                          fontWeight: 400,
                           transform: `scale(${theme?.headingFontSize || 1})`,
                           letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
                         }}
@@ -258,7 +258,7 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
 
                     {/* Number - Very large at bottom */}
                     <div
-                      className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold leading-none mt-4 md:mt-6 lg:mt-8 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                      className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-normal leading-none mt-4 md:mt-6 lg:mt-8 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                       style={{ color: colors.textColor }}
                     >
                       {highlight.number}

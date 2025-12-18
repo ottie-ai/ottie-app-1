@@ -52,8 +52,8 @@ export function HeroCentered({ data, theme, colorScheme = 'light', onDataChange 
       )}
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 text-center">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="relative z-10 w-full text-center">
+        <div className="w-full space-y-6">
           {price && (
             <span className="inline-block px-6 py-2 bg-white/20 backdrop-blur-sm text-white text-lg font-semibold rounded-full border border-white/30">
               {price}
@@ -70,7 +70,7 @@ export function HeroCentered({ data, theme, colorScheme = 'light', onDataChange 
               <SEOHeading
                 level={1}
                 text={headline}
-                className={`text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-tight ${getTextCaseClass(theme?.titleCase)}`}
+                className={`text-4xl md:text-6xl lg:text-7xl font-normal text-white leading-tight ${getTextCaseClass(theme?.titleCase)}`}
                 style={{ 
                   fontFamily: headingFont,
                   transform: `scale(${theme?.headingFontSize || 1})`,
@@ -103,12 +103,12 @@ export function HeroCentered({ data, theme, colorScheme = 'light', onDataChange 
                 label="Edit Description"
                 description="Update the description text."
               >
-                <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
+                <p className="text-lg md:text-2xl text-white/80">
                   {subheadline}
                 </p>
               </EditableText>
             ) : (
-            <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto">
+            <p className="text-lg md:text-2xl text-white/80">
               {subheadline}
             </p>
             )

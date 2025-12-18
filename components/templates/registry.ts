@@ -22,7 +22,7 @@ import { AgentCard } from '@/components/templates/agent'
 import { ContactSimple } from '@/components/templates/contact'
 
 // Import Highlights variants
-import { HighlightsCards } from '@/components/templates/highlights'
+import { HighlightsCards, HighlightsSimple, HighlightsTimeline } from '@/components/templates/highlights'
 
 /**
  * Generic section component type that accepts any data shape
@@ -69,6 +69,8 @@ export const componentRegistry: RegistryMap = {
   },
   highlights: {
     cards: HighlightsCards,
+    simple: HighlightsSimple,
+    timeline: HighlightsTimeline,
   },
 }
 

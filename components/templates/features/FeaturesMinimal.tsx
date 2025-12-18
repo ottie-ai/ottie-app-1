@@ -18,37 +18,36 @@ export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionC
 
   return (
     <section 
-      className="py-20 md:py-32"
+      className="w-full py-20 md:py-32"
       style={{ backgroundColor: colors.backgroundColor }}
     >
-      <div className="container mx-auto px-4">
-        {title && (
-          <SEOHeading
-            level={2}
-            text={title}
-            className={`text-[clamp(2rem,5vw,4rem)] font-semibold text-center mb-16 ${getTextCaseClass(theme?.titleCase)}`}
-            style={{ 
-              color: colors.textColor,
-              fontFamily: headingFont,
-              transform: `scale(${theme?.headingFontSize || 1})`,
-              letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
-            }}
-          >
-            {applyTextCase(title, theme?.titleCase)}
-          </SEOHeading>
-        )}
-
-        <div 
-          className="flex flex-wrap justify-center divide-x max-w-4xl mx-auto"
-          style={{ borderColor: colors.borderColor }}
+      {title && (
+        <SEOHeading
+          level={2}
+          text={title}
+          className={`text-[clamp(2rem,5vw,4rem)] font-normal text-center mb-16 ${getTextCaseClass(theme?.titleCase)}`}
+          style={{ 
+            color: colors.textColor,
+            fontFamily: headingFont,
+            transform: `scale(${theme?.headingFontSize || 1})`,
+            letterSpacing: `${theme?.headingLetterSpacing || 0}em`,
+          }}
         >
+          {applyTextCase(title, theme?.titleCase)}
+        </SEOHeading>
+      )}
+
+      <div 
+        className="w-full flex flex-wrap justify-center divide-x"
+        style={{ borderColor: colors.borderColor }}
+      >
           {features.map((feature, index) => (
             <div 
               key={index}
               className="flex flex-col items-center text-center px-8 md:px-12 py-4"
             >
               <span 
-                className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-2"
+                className="text-4xl md:text-5xl lg:text-6xl font-normal tracking-tight mb-2"
                 style={{ 
                   color: primaryColor,
                   fontFamily: headingFont,
@@ -64,7 +63,6 @@ export function FeaturesMinimal({ data, theme, colorScheme = 'light' }: SectionC
               </span>
             </div>
           ))}
-        </div>
       </div>
     </section>
   )

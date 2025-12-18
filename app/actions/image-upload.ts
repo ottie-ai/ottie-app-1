@@ -6,6 +6,54 @@ import { downloadAndUploadImage } from '@/lib/storage/image-processor'
 const BUCKET_NAME = 'site-images'
 
 /**
+ * Verify user has access to upload images for a site
+ * This is a lightweight check that can be called before client-side upload
+ */
+export async function verifySiteImageUploadAccess(
+  siteId: string
+): Promise<{ success: true } | { error: string }> {
+  try {
+    const supabase = await createClient()
+    
+    // Verify user has access to this site
+    const { data: site, error: siteError } = await supabase
+      .from('sites')
+      .select('workspace_id')
+      .eq('id', siteId)
+      .is('deleted_at', null)
+      .single()
+
+    if (siteError || !site) {
+      return { error: 'Site not found or access denied' }
+    }
+
+    // Verify user is member of workspace
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { error: 'Not authenticated' }
+    }
+
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('workspace_id', site.workspace_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!membership) {
+      return { error: 'Access denied' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error in verifySiteImageUploadAccess:', error)
+    return { 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+/**
  * Upload an image file to Supabase Storage for a site
  * @param siteId - Site ID
  * @param file - File to upload
@@ -53,10 +101,10 @@ export async function uploadSiteImage(
       return { error: 'Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.' }
     }
 
-    // Validate file size (max 10MB)
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
     if (file.size > maxSize) {
-      return { error: 'File size too large. Maximum size is 10MB.' }
+      return { error: 'File size too large. Maximum size is 5MB.' }
     }
 
     // Validate siteId is UUID
@@ -99,7 +147,7 @@ export async function uploadSiteImage(
       .upload(sanitizedPath, buffer, {
         contentType: detectedType,
         cacheControl: '3600',
-        upsert: false,
+        upsert: true, // Allow overwriting - Supabase will add suffix if needed
       })
 
     if (uploadError) {

@@ -19,6 +19,7 @@ interface SectionMorphingIndicatorProps {
   onEditingStateChange?: (sectionId: string, editingState: { variant: string; data: any; colorScheme: ColorScheme }) => void
   isPublicSite?: boolean // Explicit flag to prevent rendering on public sites (default: false)
   isVisible?: boolean // Control visibility via keyboard shortcut (default: true)
+  siteId: string // REQUIRED: Site ID for image uploads to Supabase Storage. Bucket must exist.
 }
 
 const FEEDBACK_WIDTH = 360
@@ -39,7 +40,7 @@ const LOGO_SPRING = {
  * SECURITY: This is an ADMIN-ONLY component. It must NEVER render on public sites.
  * It only renders in admin/editor contexts (e.g., /preview/[id] with canEdit=true).
  */
-export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false, isVisible = true }: SectionMorphingIndicatorProps) {
+export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false, isVisible = true, siteId }: SectionMorphingIndicatorProps) {
   const pathname = usePathname()
   const [isPublishedSite, setIsPublishedSite] = React.useState(false)
   
@@ -123,6 +124,20 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
     }
     isInternalChange.current = false
   }, [activeSection?.id]) // Only update when section ID changes, not when variant changes
+
+  // Auto-save function for images only
+  const handleImageAutoSave = React.useCallback(() => {
+    if (activeSection && onSectionChange) {
+      console.log('[SectionMorphingIndicator] Image auto-save triggered:', {
+        sectionId: activeSection.id,
+      })
+      onSectionChange(activeSection.id, {
+        variant: editingVariant,
+        data: editingData,
+        colorScheme: editingColorScheme,
+      })
+    }
+  }, [activeSection, onSectionChange, editingVariant, editingData, editingColorScheme])
 
 
   // Close settings when section changes (don't save)
@@ -215,6 +230,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
           variant={editingVariant}
           data={editingData as HeroSectionData}
           colorScheme={editingColorScheme}
+          siteId={siteId}
           onVariantChange={(variant) => {
             isInternalChange.current = true
             setEditingVariant(variant)
@@ -227,12 +243,6 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
             }
           }}
           onDataChange={(data) => {
-            console.log('[SectionMorphingIndicator] onDataChange called (hero):', {
-              sectionId: activeSection?.id,
-              newData: data,
-              headline: data?.headline,
-              subheadline: data?.subheadline,
-            })
             setEditingData(data)
             if (activeSection && onEditingStateChange) {
               onEditingStateChange(activeSection.id, {
@@ -242,6 +252,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
               })
             }
           }}
+          onImageAutoSave={handleImageAutoSave}
           onColorSchemeChange={(colorScheme) => {
             setEditingColorScheme(colorScheme)
             if (activeSection && onEditingStateChange) {
@@ -307,6 +318,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
           variant={editingVariant}
           data={editingData as HighlightsSectionData}
           colorScheme={editingColorScheme}
+          siteId={siteId}
           onVariantChange={(variant) => {
             isInternalChange.current = true
             setEditingVariant(variant)
@@ -319,10 +331,6 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
             }
           }}
           onDataChange={(data) => {
-            console.log('[SectionMorphingIndicator] onDataChange called (highlights):', {
-              sectionId: activeSection?.id,
-              newData: data,
-            })
             setEditingData(data)
             if (activeSection && onEditingStateChange) {
               onEditingStateChange(activeSection.id, {
@@ -332,6 +340,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
               })
             }
           }}
+          onImageAutoSave={handleImageAutoSave}
           onColorSchemeChange={(colorScheme) => {
             setEditingColorScheme(colorScheme)
             if (activeSection && onEditingStateChange) {
@@ -349,42 +358,68 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
     return null
   }
 
-  const settingsPanel = getSettingsPanel()
+  const settingsPanel = React.useMemo(() => getSettingsPanel(), [
+    activeSection?.type,
+    activeSection?.id,
+    editingVariant,
+    editingData,
+    editingColorScheme,
+    siteId,
+  ])
 
   // Calculate max height (90vh)
   const maxHeight = typeof window !== 'undefined' ? window.innerHeight * 0.9 : 600
 
-  // Measure content height when settings panel opens
+  // Measure content height when settings panel opens - only once, no ResizeObserver
   React.useEffect(() => {
     if (showSettings && contentRef.current) {
-      const measureHeight = () => {
+      // Measure height after a delay to allow content to render
+      // Only measure once when settings open, don't watch for changes
+      const timeoutId = setTimeout(() => {
         if (contentRef.current) {
-          // Use scrollHeight to get full content height
           const height = contentRef.current.scrollHeight
           setContentHeight(height)
         }
-      }
+      }, 200)
 
-      // Initial measurement after render
-      const timeoutId = setTimeout(measureHeight, 50)
-
-      // Watch for content changes
-      const resizeObserver = new ResizeObserver(() => {
-        measureHeight()
-      })
-      
-      if (contentRef.current) {
-        resizeObserver.observe(contentRef.current)
-      }
-      
       return () => {
         clearTimeout(timeoutId)
-        resizeObserver.disconnect()
       }
     } else {
       setContentHeight(0)
     }
   }, [showSettings, settingsPanel])
+
+  // Prevent scroll propagation to page when scrolling inside morphing indicator
+  React.useEffect(() => {
+    const contentElement = contentRef.current
+    if (!contentElement || !showSettings) return
+
+    const handleWheel = (e: WheelEvent) => {
+      const element = e.currentTarget as HTMLElement
+      const { scrollTop, scrollHeight, clientHeight } = element
+      
+      // Check if we can scroll in this direction
+      const isAtTop = scrollTop === 0
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1 // -1 for rounding
+      
+      // If scrolling up and at top, or scrolling down and at bottom, allow page scroll
+      // Otherwise, prevent page scroll and scroll only the content
+      if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+        // Allow page scroll
+        return
+      }
+      
+      // Prevent page scroll, scroll only content
+      e.stopPropagation()
+    }
+
+    contentElement.addEventListener('wheel', handleWheel, { passive: false })
+    
+    return () => {
+      contentElement.removeEventListener('wheel', handleWheel)
+    }
+  }, [showSettings])
 
   // Calculate actual height: content height + header (44px) + padding, but max 90vh
   const headerHeight = 44
@@ -411,6 +446,25 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
               style={{
                 background: 'rgba(255, 255, 255, 1)',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              }}
+              onWheel={(e) => {
+                // When settings are open, prevent page scroll when mouse is over the indicator
+                if (showSettings) {
+                  // Check if the wheel event is over the content area
+                  const contentElement = contentRef.current
+                  if (contentElement) {
+                    const rect = contentElement.getBoundingClientRect()
+                    const mouseY = e.clientY
+                    
+                    // If mouse is over content area, let the content handle it
+                    if (mouseY >= rect.top && mouseY <= rect.bottom) {
+                      return // Let content div handle it
+                    }
+                  }
+                  
+                  // Otherwise, prevent page scroll
+                  e.stopPropagation()
+                }
               }}
               initial={{ y: 100, opacity: 0, filter: 'blur(20px)' }}
               animate={{
@@ -577,10 +631,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                 e.preventDefault()
                 onSave()
               }}
-              className="absolute bottom-0 w-full"
+              className="absolute bottom-0 w-full flex flex-col flex-1 min-h-0"
               style={{
                 width: showSettings ? FEEDBACK_WIDTH : 0,
-                height: showSettings ? 'auto' : 0,
+                height: showSettings ? '100%' : 0,
                 maxHeight: showSettings ? maxHeight : 'none',
                 pointerEvents: showSettings ? 'all' : 'none',
               }}
@@ -626,9 +680,9 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                       damping: 45,
                       mass: 0.7,
                     }}
-                    className="p-1 flex flex-col"
+                    className="p-1 flex flex-col flex-1 min-h-0"
                   >
-                    <div className="flex justify-between items-center py-1">
+                    <div className="flex justify-between items-center py-1 flex-shrink-0">
                       <p className="flex gap-[6px] text-sm items-center text-muted-foreground select-none z-2 ml-[25px]">
                         Section Settings
                       </p>
@@ -654,11 +708,12 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                     <div 
                       ref={contentRef}
                       className={cn(
-                        "p-4",
-                        contentHeight > maxHeight - headerHeight - padding ? "overflow-y-auto scroll-py-2" : ""
+                        "p-4 overflow-y-auto scroll-py-2 flex-1 min-h-0",
+                        "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
                       )}
                       style={{ 
-                        maxHeight: contentHeight > maxHeight - headerHeight - padding ? `${maxHeight - headerHeight - padding}px` : 'none'
+                        maxHeight: `${maxHeight - headerHeight - padding}px`,
+                        overscrollBehavior: 'contain'
                       }}
                     >
                       {settingsPanel}
