@@ -40,7 +40,6 @@ export function LenisProvider({ children, options }: LenisProviderProps) {
       orientation: options?.orientation ?? 'vertical',
       gestureOrientation: options?.gestureOrientation ?? 'vertical',
       smoothWheel: options?.smoothWheel ?? true,    // Inertia pre wheel
-      smoothTouch: options?.smoothTouch ?? false,   // Native touch pre mobile
       touchMultiplier: options?.touchMultiplier ?? 2,
       wheelMultiplier: options?.wheelMultiplier ?? 0.8, // Scroll speed (0.7-1.0)
       infinite: options?.infinite ?? false,

@@ -39,7 +39,10 @@ export function HighlightsSimple({ data, theme, colorScheme = 'light' }: Section
               // If not found, try direct lookup from PhosphorIcons
               if (!IconComponent) {
                 const pascalName = kebabToPascalCase(highlight.icon)
-                IconComponent = (PhosphorIcons as any)[pascalName] || null
+                const DirectIcon = (PhosphorIcons as any)[pascalName]
+                if (DirectIcon) {
+                  IconComponent = DirectIcon as React.ComponentType<IconProps>
+                }
               }
             }
             const hasIcon = highlight.icon && IconComponent
@@ -55,7 +58,7 @@ export function HighlightsSimple({ data, theme, colorScheme = 'light' }: Section
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 py-12 md:py-16 items-center">
                     {/* Left Column - Title */}
                     <div className="flex items-center gap-6">
-                      {hasIcon && (
+                      {hasIcon && IconComponent && (
                         <div
                           className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full flex-shrink-0 border"
                           style={{

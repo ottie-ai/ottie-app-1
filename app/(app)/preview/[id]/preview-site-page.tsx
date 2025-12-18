@@ -895,6 +895,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
               originalSection={sections.find(s => s.id === activeSection?.id) || null}
               onSectionChange={handleSectionChange}
               onEditingStateChange={handleEditingStateChange}
+              siteId={site.id}
             />
           )}
         </FontTransition>

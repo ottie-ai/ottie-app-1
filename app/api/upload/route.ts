@@ -56,7 +56,8 @@ async function validateSiteAccess(
   }
 
   // Find user's membership
-  const memberships = site.workspace?.memberships || []
+  const workspace = site.workspace as any
+  const memberships = workspace?.memberships || []
   const userMembership = memberships.find((m: any) => m.user_id === userId)
 
   if (!userMembership) {

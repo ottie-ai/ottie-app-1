@@ -46,7 +46,8 @@ async function validateSiteAccess(
   }
 
   // Find user's membership
-  const memberships = site.workspace?.memberships || []
+  const workspace = site.workspace as any
+  const memberships = workspace?.memberships || []
   const userMembership = memberships.find((m: any) => m.user_id === userId)
 
   if (!userMembership) {
@@ -142,14 +143,12 @@ export async function POST(request: NextRequest) {
       filePath,
       dataLength: data?.length,
       errorMessage: error?.message,
-      errorStatus: error?.statusCode
     })
 
     if (error) {
       console.error('[DELETE API] Error deleting image:', {
         error,
         message: error.message,
-        statusCode: error.statusCode,
         filePath
       })
       return NextResponse.json(
