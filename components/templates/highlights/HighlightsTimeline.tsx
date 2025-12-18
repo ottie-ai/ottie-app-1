@@ -7,10 +7,27 @@ import { useDelayedFont } from '@/components/builder/FontTransition'
 import { getSectionColors } from '@/lib/section-colors'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import * as PhosphorIcons from '@phosphor-icons/react'
 
 // Register GSAP plugin only on client side
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger)
+}
+
+/**
+ * Get Phosphor icon component by name
+ */
+function getPhosphorIcon(iconName?: string) {
+  if (!iconName) return null
+  
+  // Convert icon name to PascalCase (e.g., 'bed' -> 'Bed', 'car-simple' -> 'CarSimple')
+  const pascalCase = iconName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('')
+  
+  const IconComponent = (PhosphorIcons as any)[pascalCase]
+  return IconComponent || null
 }
 
 /**
@@ -31,26 +48,33 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
   const imageRefs = useRef<(HTMLDivElement | null)[]>([])
   const timelineRef = useRef<HTMLDivElement>(null)
   const lineRef = useRef<HTMLDivElement>(null)
+  const lineWrapperRef = useRef<HTMLDivElement>(null)
   const highlightRefs = useRef<(HTMLDivElement | null)[]>([])
   const dotRefs = useRef<(HTMLDivElement | null)[]>([])
+  const iconRefs = useRef<(HTMLDivElement | null)[]>([])
   const titleRefs = useRef<(HTMLHeadingElement | null)[]>([])
 
-  // GSAP ScrollTrigger setup
+  // GSAP ScrollTrigger setup - only on desktop
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!sectionRef.current || !imageWrapperRef.current || !timelineRef.current) return
+
+    // Only setup GSAP on desktop (>= 768px)
+    const isDesktop = window.innerWidth >= 768
+    if (!isDesktop) return
 
     // Wait for refs to be populated
     let ctx: gsap.Context | null = null
     const timeoutId = setTimeout(() => {
       ctx = gsap.context(() => {
         // Pin the image wrapper (image is already centered via CSS absolute positioning)
-        // Use timeline height to determine end point
-        const timelineHeight = timelineRef.current?.offsetHeight || 0
+        // End pinning when the last highlight reaches the center (when its dot is filled)
+        const lastHighlight = highlightRefs.current[highlightRefs.current.length - 1]
         ScrollTrigger.create({
           trigger: imageWrapperRef.current,
           start: 'top top',
-          end: () => `+=${timelineHeight}`,
+          endTrigger: lastHighlight || imageWrapperRef.current,
+          end: lastHighlight ? 'top center' : 'bottom bottom',
           pin: imageWrapperRef.current,
           pinSpacing: true,
           anticipatePin: 0,
@@ -101,8 +125,10 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
           if (!highlight) return
 
           const dot = dotRefs.current[index]
+          const icon = iconRefs.current[index]
           const title = titleRefs.current[index]
           const currentImage = imageRefs.current[index]
+          const hasIcon = highlights[index]?.icon
 
           // Create a timeline for each highlight
           const tl = gsap.timeline({
@@ -110,18 +136,33 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
               trigger: highlight,
               start: 'top center',
               end: 'bottom center',
-              toggleActions: 'play none none reverse',
+              toggleActions: 'play reverse play reverse',
+              fastScrollEnd: true,
             }
           })
 
-          // Animate dot
+          // Animate dot with spring effect (scale up) - always
           if (dot) {
             tl.to(dot, {
               backgroundColor: colors.textColor,
-              borderColor: colors.backgroundColor,
+              borderWidth: '0px',
+              scale: 1.5,
               duration: 0.3,
-              ease: 'power2.out',
+              ease: 'back.out(3)', // Spring effect
             }, 0)
+          }
+
+          // Animate icon (fade in and scale) - only if icon exists
+          if (icon && hasIcon) {
+            tl.fromTo(icon, {
+              opacity: 0,
+              scale: 0,
+            }, {
+              opacity: 1,
+              scale: 1,
+              duration: 0.2,
+              ease: 'back.out(2)',
+            }, 0.05) // Slight delay after dot starts
           }
 
           // Animate title color
@@ -185,6 +226,37 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
     }
   }, [highlights.length, colors.textColor, colors.backgroundColor, image])
 
+  // Set responsive top position for timeline line and padding for highlights (desktop only)
+  useEffect(() => {
+    if (!lineWrapperRef.current) return
+    const isDesktop = window.innerWidth >= 768
+    if (!isDesktop) return
+
+    const updateResponsiveStyles = () => {
+      const isDesktop = window.innerWidth >= 768
+      if (!isDesktop) return
+      
+      // Update line position
+      if (lineWrapperRef.current) {
+        lineWrapperRef.current.style.top = 'calc(10vh + 1.5rem + 10px)'
+      }
+
+      // Update highlight padding
+      highlightRefs.current.forEach((highlight, index) => {
+        if (highlight) {
+          highlight.style.minHeight = '40vh'
+          if (index < highlights.length - 1) {
+            highlight.style.paddingBottom = '40vh'
+          }
+        }
+      })
+    }
+
+    updateResponsiveStyles()
+    window.addEventListener('resize', updateResponsiveStyles)
+    return () => window.removeEventListener('resize', updateResponsiveStyles)
+  }, [highlights.length])
+
   return (
     <section
       ref={sectionRef}
@@ -192,7 +264,63 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
       style={{ backgroundColor: colors.backgroundColor }}
     >
       <div className="site-container">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16">
+        {/* Mobile: Simple static layout */}
+        <div className="md:hidden space-y-12">
+          {highlights.map((highlight, index) => {
+            const IconComponent = getPhosphorIcon(highlight.icon)
+            return (
+              <div key={index} className="space-y-4">
+                {/* Image */}
+                <div className="relative w-full h-[50vh] rounded-2xl overflow-hidden">
+                  {highlight.image ? (
+                    <Image
+                      src={highlight.image}
+                      alt={highlight.title || `Property highlight ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="100vw"
+                      priority={index === 0}
+                      loading="eager"
+                    />
+                  ) : (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        backgroundColor: '#e5e5e5',
+                      }}
+                    />
+                  )}
+                </div>
+                
+                {/* Content */}
+                <div className="space-y-3">
+                  <h3
+                    className="text-3xl font-normal leading-tight"
+                    style={{
+                      color: colors.secondaryTextColor,
+                      fontFamily: headingFont,
+                    }}
+                  >
+                    {highlight.title}
+                  </h3>
+                  {highlight.text && (
+                    <p
+                      className="text-lg leading-relaxed"
+                      style={{
+                        color: colors.secondaryTextColor,
+                      }}
+                    >
+                      {highlight.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop: Timeline layout with pinning */}
+        <div className="hidden md:grid md:grid-cols-2 gap-16">
           {/* Left Column - Sticky Image (pinned via GSAP) */}
           <div 
             ref={imageWrapperRef}
@@ -204,7 +332,6 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
             >
               {/* Render all images - one for each highlight, plus fallback */}
               {highlights.map((highlight, index) => {
-                const highlightImage = highlight.image || image
                 return (
                   <div
                     key={index}
@@ -215,26 +342,24 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
                       zIndex: index, // Higher index = on top, ensures new image fades in over previous
                     }}
                   >
-                    {highlightImage ? (
+                    {highlight.image ? (
                       <Image
-                        src={highlightImage}
+                        src={highlight.image}
                         alt={highlight.title || `Property highlight ${index + 1}`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 50vw"
+                        priority={index === 0}
+                        loading={index === 0 ? 'eager' : 'eager'}
+                        fetchPriority={index === 0 ? 'high' : 'auto'}
                       />
                     ) : (
                       <div
-                        className="absolute inset-0 flex items-center justify-center"
+                        className="absolute inset-0"
                         style={{
-                          backgroundColor: colors.cardBg,
-                          color: colors.secondaryTextColor,
+                          backgroundColor: '#e5e5e5', // Light gray placeholder
                         }}
-                      >
-                        <svg className="w-24 h-24 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
+                      />
                     )}
                   </div>
                 )
@@ -254,13 +379,14 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
           </div>
 
           {/* Right Column - Timeline with Highlights */}
-          <div ref={timelineRef} className="relative">
+          <div ref={timelineRef} className="relative hidden md:block">
             {/* Vertical Line (background) */}
             <div
+              ref={lineWrapperRef}
               className="absolute left-0 w-px hidden md:block"
               style={{
                 backgroundColor: colors.borderColor,
-                top: 'calc(1.5rem + 10px)', // Align with first dot center
+                top: 'calc(10vh + 1.5rem + 10px)',
                 height: 'var(--timeline-height, 100%)', // Will be set dynamically
               }}
             >
@@ -275,31 +401,50 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
               />
             </div>
 
-            <div className="pl-8 md:pl-12">
+            <div className="pl-12">
+              {/* Spacer to align first highlight with centered image */}
+              <div className="h-[10vh]" />
+              
               {highlights.map((highlight, index) => {
+                const IconComponent = getPhosphorIcon(highlight.icon)
+                
                 return (
                   <div
                     key={index}
                     ref={(el) => { highlightRefs.current[index] = el }}
                     data-highlight-item
                     className="relative"
-                    style={{
-                      minHeight: '40vh',
-                      paddingBottom: index < highlights.length - 1 ? '40vh' : '0',
-                    }}
                   >
-                    {/* Dot */}
+                    {/* Dot with Icon */}
                     <div
                       ref={(el) => { dotRefs.current[index] = el }}
-                      className="absolute -left-[31.5px] md:-left-[47.5px] top-6 w-3 h-3 rounded-full"
+                      className="absolute -left-[47.5px] top-6 w-8 h-8 rounded-full flex items-center justify-center"
                       style={{
                         backgroundColor: colors.backgroundColor,
                         border: `2px solid ${colors.borderColor}`,
                         transform: 'translateY(calc(-50% + 16px))',
-                        fontSize: '24px',
-                        marginLeft: '-6px', // Half of dot width (12px / 2 = 6px)
+                        marginLeft: '-16px', // Half of dot width (32px / 2 = 16px)
                       }}
-                    />
+                    >
+                      {/* Icon (hidden by default, animated in) */}
+                      {IconComponent && (
+                        <div
+                          ref={(el) => { iconRefs.current[index] = el }}
+                          style={{
+                            opacity: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <IconComponent
+                            weight="light"
+                            size={14}
+                            color={colors.backgroundColor}
+                          />
+                        </div>
+                      )}
+                    </div>
 
                     {/* Number - aligned with dot */}
                     <div

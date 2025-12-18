@@ -134,7 +134,6 @@ export function HighlightsRemixPanel({
     const newCard = {
       title: '',
       text: '',
-      number: '',
       image: undefined,
       icon: undefined,
     }
@@ -245,15 +244,6 @@ export function HighlightsRemixPanel({
                         onChange={(e) => updateCard(index, { text: e.target.value })}
                         placeholder="Enter subtitle"
                         rows={3}
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel>Number</FieldLabel>
-                      <Input
-                        value={card.number || ''}
-                        onChange={(e) => updateCard(index, { number: e.target.value })}
-                        placeholder="Enter number"
                       />
                     </Field>
 

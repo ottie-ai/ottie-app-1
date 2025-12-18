@@ -180,7 +180,6 @@ export interface HighlightsSectionData extends SectionData {
   highlights: Array<{
     title: string
     text: string
-    number: string
     image?: string
     icon?: string // Phosphor icon name (e.g., 'bed', 'bath', 'car')
   }>

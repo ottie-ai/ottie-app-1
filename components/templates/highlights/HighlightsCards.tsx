@@ -261,7 +261,7 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
                       className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-normal leading-none mt-4 md:mt-6 lg:mt-8 transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                       style={{ color: colors.textColor }}
                     >
-                      {highlight.number}
+                      {(index + 1).toString().padStart(2, '0')}
                     </div>
                   </div>
 
