@@ -96,6 +96,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Rate limiting: 10 uploads per minute
+    const { rateLimit, RateLimitPresets } = await import('@/lib/rate-limit')
+    const rateLimitResult = rateLimit(user.id, RateLimitPresets.UPLOAD)
+    
+    if (!rateLimitResult.success) {
+      const resetIn = Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Too many uploads. Please wait ${resetIn} seconds and try again.` 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(RateLimitPresets.UPLOAD.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.reset),
+          }
+        }
+      )
+    }
+
     // Parse form data
     const formData = await request.formData()
     const files = formData.getAll('images') as File[]

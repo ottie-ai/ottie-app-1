@@ -86,6 +86,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Rate limiting: 20 deletes per minute
+    const { rateLimit, RateLimitPresets } = await import('@/lib/rate-limit')
+    const rateLimitResult = rateLimit(user.id, RateLimitPresets.DELETE)
+    
+    if (!rateLimitResult.success) {
+      const resetIn = Math.ceil((rateLimitResult.reset - Date.now()) / 1000)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Too many delete requests. Please wait ${resetIn} seconds and try again.` 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(RateLimitPresets.DELETE.limit),
+            'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+            'X-RateLimit-Reset': String(rateLimitResult.reset),
+          }
+        }
+      )
+    }
+
     // Parse request body
     const body = await request.json()
     const { filePath, siteId } = body

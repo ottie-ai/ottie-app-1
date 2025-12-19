@@ -223,6 +223,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [passwordValue, setPasswordValue] = useState('')
   const [isPasswordSaving, setIsPasswordSaving] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUnassignDialogOpen, setIsUnassignDialogOpen] = useState(false)
@@ -380,6 +381,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
     setIsArchiving(true)
     const result = await handleArchiveSite(site.id)
     setIsArchiving(false)
+    setIsArchiveDialogOpen(false)
     
     if ('error' in result) {
       toast.error(result.error)
@@ -978,7 +980,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={handleArchive}
+                onClick={() => setIsArchiveDialogOpen(true)}
                 disabled={isArchiving}
               >
                 <Archive className="size-4 mr-2" />
@@ -1136,6 +1138,29 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
               disabled={isReassigning}
             >
               {isReassigning ? 'Unassigning...' : 'Unassign & Change to Draft'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Site</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{site.title}"? 
+              <br /><br />
+              <strong className="text-orange-600 dark:text-orange-400">⚠️ Warning:</strong> All site images will be permanently deleted to free up storage space. The site configuration will be preserved and can be unarchived later, but you will need to re-upload images.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleArchive}
+              disabled={isArchiving}
+            >
+              {isArchiving ? 'Archiving...' : 'Archive & Delete Images'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -203,15 +203,6 @@ export function FileUpload({
             filePath: filePathFromUrl
           })
           
-          // Clear preview and trigger onChange
-          setPreview(null)
-          onChange?.(null)
-          
-          // Trigger auto-save after successful delete
-          if (onImageSaved) {
-            setTimeout(() => onImageSaved(), 100)
-          }
-          
           toast.success('Image deleted')
         }
       } catch (error) {
@@ -219,15 +210,16 @@ export function FileUpload({
         toast.error('Failed to delete image')
         return
       }
-    } else {
-      // If not a Storage URL, just clear the value
-      setPreview(null)
-      onChange?.(null)
     }
     
-    // Remove from UI and trigger onChange (auto-save via section-morphing-indicator)
+    // Clear preview and trigger onChange (auto-save via section-morphing-indicator)
     setPreview(null)
     onChange?.(null)
+    
+    // Trigger auto-save after successful delete
+    if (onImageSaved) {
+      setTimeout(() => onImageSaved(), 100)
+    }
   }
 
   return (

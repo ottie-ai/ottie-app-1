@@ -411,14 +411,15 @@ export async function unpublishSite(siteId: string): Promise<{ success: true; si
 /**
  * Archive a site (sets status to archived and clears slug to release it)
  * Archived sites don't count towards plan limit and their slug is released
+ * IMPORTANT: This will delete all site images to free up storage
  */
-export async function archiveSite(siteId: string): Promise<{ success: true; site: Site } | { error: string }> {
+export async function archiveSite(siteId: string): Promise<{ success: true; site: Site; imagesDeleted?: number } | { error: string }> {
   const supabase = await createClient()
   
-  // Get current site to preserve slug in metadata before clearing it
+  // Get current site to preserve slug and config before archiving
   const { data: currentSite } = await supabase
     .from('sites')
-    .select('slug, metadata')
+    .select('slug, metadata, config')
     .eq('id', siteId)
     .single()
 
@@ -430,6 +431,8 @@ export async function archiveSite(siteId: string): Promise<{ success: true; site
   const updatedMetadata = {
     ...(currentSite.metadata || {}),
     archived_slug: currentSite.slug,
+    archived_at: new Date().toISOString(),
+    images_deleted: true, // Mark that images were deleted
   }
 
   // Archive site and clear slug to release it
@@ -453,7 +456,24 @@ export async function archiveSite(siteId: string): Promise<{ success: true; site
     return { error: 'Failed to archive site' }
   }
 
-  return { success: true, site: data }
+  // Delete all site images asynchronously (don't block archival)
+  let deletedCount = 0
+  if (currentSite.config) {
+    import('@/lib/storage/cleanup').then(({ cleanupSiteImages }) => {
+      cleanupSiteImages(siteId, currentSite.config).then(result => {
+        if (result.success) {
+          deletedCount = result.deletedCount
+          console.log(`✅ Deleted ${deletedCount} images for archived site ${siteId}`)
+        } else {
+          console.error('Failed to delete archived site images:', result.error)
+        }
+      }).catch(err => {
+        console.error('Error deleting archived site images:', err)
+      })
+    })
+  }
+
+  return { success: true, site: data, imagesDeleted: deletedCount }
 }
 
 /**
@@ -686,7 +706,7 @@ export async function duplicateSite(siteId: string): Promise<{ success: true; si
     status: 'draft', // Always draft
     availability: originalSite.availability,
     description: originalSite.description,
-    config: originalSite.config, // Copy the entire config
+    config: originalSite.config, // Will be updated with new image URLs
     domain: originalSite.domain,
     thumbnail_url: originalSite.thumbnail_url,
     metadata: originalSite.metadata,
@@ -694,5 +714,26 @@ export async function duplicateSite(siteId: string): Promise<{ success: true; si
   }
 
   const result = await createSite(newSite)
+  
+  // Copy images from original to new site folder
+  if (result.success && result.site && originalSite.config) {
+    const { copyImagesForSite } = await import('@/lib/storage/orphan-cleanup')
+    const copyResult = await copyImagesForSite(siteId, result.site.id, originalSite.config)
+    
+    // Update site config with new image URLs if successful
+    if (copyResult.success && copyResult.updatedConfig) {
+      const supabase = await createClient()
+      await supabase
+        .from('sites')
+        .update({ config: copyResult.updatedConfig })
+        .eq('id', result.site.id)
+      
+      console.log(`✅ Duplicated site ${siteId} to ${result.site.id} with image copies`)
+    } else if (copyResult.error) {
+      console.warn(`⚠️ Failed to copy images during duplication: ${copyResult.error}`)
+      // Don't fail duplication if image copy fails - user can re-upload
+    }
+  }
+  
   return result
 }

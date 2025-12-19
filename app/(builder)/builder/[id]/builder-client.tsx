@@ -374,6 +374,15 @@ export function BuilderClient({ site }: BuilderClientProps) {
       return
     }
     
+    // Cleanup orphaned images (images removed from config)
+    // This runs asynchronously and doesn't block the save
+    import('@/lib/storage/orphan-cleanup').then(({ cleanupOrphanedImages }) => {
+      cleanupOrphanedImages(site.id, siteConfig, updatedConfig).catch(err => {
+        console.error('Error cleaning up orphaned images:', err)
+        // Don't show error to user - this is background cleanup
+      })
+    })
+    
     toastSuccess('Changes saved successfully')
     setIsSaving(false)
     router.refresh()
