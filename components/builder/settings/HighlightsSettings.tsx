@@ -102,7 +102,7 @@ interface SortableCardProps {
   index: number
   isOpen: boolean
   onToggle: () => void
-  onUpdate: (updates: Partial<typeof card>) => void
+  onUpdate: (updates: Partial<SortableCardProps['card']>) => void
   onRemove: () => void
   siteId: string
   onImageAutoSave?: () => void
