@@ -554,8 +554,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                   delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
                 height: { 
-                  duration: 0.3, 
-                  ease: [0.16, 1, 0.3, 1],
+                  type: 'spring',
+                  stiffness: 400,
+                  damping: 40,
+                  mass: 0.8,
                   delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
               }}
@@ -605,10 +607,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                           )}
                         </AnimatePresence>
                       </motion.div>
-                      <motion.div 
-                        layoutId="section-name-text"
-                        className="text-[14px] text-foreground"
-                      >
+                      <div className="text-[14px] text-foreground">
                         <AnimatePresence mode="popLayout" initial={false}>
                           {sectionName.split('').map((letter, index) => {
                             return (
@@ -647,7 +646,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                             )
                           })}
                         </AnimatePresence>
-                      </motion.div>
+                      </div>
                     </div>
                   </motion.div>
                 )}
