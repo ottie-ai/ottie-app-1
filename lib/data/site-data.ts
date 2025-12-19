@@ -716,7 +716,7 @@ export async function duplicateSite(siteId: string): Promise<{ success: true; si
   const result = await createSite(newSite)
   
   // Copy images from original to new site folder
-  if (result.success && result.site && originalSite.config) {
+  if ('success' in result && result.success && result.site && originalSite.config) {
     const { copyImagesForSite } = await import('@/lib/storage/orphan-cleanup')
     const copyResult = await copyImagesForSite(siteId, result.site.id, originalSite.config)
     
