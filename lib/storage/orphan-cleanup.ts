@@ -76,8 +76,8 @@ export async function cleanupOrphanedImages(
 export async function copyImagesForSite(
   sourceSiteId: string,
   targetSiteId: string,
-  config: PageConfig
-): Promise<{ success: boolean; updatedConfig?: PageConfig; error?: string }> {
+  config: PageConfig | Record<string, any>
+): Promise<{ success: boolean; updatedConfig?: PageConfig | Record<string, any>; error?: string }> {
   try {
     // Validate UUIDs
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
