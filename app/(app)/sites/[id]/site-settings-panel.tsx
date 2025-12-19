@@ -456,7 +456,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   }
   const currentFont = currentTheme.headingFontFamily || 'Inter'
   const currentTitleCase = currentTheme.titleCase || 'sentence'
-  const currentAnimation = currentTheme.animationStyle || 'word-reveal'
+  const currentAnimation = currentTheme.animationStyle || 'blur'
 
   // Get current loader config
   const currentLoaderConfig: LoaderConfig = loaderRef?.current || siteConfig?.loader || {
@@ -482,7 +482,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
     }
   }
 
-  const handleAnimationChange = (animation: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => {
+  const handleAnimationChange = (animation: 'blur' | 'fade-in' | 'slide-up' | 'none') => {
     if (onThemeChange) {
       onThemeChange({
         ...currentTheme,
@@ -837,13 +837,13 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
             <Label>Section Animations</Label>
             <Select
               value={currentAnimation}
-              onValueChange={(value: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => handleAnimationChange(value)}
+              onValueChange={(value: 'blur' | 'fade-in' | 'slide-up' | 'none') => handleAnimationChange(value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select animation style" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="word-reveal">Word Reveal (default)</SelectItem>
+                <SelectItem value="blur">Blur (default)</SelectItem>
                 <SelectItem value="fade-in">Fade In</SelectItem>
                 <SelectItem value="slide-up">Slide Up</SelectItem>
                 <SelectItem value="none">None</SelectItem>

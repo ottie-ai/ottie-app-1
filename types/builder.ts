@@ -70,8 +70,8 @@ export interface ThemeConfig {
   ctaType?: CTAType
   /** CTA value (phone number, email, etc.) */
   ctaValue?: string
-  /** Animation style for reveal animations (word-reveal, fade-in, etc.) */
-  animationStyle?: 'word-reveal' | 'fade-in' | 'slide-up' | 'none'
+  /** Animation style for reveal animations (blur, fade-in, etc.) */
+  animationStyle?: 'blur' | 'fade-in' | 'slide-up' | 'none'
 }
 
 /**
@@ -136,6 +136,7 @@ export interface FeaturesSectionData extends SectionData {
  */
 export interface GallerySectionData extends SectionData {
   title?: string
+  type?: 'simple' | string
   images: Array<{
     src: string
     alt?: string
@@ -193,7 +194,7 @@ export interface HighlightsSectionData extends SectionData {
  * Available variants for each section type
  */
 export interface SectionVariants {
-  hero: 'split' | 'centered' | 'fullscreen' | 'minimal'
+  hero: 'full' | 'ribbon'
   features: 'grid' | 'list' | 'cards' | 'icons'
   gallery: 'grid' | 'masonry' | 'carousel' | 'lightbox'
   agent: 'card' | 'split' | 'minimal' | 'detailed'

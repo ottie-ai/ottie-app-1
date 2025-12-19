@@ -39,6 +39,9 @@ Welcome to Ottie documentation! This directory contains all technical documentat
 - **[lib/scraper/firecrawl-actions/README.md](../lib/scraper/firecrawl-actions/README.md)** - Firecrawl integration
 - **[lib/scraper/apify-cleaners/README.md](../lib/scraper/apify-cleaners/README.md)** - Apify data cleaning
 
+### Frontend & UI Components
+- **[REACT_BITS_COMPONENTS.md](./REACT_BITS_COMPONENTS.md)** - How to add React Bits components to the project
+
 ---
 
 ## 🎯 Quick Navigation
@@ -57,6 +60,7 @@ Welcome to Ottie documentation! This directory contains all technical documentat
 1. Environment variables? → [Main README](../README.md)
 2. Database setup? → [Supabase README](../supabase/README.md)
 3. Workspace patterns? → [Multi-user Pattern](./patterns/multi-user-workspace-pattern.md)
+4. Add React Bits components? → [REACT_BITS_COMPONENTS.md](./REACT_BITS_COMPONENTS.md)
 
 ---
 
@@ -73,6 +77,9 @@ Supabase configuration, migrations, and security setup.
 
 ### 🔍 Data Collection
 Web scraping, data extraction, and processing guides.
+
+### 🎨 Frontend & UI
+Component libraries, UI patterns, and frontend development guides.
 
 ### 📊 Configuration
 Sample configs, schemas, and reference data.
@@ -129,6 +136,7 @@ When adding new documentation:
 - [Supabase Docs](https://supabase.com/docs)
 - [Next.js Docs](https://nextjs.org/docs)
 - [Vercel Docs](https://vercel.com/docs)
+- [React Bits](https://reactbits.dev) - Animated UI components library
 
 ---
 

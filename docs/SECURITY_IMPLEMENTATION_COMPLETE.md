@@ -286,3 +286,5 @@ Po aplikovaní všetkých zmien máte:
 
 
 
+
+

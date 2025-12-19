@@ -1,15 +1,16 @@
 'use client'
 
 import * as React from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import useMeasure from 'react-use-measure'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useClickOutside } from '@/hooks/use-click-outside'
 import { cn } from '@/lib/utils'
-import type { Section, HeroSectionData, FeaturesSectionData, HighlightsSectionData, ColorScheme } from '@/types/builder'
+import type { Section, HeroSectionData, FeaturesSectionData, HighlightsSectionData, GallerySectionData, ColorScheme } from '@/types/builder'
 import { HeroRemixPanel } from '@/components/builder/settings/PageSettings'
 import { FeaturesRemixPanel } from '@/components/builder/settings/FeaturesSettings'
 import { HighlightsRemixPanel } from '@/components/builder/settings/HighlightsSettings'
+import { GalleryRemixPanel } from '@/components/builder/settings/GallerySettings'
 import { LottieSettingsIcon } from '@/components/ui/lottie-settings-icon'
 
 interface SectionMorphingIndicatorProps {
@@ -42,6 +43,7 @@ const LOGO_SPRING = {
  */
 export function SectionMorphingIndicator({ activeSection, originalSection, onSectionChange, onEditingStateChange, isPublicSite = false, isVisible = true, siteId }: SectionMorphingIndicatorProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isPublishedSite, setIsPublishedSite] = React.useState(false)
   
   // SECURITY: Never render on public sites
@@ -200,6 +202,8 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
     setTimeout(() => {
       setSuccess(false)
     }, 1500)
+    // Refresh page after save
+    router.refresh()
   }
 
   useClickOutside(rootRef, closeSettings)
@@ -328,6 +332,49 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
         <HighlightsRemixPanel
           variant={editingVariant}
           data={editingData as HighlightsSectionData}
+          colorScheme={editingColorScheme}
+          siteId={siteId}
+          onVariantChange={(variant) => {
+            isInternalChange.current = true
+            setEditingVariant(variant)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant,
+                data: editingData,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onDataChange={(data) => {
+            setEditingData(data)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data,
+                colorScheme: editingColorScheme,
+              })
+            }
+          }}
+          onImageAutoSave={handleImageAutoSave}
+          onColorSchemeChange={(colorScheme) => {
+            setEditingColorScheme(colorScheme)
+            if (activeSection && onEditingStateChange) {
+              onEditingStateChange(activeSection.id, {
+                variant: editingVariant,
+                data: editingData,
+                colorScheme,
+              })
+            }
+          }}
+        />
+      )
+    }
+
+    if (activeSection.type === 'gallery') {
+      return (
+        <GalleryRemixPanel
+          variant={editingVariant}
+          data={editingData as GallerySectionData}
           colorScheme={editingColorScheme}
           siteId={siteId}
           onVariantChange={(variant) => {
@@ -499,19 +546,19 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                 borderRadius: { 
                   duration: 0.25, 
                   ease: [0.16, 1, 0.3, 1],
-                  delay: showSettings ? 0 : 0
+                  delay: showSettings ? 0 : 0.15 // When opening: start immediately, when closing: start after width/height shrink
                 },
                 width: { 
                   duration: 0.3, 
                   ease: [0.16, 1, 0.3, 1],
-                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
+                  delay: showSettings ? 0.15 : 0 // When opening: start after borderRadius, when closing: start immediately
                 },
                 height: { 
                   type: 'spring',
                   stiffness: 400,
                   damping: 40,
                   mass: 0.8,
-                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
+                  delay: showSettings ? 0.15 : 0 // When opening: start after borderRadius, when closing: start immediately
                 },
               }}
             >
@@ -560,7 +607,10 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                           )}
                         </AnimatePresence>
                       </motion.div>
-                      <div className="text-[14px] text-foreground">
+                      <motion.div 
+                        layoutId="section-name-text"
+                        className="text-[14px] text-foreground"
+                      >
                         <AnimatePresence mode="popLayout" initial={false}>
                           {sectionName.split('').map((letter, index) => {
                             return (
@@ -599,7 +649,7 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                             )
                           })}
                         </AnimatePresence>
-                      </div>
+                      </motion.div>
                     </div>
                   </motion.div>
                 )}
@@ -694,9 +744,12 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                     className="p-1 flex flex-col flex-1 min-h-0"
                   >
                     <div className="flex justify-between items-center py-1 flex-shrink-0">
-                      <p className="flex gap-[6px] text-sm items-center text-muted-foreground select-none z-2 ml-[25px]">
-                        Section Settings
-                      </p>
+                      <motion.p 
+                        layoutId="section-name-text"
+                        className="flex gap-[6px] text-[14px] items-center text-foreground select-none z-2 ml-[25px]"
+                      >
+                        {sectionName}
+                      </motion.p>
                       <button
                         type="submit"
                         className="mt-1 flex items-center gap-1 text-sm -translate-y-[3px] text-muted-foreground hover:text-foreground right-4 text-center bg-transparent select-none rounded-[12px] cursor-pointer user-select-none pr-1"

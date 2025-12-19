@@ -24,12 +24,11 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
   const {
     headline,
     subheadline,
-    backgroundImage,
     propertyImage,
   } = data
 
-  // Use backgroundImage or propertyImage
-  const imageUrl = backgroundImage || propertyImage
+  // Use propertyImage for hero image
+  const imageUrl = propertyImage
 
   // Scroll progress for this section with smooth spring
   const { scrollYProgress } = useScroll({
@@ -75,57 +74,62 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
           <div className="absolute inset-0 bg-black/30" />
         </motion.div>
       ) : (
-        <div className="absolute inset-0 z-0 bg-white" />
+        <div 
+          className="absolute inset-0 z-0" 
+          style={{ backgroundColor: '#e5e5e5' }}
+        />
       )}
 
       {/* Large Title - transforms on scroll */}
-      <motion.div 
-        className="absolute inset-x-0 top-[20%] md:top-[25%] z-10 flex justify-center items-center pointer-events-none px-[5%]"
-        style={{ 
-          scale: titleScale,
-          y: titleY,
-          opacity: titleOpacity,
-        }}
-      >
-        {onDataChange ? (
-          <div className="pointer-events-auto w-full flex justify-center">
-            <EditableText
-              value={headline}
-              onChange={(value) => onDataChange({ ...data, headline: value })}
-              label="Edit Title"
-              description="Update the main title text."
-            >
-              <SEOHeading
-                level={1}
-                text={headline}
-                className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
-                style={{ 
-                  fontFamily: headingFont,
-                  fontWeight: 400,
-                  letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
-                  wordBreak: 'break-word',
-                }}
+      {headline && (
+        <motion.div 
+          className="absolute inset-x-0 top-[20%] md:top-[25%] z-10 flex justify-center items-center pointer-events-none px-[5%]"
+          style={{ 
+            scale: titleScale,
+            y: titleY,
+            opacity: titleOpacity,
+          }}
+        >
+          {onDataChange ? (
+            <div className="pointer-events-auto w-full flex justify-center">
+              <EditableText
+                value={headline}
+                onChange={(value) => onDataChange({ ...data, headline: value })}
+                label="Edit Title"
+                description="Update the main title text."
               >
-                <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
-              </SEOHeading>
-            </EditableText>
-          </div>
-        ) : (
-          <SEOHeading
-            level={1}
-            text={headline}
-            className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
-            style={{ 
-              fontFamily: headingFont,
-              fontWeight: fontWeight,
-              letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
-              wordBreak: 'break-word',
-            }}
-          >
-            <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
-          </SEOHeading>
-        )}
-      </motion.div>
+                <SEOHeading
+                  level={1}
+                  text={headline}
+                  className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
+                  style={{ 
+                    fontFamily: headingFont,
+                    fontWeight: 400,
+                    letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
+                </SEOHeading>
+              </EditableText>
+            </div>
+          ) : (
+            <SEOHeading
+              level={1}
+              text={headline}
+              className={`text-center max-w-[70%] text-white leading-[0.9] text-[clamp(3rem,8vw,12rem)] ${getTextCaseClass(theme?.titleCase)}`}
+              style={{ 
+                fontFamily: headingFont,
+                fontWeight: fontWeight,
+                letterSpacing: `${theme?.headingLetterSpacing || -0.02}em`,
+                wordBreak: 'break-word',
+              }}
+            >
+              <WordReveal text={applyTextCase(headline, theme?.titleCase)} delay={0.5} wordDelay={0.15} />
+            </SEOHeading>
+          )}
+        </motion.div>
+      )}
 
       {/* Bottom Content - all elements aligned at same bottom level */}
       <motion.div 
@@ -137,9 +141,9 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
       >
         <div className="flex items-end">
           {/* Left - Description - with right padding on mobile to avoid CTA button */}
-          <div className="max-w-xl flex-1 pr-20 md:pr-0">
-            {subheadline && (
-              onDataChange ? (
+          {subheadline && (
+            <div className="max-w-xl flex-1 pr-20 md:pr-0">
+              {onDataChange ? (
                 <EditableText
                   value={subheadline}
                   onChange={(value) => onDataChange({ ...data, subheadline: value })}
@@ -160,9 +164,9 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
                 >
                   <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
                 </p>
-              )
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Center - Scroll indicator - same bottom level as subtitle */}
           <motion.div 

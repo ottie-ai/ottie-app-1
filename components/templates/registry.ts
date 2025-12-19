@@ -5,9 +5,8 @@ import { SectionType, SectionVariant, SectionComponentProps } from '@/types/buil
 import React from 'react'
 
 // Import Hero variants
-import { HeroSplit } from '@/components/templates/hero/HeroSplit'
-import { HeroCentered } from '@/components/templates/hero/HeroCentered'
 import { HeroFull } from '@/components/templates/hero/HeroFull'
+import { HeroRibbon } from '@/components/templates/hero/HeroRibbon'
 
 // Import Features variants
 import { FeaturesGrid, FeaturesList, FeaturesMinimal } from '@/components/templates/features'
@@ -49,9 +48,8 @@ type RegistryMap = {
  */
 export const componentRegistry: RegistryMap = {
   hero: {
-    split: HeroSplit,
-    centered: HeroCentered,
     full: HeroFull,
+    ribbon: HeroRibbon,
   },
   features: {
     grid: FeaturesGrid,

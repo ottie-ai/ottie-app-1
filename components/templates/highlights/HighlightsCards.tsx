@@ -23,7 +23,7 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
   const { title, image, highlights } = data
   const colors = getSectionColors(colorScheme, theme)
-  const animationStyle = theme?.animationStyle ?? 'word-reveal'
+  const animationStyle = theme?.animationStyle ?? 'blur'
   const [shouldAnimate, setShouldAnimate] = useState(false)
   const [titleProgress, setTitleProgress] = useState(0) // 0 = visible, 1 = fully hidden
   const firstCardRef = useRef<HTMLDivElement | null>(null)
@@ -143,7 +143,7 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
                     filter: `blur(${titleProgress * 6}px)`,
                   }}
                 >
-                  {animationStyle === 'word-reveal' ? (
+                  {animationStyle === 'blur' ? (
                     <SEOHeading
                       level={2}
                       text={title}

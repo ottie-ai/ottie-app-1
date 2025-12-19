@@ -10,14 +10,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { DestructiveButton } from '@/components/ui/destructive-button'
 import { FileUpload } from '@/components/ui/file-upload'
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { IconPicker, Icon, type IconName } from '@/components/ui/icon-picker'
 import { 
   Carousel, 
@@ -27,8 +25,25 @@ import {
   CarouselNext,
   type CarouselApi 
 } from '@/components/ui/carousel'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { getVariants } from '@/components/templates/registry'
-import { Sun, Moon, Plus, Trash2 } from 'lucide-react'
+import { Sun, Moon, Plus, X, GripVertical, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ============================================
@@ -74,6 +89,145 @@ function ColorSchemeSelector({ value, onChange }: ColorSchemeSelectorProps) {
 }
 
 // ============================================
+// Sortable Card Component
+// ============================================
+
+interface SortableCardProps {
+  card: {
+    title?: string
+    text?: string
+    image?: string
+    icon?: string
+  }
+  index: number
+  isOpen: boolean
+  onToggle: () => void
+  onUpdate: (updates: Partial<typeof card>) => void
+  onRemove: () => void
+  siteId: string
+  onImageAutoSave?: () => void
+}
+
+function SortableCard({ 
+  card, 
+  index, 
+  isOpen, 
+  onToggle, 
+  onUpdate, 
+  onRemove,
+  siteId,
+  onImageAutoSave,
+}: SortableCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `card-${index}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="border rounded-lg bg-background"
+    >
+      <Collapsible open={isOpen} onOpenChange={onToggle}>
+        <CollapsibleTrigger className="w-full">
+          <div className="flex items-center gap-2 p-3 hover:bg-accent/50 transition-colors">
+            <div
+              {...attributes}
+              {...listeners}
+              className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="size-4 text-muted-foreground" />
+            </div>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {card.icon && (
+                <Icon name={card.icon as IconName} className="size-4 flex-shrink-0" />
+              )}
+              <span className="text-sm font-medium truncate">
+                {card.title || `Card ${index + 1}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRemove()
+                }}
+                className="p-1 rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+              <ChevronDown 
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform",
+                  isOpen && "rotate-180"
+                )} 
+              />
+            </div>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="p-4 pt-2 border-t">
+            <FieldGroup className="gap-4">
+              <Field>
+                <FieldLabel>Title</FieldLabel>
+                <Input
+                  value={card.title || ''}
+                  onChange={(e) => onUpdate({ title: e.target.value })}
+                  placeholder="Enter title"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>Subtitle</FieldLabel>
+                <Textarea
+                  value={card.text || ''}
+                  onChange={(e) => onUpdate({ text: e.target.value })}
+                  placeholder="Enter subtitle"
+                  rows={3}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>Icon</FieldLabel>
+                <IconPicker
+                  value={card.icon as IconName | undefined}
+                  onValueChange={(value) => onUpdate({ icon: value || undefined })}
+                  triggerPlaceholder="Select icon"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>Photo</FieldLabel>
+                <FileUpload
+                  value={card.image}
+                  onChange={(value) => onUpdate({ image: value ?? undefined })}
+                  onImageSaved={onImageAutoSave}
+                  placeholder="Drop an image or click to upload"
+                  siteId={siteId}
+                />
+              </Field>
+            </FieldGroup>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
+// ============================================
 // Remix Panel - Highlights
 // ============================================
 
@@ -102,8 +256,17 @@ export function HighlightsRemixPanel({
   const [api, setApi] = useState<CarouselApi>()
   const highlights = data.highlights || []
   const maxCards = 6
+  const [openCards, setOpenCards] = useState<Set<number>>(new Set())
   
   const currentIndex = highlightsVariants.indexOf(variant)
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     if (!api) return
@@ -141,10 +304,21 @@ export function HighlightsRemixPanel({
       ...data,
       highlights: [...highlights, newCard],
     })
+    // Open the new card automatically
+    setOpenCards(new Set([...openCards, highlights.length]))
   }
 
   const removeCard = (index: number) => {
     const updated = highlights.filter((_, i) => i !== index)
+    const newOpenCards = new Set<number>()
+    openCards.forEach((openIndex) => {
+      if (openIndex < index) {
+        newOpenCards.add(openIndex)
+      } else if (openIndex > index) {
+        newOpenCards.add(openIndex - 1)
+      }
+    })
+    setOpenCards(newOpenCards)
     onDataChange({
       ...data,
       highlights: updated,
@@ -159,6 +333,63 @@ export function HighlightsRemixPanel({
       ...data,
       highlights: updated,
     })
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const activeId = String(active.id)
+      const overId = String(over.id)
+      
+      if (activeId.startsWith('card-') && overId.startsWith('card-')) {
+        const oldIndex = parseInt(activeId.replace('card-', ''), 10)
+        const newIndex = parseInt(overId.replace('card-', ''), 10)
+
+        if (!isNaN(oldIndex) && !isNaN(newIndex) && oldIndex !== newIndex) {
+          const newHighlights = arrayMove(highlights, oldIndex, newIndex)
+          
+          // Update open cards indices after reordering
+          const newOpenCards = new Set<number>()
+          openCards.forEach((openIndex) => {
+            if (openIndex === oldIndex) {
+              // The dragged card moves to newIndex
+              newOpenCards.add(newIndex)
+            } else if (oldIndex < newIndex) {
+              // Moving down: cards between oldIndex+1 and newIndex shift up
+              if (openIndex > oldIndex && openIndex <= newIndex) {
+                newOpenCards.add(openIndex - 1)
+              } else {
+                newOpenCards.add(openIndex)
+              }
+            } else {
+              // Moving up: cards between newIndex and oldIndex-1 shift down
+              if (openIndex >= newIndex && openIndex < oldIndex) {
+                newOpenCards.add(openIndex + 1)
+              } else {
+                newOpenCards.add(openIndex)
+              }
+            }
+          })
+          setOpenCards(newOpenCards)
+          
+          onDataChange({
+            ...data,
+            highlights: newHighlights,
+          })
+        }
+      }
+    }
+  }
+
+  const toggleCard = (index: number) => {
+    const newOpenCards = new Set(openCards)
+    if (newOpenCards.has(index)) {
+      newOpenCards.delete(index)
+    } else {
+      newOpenCards.add(index)
+    }
+    setOpenCards(newOpenCards)
   }
 
   return (
@@ -212,78 +443,33 @@ export function HighlightsRemixPanel({
           {highlights.length} / {maxCards} cards
         </p>
         
-        <Accordion type="single" collapsible className="w-full">
-          {highlights.map((card, index) => {
-            return (
-              <AccordionItem key={index} value={`card-${index}`}>
-                <AccordionTrigger className="text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    {card.icon && (
-                      <Icon name={card.icon as IconName} className="size-4" />
-                    )}
-                    <span>
-                      {card.title || `Card ${index + 1}`}
-                    </span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <FieldGroup className="gap-4 pt-2">
-                    <Field>
-                      <FieldLabel>Title</FieldLabel>
-                      <Input
-                        value={card.title || ''}
-                        onChange={(e) => updateCard(index, { title: e.target.value })}
-                        placeholder="Enter title"
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel>Subtitle</FieldLabel>
-                      <Textarea
-                        value={card.text || ''}
-                        onChange={(e) => updateCard(index, { text: e.target.value })}
-                        placeholder="Enter subtitle"
-                        rows={3}
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel>Icon</FieldLabel>
-                      <IconPicker
-                        value={card.icon as IconName | undefined}
-                        onValueChange={(value) => updateCard(index, { icon: value || undefined })}
-                        triggerPlaceholder="Select icon"
-                      />
-                    </Field>
-
-                    <Field>
-                      <FieldLabel>Photo</FieldLabel>
-                      <FileUpload
-                        value={card.image}
-                        onChange={(value) => updateCard(index, { image: value ?? undefined })}
-                        onImageSaved={onImageAutoSave}
-                        placeholder="Drop an image or click to upload"
-                        siteId={siteId}
-                      />
-                    </Field>
-
-                    <DestructiveButton
-                      type="button"
-                      size="sm"
-                      onClick={() => removeCard(index)}
-                      className="w-full"
-                    >
-                      <Trash2 className="size-4 mr-2" />
-                      Remove Card
-                    </DestructiveButton>
-                  </FieldGroup>
-                </AccordionContent>
-              </AccordionItem>
-            )
-          })}
-        </Accordion>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={highlights.map((_, index) => `card-${index}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {highlights.map((card, index) => (
+                <SortableCard
+                  key={`card-${index}`}
+                  card={card}
+                  index={index}
+                  isOpen={openCards.has(index)}
+                  onToggle={() => toggleCard(index)}
+                  onUpdate={(updates) => updateCard(index, updates)}
+                  onRemove={() => removeCard(index)}
+                  siteId={siteId}
+                  onImageAutoSave={onImageAutoSave}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       </Field>
     </FieldGroup>
   )
 }
-

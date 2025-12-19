@@ -183,10 +183,10 @@ export function HeroRemixPanel({
       </Field>
 
       <Field>
-        <FieldLabel>Background Image</FieldLabel>
+        <FieldLabel>Hero Image</FieldLabel>
         <FileUpload
-          value={data.backgroundImage}
-          onChange={(value) => onDataChange({ ...data, backgroundImage: value ?? undefined })}
+          value={data.propertyImage}
+          onChange={(value) => onDataChange({ ...data, propertyImage: value ?? undefined })}
           onImageSaved={onImageAutoSave}
           placeholder="Drop an image or click to upload"
           siteId={siteId}
@@ -280,8 +280,8 @@ export function PageSettingsPanel({
       <Field>
         <FieldLabel>Animation Style</FieldLabel>
         <Select 
-          value={safeTheme.animationStyle || 'word-reveal'}
-          onValueChange={(value: 'word-reveal' | 'fade-in' | 'slide-up' | 'none') => {
+          value={safeTheme.animationStyle || 'blur'}
+          onValueChange={(value: 'blur' | 'fade-in' | 'slide-up' | 'none') => {
             const updatedTheme = { ...safeTheme }
             updatedTheme.animationStyle = value
             onThemeChange(updatedTheme)
@@ -291,7 +291,7 @@ export function PageSettingsPanel({
             <SelectValue placeholder="Select animation style" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="word-reveal">Word Reveal</SelectItem>
+            <SelectItem value="blur">Blur</SelectItem>
             <SelectItem value="fade-in">Fade In</SelectItem>
             <SelectItem value="slide-up">Slide Up</SelectItem>
             <SelectItem value="none">None</SelectItem>
