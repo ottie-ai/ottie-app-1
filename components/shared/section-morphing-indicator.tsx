@@ -546,19 +546,19 @@ export function SectionMorphingIndicator({ activeSection, originalSection, onSec
                 borderRadius: { 
                   duration: 0.25, 
                   ease: [0.16, 1, 0.3, 1],
-                  delay: showSettings ? 0 : 0.15 // When opening: start immediately, when closing: start after width/height shrink
+                  delay: showSettings ? 0 : 0
                 },
                 width: { 
                   duration: 0.3, 
                   ease: [0.16, 1, 0.3, 1],
-                  delay: showSettings ? 0.15 : 0 // When opening: start after borderRadius, when closing: start immediately
+                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
                 height: { 
                   type: 'spring',
                   stiffness: 400,
                   damping: 40,
                   mass: 0.8,
-                  delay: showSettings ? 0.15 : 0 // When opening: start after borderRadius, when closing: start immediately
+                  delay: showSettings ? 0.15 : 0 // Start after borderRadius starts changing
                 },
               }}
             >
