@@ -156,3 +156,47 @@ export function MySection() {
      - `/app/(app)/login/` - Login page → URL: `/login`
      - `/app/(app)/signup/` - Signup page → URL: `/signup`
    - `/app/(z-sites)/[site]/` - Client subdomain routes → URLs: `client.ottie.com/*` (z- prefix ensures lower priority than (app) routes)
+
+## 🔒 Code Change Safety Rules (CRITICAL)
+**NEVER modify files that are not explicitly part of the user's request. This prevents breaking working features.**
+
+### Strict File Modification Rules:
+1. **ONLY modify files directly related to the task:**
+   - If the user asks to "add HeroRibbon", ONLY modify/create files related to HeroRibbon (e.g., `HeroRibbon.tsx`, `registry.ts`, `builder.ts` types).
+   - DO NOT modify unrelated files (e.g., `section-morphing-indicator.tsx` when working on HeroRibbon).
+
+2. **Before making ANY change, ask yourself:**
+   - Is this file explicitly mentioned in the user's request?
+   - Is this change necessary to complete the requested task?
+   - If NO to both → DO NOT MODIFY IT.
+
+3. **Before committing, ALWAYS check:**
+   - Run `git status` to see which files were changed.
+   - Run `git diff` to review what was modified.
+   - If you see changes in files NOT part of the request → REVERT them or ASK the user first.
+
+4. **"Improvements" are FORBIDDEN without explicit request:**
+   - DO NOT "improve" or "refactor" code that works.
+   - DO NOT add "bonus features" or "optimizations" unless asked.
+   - DO NOT change working animations, styles, or logic "to make it better".
+   - If you see something that could be improved → ASK the user first.
+
+5. **If you need to modify an unrelated file:**
+   - STOP and ASK the user: "I noticed [file] might need changes for [reason]. Should I modify it?"
+   - Wait for explicit approval before proceeding.
+
+6. **Exception - Only modify unrelated files if:**
+   - There's a clear, direct dependency (e.g., adding a new section type requires updating `registry.ts`).
+   - The user explicitly asks for it.
+   - It's a critical bug fix that breaks the current task.
+
+### Example of WRONG behavior:
+❌ User: "Add HeroRibbon section"
+❌ AI: *Adds HeroRibbon AND modifies section-morphing-indicator.tsx to "improve" it*
+✅ User: "Add HeroRibbon section"  
+✅ AI: *Only adds HeroRibbon and related files, leaves everything else untouched*
+
+### Example of CORRECT behavior:
+✅ User: "Add HeroRibbon section"
+✅ AI: *Adds HeroRibbon.tsx, updates registry.ts, updates builder.ts types*
+✅ AI: *Before commit, checks git status and confirms only HeroRibbon-related files changed*
