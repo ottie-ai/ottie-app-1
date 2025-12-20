@@ -76,10 +76,6 @@ export const headingFonts: FontOption[] = [
     defaultWeight: 400,
     description: 'Extreme contrast, very fashionable and modern luxury.',
   },
-
-  // ============================================
-  // 2. Modern & Minimalist (Apartments, New Developments, Penthouses)
-  // ============================================
   {
     name: 'Inter',
     value: 'Inter',
@@ -120,10 +116,6 @@ export const headingFonts: FontOption[] = [
     defaultWeight: 500,
     description: 'A bit bolder, geometric. Great for modern brands.',
   },
-
-  // ============================================
-  // 3. Trustworthy & Corporate (Family Homes, Classic Sales)
-  // ============================================
   {
     name: 'Lato',
     value: 'Lato',
@@ -164,10 +156,6 @@ export const headingFonts: FontOption[] = [
     defaultWeight: 400,
     description: 'Traditional, banking style. Feels solid.',
   },
-
-  // ============================================
-  // 4. Vacation & Lifestyle (Airbnb, Cabins, Boutique Hotels)
-  // ============================================
   {
     name: 'DM Sans',
     value: 'DM Sans',
@@ -207,6 +195,14 @@ export const headingFonts: FontOption[] = [
     weights: [400, 500, 600, 700],
     defaultWeight: 400,
     description: 'Beautiful serif with calligraphic elements.',
+  },
+  {
+    name: 'Syncopate',
+    value: 'Syncopate',
+    category: 'standard',
+    weights: [400, 700],
+    defaultWeight: 400,
+    description: 'Geometric, condensed sans-serif. Modern and distinctive.',
   },
 ]
 
