@@ -72,6 +72,8 @@ export interface ThemeConfig {
   ctaValue?: string
   /** Animation style for reveal animations (blur, fade-in, etc.) */
   animationStyle?: 'blur' | 'fade-in' | 'slide-up' | 'none'
+  /** Cursor style for interactive elements (none, frosty, circle) */
+  cursorStyle?: 'none' | 'frosty' | 'circle'
 }
 
 /**

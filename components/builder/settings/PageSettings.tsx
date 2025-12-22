@@ -299,6 +299,27 @@ export function PageSettingsPanel({
         </Select>
       </Field>
 
+      <Field>
+        <FieldLabel>Cursor Style</FieldLabel>
+        <Select 
+          value={safeTheme.cursorStyle || 'frosty'}
+          onValueChange={(value: 'none' | 'frosty' | 'circle') => {
+            const updatedTheme = { ...safeTheme }
+            updatedTheme.cursorStyle = value
+            onThemeChange(updatedTheme)
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select cursor style" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            <SelectItem value="frosty">Frosty</SelectItem>
+            <SelectItem value="circle">Circle</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+
       <FieldSeparator />
 
       <Field>

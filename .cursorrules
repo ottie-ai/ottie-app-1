@@ -55,9 +55,10 @@ Before writing any code, CHECK THE FILE PATH to determine the context. The app h
   - Components should be reusable and styled consistently through their className props, not inline styles.
 
 ### Architecture: Section Builder
-- **Registry:** All template sections map via `components/templates/registry.ts`.
+- **Registry:** All template sections map via `components/templates/registry.ts` (static) and `components/templates/dynamic-registry.ts` (dynamic).
 - **Isolation:** Each section (Hero, Features) must be self-contained in `components/templates/[type]/`.
 - **Data Driven:** UI is driven by a JSON `PageConfig` object.
+- **PRODUCTION OPTIMIZATION:** See detailed rules below in "🚀 Production Bundle Optimization" section.
 
 ### Components Organization
 - **`/components/marketing/`** - Components for marketing/homepage (navbar, etc.)
@@ -140,7 +141,11 @@ export function MySection() {
 - **CSS:** Static styles, simple transitions
 
 ## ⚡️ Workflow Rules
-1. **New Template Sections:** When asked to create a section (e.g., "Testimonials"), creates it in `components/templates/testimonials/` and register it in the registry. Use **Phosphor Icons**.
+1. **New Template Sections:** When asked to create a section (e.g., "Testimonials"):
+   - Create it in `components/templates/testimonials/`
+   - Register in BOTH `registry.ts` (static) AND `dynamic-registry.ts` (dynamic import)
+   - Use **Phosphor Icons** with `weight="light"`
+   - Use `SectionCursor` for cursor effects (not PlayCursor/ArrowCursor directly)
 2. **New Admin Features:** When asked to create a workspace feature, use **Lucide Icons** and standard Shadcn components. All platform routes are in `/app/(app)/` route group.
 3. **Inline Editing:** In the Layout Builder (`/app/(builder)/builder/[id]`), use `EditableText` for text elements to allow inline editing.
 4. **Route Groups & URLs:** 
@@ -156,6 +161,101 @@ export function MySection() {
      - `/app/(app)/login/` - Login page → URL: `/login`
      - `/app/(app)/signup/` - Signup page → URL: `/signup`
    - `/app/(z-sites)/[site]/` - Client subdomain routes → URLs: `client.ottie.com/*` (z- prefix ensures lower priority than (app) routes)
+
+## 🚀 Production Bundle Optimization (CRITICAL)
+**Published sites must ONLY include code that is actually used. No unused CSS, no unused JS, no admin code.**
+
+### Mandatory Rules for ALL New Development:
+
+#### 1. Section Components - Dynamic Loading
+Every new section MUST be registered in BOTH registries:
+
+```typescript
+// registry.ts (static - for builder/admin)
+import { NewSection } from './type/NewSection'
+export const componentRegistry = {
+  type: { variant: NewSection }
+}
+
+// dynamic-registry.ts (dynamic - for published sites)
+export const dynamicRegistry = {
+  type: {
+    variant: () => import('./type/NewSection').then(mod => ({ default: mod.NewSection }))
+  }
+}
+```
+
+#### 2. Page Settings - Conditional Rendering
+Features disabled by user must render `null`, NOT hidden elements:
+
+```tsx
+// ✅ CORRECT: No code bundled when disabled
+{theme.cursorStyle !== 'none' && <SectionCursor theme={theme} />}
+
+// ❌ WRONG: Code bundled even when hidden
+<SectionCursor theme={theme} style={{ display: theme.cursorStyle === 'none' ? 'none' : 'block' }} />
+```
+
+#### 3. Optional Features - Separate Components
+If a feature has multiple styles/variants, create separate components with dynamic imports:
+
+```
+components/shared/
+├── frosty-cursor.tsx      # Style 1 (loaded only if selected)
+├── circle-cursor.tsx      # Style 2 (loaded only if selected)  
+└── section-cursor.tsx     # Wrapper with dynamic imports
+```
+
+```tsx
+// section-cursor.tsx - Dynamic wrapper
+import dynamic from 'next/dynamic'
+
+const FrostyCursor = dynamic(() => import('./frosty-cursor').then(mod => ({ default: mod.FrostyCursor })), { ssr: false })
+const CircleCursor = dynamic(() => import('./circle-cursor').then(mod => ({ default: mod.CircleCursor })), { ssr: false })
+
+export function SectionCursor({ theme }) {
+  if (theme.cursorStyle === 'none') return null
+  if (theme.cursorStyle === 'frosty') return <FrostyCursor />
+  if (theme.cursorStyle === 'circle') return <CircleCursor />
+  return null
+}
+```
+
+#### 4. Renderers - Use Correct One
+| Context | Use | Why |
+|---------|-----|-----|
+| Published site (`/app/(z-sites)/`) | `DynamicSectionRenderer` | Code-splitting, optimal bundle |
+| Builder/Admin (`/app/(builder)/`, `/app/(app)/`) | `SectionRenderer` | Faster editing |
+
+#### 5. ThemeConfig - New Settings Pattern
+When adding new page-level settings to `ThemeConfig`:
+
+1. Add type to `types/builder.ts`:
+```typescript
+export interface ThemeConfig {
+  newSetting?: 'option1' | 'option2' | 'none'
+}
+```
+
+2. Add UI in `PageSettings.tsx` with `'none'` as an option
+
+3. In section/page component, use conditional rendering:
+```tsx
+{theme.newSetting !== 'none' && <NewFeature setting={theme.newSetting} />}
+```
+
+4. If feature has multiple heavy variants, create separate components with dynamic imports
+
+### Checklist Before Merging:
+- [ ] New sections added to BOTH `registry.ts` AND `dynamic-registry.ts`
+- [ ] Optional features use conditional rendering (return null when disabled)
+- [ ] Heavy optional features use dynamic imports
+- [ ] No admin/workspace code imported in published site components
+- [ ] Bundle size tested with `npm run build`
+
+**📖 Full documentation: `docs/PRODUCTION_OPTIMIZATION.md`**
+
+---
 
 ## 🔒 Code Change Safety Rules (CRITICAL)
 **NEVER modify files that are not explicitly part of the user's request. This prevents breaking working features.**

@@ -27,13 +27,19 @@
  * - Builder (uses its own components)
  */
 
+import dynamic from 'next/dynamic'
 import type { Site } from '@/types/database'
-import type { PageConfig, Section, ThemeConfig } from '@/types/builder'
-import { SectionRenderer } from '@/components/templates/SectionRenderer'
-import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
+import type { PageConfig, Section, ThemeConfig, CTAType, ColorScheme } from '@/types/builder'
+import { DynamicSectionRenderer } from '@/components/templates/DynamicSectionRenderer'
 import { LenisProvider } from '@/components/providers/LenisProvider'
 import { useEffect } from 'react'
 import { getFontByValue, getGoogleFontsUrl } from '@/lib/fonts'
+
+// Dynamically import FloatingCTAButton - only loaded when CTA is enabled
+const FloatingCTAButton = dynamic(
+  () => import('@/components/shared/whatsapp-button').then(mod => ({ default: mod.FloatingCTAButton })),
+  { ssr: false }
+)
 
 /**
  * Minimal site data needed for published site rendering
@@ -220,9 +226,9 @@ export function PublishedSitePage({ site }: PublishedSitePageProps) {
           `
         }} />
         
-        {/* Site sections */}
+        {/* Site sections - dynamically loaded for optimal bundle size */}
         {sections.map((section: Section) => (
-          <SectionRenderer 
+          <DynamicSectionRenderer 
             key={section.id} 
             section={section} 
             theme={theme} 
@@ -230,12 +236,14 @@ export function PublishedSitePage({ site }: PublishedSitePageProps) {
           />
         ))}
         
-        {/* Floating CTA button */}
-        <FloatingCTAButton 
-          type={ctaType} 
-          value={ctaValue} 
-          colorScheme={sections[0]?.colorScheme || 'light'} 
-        />
+        {/* Floating CTA button - only rendered if enabled */}
+        {ctaType !== 'none' && ctaValue && (
+          <FloatingCTAButton 
+            type={ctaType} 
+            value={ctaValue} 
+            colorScheme={sections[0]?.colorScheme || 'light'} 
+          />
+        )}
       </div>
     </LenisProvider>
   )

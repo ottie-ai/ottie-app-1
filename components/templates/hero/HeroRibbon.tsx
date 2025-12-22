@@ -9,6 +9,7 @@ import { WordReveal } from '@/components/ui/word-reveal'
 import { SectionComponentProps, HeroSectionData } from '@/types/builder'
 import { useDelayedFont } from '@/components/builder/FontTransition'
 import { scrollSpringConfig } from '@/hooks/useScrollAnimation'
+import { SectionCursor } from '@/components/shared/section-cursor'
 
 /**
  * HeroRibbon - Full-screen hero with property image
@@ -63,7 +64,16 @@ export function HeroRibbon({ data, theme, colorScheme = 'light', onDataChange }:
   const bottomContentY = animationStyle === 'slide-up' ? bottomContentYSlide : bottomContentYStatic
 
   return (
-    <section ref={sectionRef} className="relative h-screen w-full overflow-hidden">
+    <section ref={sectionRef} className="relative h-screen w-full overflow-hidden" data-cursor-target>
+      {/* Section Cursor - dynamically loads only the needed cursor style */}
+      <SectionCursor 
+        targetSelector="[data-cursor-target]"
+        size={20}
+        expandedSize={120}
+        theme={theme}
+        icon="play"
+      />
+      
       {/* Background Image with Parallax */}
       {imageUrl ? (
         <motion.div 
