@@ -20,7 +20,7 @@
  * 4. This component renders the site using PublishedSitePage
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Site } from '@/types/database'
 import type { PageConfig } from '@/types/builder'
 import { PublishedSitePage, type PublishedSiteData } from './published-site-page'
@@ -33,14 +33,15 @@ interface SiteContentClientProps {
 }
 
 export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) {
-  const [isLoading, setIsLoading] = useState(true)
+  const [showLoader, setShowLoader] = useState(true)
 
-  // Show loader briefly while React hydrates
+  // Show loader briefly while React hydrates, then fade out smoothly
   useEffect(() => {
-    // Small delay to ensure smooth transition
+    // Hide loader after a brief delay to allow hydration
     const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 100)
+      setShowLoader(false)
+    }, 300)
+    
     return () => clearTimeout(timer)
   }, [])
 
@@ -55,14 +56,33 @@ export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) 
 
   // Get loader config from site config
   const loaderConfig = siteConfig?.loader
+  const shouldShowLoader = loaderConfig && loaderConfig.type !== 'none'
 
-  // Show loader if configured and still loading
-  if (isLoading && loaderConfig && loaderConfig.type !== 'none') {
-    return <SiteLoader config={loaderConfig} />
-  }
-  
-  // Use clean PublishedSitePage for public sites
-  // This component has NO admin dependencies
-  return <PublishedSitePage site={publicSiteData} />
+  return (
+    <>
+      {/* Loader - fades out after hydration */}
+      {shouldShowLoader && (
+        <div
+          style={{
+            opacity: showLoader ? 1 : 0,
+            transition: 'opacity 400ms ease-out',
+            pointerEvents: showLoader ? 'auto' : 'none',
+          }}
+        >
+          <SiteLoader config={loaderConfig} />
+        </div>
+      )}
+      
+      {/* Site content - always rendered, fades in */}
+      <div
+        style={{
+          opacity: showLoader ? 0 : 1,
+          transition: 'opacity 400ms ease-in',
+        }}
+      >
+        <PublishedSitePage site={publicSiteData} />
+      </div>
+    </>
+  )
 }
 
