@@ -15,7 +15,7 @@
  * - Marketing pages (uses their own loaders)
  */
 
-import { useRef, useEffect, useState, useMemo, useCallback } from 'react'
+import { useRef, useEffect, useMemo, useCallback } from 'react'
 import Lottie, { type LottieRefCurrentProps } from 'lottie-react'
 import spinnerAnimation from '@/lib/lottie/system-regular-722-spinner-two-circles-loop-pulse.json'
 import type { LoaderConfig } from '@/types/builder'
@@ -30,9 +30,8 @@ interface SiteLoaderProps {
  * SiteLoader - Displays a customizable loading animation
  * Supports different loader types and light/dark color schemes
  */
-export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProps) {
+export function SiteLoader({ config, className = '', size = 32 }: SiteLoaderProps) {
   const lottieRef = useRef<LottieRefCurrentProps>(null)
-  const [isMounted, setIsMounted] = useState(false)
 
   // Default config: circle loader with light color scheme
   const loaderConfig: LoaderConfig = config || {
@@ -46,14 +45,14 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
   }
 
   // Determine target color based on colorScheme
-  // IMPORTANT: colorScheme determines BOTH background AND icon color
-  // - colorScheme: 'light' = WHITE background + BLACK icon
-  // - colorScheme: 'dark' = BLACK background + WHITE icon
+  // IMPORTANT: Uses muted colors like LottieSpinner for consistent appearance
+  // - colorScheme: 'light' = WHITE background + muted gray icon
+  // - colorScheme: 'dark' = BLACK background + muted gray icon
   // Lottie uses RGB values in 0-1 range (normalized 0-1, not 0-255)
   const targetColor = useMemo(() => {
     return loaderConfig.colorScheme === 'dark'
-      ? [1.0, 1.0, 1.0] // White icon for dark background
-      : [0.0, 0.0, 0.0]  // Black icon for light background
+      ? [0.4, 0.4, 0.45] // Muted gray for dark backgrounds (like LottieSpinner)
+      : [0.5, 0.5, 0.55]  // Muted gray for light backgrounds (like LottieSpinner)
   }, [loaderConfig.colorScheme])
   
   // Background color based on colorScheme
@@ -132,23 +131,20 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
     return cloned
   }, [targetColor, updateColorsInObject])
 
+  // Initialize animation to play continuously with slower speed (like LottieSpinner)
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  // Initialize animation to play continuously
-  useEffect(() => {
-    if (!lottieRef.current || !isMounted) return
+    if (!lottieRef.current) return
 
     const lottieInstance = lottieRef.current
-    // Set normal speed for site loader
-    lottieInstance.setSpeed(1)
+    // Set slower speed (0.6 = 60% of original speed) - same as LottieSpinner
+    lottieInstance.setSpeed(0.6)
     // Play animation continuously
     lottieInstance.play()
-  }, [isMounted])
+  }, [])
 
   return (
     <div
+      data-site-loader
       className={className}
       style={{
         display: 'flex',
@@ -171,22 +167,13 @@ export function SiteLoader({ config, className = '', size = 64 }: SiteLoaderProp
         }}
       >
         {/* Lottie animation */}
-        {isMounted && (
-          <div
-            style={{
-              width: size,
-              height: size,
-            }}
-          >
-            <Lottie
-              lottieRef={lottieRef}
-              animationData={themedAnimationData}
-              style={{ width: size, height: size }}
-              loop={true}
-              autoplay={true}
-            />
-          </div>
-        )}
+        <Lottie
+          lottieRef={lottieRef}
+          animationData={themedAnimationData}
+          style={{ width: size, height: size }}
+          loop={true}
+          autoplay={true}
+        />
       </div>
     </div>
   )

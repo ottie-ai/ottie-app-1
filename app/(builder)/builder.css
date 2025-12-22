@@ -88,6 +88,13 @@
     border-color: rgba(230, 230, 230, 1) !important;
   }
   
+  /* IMPORTANT: Exclude site loader - restore original styles */
+  [data-site-loader] *,
+  [data-site-loader] *::before,
+  [data-site-loader] *::after {
+    border-color: initial !important;
+  }
+  
   body {
     @apply text-foreground;
     font-family: var(--font-sans);
@@ -225,6 +232,12 @@ body.site-route [data-site-content] > * {
 body.site-route svg,
 body.site-route [class*="lottie"] {
   color: rgba(0, 0, 0, 1) !important;
+}
+
+/* IMPORTANT: Exclude site loader - restore original styles */
+[data-site-loader] svg,
+[data-site-loader] [class*="lottie"] {
+  color: initial !important;
 }
 
 /* Force text colors to be dark in builder */

@@ -20,7 +20,7 @@
  * 4. This component renders the site using PublishedSitePage
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import type { Site } from '@/types/database'
 import type { PageConfig } from '@/types/builder'
 import { PublishedSitePage, type PublishedSiteData } from './published-site-page'
@@ -33,14 +33,14 @@ interface SiteContentClientProps {
 }
 
 export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) {
-  const [showLoader, setShowLoader] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
 
-  // Show loader briefly while React hydrates, then fade out smoothly
+  // Mark as hydrated after mount
   useEffect(() => {
-    // Hide loader after a brief delay to allow hydration
+    // Small delay to ensure smooth transition
     const timer = setTimeout(() => {
-      setShowLoader(false)
-    }, 300)
+      setIsHydrated(true)
+    }, 400)
     
     return () => clearTimeout(timer)
   }, [])
@@ -58,31 +58,13 @@ export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) 
   const loaderConfig = siteConfig?.loader
   const shouldShowLoader = loaderConfig && loaderConfig.type !== 'none'
 
-  return (
-    <>
-      {/* Loader - fades out after hydration */}
-      {shouldShowLoader && (
-        <div
-          style={{
-            opacity: showLoader ? 1 : 0,
-            transition: 'opacity 400ms ease-out',
-            pointerEvents: showLoader ? 'auto' : 'none',
-          }}
-        >
-          <SiteLoader config={loaderConfig} />
-        </div>
-      )}
-      
-      {/* Site content - always rendered, fades in */}
-      <div
-        style={{
-          opacity: showLoader ? 0 : 1,
-          transition: 'opacity 400ms ease-in',
-        }}
-      >
-        <PublishedSitePage site={publicSiteData} />
-      </div>
-    </>
-  )
+  // Show loader OR content, never both at the same time
+  if (!isHydrated && shouldShowLoader) {
+    return <SiteLoader config={loaderConfig} />
+  }
+  
+  // Use clean PublishedSitePage for public sites
+  // This component has NO admin dependencies
+  return <PublishedSitePage site={publicSiteData} />
 }
 

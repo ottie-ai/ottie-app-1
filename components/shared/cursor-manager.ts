@@ -84,39 +84,69 @@ class CursorManager {
   private setupHoverListeners(instance: CursorInstance) {
     if (!instance.targetSelector) return
 
-    const targets = document.querySelectorAll(instance.targetSelector)
-    
-    targets.forEach((target) => {
-      const enterHandler = () => {
-        // Clear any pending shrink timeout
-        if (instance.shrinkTimeout) {
-          clearTimeout(instance.shrinkTimeout)
-          instance.shrinkTimeout = undefined
+    let retryCount = 0
+    const maxRetries = 20 // Max 2 seconds (20 * 100ms)
+
+    const attachListeners = () => {
+      const targets = document.querySelectorAll(instance.targetSelector!)
+      
+      // If no targets found yet, try again after a short delay
+      if (targets.length === 0) {
+        retryCount++
+        if (retryCount < maxRetries) {
+          setTimeout(attachListeners, 100)
+        }
+        return
+      }
+      
+      // Check if mouse is already over any target on initial setup
+      let mouseAlreadyOver = false
+      
+      targets.forEach((target) => {
+        // Skip if already has handlers attached
+        if ((target as any).__cursorHandlers) return
+        
+        const enterHandler = () => {
+          // Clear any pending shrink timeout
+          if (instance.shrinkTimeout) {
+            clearTimeout(instance.shrinkTimeout)
+            instance.shrinkTimeout = undefined
+          }
+          
+          if (!instance.isExpanded) {
+            instance.isExpanded = true
+            instance.onExpand?.()
+          }
         }
         
-        if (!instance.isExpanded) {
-          instance.isExpanded = true
-          instance.onExpand?.()
+        const leaveHandler = () => {
+          if (instance.isExpanded) {
+            // Add small delay before shrinking - allows moving between elements
+            instance.shrinkTimeout = setTimeout(() => {
+              instance.isExpanded = false
+              instance.onShrink?.()
+              instance.shrinkTimeout = undefined
+            }, 50) // 50ms delay
+          }
         }
-      }
-      
-      const leaveHandler = () => {
-        if (instance.isExpanded) {
-          // Add small delay before shrinking - allows moving between elements
-          instance.shrinkTimeout = setTimeout(() => {
-            instance.isExpanded = false
-            instance.onShrink?.()
-            instance.shrinkTimeout = undefined
-          }, 50) // 50ms delay
+        
+        target.addEventListener('mouseenter', enterHandler)
+        target.addEventListener('mouseleave', leaveHandler)
+        
+        // Store handlers for cleanup
+        ;(target as any).__cursorHandlers = { enter: enterHandler, leave: leaveHandler }
+        
+        // Check if mouse is currently over this target
+        if (!mouseAlreadyOver && target.matches(':hover')) {
+          mouseAlreadyOver = true
+          // Trigger expand immediately if mouse is already over target
+          setTimeout(() => enterHandler(), 0)
         }
-      }
-      
-      target.addEventListener('mouseenter', enterHandler)
-      target.addEventListener('mouseleave', leaveHandler)
-      
-      // Store handlers for cleanup
-      ;(target as any).__cursorHandlers = { enter: enterHandler, leave: leaveHandler }
-    })
+      })
+    }
+
+    // Try attaching immediately
+    attachListeners()
   }
 
   private removeHoverListeners(instance: CursorInstance) {

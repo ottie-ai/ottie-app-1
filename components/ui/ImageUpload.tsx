@@ -172,7 +172,7 @@ export function ImageUpload({
     const imageToRemove = images[index]
     if (!imageToRemove) return
 
-    // Delete from Storage if it's a valid Storage URL
+    // Delete from Storage FIRST if it's a valid Storage URL
     if (imageToRemove.url && imageToRemove.url.includes('/storage/v1/object/public/site-images/')) {
       try {
         // Extract path from URL
@@ -190,12 +190,12 @@ export function ImageUpload({
           if (error) {
             console.error('[ImageUpload] Delete error:', error)
             toast.error(`Failed to delete: ${error.message}`)
-            return
+            return // Don't update UI if storage delete failed
           }
 
           // Supabase Storage remove() returns empty array [] if RLS blocks or file doesn't exist
           if (!data || data.length === 0) {
-            console.warn('[ImageUpload] No files deleted:', {
+            console.warn('[ImageUpload] No files deleted from storage:', {
               filePathFromUrl,
               siteId,
               possibleReasons: [
@@ -206,22 +206,21 @@ export function ImageUpload({
               ]
             })
             toast.error('Failed to delete: Access denied or file not found')
-            return
+            return // Don't update UI if storage delete failed
           }
-
-          toast.success('Image deleted')
         }
       } catch (error) {
-        console.error('Error deleting image:', error)
-        toast.error('Failed to delete image')
-        return
+        console.error('Error deleting image from storage:', error)
+        toast.error('Failed to delete image from storage')
+        return // Don't update UI if storage delete failed
       }
     }
 
-    // Update state and trigger onChange to auto-save config
+    // Only update UI and state if storage delete succeeded (or it's not a storage URL)
     const updatedImages = images.filter((_, i) => i !== index)
     setImages(updatedImages)
     onChange?.(updatedImages)
+    toast.success('Image removed')
   }
 
   // Show error state if no siteId

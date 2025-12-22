@@ -91,7 +91,7 @@ export function FrostyCursor({
     const cursorInner = cursorInnerRef.current
     if (!cursor || !cursorInner) return
 
-    // Initialize
+    // Initialize - hidden
     gsap.set(cursorInner, { opacity: 0, width: size, height: size })
 
     const expandCursor = () => {

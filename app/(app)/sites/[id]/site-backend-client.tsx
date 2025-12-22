@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Site } from '@/types/database'
 import { SiteSettingsPanel } from './site-settings-panel'
 import { SiteMiniPreview } from './site-mini-preview'
@@ -16,6 +17,8 @@ import {
   TabsContent,
 } from '@/components/ui/tabs'
 import { ExternalLink, Pencil } from 'lucide-react'
+import { toastSuccess } from '@/lib/toast-helpers'
+import type { ThemeConfig, LoaderConfig, Section, PageConfig } from '@/types/builder'
 
 interface SiteBackendClientProps {
   site: Site
@@ -35,7 +38,113 @@ interface SiteBackendClientProps {
  */
 export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
   const [activeTab, setActiveTab] = useState('settings')
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
+  
+  // Refs for save/theme/loader/sections
+  const saveChangesRef = useRef<(() => Promise<void>) | null>(null)
+  const themeRef = useRef<ThemeConfig | null>(null)
+  const loaderRef = useRef<LoaderConfig | null>(null)
+  const sectionsRef = useRef<Section[] | null>(null)
+  
+  // Site config
+  const config = site.config as PageConfig | null
+  const siteConfig: PageConfig = config || {
+    theme: {
+      fontFamily: 'Inter',
+      headingFontFamily: 'Inter',
+      headingFontSize: 1,
+      headingLetterSpacing: 0,
+      titleCase: 'sentence',
+      primaryColor: '#000000',
+      secondaryColor: '#666666',
+      backgroundColor: '#ffffff',
+      textColor: '#000000',
+      borderRadius: 'md',
+      ctaType: 'none',
+      ctaValue: '',
+    },
+    sections: [],
+    loader: {
+      type: 'none',
+      colorScheme: 'light',
+    },
+  }
+  
+  // Initialize refs from config
+  useEffect(() => {
+    if (siteConfig.theme) {
+      themeRef.current = siteConfig.theme
+    }
+    if (siteConfig.loader) {
+      loaderRef.current = siteConfig.loader
+    }
+    if (siteConfig.sections) {
+      sectionsRef.current = siteConfig.sections
+    }
+  }, [siteConfig])
+  
+  // Handle theme changes
+  const handleThemeChange = (theme: ThemeConfig) => {
+    themeRef.current = theme
+    setHasUnsavedChanges(true)
+  }
+  
+  // Handle loader changes
+  const handleLoaderChange = (loader: LoaderConfig) => {
+    loaderRef.current = loader
+    setHasUnsavedChanges(true)
+  }
+  
+  // Save all changes
+  const handleSaveAllChanges = useCallback(async () => {
+    if (!hasUnsavedChanges || isSaving) return
+    
+    setIsSaving(true)
+    
+    const supabase = createClient()
+    const updatedConfig: PageConfig = {
+      ...siteConfig,
+      theme: themeRef.current || siteConfig.theme,
+      loader: loaderRef.current || siteConfig.loader,
+      sections: sectionsRef.current || siteConfig.sections,
+    }
+    
+    const { error } = await supabase
+      .from('sites')
+      .update({ config: updatedConfig })
+      .eq('id', site.id)
+    
+    if (error) {
+      console.error('Error saving changes:', error)
+      setIsSaving(false)
+      return
+    }
+    
+    toastSuccess('Changes saved successfully')
+    setHasUnsavedChanges(false)
+    router.refresh()
+    setIsSaving(false)
+  }, [hasUnsavedChanges, isSaving, siteConfig, site.id, router])
+  
+  // Expose save function via ref
+  useEffect(() => {
+    saveChangesRef.current = handleSaveAllChanges
+  }, [handleSaveAllChanges])
+  
+  // Detect changes in theme, loader, or sections order
+  useEffect(() => {
+    const themeChanged = themeRef.current && JSON.stringify(themeRef.current) !== JSON.stringify(siteConfig.theme)
+    const loaderChanged = loaderRef.current && JSON.stringify(loaderRef.current) !== JSON.stringify(siteConfig.loader)
+    
+    const originalSectionIds = (siteConfig.sections || []).map(s => s.id)
+    const currentSectionIds = (sectionsRef.current || []).map(s => s.id)
+    const sectionsOrderChanged = JSON.stringify(originalSectionIds) !== JSON.stringify(currentSectionIds)
+    
+    const hasChanges = !!themeChanged || !!loaderChanged || sectionsOrderChanged
+    setHasUnsavedChanges(hasChanges)
+  }, [themeRef.current, loaderRef.current, sectionsRef.current, siteConfig])
 
   // Get public URL
   const getPublicUrl = () => {
@@ -93,6 +202,15 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
             </div>
             
             <div className="flex gap-2">
+              {hasUnsavedChanges && (
+                <Button 
+                  onClick={handleSaveAllChanges} 
+                  disabled={isSaving}
+                  size="default"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
               <Button onClick={handleOpenBuilder} size="default">
                 <Pencil className="mr-2 size-4" />
                 Open Layout Editor
@@ -119,14 +237,13 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
               <SiteSettingsPanel 
                 site={site} 
                 members={members}
-                // Backend view doesn't need theme/loader/sections refs
-                themeRef={undefined}
-                onThemeChange={undefined}
-                loaderRef={undefined}
-                onLoaderChange={undefined}
-                sectionsRef={undefined}
-                saveChangesRef={undefined}
-                onHasUnsavedChanges={undefined}
+                themeRef={themeRef}
+                onThemeChange={handleThemeChange}
+                loaderRef={loaderRef}
+                onLoaderChange={handleLoaderChange}
+                sectionsRef={sectionsRef}
+                saveChangesRef={saveChangesRef}
+                onHasUnsavedChanges={setHasUnsavedChanges}
               />
             </TabsContent>
 

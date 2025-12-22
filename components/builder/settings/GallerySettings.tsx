@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useMemo } from 'react'
 import { GallerySectionData, ColorScheme } from '@/types/builder'
 import { 
   Field, 
   FieldGroup, 
   FieldLabel 
 } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import { 
   Carousel, 
   CarouselContent, 
@@ -26,6 +25,8 @@ import {
 import { getVariants } from '@/components/templates/registry'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ImageUpload } from '@/components/ui/ImageUpload'
+import type { ImageUploadResult } from '@/types/image'
 
 // ============================================
 // Color Scheme Selector Component
@@ -123,6 +124,37 @@ export function GalleryRemixPanel({
     }
   }, [api, onSelect])
 
+  // Transform GallerySectionData images to ImageUploadResult format
+  const imageUploadResults: ImageUploadResult[] = useMemo(() => {
+    return data.images.map((img) => ({
+      url: img.src,
+      path: img.src.split('/').pop() || '',
+      width: 0, // We don't store dimensions in gallery data
+      height: 0,
+      size: 0,
+      format: img.src.split('.').pop() || 'webp',
+    }))
+  }, [data.images])
+
+  // Handle image upload changes
+  const handleImageUploadChange = useCallback((uploadedImages: ImageUploadResult[]) => {
+    // Transform ImageUploadResult[] back to GallerySectionData format
+    const galleryImages = uploadedImages.map((img) => {
+      // Try to find existing image data to preserve alt and caption
+      const existingImage = data.images.find((existing) => existing.src === img.url)
+      return {
+        src: img.url,
+        alt: existingImage?.alt || '',
+        caption: existingImage?.caption || '',
+      }
+    })
+    onDataChange({ ...data, images: galleryImages })
+    // Trigger auto-save after state update
+    setTimeout(() => {
+      onImageAutoSave?.()
+    }, 100)
+  }, [data, onDataChange, onImageAutoSave])
+
   return (
     <FieldGroup className="gap-5">
       <Field>
@@ -164,11 +196,12 @@ export function GalleryRemixPanel({
       </Field>
 
       <Field>
-        <FieldLabel>Title</FieldLabel>
-        <Input
-          value={data.title || ''}
-          onChange={(e) => onDataChange({ ...data, title: e.target.value })}
-          placeholder="Enter title"
+        <FieldLabel>Images</FieldLabel>
+        <ImageUpload
+          siteId={siteId}
+          value={imageUploadResults}
+          onChange={handleImageUploadChange}
+          maxFiles={50}
         />
       </Field>
 
@@ -182,5 +215,7 @@ export function GalleryRemixPanel({
     </FieldGroup>
   )
 }
+
+
 
 

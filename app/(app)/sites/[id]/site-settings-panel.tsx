@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DndContext,
@@ -100,7 +100,6 @@ import { LottieAccountIcon } from '@/components/ui/lottie-account-icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
-import { useMemo } from 'react'
 import { FontSelector } from '@/components/builder/FontSelector'
 import type { PageConfig, ThemeConfig, Section, LoaderConfig } from '@/types/builder'
 
@@ -440,7 +439,7 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   }
 
   // Get current font and title case from themeRef or site config
-  const currentTheme = themeRef?.current || siteConfig?.theme || {
+  const defaultTheme: ThemeConfig = {
     fontFamily: 'Inter',
     headingFontFamily: 'Inter',
     headingFontSize: 1,
@@ -454,6 +453,19 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
     ctaType: 'none' as const,
     ctaValue: '',
   }
+  
+  // Use state to track theme changes and force re-render
+  const [localTheme, setLocalTheme] = useState<ThemeConfig>(
+    themeRef?.current || siteConfig?.theme || defaultTheme
+  )
+  
+  // Update local theme when themeRef or siteConfig changes
+  useEffect(() => {
+    const newTheme = themeRef?.current || siteConfig?.theme || defaultTheme
+    setLocalTheme(newTheme)
+  }, [themeRef?.current, siteConfig?.theme])
+  
+  const currentTheme = localTheme
   const currentFont = currentTheme.headingFontFamily || 'Inter'
   const currentTitleCase = currentTheme.titleCase || 'sentence'
   const currentAnimation = currentTheme.animationStyle || 'blur'
@@ -489,6 +501,29 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
         animationStyle: animation,
       })
     }
+  }
+
+  const handleCursorStyleChange = (cursorStyle: 'none' | 'frosty' | 'circle') => {
+    const updatedTheme = {
+      ...currentTheme,
+      cursorStyle,
+    }
+    
+    // Update local state immediately for UI feedback
+    setLocalTheme(updatedTheme)
+    
+    // Update themeRef if available
+    if (themeRef) {
+      themeRef.current = updatedTheme
+    }
+    
+    // Call onThemeChange callback if available
+    if (onThemeChange) {
+      onThemeChange(updatedTheme)
+    }
+    
+    // Mark as having unsaved changes
+    onHasUnsavedChanges?.(true)
   }
 
   const handleLoaderTypeChange = (type: 'circle' | 'none') => {
@@ -543,10 +578,25 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
       if (oldIndex !== -1 && newIndex !== -1) {
         const newSections = arrayMove(localSections, oldIndex, newIndex)
         setLocalSections(newSections)
+        // Update sectionsRef immediately
+        if (sectionsRef) {
+          sectionsRef.current = newSections
+        }
         onHasUnsavedChanges?.(true)
       }
     }
   }
+  
+  // Detect changes in sections order
+  useEffect(() => {
+    const originalIds = (siteConfig?.sections || []).map(s => s.id)
+    const currentIds = localSections.map(s => s.id)
+    const orderChanged = JSON.stringify(originalIds) !== JSON.stringify(currentIds)
+    
+    if (orderChanged && onHasUnsavedChanges) {
+      onHasUnsavedChanges(true)
+    }
+  }, [localSections, siteConfig?.sections, onHasUnsavedChanges])
 
   // Save function that will be called from parent
   const saveSectionsOrder = useCallback(async () => {
@@ -850,6 +900,24 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">Affects section reveal effects (e.g. titles, highlights).</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Cursor Style</Label>
+            <Select
+              value={currentTheme.cursorStyle || 'frosty'}
+              onValueChange={(value: 'none' | 'frosty' | 'circle') => handleCursorStyleChange(value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select cursor style" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="frosty">Frosty</SelectItem>
+                <SelectItem value="circle">Circle</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">Custom cursor style for interactive elements.</p>
           </div>
         </div>
 

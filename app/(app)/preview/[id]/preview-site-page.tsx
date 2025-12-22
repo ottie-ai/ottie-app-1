@@ -13,7 +13,6 @@ import { FontLoader } from '@/components/builder/FontLoader'
 import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { SectionMorphingIndicator } from '@/components/shared/section-morphing-indicator'
-import { SiteLoader } from '@/components/site-loader'
 import { LenisProvider } from '@/components/providers/LenisProvider'
 
 // Test sections (hardcoded for testing when site has no sections)
@@ -209,7 +208,6 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
 
   // Loader config for preview (default none if missing)
   const loaderConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
-  const [isLoading, setIsLoading] = useState(true)
 
   // Cache loader config to localStorage for loading.tsx
   useEffect(() => {
@@ -219,11 +217,6 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       // Ignore localStorage errors
     }
   }, [loaderConfig, site.id])
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 100)
-    return () => clearTimeout(timer)
-  }, [])
 
   // Use local theme state that can be updated without saving
   const [localTheme, setLocalTheme] = useState<ThemeConfig>(siteConfig.theme || {
@@ -737,12 +730,6 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
 
   const fonts = [theme?.fontFamily, theme?.headingFontFamily].filter(Boolean) as string[]
   const primaryFont = theme?.fontFamily || 'Inter'
-
-  const showPreviewLoader = isLoading && loaderConfig.type !== 'none'
-
-  if (showPreviewLoader) {
-    return <SiteLoader config={loaderConfig} />
-  }
 
   // If no sections, show a placeholder message
   if (!sections || sections.length === 0) {

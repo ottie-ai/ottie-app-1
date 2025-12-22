@@ -1,8 +1,9 @@
 'use client'
 
-import { LottieSpinner } from '@/components/ui/lottie-spinner'
+import { SiteLoader } from '@/components/site-loader'
 import { useEffect, useState } from 'react'
 import Script from 'next/script'
+import type { LoaderConfig } from '@/types/builder'
 
 /**
  * Builder loading fallback
@@ -13,7 +14,7 @@ import Script from 'next/script'
  */
 
 export default function BuilderLoading() {
-  const [bgColor, setBgColor] = useState('#000000') // Default to black (most users have dark loader)
+  const [loaderConfig, setLoaderConfig] = useState<LoaderConfig>({ type: 'circle', colorScheme: 'dark' })
 
   useEffect(() => {
     // Add site-route class to hide workspace background
@@ -25,13 +26,15 @@ export default function BuilderLoading() {
       const siteId = window.location.pathname.split('/').pop()
       const cached = localStorage.getItem(`loader-config-${siteId}`)
       if (cached) {
-        const config = JSON.parse(cached)
-        const newBg = config.type !== 'none' && config.colorScheme === 'dark' ? '#000000' : '#ffffff'
-        setBgColor(newBg)
-        document.body.style.backgroundColor = newBg
-        document.documentElement.style.backgroundColor = newBg
+        const config = JSON.parse(cached) as LoaderConfig
+        setLoaderConfig(config)
+        
+        // Set background color based on loader config
+        const bgColor = config.type !== 'none' && config.colorScheme === 'dark' ? '#000000' : '#ffffff'
+        document.body.style.backgroundColor = bgColor
+        document.documentElement.style.backgroundColor = bgColor
       } else {
-        // No cache - use default black (will be overridden by layout.tsx if needed)
+        // No cache - use default black
         document.body.style.backgroundColor = '#000000'
         document.documentElement.style.backgroundColor = '#000000'
       }
@@ -46,6 +49,11 @@ export default function BuilderLoading() {
       document.documentElement.classList.remove('site-route')
     }
   }, [])
+
+  // Don't render loader if type is 'none'
+  if (loaderConfig.type === 'none') {
+    return null
+  }
 
   return (
     <>
@@ -83,12 +91,7 @@ export default function BuilderLoading() {
           `,
         }}
       />
-      <div 
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ backgroundColor: bgColor }}
-      >
-        <LottieSpinner size={32} />
-      </div>
+      <SiteLoader config={loaderConfig} />
     </>
   )
 }
