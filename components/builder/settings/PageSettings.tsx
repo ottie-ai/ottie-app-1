@@ -33,6 +33,12 @@ import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SitePasswordSettings } from '@/components/site-password-settings'
 import type { TitleCase } from '@/lib/text-case'
+import { useAppData } from '@/contexts/app-context'
+import { getFirstPlanWithFeature } from '@/lib/data/plans'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Info } from 'lucide-react'
+import { PricingDialog } from '@/components/workspace/pricing-dialog'
+import { Button } from '@/components/ui/button'
 
 // ============================================
 // Color Scheme Selector Component
@@ -229,6 +235,24 @@ export function PageSettingsPanel({
   passwordProtected,
   onPasswordUpdate
 }: PageSettingsPanelProps) {
+  const { currentWorkspace, plans, hasPlanFeature } = useAppData()
+  
+  // Check if workspace has custom cursor feature
+  const hasCustomCursorFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_custom_cursor')
+    : false
+  
+  // Find the lowest plan with custom cursor feature
+  const lowestPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_cursor')
+  
+  // Check if workspace has text animations feature
+  const hasTextAnimationsFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_text_animations')
+    : false
+  
+  // Find the lowest plan with text animations feature
+  const lowestTextAnimationsPlan = getFirstPlanWithFeature(plans, 'feature_text_animations')
+  
   // Ensure theme has all required properties
   const safeTheme = theme || {
     fontFamily: 'Inter',
@@ -243,8 +267,17 @@ export function PageSettingsPanel({
     borderRadius: 'md',
     ctaType: 'none',
     ctaValue: '',
+    cursorStyle: 'none', // Default to 'none' if feature not available
   }
-  const ctaType = safeTheme.ctaType || 'whatsapp'
+  
+  // If workspace doesn't have features, ensure defaults are set
+  const effectiveTheme = {
+    ...safeTheme,
+    cursorStyle: hasCustomCursorFeature ? safeTheme.cursorStyle : ('none' as const),
+    animationStyle: hasTextAnimationsFeature ? safeTheme.animationStyle : ('none' as const),
+  }
+  
+  const ctaType = effectiveTheme.ctaType || 'whatsapp'
   
   return (
     <FieldGroup className="gap-5">
@@ -278,36 +311,56 @@ export function PageSettingsPanel({
       </Field>
 
       <Field>
-        <FieldLabel>Animation Style</FieldLabel>
+        <FieldLabel>Text Animations</FieldLabel>
         <Select 
-          value={safeTheme.animationStyle || 'blur'}
+          value={effectiveTheme.animationStyle || 'none'}
           onValueChange={(value: 'blur' | 'fade-in' | 'slide-up' | 'none') => {
-            const updatedTheme = { ...safeTheme }
+            const updatedTheme = { ...effectiveTheme }
             updatedTheme.animationStyle = value
             onThemeChange(updatedTheme)
           }}
+          disabled={!hasTextAnimationsFeature}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select animation style" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="none">None</SelectItem>
             <SelectItem value="blur">Blur</SelectItem>
             <SelectItem value="fade-in">Fade In</SelectItem>
             <SelectItem value="slide-up">Slide Up</SelectItem>
-            <SelectItem value="none">None</SelectItem>
           </SelectContent>
         </Select>
+        {!hasTextAnimationsFeature && lowestTextAnimationsPlan && (
+          <Alert className="mt-2">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Text animations are available on the {lowestTextAnimationsPlan.name.charAt(0).toUpperCase() + lowestTextAnimationsPlan.name.slice(1)} plan and above.
+              <PricingDialog
+                currentPlan={currentWorkspace?.plan}
+                stripeCustomerId={currentWorkspace?.stripe_customer_id}
+                workspaceId={currentWorkspace?.id}
+                defaultSelectedTier={lowestTextAnimationsPlan.name}
+              >
+                <Button variant="link" className="h-auto p-0 ml-1 text-primary underline">
+                  Upgrade now
+                </Button>
+              </PricingDialog>
+            </AlertDescription>
+          </Alert>
+        )}
       </Field>
 
       <Field>
         <FieldLabel>Cursor Style</FieldLabel>
         <Select 
-          value={safeTheme.cursorStyle || 'frosty'}
+          value={effectiveTheme.cursorStyle || 'none'}
           onValueChange={(value: 'none' | 'frosty' | 'circle') => {
-            const updatedTheme = { ...safeTheme }
+            const updatedTheme = { ...effectiveTheme }
             updatedTheme.cursorStyle = value
             onThemeChange(updatedTheme)
           }}
+          disabled={!hasCustomCursorFeature}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select cursor style" />
@@ -318,6 +371,24 @@ export function PageSettingsPanel({
             <SelectItem value="circle">Circle</SelectItem>
           </SelectContent>
         </Select>
+        {!hasCustomCursorFeature && lowestPlanWithFeature && (
+          <Alert className="mt-2">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Custom cursor is available on the {lowestPlanWithFeature.name.charAt(0).toUpperCase() + lowestPlanWithFeature.name.slice(1)} plan and above.
+              <PricingDialog
+                currentPlan={currentWorkspace?.plan}
+                stripeCustomerId={currentWorkspace?.stripe_customer_id}
+                workspaceId={currentWorkspace?.id}
+                defaultSelectedTier={lowestPlanWithFeature.name}
+              >
+                <Button variant="link" className="h-auto p-0 ml-1 text-primary underline">
+                  Upgrade now
+                </Button>
+              </PricingDialog>
+            </AlertDescription>
+          </Alert>
+        )}
       </Field>
 
       <FieldSeparator />

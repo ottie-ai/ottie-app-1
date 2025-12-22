@@ -43,6 +43,7 @@ export const dynamicRegistry: DynamicRegistryMap = {
   },
   gallery: {
     grid: () => import('./gallery/GalleryGrid').then(mod => ({ default: mod.GalleryGrid })),
+    horizontal: () => import('./gallery/GalleryHorizontal').then(mod => ({ default: mod.GalleryHorizontal })),
   },
   agent: {
     card: () => import('./agent/AgentCard').then(mod => ({ default: mod.AgentCard })),

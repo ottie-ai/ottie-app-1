@@ -12,7 +12,7 @@ import { HeroRibbon } from '@/components/templates/hero/HeroRibbon'
 import { FeaturesGrid, FeaturesList, FeaturesMinimal } from '@/components/templates/features'
 
 // Import Gallery variants
-import { GalleryGrid } from '@/components/templates/gallery'
+import { GalleryGrid, GalleryHorizontal } from '@/components/templates/gallery'
 
 // Import Agent variants
 import { AgentCard } from '@/components/templates/agent'
@@ -58,6 +58,7 @@ export const componentRegistry: RegistryMap = {
   },
   gallery: {
     grid: GalleryGrid,
+    horizontal: GalleryHorizontal,
   },
   agent: {
     card: AgentCard,

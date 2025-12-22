@@ -128,6 +128,8 @@ const DATABASE_FEATURE_ORDER: Array<{
   { featureKey: 'feature_crm_sync', uiFeaturePatterns: ['lead sync', 'hubspot', 'pipedrive', 'crm'] },
   { featureKey: 'feature_premium_fonts', uiFeaturePatterns: ['premium text', 'premium fonts'] },
   { featureKey: 'feature_password_protection', uiFeaturePatterns: ['password protected'] },
+  { featureKey: 'feature_custom_cursor', uiFeaturePatterns: ['custom cursor', 'cursor'] },
+  { featureKey: 'feature_text_animations', uiFeaturePatterns: ['text animations', 'text animation'] },
 ]
 
 /**
@@ -180,6 +182,8 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
   const planOrder = ['free', 'starter', 'growth', 'agency', 'enterprise']
   let firstPasswordProtectionPlan: string | null = null
   let firstPremiumFontsPlan: string | null = null
+  let firstCustomCursorPlan: string | null = null
+  let firstTextAnimationsPlan: string | null = null
   
   for (const planName of planOrder) {
     const plan = plans.find(p => p.name === planName)
@@ -188,6 +192,12 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
     }
     if (plan?.feature_premium_fonts && !firstPremiumFontsPlan) {
       firstPremiumFontsPlan = planName
+    }
+    if (plan?.feature_custom_cursor && !firstCustomCursorPlan) {
+      firstCustomCursorPlan = planName
+    }
+    if (plan?.feature_text_animations && !firstTextAnimationsPlan) {
+      firstTextAnimationsPlan = planName
     }
   }
   
@@ -208,6 +218,16 @@ export function transformPlansToTiers(plans: Plan[]): PricingTier[] {
       // Add premium fonts feature only to the first plan that has it
       if (plan.name === firstPremiumFontsPlan && plan.feature_premium_fonts) {
         features.push({ name: 'Premium text & heading styles' })
+      }
+      
+      // Add custom cursor feature only to the first plan that has it
+      if (plan.name === firstCustomCursorPlan && plan.feature_custom_cursor) {
+        features.push({ name: 'Custom cursor styles' })
+      }
+      
+      // Add text animations feature only to the first plan that has it
+      if (plan.name === firstTextAnimationsPlan && plan.feature_text_animations) {
+        features.push({ name: 'Text animations' })
       }
       
       // Sort features according to database column order

@@ -25,6 +25,13 @@ import { SectionMorphingIndicator } from '@/components/shared/section-morphing-i
 import { SiteLoader } from '@/components/site-loader'
 import { LenisProvider } from '@/components/providers/LenisProvider'
 import { handlePublishSite, handleUnpublishSite } from '@/app/actions/site-actions'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+// Register GSAP plugins
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger)
+}
 
 interface BuilderClientProps {
   site: Site
@@ -273,6 +280,13 @@ export function BuilderClient({ site }: BuilderClientProps) {
       console.error('[handleSectionChange] Error saving to database:', error)
       toast.error('Failed to save changes')
     }
+
+    // Refresh ScrollTrigger after section change to recalculate scroll positions
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        ScrollTrigger.refresh()
+      }, 100) // Small delay to ensure DOM is updated
+    }
   }
 
   // Handle editing state changes
@@ -282,6 +296,18 @@ export function BuilderClient({ site }: BuilderClientProps) {
       [sectionId]: editingState,
     }))
   }
+
+  // Refresh ScrollTrigger when sections change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sections.length > 0) {
+      // Use a small delay to ensure DOM is fully updated
+      const timeoutId = setTimeout(() => {
+        ScrollTrigger.refresh()
+      }, 150)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [sections])
 
   // Track unsaved changes
   useEffect(() => {

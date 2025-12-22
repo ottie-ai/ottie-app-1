@@ -124,6 +124,8 @@ export interface Plan {
   feature_crm_sync: boolean
   feature_password_protection: boolean
   feature_premium_fonts: boolean
+  feature_custom_cursor: boolean
+  feature_text_animations: boolean
   price_cents: number // Monthly price in cents
   annual_price_cents: number // Monthly price in cents when paid annually (with 15% discount)
   created_at: string // timestamp
@@ -145,7 +147,9 @@ export type PlanFeature = keyof Pick<Plan,
   'feature_pdf_flyers' | 
   'feature_crm_sync' |
   'feature_password_protection' |
-  'feature_premium_fonts'
+  'feature_premium_fonts' |
+  'feature_custom_cursor' |
+  'feature_text_animations'
 >
 
 // ==========================================

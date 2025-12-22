@@ -14,6 +14,13 @@ import { FontTransition } from '@/components/builder/FontTransition'
 import { FloatingCTAButton } from '@/components/shared/whatsapp-button'
 import { SectionMorphingIndicator } from '@/components/shared/section-morphing-indicator'
 import { LenisProvider } from '@/components/providers/LenisProvider'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+// Register GSAP plugins
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger)
+}
 
 // Test sections (hardcoded for testing when site has no sections)
 const testSections: Section[] = [
@@ -548,7 +555,26 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       console.warn('[handleSectionChange] Cannot save - canEdit is false')
       alert('Cannot save - you do not have edit permissions')
     }
+
+    // Refresh ScrollTrigger after section change to recalculate scroll positions
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        ScrollTrigger.refresh()
+      }, 100) // Small delay to ensure DOM is updated
+    }
   }
+
+  // Refresh ScrollTrigger when sections change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sections.length > 0) {
+      // Use a small delay to ensure DOM is fully updated
+      const timeoutId = setTimeout(() => {
+        ScrollTrigger.refresh()
+      }, 150)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [sections])
 
   // Update sections when site.config changes (after refresh)
   useEffect(() => {

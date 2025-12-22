@@ -135,7 +135,7 @@ export function HeroRibbon({ data, theme, colorScheme = 'light', onDataChange }:
             
             {/* Thin white line below text - animácia z ľava do prava (nakreslenie) */}
             <motion.div 
-              className="w-full sm:w-[90%] md:w-[80%] flex flex-col gap-3 sm:gap-4"
+              className="w-full sm:w-[90%] md:w-[90%] flex flex-col gap-3 sm:gap-4"
               style={{
                 opacity: bottomContentOpacity,
                 y: bottomContentY,

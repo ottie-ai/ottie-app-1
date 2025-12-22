@@ -59,7 +59,9 @@ export function hasFeature(
     'feature_3d_tours' | 
     'feature_pdf_flyers' | 
     'feature_crm_sync' |
-    'feature_password_protection'
+    'feature_password_protection' |
+    'feature_custom_cursor' |
+    'feature_text_animations'
   >
 ): boolean {
   const plan = getPlanByName(plans, planName)
@@ -86,7 +88,9 @@ export function getFirstPlanWithFeature(
     'feature_3d_tours' | 
     'feature_pdf_flyers' | 
     'feature_crm_sync' |
-    'feature_password_protection'
+    'feature_password_protection' |
+    'feature_custom_cursor' |
+    'feature_text_animations'
   >
 ): Plan | null {
   // Plans should already be ordered by price_cents ascending

@@ -41,6 +41,11 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
   const dirRef = useRef<'left' | 'right'>(direction);
   const velRef = useRef(0);
 
+  // Update dirRef when direction prop changes
+  useEffect(() => {
+    dirRef.current = direction;
+  }, [direction]);
+
   const textLength = spacing;
   // Create enough text copies for seamless infinite loop (at least 3-4 copies)
   const totalText = textLength
@@ -95,7 +100,7 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [spacing, speed, ready]);
+  }, [spacing, speed, ready, direction]);
 
   const onPointerDown = (e: PointerEvent) => {
     if (!interactive) return;

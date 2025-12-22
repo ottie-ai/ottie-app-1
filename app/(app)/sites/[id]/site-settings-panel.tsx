@@ -102,6 +102,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
 import { FontSelector } from '@/components/builder/FontSelector'
 import type { PageConfig, ThemeConfig, Section, LoaderConfig } from '@/types/builder'
+import { getFirstPlanWithFeature } from '@/lib/data/plans'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Info } from 'lucide-react'
+import { PricingDialog } from '@/components/workspace/pricing-dialog'
 
 interface SiteSettingsPanelProps {
   site: Site
@@ -208,7 +212,7 @@ function SortableItem({ section, index, onMove, totalSections, isReordering, get
 export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, saveChangesRef, onHasUnsavedChanges, loaderRef, onLoaderChange, sectionsRef }: SiteSettingsPanelProps) {
   const router = useRouter()
   const { user } = useAuth()
-  const { currentWorkspace, isMultiUserPlan, hasPlanFeature } = useAppData()
+  const { currentWorkspace, isMultiUserPlan, hasPlanFeature, plans } = useAppData()
   const isMultiUser = currentWorkspace ? isMultiUserPlan(currentWorkspace.plan) : false
   const hasPasswordFeature = currentWorkspace 
     ? hasPlanFeature(currentWorkspace.plan, 'feature_password_protection')
@@ -216,6 +220,20 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   const hasPremiumFonts = currentWorkspace 
     ? hasPlanFeature(currentWorkspace.plan, 'feature_premium_fonts')
     : false
+  const hasCustomCursorFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_custom_cursor')
+    : false
+  
+  // Find the lowest plan with custom cursor feature
+  const lowestPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_cursor')
+  
+  // Check if workspace has text animations feature
+  const hasTextAnimationsFeature = currentWorkspace 
+    ? hasPlanFeature(currentWorkspace.plan, 'feature_text_animations')
+    : false
+  
+  // Find the lowest plan with text animations feature
+  const lowestTextAnimationsPlan = getFirstPlanWithFeature(plans, 'feature_text_animations')
   const [isSaving, setIsSaving] = useState(false)
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false)
   const [renameValue, setRenameValue] = useState(site.title)
@@ -495,18 +513,22 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   }
 
   const handleAnimationChange = (animation: 'blur' | 'fade-in' | 'slide-up' | 'none') => {
+    // If workspace doesn't have feature, force 'none'
+    const effectiveAnimation = hasTextAnimationsFeature ? animation : 'none'
     if (onThemeChange) {
       onThemeChange({
         ...currentTheme,
-        animationStyle: animation,
+        animationStyle: effectiveAnimation,
       })
     }
   }
 
   const handleCursorStyleChange = (cursorStyle: 'none' | 'frosty' | 'circle') => {
+    // If workspace doesn't have feature, force 'none'
+    const effectiveCursorStyle = hasCustomCursorFeature ? cursorStyle : 'none'
     const updatedTheme = {
       ...currentTheme,
-      cursorStyle,
+      cursorStyle: effectiveCursorStyle,
     }
     
     // Update local state immediately for UI feedback
@@ -884,29 +906,49 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
           </div>
 
           <div className="space-y-2">
-            <Label>Section Animations</Label>
+            <Label>Text Animations</Label>
             <Select
-              value={currentAnimation}
+              value={hasTextAnimationsFeature ? currentAnimation : 'none'}
               onValueChange={(value: 'blur' | 'fade-in' | 'slide-up' | 'none') => handleAnimationChange(value)}
+              disabled={!hasTextAnimationsFeature}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select animation style" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="blur">Blur (default)</SelectItem>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="blur">Blur</SelectItem>
                 <SelectItem value="fade-in">Fade In</SelectItem>
                 <SelectItem value="slide-up">Slide Up</SelectItem>
-                <SelectItem value="none">None</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-sm text-muted-foreground">Affects section reveal effects (e.g. titles, highlights).</p>
+            <p className="text-sm text-muted-foreground">Affects text reveal effects (e.g. titles, highlights).</p>
+            {!hasTextAnimationsFeature && lowestTextAnimationsPlan && (
+              <Alert className="mt-2">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Text animations are available on the {lowestTextAnimationsPlan.name.charAt(0).toUpperCase() + lowestTextAnimationsPlan.name.slice(1)} plan and above.
+                  <PricingDialog
+                    currentPlan={currentWorkspace?.plan}
+                    stripeCustomerId={currentWorkspace?.stripe_customer_id}
+                    workspaceId={currentWorkspace?.id}
+                    defaultSelectedTier={lowestTextAnimationsPlan.name}
+                  >
+                    <Button variant="link" className="h-auto p-0 ml-1 text-primary underline">
+                      Upgrade now
+                    </Button>
+                  </PricingDialog>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Cursor Style</Label>
             <Select
-              value={currentTheme.cursorStyle || 'frosty'}
+              value={hasCustomCursorFeature ? (currentTheme.cursorStyle || 'frosty') : 'none'}
               onValueChange={(value: 'none' | 'frosty' | 'circle') => handleCursorStyleChange(value)}
+              disabled={!hasCustomCursorFeature}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select cursor style" />
@@ -918,6 +960,24 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">Custom cursor style for interactive elements.</p>
+            {!hasCustomCursorFeature && lowestPlanWithFeature && (
+              <Alert className="mt-2">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Custom cursor is available on the {lowestPlanWithFeature.name.charAt(0).toUpperCase() + lowestPlanWithFeature.name.slice(1)} plan and above.
+                  <PricingDialog
+                    currentPlan={currentWorkspace?.plan}
+                    stripeCustomerId={currentWorkspace?.stripe_customer_id}
+                    workspaceId={currentWorkspace?.id}
+                    defaultSelectedTier={lowestPlanWithFeature.name}
+                  >
+                    <Button variant="link" className="h-auto p-0 ml-1 text-primary underline">
+                      Upgrade now
+                    </Button>
+                  </PricingDialog>
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </div>
 
