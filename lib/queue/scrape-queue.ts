@@ -22,6 +22,7 @@ import { generateStructuredJSON, generateTitle, analyzeImagesWithVision } from '
 import type { ImageAnalysisResult } from '@/types/builder'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
 import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
+import { upscaleHeroImageIfNeeded } from '@/lib/replicate/upscale'
 
 export interface ScrapeJob {
   id: string // preview_id from temp_previews
@@ -877,6 +878,49 @@ async function generateConfigFromData(
       console.warn(`⚠️ [Queue Worker] Call 3 (vision) failed:`, visionResult.reason?.message || visionResult.reason)
     } else if (photoUrls.length === 0) {
       console.log(`ℹ️ [Queue Worker] Call 3 - Skipped (no photos in config)`)
+    }
+    
+    // ============================================
+    // Call 4: Upscale hero image if needed (< 1920px width)
+    // ============================================
+    if (imageAnalysis?.best_hero_url) {
+      console.log('🚀 [Queue Worker] Starting Call 4 - Hero image upscaling check...')
+      const call4StartTime = Date.now()
+      
+      try {
+        const upscaledUrl = await upscaleHeroImageIfNeeded(
+          imageAnalysis.best_hero_url,
+          `temp-preview/${previewId}`
+        )
+        
+        // If upscaling produced a different URL, update the config
+        if (upscaledUrl !== imageAnalysis.best_hero_url) {
+          console.log(`✅ [Queue Worker] Call 4 - Hero image upscaled successfully`)
+          
+          // Update the hero image URL in photos array
+          if (finalConfig.photos && Array.isArray(finalConfig.photos)) {
+            const heroPhotoIndex = finalConfig.photos.findIndex(
+              (p: any) => p?.url === imageAnalysis.best_hero_url
+            )
+            
+            if (heroPhotoIndex >= 0 && finalConfig.photos[heroPhotoIndex]) {
+              finalConfig.photos[heroPhotoIndex].url = upscaledUrl
+              console.log(`✅ [Queue Worker] Call 4 - Updated photos[${heroPhotoIndex}] with upscaled URL`)
+            }
+          }
+          
+          // Also update the best_hero_url in imageAnalysis for consistency
+          imageAnalysis.best_hero_url = upscaledUrl
+        } else {
+          console.log(`ℹ️ [Queue Worker] Call 4 - No upscaling needed or upscaling skipped`)
+        }
+        
+        const call4Duration = Date.now() - call4StartTime
+        console.log(`✅ [Queue Worker] Call 4 completed (${call4Duration}ms)`)
+      } catch (upscaleError: any) {
+        console.error(`❌ [Queue Worker] Call 4 - Upscaling failed:`, upscaleError?.message || upscaleError)
+        console.warn(`⚠️ [Queue Worker] Continuing with original hero image`)
+      }
     }
     
     // Process any new images that might have been added in Call 2

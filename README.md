@@ -69,14 +69,21 @@ GROQ_API_KEY=gsk-your_groq_api_key_here
 # AI Provider Selection for Call 1 (JSON config generation)
 # Options: 'openai' (default) or 'groq'
 CALL1_AI_PROVIDER=openai
+
+# Replicate (optional - for hero image upscaling with ESRGAN)
+# Get your API token from: https://replicate.com/account/api-tokens
+REPLICATE_API_TOKEN=r8_your_replicate_api_token_here
 ```
 
 **Note**: 
 - The ScraperAPI key is required for the "Generate Free Site" feature on the marketing homepage. If not configured, users will receive an error when trying to scrape URLs.
-- **AI Providers**: The application uses 2 AI calls:
+- **AI Providers**: The application uses 3 AI calls:
   - **Call 1** (JSON generation): Supports OpenAI (GPT-4o-mini) or Groq (Llama-3.1-8b-instant). Configure via `CALL1_AI_PROVIDER`.
   - **Call 2** (Title/highlights): Always uses OpenAI (GPT-4o-mini).
+  - **Call 3** (Vision analysis): Uses Groq (Llama-3.2-90b-vision-preview) to select best hero image.
+  - **Call 4** (Hero upscaling - optional): Uses Replicate (Real-ESRGAN) to upscale hero images smaller than 1920px width.
 - See [AI Providers Documentation](./docs/AI_PROVIDERS.md) for detailed configuration and provider comparison.
+- See [Replicate Setup Guide](./docs/REPLICATE_SETUP.md) for hero image upscaling configuration.
 
 ## Project Structure
 
