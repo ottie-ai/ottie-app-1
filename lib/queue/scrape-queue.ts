@@ -874,6 +874,18 @@ async function generateConfigFromData(
       call3Usage = imageAnalysis.usage
       call3Duration = imageAnalysis.call_duration_ms
       console.log(`✅ [Queue Worker] Call 3 - Vision analysis complete. Best hero: index ${imageAnalysis.best_hero_index}`)
+      
+      // Move best hero image to first position in photos array
+      // This ensures photos[0] is the hero image (used by propertyImage)
+      if (finalConfig.photos && Array.isArray(finalConfig.photos) && imageAnalysis.best_hero_index >= 0) {
+        const bestIndex = imageAnalysis.best_hero_index
+        if (bestIndex < finalConfig.photos.length && bestIndex !== 0) {
+          // Remove from current position and move to front
+          const [bestPhoto] = finalConfig.photos.splice(bestIndex, 1)
+          finalConfig.photos.unshift(bestPhoto)
+          console.log(`✅ [Queue Worker] Call 3 - Moved best hero image from index ${bestIndex} to position 0`)
+        }
+      }
     } else if (visionResult.status === 'rejected') {
       console.warn(`⚠️ [Queue Worker] Call 3 (vision) failed:`, visionResult.reason?.message || visionResult.reason)
     } else if (photoUrls.length === 0) {
@@ -897,15 +909,21 @@ async function generateConfigFromData(
         if (upscaledUrl !== imageAnalysis.best_hero_url) {
           console.log(`✅ [Queue Worker] Call 4 - Hero image upscaled successfully`)
           
-          // Update the hero image URL in photos array
-          if (finalConfig.photos && Array.isArray(finalConfig.photos)) {
-            const heroPhotoIndex = finalConfig.photos.findIndex(
-              (p: any) => p?.url === imageAnalysis.best_hero_url
-            )
-            
-            if (heroPhotoIndex >= 0 && finalConfig.photos[heroPhotoIndex]) {
-              finalConfig.photos[heroPhotoIndex].url = upscaledUrl
-              console.log(`✅ [Queue Worker] Call 4 - Updated photos[${heroPhotoIndex}] with upscaled URL`)
+          // Update the hero image URL in photos array (should be at index 0 after Call 3)
+          if (finalConfig.photos && Array.isArray(finalConfig.photos) && finalConfig.photos.length > 0) {
+            // Update photos[0] since we moved best hero there in Call 3
+            if (finalConfig.photos[0]?.url === imageAnalysis.best_hero_url) {
+              finalConfig.photos[0].url = upscaledUrl
+              console.log(`✅ [Queue Worker] Call 4 - Updated photos[0] with upscaled URL`)
+            } else {
+              // Fallback: find by URL if not at index 0
+              const heroPhotoIndex = finalConfig.photos.findIndex(
+                (p: any) => p?.url === imageAnalysis.best_hero_url
+              )
+              if (heroPhotoIndex >= 0 && finalConfig.photos[heroPhotoIndex]) {
+                finalConfig.photos[heroPhotoIndex].url = upscaledUrl
+                console.log(`✅ [Queue Worker] Call 4 - Updated photos[${heroPhotoIndex}] with upscaled URL`)
+              }
             }
           }
           
