@@ -31,6 +31,7 @@ export function WordReveal({
 }: WordRevealProps) {
   const [isVisible, setIsVisible] = useState(!triggerOnScroll)
   const ref = useRef<HTMLSpanElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
     if (!triggerOnScroll) {
@@ -38,21 +39,32 @@ export function WordReveal({
       return
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.disconnect()
+    // Only create observer once
+    if (!observerRef.current) {
+      observerRef.current = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true)
+            observerRef.current?.disconnect()
+          }
+        },
+        { 
+          threshold,
+          rootMargin: '50px' // Trigger earlier for smoother experience
         }
-      },
-      { threshold }
-    )
-
-    if (ref.current) {
-      observer.observe(ref.current)
+      )
     }
 
-    return () => observer.disconnect()
+    const element = ref.current
+    if (element && observerRef.current) {
+      observerRef.current.observe(element)
+    }
+
+    return () => {
+      if (element && observerRef.current) {
+        observerRef.current.unobserve(element)
+      }
+    }
   }, [triggerOnScroll, threshold])
 
   const words = text.split(' ')
@@ -61,13 +73,14 @@ export function WordReveal({
     <span ref={ref} className={className} aria-hidden="true">
       {words.map((word, index) => (
         <span
-          key={index}
+          key={`${word}-${index}`}
           className={cn(
             'inline-block',
             isVisible ? 'animate-word-reveal' : 'opacity-0'
           )}
           style={{
             animationDelay: `${delay + index * wordDelay}s`,
+            willChange: isVisible ? 'auto' : 'opacity, transform', // Performance hint
           }}
         >
           {word}

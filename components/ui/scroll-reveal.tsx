@@ -27,23 +27,35 @@ export function ScrollReveal({
 }: ScrollRevealProps) {
   const [isVisible, setIsVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.disconnect()
+    // Only create observer once
+    if (!observerRef.current) {
+      observerRef.current = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true)
+            observerRef.current?.disconnect()
+          }
+        },
+        { 
+          threshold,
+          rootMargin: '50px' // Trigger earlier
         }
-      },
-      { threshold }
-    )
-
-    if (ref.current) {
-      observer.observe(ref.current)
+      )
     }
 
-    return () => observer.disconnect()
+    const element = ref.current
+    if (element && observerRef.current) {
+      observerRef.current.observe(element)
+    }
+
+    return () => {
+      if (element && observerRef.current) {
+        observerRef.current.unobserve(element)
+      }
+    }
   }, [threshold])
 
   return (
@@ -57,6 +69,7 @@ export function ScrollReveal({
       style={{
         transitionDelay: `${delay}s`,
         transitionDuration: `${ANIMATION_CONFIG.duration}s`,
+        willChange: isVisible ? 'auto' : 'opacity, transform',
       }}
     >
       {children}

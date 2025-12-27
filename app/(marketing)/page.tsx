@@ -18,6 +18,11 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import Navbar from '@/components/marketing/navbar'
+import { ProblemSolution } from '@/components/marketing/problem-solution'
+import { HowItWorks } from '@/components/marketing/how-it-works'
+import { SocialProof } from '@/components/marketing/social-proof'
+import { FAQSection } from '@/components/marketing/faq-section'
+import { Footer } from '@/components/marketing/footer'
 import { transformPlansToTiers } from '@/lib/pricing-data'
 import { createClient } from '@/lib/supabase/client'
 import type { Plan } from '@/types/database'
@@ -94,15 +99,6 @@ export default function Home() {
   })
   const [showDebugPanel, setShowDebugPanel] = useState(false)
   
-  // Sphere debug settings
-  const [showSphereDebugPanel, setShowSphereDebugPanel] = useState(false)
-  const [sphereSettings, setSphereSettings] = useState({
-    hue: 0,
-    saturation: 100,
-    brightness: 100,
-    opacity: 100,
-  })
-  
   // Load debug mode from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('ottie-debug-mode')
@@ -118,14 +114,6 @@ export default function Home() {
         // Ignore parse errors
       }
     }
-    const savedSphereSettings = localStorage.getItem('ottie-sphere-settings')
-    if (savedSphereSettings) {
-      try {
-        setSphereSettings(JSON.parse(savedSphereSettings))
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
   }, [])
   
   // Save debug mode to localStorage
@@ -137,11 +125,6 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('ottie-debug-phase-times', JSON.stringify(debugPhaseTimes))
   }, [debugPhaseTimes])
-  
-  // Save sphere settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('ottie-sphere-settings', JSON.stringify(sphereSettings))
-  }, [sphereSettings])
   
   // Plans from database
   const [plans, setPlans] = useState<Plan[]>([])
@@ -270,16 +253,11 @@ export default function Home() {
     setIsTransitioning(true)
     
     // Wait for stagger animation to complete if it's currently active
-    // Calculate max stagger animation duration: max delay + spring transition
-    // For hover=false: (text.length - 1) * 0.06 + 0.8s transition
-    // For hover=true: (text.length - 1) * 0.05 + 0.1 + 0.8s transition
-    // Use the longer one + buffer to ensure completion
-    const currentMessageLength = currentMessage.length || 30
-    const maxStaggerDelay = Math.max(
-      (currentMessageLength - 1) * 0.06, // hover = false direction
-      (currentMessageLength - 1) * 0.05 + 0.1 // hover = true direction
-    )
-    const staggerAnimationDuration = maxStaggerDelay * 1000 + 800 // max delay + spring transition
+    // OPTIMIZED: Now using word count instead of character count
+    // For word-based: (wordCount - 1) * 0.08 + spring transition (~600ms)
+    const wordCount = (currentMessage.split(' ').length) || 4
+    const maxStaggerDelay = (wordCount - 1) * 0.08 + 0.1
+    const staggerAnimationDuration = maxStaggerDelay * 1000 + 600 // delay + spring transition
     const waitForStagger = loadingPhase === 'visible' ? staggerAnimationDuration : 0
     
     setTimeout(() => {
@@ -560,11 +538,6 @@ export default function Home() {
         <div 
           ref={sphereRef}
           className={`sphere-background ${isLoading ? 'sphere-active' : ''}`}
-          style={{
-            filter: sphereSettings.hue === 0 && sphereSettings.saturation === 100 && sphereSettings.brightness === 100 && sphereSettings.opacity === 100
-              ? 'none'
-              : `hue-rotate(${sphereSettings.hue}deg) saturate(${sphereSettings.saturation}%) brightness(${sphereSettings.brightness}%) opacity(${sphereSettings.opacity}%)`,
-          }}
         >
           {Array.from({ length: 36 }, (_, i) => (
             <div key={i + 1} className={`ring${i + 1}`} />
@@ -728,133 +701,6 @@ export default function Home() {
         >
           {debugMode ? "🔧 Debug ON" : "Debug"}
         </button>
-      )}
-      
-      {/* Sphere Debug Toggle Button */}
-      {!showSphereDebugPanel && (
-        <button
-          onClick={() => setShowSphereDebugPanel(true)}
-          className="fixed top-20 right-24 z-50 border rounded-lg py-2 text-xs transition-colors bg-black/80 hover:bg-black/90 border-white/20 text-white"
-        >
-          🌐 Sphere
-        </button>
-      )}
-      
-      {/* Sphere Debug Panel */}
-      {showSphereDebugPanel && (
-        <div className="fixed top-20 right-4 z-50 bg-black/90 border border-white/20 rounded-lg p-4 max-w-sm text-white text-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Sphere Settings</h3>
-            <button
-              onClick={() => setShowSphereDebugPanel(false)}
-              className="text-white/60 hover:text-white"
-            >
-              ×
-            </button>
-          </div>
-          <div className="space-y-4">
-            {/* Hue */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Hue: {sphereSettings.hue}°</Label>
-                <button
-                  onClick={() => setSphereSettings(prev => ({ ...prev, hue: 0 }))}
-                  className="text-xs text-white/60 hover:text-white underline"
-                >
-                  Reset
-                </button>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="360"
-                value={sphereSettings.hue}
-                onChange={(e) => setSphereSettings(prev => ({ ...prev, hue: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            
-            {/* Saturation */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Saturation: {sphereSettings.saturation}%</Label>
-                <button
-                  onClick={() => setSphereSettings(prev => ({ ...prev, saturation: 100 }))}
-                  className="text-xs text-white/60 hover:text-white underline"
-                >
-                  Reset
-                </button>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={sphereSettings.saturation}
-                onChange={(e) => setSphereSettings(prev => ({ ...prev, saturation: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            
-            {/* Brightness */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Brightness: {sphereSettings.brightness}%</Label>
-                <button
-                  onClick={() => setSphereSettings(prev => ({ ...prev, brightness: 100 }))}
-                  className="text-xs text-white/60 hover:text-white underline"
-                >
-                  Reset
-                </button>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="200"
-                value={sphereSettings.brightness}
-                onChange={(e) => setSphereSettings(prev => ({ ...prev, brightness: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            
-            {/* Opacity */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Opacity: {sphereSettings.opacity}%</Label>
-                <button
-                  onClick={() => setSphereSettings(prev => ({ ...prev, opacity: 100 }))}
-                  className="text-xs text-white/60 hover:text-white underline"
-                >
-                  Reset
-                </button>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={sphereSettings.opacity}
-                onChange={(e) => setSphereSettings(prev => ({ ...prev, opacity: parseInt(e.target.value) }))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-            
-            {/* Reset All */}
-            <div className="pt-2 border-t border-white/10">
-              <button
-                onClick={() => {
-                  setSphereSettings({
-                    hue: 0,
-                    saturation: 100,
-                    brightness: 100,
-                    opacity: 100,
-                  })
-                }}
-                className="w-full px-3 py-2 bg-white/10 hover:bg-white/20 rounded text-xs transition-colors"
-              >
-                Reset All to Default
-              </button>
-            </div>
-          </div>
-        </div>
       )}
       
       {/* Hero Section */}
@@ -1028,6 +874,9 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Problem-Solution Section */}
+      <ProblemSolution />
+
       {/* Feature Points Section - Below the fold */}
       <section 
         ref={secondSectionRef}
@@ -1087,8 +936,17 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <HowItWorks />
+
+      {/* Social Proof Section */}
+      <SocialProof />
+
       {/* Pricing Section */}
       <PricingSection isLoading={isLoading} plans={plans} />
+
+      {/* FAQ Section */}
+      <FAQSection />
 
       {/* Third Section - CTA */}
       <section 
@@ -1119,6 +977,9 @@ export default function Home() {
           </Button>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }
