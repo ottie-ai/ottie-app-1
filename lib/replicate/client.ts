@@ -67,13 +67,13 @@ export async function upscaleWithESRGAN(
           face_enhance: false, // Keep false for general property images
         }
       }
-    )
+    ) as Promise<unknown>
     
-    const output = await Promise.race([apiCall, timeoutPromise])
+    const output = await Promise.race([apiCall, timeoutPromise]) as unknown
     
     const callDuration = Date.now() - callStartTime
     
-    // Output is a URL string
+    // Output should be a URL string
     if (typeof output === 'string') {
       console.log(`✅ [ESRGAN] Upscaling complete (${callDuration}ms)`)
       console.log(`✅ [ESRGAN] Output: ${output.substring(0, 80)}...`)
