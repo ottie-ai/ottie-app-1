@@ -90,6 +90,21 @@ function PreviewContent() {
     return null
   }
 
+  // Calculate generation time for Call 3 (vision analysis)
+  // Uses call3_duration_ms from metadata or image_analysis.call_duration_ms
+  const getCall3Time = (): string | null => {
+    if (preview?.image_analysis?.call_duration_ms !== undefined) {
+      return formatTime(preview.image_analysis.call_duration_ms)
+    }
+    
+    const metadata = preview?.unified_json?._metadata
+    if (metadata?.call3_duration_ms !== undefined) {
+      return formatTime(metadata.call3_duration_ms)
+    }
+    
+    return null
+  }
+
   // Legacy function for other steps (kept for backward compatibility)
   const getGenerationTime = (hasData: boolean): string | null => {
     if (!hasData || !preview?.created_at) return null
@@ -431,10 +446,10 @@ function PreviewContent() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="mb-6">
             <Typography variant="h3" className="text-white mb-2 border-none">
-              ✨ OpenAI Generation
+              ✨ AI Generation
             </Typography>
             <Typography variant="small" className="text-white/60">
-              Two-step process: First generate base config, then improve title and highlights
+              Three-step process: Generate base config (Call 1), then improve title/highlights (Call 2) and analyze images (Call 3) in parallel
             </Typography>
           </div>
 
@@ -816,6 +831,252 @@ function PreviewContent() {
                       {!preview?.generated_config || Object.keys(preview.generated_config).length === 0
                         ? 'Please run Call 1 first to generate base config'
                         : 'Click to improve title and highlights from base config'}
+                    </Typography>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Call 3: Vision Analysis */}
+            <div>
+              <div className="mb-3">
+                <Typography variant="h4" className="text-white mb-1 border-none">
+                  Call 3: Image Vision Analysis
+                </Typography>
+                <Typography variant="small" className="text-white/60">
+                  Analyzes images using Llama 3.2 90B Vision to select best hero image (runs in parallel with Call 2)
+                </Typography>
+              </div>
+
+              {preview?.image_analysis ? (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Vision Analysis (Call 3)
+                      </Typography>
+                      {preview.image_analysis && (
+                        <>
+                          <span className="text-xs text-white/50 ml-2">
+                            • {getCall3Time() || 'N/A'}
+                          </span>
+                          {preview.image_analysis.usage && (
+                            <span className="text-xs text-white/40 ml-2">
+                              • {preview.image_analysis.usage.prompt_tokens} prompt + {preview.image_analysis.usage.completion_tokens} completion = {preview.image_analysis.usage.total_tokens} tokens
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(preview.image_analysis, null, 2))
+                          setCopiedFullJson(true)
+                          setTimeout(() => {
+                            setCopiedFullJson(false)
+                          }, 2000)
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {copiedFullJson ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy JSON
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    {/* Usage Info */}
+                    {preview.image_analysis.usage && (
+                      <div className="mb-4 p-3 bg-white/[0.05] rounded border border-white/10">
+                        <Typography variant="small" className="text-white/60 mb-2">
+                          Groq Vision Usage (Call 3):
+                        </Typography>
+                        <div className="grid grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-white/40">Prompt:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.image_analysis.usage.prompt_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Completion:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.image_analysis.usage.completion_tokens.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Total:</span>
+                            <span className="text-white/70 ml-1 font-mono">{preview.image_analysis.usage.total_tokens.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {preview.image_analysis.call_duration_ms && (
+                          <div className="mt-2 text-xs text-white/40">
+                            Call duration: {getCall3Time()}
+                          </div>
+                        )}
+                        <div className="mt-2 text-xs text-white/40">
+                          Analyzed {preview.image_analysis.analyzed_count} of {preview.image_analysis.total_images} images
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Best Hero Image */}
+                    <div className="mb-6 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                          <span className="text-sm font-bold text-green-400">★</span>
+                        </div>
+                        <div className="flex-1">
+                          <Typography variant="small" className="text-green-400 font-semibold mb-1">
+                            Best Hero Image Selected
+                          </Typography>
+                          <Typography variant="small" className="text-white/80 mb-2">
+                            Index: <span className="font-mono font-semibold">{preview.image_analysis.best_hero_index}</span> 
+                            {preview.image_analysis.images?.[preview.image_analysis.best_hero_index] && (
+                              <span className="ml-2">
+                                (Score: <span className="font-semibold">{preview.image_analysis.images[preview.image_analysis.best_hero_index].score}/10</span>)
+                              </span>
+                            )}
+                          </Typography>
+                          {preview.image_analysis.reasoning && (
+                            <Typography variant="small" className="text-white/60 italic">
+                              "{preview.image_analysis.reasoning}"
+                            </Typography>
+                          )}
+                          {preview.image_analysis.best_hero_url && (
+                            <div className="mt-3">
+                              <a 
+                                href={preview.image_analysis.best_hero_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                View Image
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Image Scores */}
+                    <div>
+                      <Typography variant="small" className="text-white/60 mb-3">
+                        Image Analysis ({preview.image_analysis.images?.length || 0} images):
+                      </Typography>
+                      <div className="space-y-4">
+                        {preview.image_analysis.images && preview.image_analysis.images.length > 0 ? (
+                          preview.image_analysis.images.map((img: any, index: number) => {
+                            const isBest = img.index === preview.image_analysis.best_hero_index
+                            return (
+                              <div 
+                                key={index} 
+                                className={`p-4 rounded-lg border transition-colors ${
+                                  isBest 
+                                    ? 'bg-green-500/10 border-green-500/30' 
+                                    : 'bg-white/[0.05] border-white/10 hover:bg-white/[0.08]'
+                                }`}
+                              >
+                                <div className="flex items-start gap-4">
+                                  {/* Image Preview */}
+                                  <div className="flex-shrink-0 w-24 h-24 rounded border border-white/10 overflow-hidden bg-white/5">
+                                    <img 
+                                      src={img.url} 
+                                      alt={img.description || `Image ${img.index}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none'
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  {/* Image Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Typography variant="small" className="text-white font-semibold">
+                                        Image #{img.index}
+                                      </Typography>
+                                      {isBest && (
+                                        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-semibold rounded">
+                                          BEST
+                                        </span>
+                                      )}
+                                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                        img.score >= 8 ? 'bg-green-500/20 text-green-400' :
+                                        img.score >= 6 ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-red-500/20 text-red-400'
+                                      }`}>
+                                        {img.score}/10
+                                      </span>
+                                    </div>
+                                    
+                                    {img.description && (
+                                      <Typography variant="small" className="text-white/70 mb-3 text-sm">
+                                        {img.description}
+                                      </Typography>
+                                    )}
+                                    
+                                    {/* Score Breakdown */}
+                                    {img.scores && (
+                                      <div className="grid grid-cols-4 gap-2 text-xs">
+                                        <div className="p-2 bg-white/[0.05] rounded border border-white/10">
+                                          <div className="text-white/40 mb-1">Composition</div>
+                                          <div className="text-white font-semibold">{img.scores.composition}/10</div>
+                                        </div>
+                                        <div className="p-2 bg-white/[0.05] rounded border border-white/10">
+                                          <div className="text-white/40 mb-1">Lighting</div>
+                                          <div className="text-white font-semibold">{img.scores.lighting}/10</div>
+                                        </div>
+                                        <div className="p-2 bg-white/[0.05] rounded border border-white/10">
+                                          <div className="text-white/40 mb-1">Wow Factor</div>
+                                          <div className="text-white font-semibold">{img.scores.wow_factor}/10</div>
+                                        </div>
+                                        <div className="p-2 bg-white/[0.05] rounded border border-white/10">
+                                          <div className="text-white/40 mb-1">Quality</div>
+                                          <div className="text-white font-semibold">{img.scores.quality}/10</div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })
+                        ) : (
+                          <div className="p-4 bg-white/[0.05] rounded-lg border border-white/10">
+                            <Typography variant="small" className="text-white/60">
+                              No image analysis available
+                            </Typography>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Vision Analysis Not Available Yet
+                      </Typography>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <Typography variant="small" className="text-white/60">
+                      Vision analysis runs automatically in parallel with Call 2 when images are available in the config.
+                      {preview?.generated_config?.photos?.length === 0 && ' No photos found in generated config.'}
                     </Typography>
                   </div>
                 </div>

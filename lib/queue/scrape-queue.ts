@@ -18,7 +18,8 @@ import {
 import { findApifyScraperById } from '@/lib/scraper/apify-scrapers'
 import { getHtmlProcessor, getHtmlCleaner, getMainContentSelector } from '@/lib/scraper/html-processors'
 import { load } from 'cheerio'
-import { generateStructuredJSON, generateTitle } from '@/lib/openai/client'
+import { generateStructuredJSON, generateTitle, analyzeImagesWithVision } from '@/lib/openai/client'
+import type { ImageAnalysisResult } from '@/types/builder'
 import { getRealEstateConfigPrompt } from '@/lib/openai/main-prompt'
 import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 
@@ -779,131 +780,147 @@ async function generateConfigFromData(
     
     console.log(`✅ [Queue Worker] Call 1 completed for ${previewId}`)
 
-    // Call 2: Generate improved title and highlights with higher temperature (0.8) for more creativity
-    // Use only relevant parts from generated config (not the full JSON)
+    // ============================================
+    // Call 2 (Title) + Call 3 (Vision) run in PARALLEL
+    // ============================================
+    const call2And3StartTime = new Date().toISOString()
+    console.log('🤖 [Queue Worker] Starting Call 2 (title) + Call 3 (vision) in parallel...')
+    
+    // Update status to show parallel calls are starting
+    await supabase
+      .from('temp_previews')
+      .update({
+        unified_json: {
+          ...generatedConfig,
+          _metadata: {
+            call1_started_at: call1StartTime,
+            call1_completed_at: call1EndTime,
+            call1_duration_ms: call1Duration,
+            call1_usage: call1Usage,
+            call2_started_at: call2And3StartTime,
+            call3_started_at: call2And3StartTime,
+          }
+        },
+        updated_at: call2And3StartTime,
+      })
+      .eq('id', previewId)
+    
+    // Prepare Call 2 (title generation)
+    const relevantData = {
+      language: generatedConfig.language || '',
+      title: generatedConfig.title || '',
+      address: generatedConfig.address || {},
+      beds: generatedConfig.beds || 0,
+      baths: generatedConfig.baths || 0,
+      property_type: generatedConfig.property_type || 'OTHER',
+      year_built: generatedConfig.year_built || 0,
+      living_area: generatedConfig.living_area || {},
+      lot_size: generatedConfig.lot_size || {},
+      description: generatedConfig.description || '',
+      features_amenities: generatedConfig.features_amenities || {},
+      highlights: generatedConfig.highlights || [],
+    }
+    const propertyText = formatPropertyDataForTitle(relevantData)
+    
+    // Prepare Call 3 (vision analysis) - extract photo URLs from config
+    const photoUrls: string[] = (generatedConfig.photos || [])
+      .map((p: { url?: string }) => p?.url)
+      .filter((url: string | undefined): url is string => typeof url === 'string' && url.length > 0)
+    
+    // Run Call 2 and Call 3 in parallel using Promise.allSettled
+    const [titleResult, visionResult] = await Promise.allSettled([
+      generateTitle(propertyText, 'gpt-4o-mini', generatedConfig.language),
+      photoUrls.length > 0 
+        ? analyzeImagesWithVision(photoUrls, 10) 
+        : Promise.resolve(null as ImageAnalysisResult | null)
+    ])
+    
+    const call2And3EndTime = new Date().toISOString()
+    
+    // Process Call 2 result (title/highlights)
     let finalConfig = { ...generatedConfig }
     let call2Usage = undefined
     let call2Duration = 0
-    try {
-      const call2StartTime = new Date().toISOString()
-      console.log('🤖 [Queue Worker] Starting Call 2 (title and highlights improvement)...')
-      
-      // Update status to show Call 2 is starting
-      await supabase
-        .from('temp_previews')
-        .update({
-          unified_json: {
-            ...generatedConfig,
-            _metadata: {
-              call1_started_at: call1StartTime,
-              call1_completed_at: call1EndTime,
-              call1_duration_ms: call1Duration,
-              call1_usage: call1Usage,
-              call2_started_at: call2StartTime,
-            }
-          },
-          updated_at: call2StartTime,
-        })
-        .eq('id', previewId)
-      
-      // Extract only relevant parts for title generation
-      const relevantData = {
-        language: generatedConfig.language || '',
-        title: generatedConfig.title || '',
-        address: generatedConfig.address || {},
-        beds: generatedConfig.beds || 0,
-        baths: generatedConfig.baths || 0,
-        property_type: generatedConfig.property_type || 'OTHER',
-        year_built: generatedConfig.year_built || 0,
-        living_area: generatedConfig.living_area || {},
-        lot_size: generatedConfig.lot_size || {},
-        description: generatedConfig.description || '',
-        features_amenities: generatedConfig.features_amenities || {},
-        highlights: generatedConfig.highlights || [], // for improvement
-      }
-      
-      // Convert relevant data to text format (not JSON)
-      const propertyText = formatPropertyDataForTitle(relevantData)
-      
-      const titleResponse = await generateTitle(
-        propertyText,
-        'gpt-4o-mini',
-        generatedConfig.language // Pass language explicitly
-      )
-      
+    
+    if (titleResult.status === 'fulfilled' && titleResult.value) {
+      const titleResponse = titleResult.value
       call2Usage = titleResponse.usage
       call2Duration = titleResponse.callDuration
-      const call2EndTime = new Date().toISOString()
       
-      // Update title, subtitle and highlights in config
       if (titleResponse.title && titleResponse.title.trim().length > 0) {
         finalConfig.title = titleResponse.title.trim()
-        console.log(`✅ [Queue Worker] Title improved: "${titleResponse.title}"`)
+        console.log(`✅ [Queue Worker] Call 2 - Title improved: "${titleResponse.title}"`)
       }
       if (titleResponse.subtitle && titleResponse.subtitle.trim().length > 0) {
         finalConfig.subtitle = titleResponse.subtitle.trim()
-        console.log(`✅ [Queue Worker] Subtitle generated: "${titleResponse.subtitle.substring(0, 50)}..."`)
+        console.log(`✅ [Queue Worker] Call 2 - Subtitle generated: "${titleResponse.subtitle.substring(0, 50)}..."`)
       }
       if (titleResponse.highlights && Array.isArray(titleResponse.highlights)) {
         finalConfig.highlights = titleResponse.highlights
-        console.log(`✅ [Queue Worker] Highlights improved: ${titleResponse.highlights.length} items`)
+        console.log(`✅ [Queue Worker] Call 2 - Highlights improved: ${titleResponse.highlights.length} items`)
       }
-
-      // Process any new images that might have been added in Call 2
-      // (though typically images are only in Call 1, this ensures we catch any new ones)
-      const imageUrlsCall2 = extractImageUrlsFromConfig(finalConfig)
-      if (imageUrlsCall2.length > 0) {
-        const basePath = `temp-preview/${previewId}`
-        const urlMapCall2 = await processImages(imageUrlsCall2, basePath, 5)
-        finalConfig = replaceImageUrlsInConfig(finalConfig, urlMapCall2)
-      }
-
-      // Update with Call 2 results and mark as completed
-      await supabase
-        .from('temp_previews')
-        .update({
-          unified_json: {
-            ...finalConfig,
-            _metadata: {
-              call1_started_at: call1StartTime,
-              call1_completed_at: call1EndTime,
-              call1_duration_ms: call1Duration,
-              call1_usage: call1Usage,
-              call2_started_at: call2StartTime,
-              call2_completed_at: call2EndTime,
-              call2_duration_ms: call2Duration,
-              call2_usage: call2Usage,
-            }
-          },
-          status: 'completed',
-          updated_at: call2EndTime,
-        })
-        .eq('id', previewId)
-      
-      console.log(`✅ [Queue Worker] Call 2 completed for ${previewId}`)
-    } catch (titleError: any) {
-      // Don't fail the whole job if title generation fails - use original title and highlights from config
-      console.warn(`⚠️ [Queue Worker] Title/highlights generation failed, using original values:`, titleError.message)
-      
-      // Still mark as completed with Call 1 data only
-      await supabase
-        .from('temp_previews')
-        .update({
-          unified_json: {
-            ...generatedConfig,
-            _metadata: {
-              call1_started_at: call1StartTime,
-              call1_completed_at: call1EndTime,
-              call1_duration_ms: call1Duration,
-              call1_usage: call1Usage,
-            }
-          },
-          status: 'completed',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', previewId)
+    } else if (titleResult.status === 'rejected') {
+      console.warn(`⚠️ [Queue Worker] Call 2 failed, using original values:`, titleResult.reason?.message || titleResult.reason)
     }
-
+    
+    // Process Call 3 result (vision analysis)
+    let imageAnalysis: ImageAnalysisResult | null = null
+    let call3Usage = undefined
+    let call3Duration = 0
+    
+    if (visionResult.status === 'fulfilled' && visionResult.value) {
+      imageAnalysis = visionResult.value
+      call3Usage = imageAnalysis.usage
+      call3Duration = imageAnalysis.call_duration_ms
+      console.log(`✅ [Queue Worker] Call 3 - Vision analysis complete. Best hero: index ${imageAnalysis.best_hero_index}`)
+    } else if (visionResult.status === 'rejected') {
+      console.warn(`⚠️ [Queue Worker] Call 3 (vision) failed:`, visionResult.reason?.message || visionResult.reason)
+    } else if (photoUrls.length === 0) {
+      console.log(`ℹ️ [Queue Worker] Call 3 - Skipped (no photos in config)`)
+    }
+    
+    // Process any new images that might have been added in Call 2
+    const imageUrlsCall2 = extractImageUrlsFromConfig(finalConfig)
+    if (imageUrlsCall2.length > 0) {
+      const basePath = `temp-preview/${previewId}`
+      const urlMapCall2 = await processImages(imageUrlsCall2, basePath, 5)
+      finalConfig = replaceImageUrlsInConfig(finalConfig, urlMapCall2)
+    }
+    
+    // Build final update with all results
+    const finalUpdate: Record<string, any> = {
+      unified_json: {
+        ...finalConfig,
+        _metadata: {
+          call1_started_at: call1StartTime,
+          call1_completed_at: call1EndTime,
+          call1_duration_ms: call1Duration,
+          call1_usage: call1Usage,
+          call2_started_at: call2And3StartTime,
+          call2_completed_at: call2And3EndTime,
+          call2_duration_ms: call2Duration,
+          call2_usage: call2Usage,
+          call3_started_at: call2And3StartTime,
+          call3_completed_at: call2And3EndTime,
+          call3_duration_ms: call3Duration,
+          call3_usage: call3Usage,
+        }
+      },
+      status: 'completed',
+      updated_at: call2And3EndTime,
+    }
+    
+    // Add image_analysis to separate column if available
+    if (imageAnalysis) {
+      finalUpdate.image_analysis = imageAnalysis
+    }
+    
+    await supabase
+      .from('temp_previews')
+      .update(finalUpdate)
+      .eq('id', previewId)
+    
+    console.log(`✅ [Queue Worker] Call 2 + Call 3 completed for ${previewId}`)
     console.log(`✅ [Queue Worker] Config generated for ${previewId}`)
   } catch (error: any) {
     console.error(`🔴 [Queue Worker] Failed to generate config:`, error)

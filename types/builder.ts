@@ -585,3 +585,64 @@ export function isV1Config(config: unknown): config is LegacyPageConfig {
  */
 export type AnyPageConfig = PageConfig | LegacyPageConfig
 
+// ============================================
+// Image Vision Analysis Types
+// ============================================
+
+/**
+ * Individual image analysis scores
+ */
+export interface ImageScores {
+  /** Composition score (0-10): Wide angle, symmetrical, balanced framing */
+  composition: number
+  /** Lighting score (0-10): Bright, natural light, no dark corners */
+  lighting: number
+  /** Wow factor score (0-10): Does it sell the lifestyle? */
+  wow_factor: number
+  /** Quality score (0-10): Sharpness, resolution, professional feel */
+  quality: number
+}
+
+/**
+ * Analysis result for a single image
+ */
+export interface ImageAnalysisItem {
+  /** 0-based index of the image in the photos array */
+  index: number
+  /** URL of the analyzed image */
+  url: string
+  /** Brief description of what's in the image */
+  description: string
+  /** Overall score (0-10), average of the four criteria */
+  score: number
+  /** Individual scores for each criterion */
+  scores: ImageScores
+}
+
+/**
+ * Complete image analysis result from Llama 3.2 Vision
+ * Used to determine the best hero image for real estate listings
+ */
+export interface ImageAnalysisResult {
+  /** 0-based index of the best image for hero section */
+  best_hero_index: number
+  /** URL of the best hero image */
+  best_hero_url: string
+  /** Reasoning for why this image was selected */
+  reasoning: string
+  /** Analysis results for each analyzed image */
+  images: ImageAnalysisItem[]
+  /** Number of images that were analyzed */
+  analyzed_count: number
+  /** Total number of images in the original photos array */
+  total_images: number
+  /** Duration of the vision API call in milliseconds */
+  call_duration_ms: number
+  /** Usage statistics from the API call */
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+}
+
