@@ -30,10 +30,68 @@ export interface Profile {
   deleted_at: string | null // timestamp (soft delete)
 }
 
+/**
+ * Workspace branding configuration
+ * Contains custom domain settings and other branding options
+ */
+export interface WorkspaceBrandingConfig {
+  /** Custom workspace domain (e.g., 'properties.myagency.com') */
+  custom_workspace_domain?: string | null
+  /** Whether the custom domain is verified */
+  custom_workspace_domain_verified?: boolean
+  /** When the domain was verified */
+  custom_workspace_domain_verified_at?: string | null
+  /** Whether domain was added to Vercel */
+  custom_workspace_domain_vercel_added?: boolean
+  /** DNS instructions from Vercel */
+  custom_workspace_domain_vercel_dns_instructions?: Array<{
+    type: string
+    domain: string
+    value: string
+    reason: string
+  }>
+  /** History of domain verification attempts */
+  custom_workspace_domain_verification_history?: Array<{
+    domain: string
+    verified_at?: string
+    removed_at?: string
+  }>
+  
+  // ==========================================
+  // LEGACY FIELDS (kept for backward compatibility during migration)
+  // These will be removed in a future version
+  // ==========================================
+  
+  /** @deprecated Use custom_workspace_domain instead */
+  custom_brand_domain?: string | null
+  /** @deprecated Use custom_workspace_domain_verified instead */
+  custom_brand_domain_verified?: boolean
+  /** @deprecated Use custom_workspace_domain_verified_at instead */
+  custom_brand_domain_verified_at?: string | null
+  /** @deprecated Use custom_workspace_domain_vercel_added instead */
+  custom_brand_domain_vercel_added?: boolean
+  /** @deprecated Use custom_workspace_domain_vercel_dns_instructions instead */
+  custom_brand_domain_vercel_dns_instructions?: Array<{
+    type: string
+    domain: string
+    value: string
+    reason: string
+  }>
+  /** @deprecated */
+  custom_brand_domain_verification_history?: Array<{
+    domain: string
+    verified_at?: string
+    removed_at?: string
+  }>
+  
+  // Allow additional properties during migration
+  [key: string]: any
+}
+
 export interface Workspace {
   id: string // uuid
   name: string
-  slug: string
+  slug: string // Used as subdomain: slug.ottie.site
   logo_url: string | null
   plan: SubPlan | null // null/empty plan is treated as 'free'
   stripe_customer_id: string | null
@@ -42,7 +100,7 @@ export interface Workspace {
   seats_used: number // Current number of active users
   grace_period_ends_at: string | null // When grace period ends (14 days after payment failure)
   subscription_locked_at: string | null // When workspace was locked due to subscription issues
-  branding_config: Record<string, any> // jsonb
+  branding_config: WorkspaceBrandingConfig // jsonb - custom domain and branding settings
   usage_stats: {
     sites_created?: number
     ai_credits_used?: number
@@ -114,7 +172,7 @@ export interface Plan {
   max_users: number
   max_sites: number
   feature_lead_generation: boolean
-  feature_custom_brand_domain: boolean
+  feature_custom_workspace_domain: boolean // Custom domain for workspace (e.g., properties.myagency.com)
   feature_custom_property_domain: boolean
   feature_analytics: boolean
   feature_api_access: boolean
@@ -138,7 +196,7 @@ export interface Plan {
  */
 export type PlanFeature = keyof Pick<Plan, 
   'feature_lead_generation' | 
-  'feature_custom_brand_domain' | 
+  'feature_custom_workspace_domain' | 
   'feature_custom_property_domain' | 
   'feature_analytics' | 
   'feature_api_access' | 

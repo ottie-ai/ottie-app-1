@@ -38,7 +38,7 @@ function getPhosphorIcon(iconName?: string) {
  */
 export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: SectionComponentProps<HighlightsSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
-  const { image, highlights } = data
+  const { image, highlights = [] } = data
   const colors = getSectionColors(colorScheme, theme)
   
   // Refs
@@ -272,9 +272,9 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
               <div key={index} className="space-y-4">
                 {/* Image */}
                 <div className="relative w-full h-[50vh] rounded-2xl overflow-hidden">
-                  {highlight.image ? (
+                  {(highlight.photo || highlight.image) ? (
                     <Image
-                      src={highlight.image}
+                      src={highlight.photo || highlight.image || ''}
                       alt={highlight.title || `Property highlight ${index + 1}`}
                       fill
                       className="object-cover"
@@ -303,14 +303,14 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
                   >
                     {highlight.title}
                   </h3>
-                  {highlight.text && (
+                  {(highlight.value || highlight.text) && (
                     <p
                       className="text-lg leading-relaxed"
                       style={{
                         color: colors.secondaryTextColor,
                       }}
                     >
-                      {highlight.text}
+                      {highlight.value || highlight.text}
                     </p>
                   )}
                 </div>
@@ -342,9 +342,9 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
                       zIndex: index, // Higher index = on top, ensures new image fades in over previous
                     }}
                   >
-                    {highlight.image ? (
+                    {(highlight.photo || highlight.image) ? (
                       <Image
-                        src={highlight.image}
+                        src={highlight.photo || highlight.image || ''}
                         alt={highlight.title || `Property highlight ${index + 1}`}
                         fill
                         className="object-cover"
@@ -474,14 +474,14 @@ export function HighlightsTimeline({ data, theme, colorScheme = 'light' }: Secti
                       </h3>
 
                       {/* Subtitle */}
-                      {highlight.text && (
+                      {(highlight.value || highlight.text) && (
                         <p
                           className="text-2xl leading-relaxed"
                           style={{
                             color: colors.secondaryTextColor,
                           }}
                         >
-                          {highlight.text}
+                          {highlight.value || highlight.text}
                         </p>
                       )}
                     </div>

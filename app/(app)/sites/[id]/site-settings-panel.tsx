@@ -101,7 +101,8 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useAppData } from '@/contexts/app-context'
 import { FontSelector } from '@/components/builder/FontSelector'
-import type { PageConfig, ThemeConfig, Section, LoaderConfig } from '@/types/builder'
+import type { LegacyPageConfig, ThemeConfig, Section, LoaderConfig } from '@/types/builder'
+import { getV1Config } from '@/lib/config-migration'
 import { getFirstPlanWithFeature } from '@/lib/data/plans'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Info } from 'lucide-react'
@@ -252,8 +253,8 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   const [assignedToSearchQuery, setAssignedToSearchQuery] = useState('')
   const [isReordering, setIsReordering] = useState(false)
   
-  // Get sections from config
-  const siteConfig = site.config as PageConfig | null
+  // Get sections from config (use legacy format for compatibility)
+  const siteConfig = useMemo(() => getV1Config(site.config), [site.config])
   const initialSections = siteConfig?.sections || []
   
   // Local state for sections order (will be saved on Save Changes)
@@ -440,11 +441,16 @@ export function SiteSettingsPanel({ site, members, themeRef, onThemeChange, save
   }
 
   const handleCopyUrl = async () => {
-    // For custom domains, slug is in the path: https://customdomain.com/slug
-    // For ottie.site, slug is in subdomain: https://slug.ottie.site
-    const fullUrl = site.domain && site.domain !== 'ottie.site'
-      ? `https://${site.domain}/${site.slug}`
-      : `https://${site.slug}.ottie.site`
+    // NEW URL STRUCTURE: workspace-slug.ottie.site/site-slug
+    // For custom workspace domains: customdomain.com/site-slug
+    const workspaceSlug = currentWorkspace?.slug || 'workspace'
+    const workspaceDomain = (currentWorkspace?.branding_config as any)?.custom_workspace_domain || 
+                           (currentWorkspace?.branding_config as any)?.custom_brand_domain
+    const isCustomDomain = workspaceDomain && (currentWorkspace?.branding_config as any)?.custom_workspace_domain_verified
+    
+    const fullUrl = isCustomDomain
+      ? `https://${workspaceDomain}/${site.slug}`
+      : `https://${workspaceSlug}.ottie.site/${site.slug}`
     
     try {
       await navigator.clipboard.writeText(fullUrl)

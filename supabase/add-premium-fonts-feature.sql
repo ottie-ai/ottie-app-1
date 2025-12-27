@@ -33,3 +33,5 @@ COMMENT ON COLUMN public.plans.feature_premium_fonts IS 'Whether the plan allows
 
 
 
+
+

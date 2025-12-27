@@ -61,8 +61,9 @@ export default async function BuilderLayout({
   }
 
   // Get loader config from site config to set background immediately (prevents white flash)
-  const config = site.config as PageConfig | null
-  const loaderConfig: LoaderConfig = config?.loader || { type: 'none', colorScheme: 'light' }
+  // Config can be either v2 (PageConfig with siteSettings) or v1 (LegacyPageConfig with loader at root)
+  const config = site.config as any
+  const loaderConfig: LoaderConfig = config?.siteSettings?.loader || config?.loader || { type: 'none', colorScheme: 'light' }
   const loaderBackground = loaderConfig.type !== 'none' && loaderConfig.colorScheme === 'dark' 
     ? '#000000' 
     : '#ffffff'

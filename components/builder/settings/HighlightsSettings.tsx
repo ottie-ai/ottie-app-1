@@ -159,16 +159,24 @@ function SortableCard({
               </span>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation()
                   onRemove()
                 }}
-                className="p-1 rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onRemove()
+                  }
+                }}
+                className="p-1 rounded-md hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 <X className="size-4" />
-              </button>
+              </div>
               <ChevronDown 
                 className={cn(
                   "size-4 text-muted-foreground transition-transform",

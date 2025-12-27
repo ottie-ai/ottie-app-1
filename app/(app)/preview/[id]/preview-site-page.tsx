@@ -1,12 +1,25 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Site } from '@/types/database'
-import type { PageConfig, Section, ColorScheme, ThemeConfig, LoaderConfig } from '@/types/builder'
+import type { 
+  PageConfig, 
+  Section, 
+  ColorScheme, 
+  ThemeConfig, 
+  LoaderConfig,
+  SiteContent,
+  SectionSettings,
+  LegacyPageConfig,
+} from '@/types/builder'
+import { 
+  ensureV2Config, 
+  getV1Config,
+} from '@/lib/config-migration'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
@@ -188,30 +201,20 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     }
   }, [])
 
-  const config = site.config as PageConfig | null
-
-  // Default config if missing
-  const siteConfig: PageConfig = config || {
-    theme: {
-      fontFamily: 'Inter',
-      headingFontFamily: 'Inter',
-      headingFontSize: 1,
-      headingLetterSpacing: 0,
-      titleCase: 'sentence',
-      primaryColor: '#000000',
-      secondaryColor: '#666666',
-      backgroundColor: '#ffffff',
-      textColor: '#000000',
-      borderRadius: 'md',
-      ctaType: 'none',
-      ctaValue: '',
-    },
-    sections: [],
-    loader: {
-      type: 'none',
-      colorScheme: 'light',
-    },
-  }
+  // Site config - always use v2 format internally
+  const v2Config = useMemo(() => ensureV2Config(site.config), [site.config])
+  
+  // Get legacy format for components that still use Section[] with embedded data
+  const legacyConfig = useMemo(() => getV1Config(site.config), [site.config])
+  
+  // Site content state (v2)
+  const [siteContent, setSiteContent] = useState<SiteContent>(v2Config.siteContent)
+  
+  // For backward compatibility with current components
+  const siteConfig: LegacyPageConfig = legacyConfig
+  
+  // Alias for legacy code that references 'config' directly
+  const config = legacyConfig
 
   // Loader config for preview (default none if missing)
   const loaderConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
@@ -287,6 +290,20 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
 
   const [sections, setSections] = useState<Section[]>(actualSections)
   const [activeSection, setActiveSection] = useState<Section | null>(sections[0] || null)
+  
+  // Update sections when config changes (after refresh or migration)
+  useEffect(() => {
+    const newSections = (config?.sections && Array.isArray(config.sections) && config.sections.length > 0) 
+      ? config.sections 
+      : (initialSections && initialSections.length > 0 ? initialSections : testSections)
+    
+    if (JSON.stringify(newSections) !== JSON.stringify(sections)) {
+      setSections(newSections)
+      if (newSections.length > 0 && (!activeSection || !newSections.find(s => s.id === activeSection.id))) {
+        setActiveSection(newSections[0])
+      }
+    }
+  }, [config?.sections, initialSections])
   
   // Use ref to store sections for stable scroll detection callback
   const sectionsForScrollRef = useRef<Section[]>(sections)
@@ -393,23 +410,35 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     setEditingState({})
     setHasUnsavedChanges(false)
     
-    // Save to database (sections + theme + loader)
+    // Save to database in v2 format
     const supabase = createClient()
     // Get loader config - prioritize loaderRef, fallback to siteConfig.loader, then default
     const loaderToSave = loaderRef?.current ?? siteConfig.loader ?? {
       type: 'none',
       colorScheme: 'light',
     }
-    const updatedConfig: PageConfig = {
-      ...siteConfig,
-      sections: updatedSections,
-      theme: themeRef?.current || localTheme,
-      loader: loaderToSave,
+    
+    // Convert to v2 format
+    const updatedSectionSettings: SectionSettings[] = updatedSections.map(s => ({
+      id: s.id,
+      type: s.type,
+      variant: s.variant,
+      colorScheme: s.colorScheme,
+    }))
+    
+    const updatedV2Config: PageConfig = {
+      _version: 2,
+      siteSettings: {
+        theme: themeRef?.current || localTheme,
+        loader: loaderToSave,
+      },
+      sectionSettings: updatedSectionSettings,
+      siteContent: siteContent,
     }
     
     const { error } = await supabase
       .from('sites')
-      .update({ config: updatedConfig })
+      .update({ config: updatedV2Config })
       .eq('id', site.id)
     
     if (error) {
@@ -421,7 +450,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
     toastSuccess('Changes saved successfully')
     router.refresh()
     setIsSaving(false)
-  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router, themeRef, loaderRef, localTheme])
+  }, [canEdit, hasUnsavedChanges, isSaving, editingState, sections, siteConfig, site.id, router, themeRef, loaderRef, localTheme, v2Config, siteContent])
 
   // Expose save function to parent via ref
   useEffect(() => {
@@ -501,26 +530,37 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       } : null)
     }
 
-    // Save to database
+    // Save to database in v2 format
     console.log('[handleSectionChange] Checking canEdit:', canEdit)
     if (canEdit) {
       console.log('[handleSectionChange] canEdit is true, saving to database...')
       const supabase = createClient()
-      const updatedConfig: PageConfig = {
-        ...siteConfig,
-        sections: updatedSections,
+      
+      // Convert to v2 format
+      const updatedSectionSettings: SectionSettings[] = updatedSections.map(s => ({
+        id: s.id,
+        type: s.type,
+        variant: s.variant,
+        colorScheme: s.colorScheme,
+      }))
+      
+      const updatedV2Config: PageConfig = {
+        _version: 2,
+        siteSettings: v2Config.siteSettings,
+        sectionSettings: updatedSectionSettings,
+        siteContent: siteContent,
       }
       
       console.log('[handleSectionChange] Saving to database:', {
         siteId: site.id,
-        updatedConfig: JSON.stringify(updatedConfig, null, 2),
+        updatedConfig: JSON.stringify(updatedV2Config, null, 2),
         sectionData: finalUpdates.data,
         updatedSectionsCount: updatedSections.length,
       })
       
       const { error, data } = await supabase
         .from('sites')
-        .update({ config: updatedConfig })
+        .update({ config: updatedV2Config })
         .eq('id', site.id)
         .select()
       
@@ -539,7 +579,7 @@ export function PreviewSitePage({ site, canEdit = false, onHasUnsavedChanges, sa
       // Also update local state immediately with saved data
       // This ensures UI updates even if refresh is slow
       if (data && data[0]?.config) {
-        const savedConfig = data[0].config as PageConfig
+        const savedConfig = getV1Config(data[0].config)
         if (savedConfig.sections) {
           setSections(savedConfig.sections)
           // Update active section if it's the one we just saved

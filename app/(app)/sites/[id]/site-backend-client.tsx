@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Site } from '@/types/database'
@@ -18,7 +18,8 @@ import {
 } from '@/components/ui/tabs'
 import { ExternalLink, Pencil } from 'lucide-react'
 import { toastSuccess } from '@/lib/toast-helpers'
-import type { ThemeConfig, LoaderConfig, Section, PageConfig } from '@/types/builder'
+import type { ThemeConfig, LoaderConfig, Section, LegacyPageConfig, PageConfig, SectionSettings, SiteContent } from '@/types/builder'
+import { ensureV2Config, getV1Config } from '@/lib/config-migration'
 
 interface SiteBackendClientProps {
   site: Site
@@ -48,29 +49,15 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
   const loaderRef = useRef<LoaderConfig | null>(null)
   const sectionsRef = useRef<Section[] | null>(null)
   
-  // Site config
-  const config = site.config as PageConfig | null
-  const siteConfig: PageConfig = config || {
-    theme: {
-      fontFamily: 'Inter',
-      headingFontFamily: 'Inter',
-      headingFontSize: 1,
-      headingLetterSpacing: 0,
-      titleCase: 'sentence',
-      primaryColor: '#000000',
-      secondaryColor: '#666666',
-      backgroundColor: '#ffffff',
-      textColor: '#000000',
-      borderRadius: 'md',
-      ctaType: 'none',
-      ctaValue: '',
-    },
-    sections: [],
-    loader: {
-      type: 'none',
-      colorScheme: 'light',
-    },
-  }
+  // Site config - use v2 internally, legacy format for compatibility
+  const v2Config = useMemo(() => ensureV2Config(site.config), [site.config])
+  const legacyConfig = useMemo(() => getV1Config(site.config), [site.config])
+  
+  // Site content state (v2)
+  const [siteContent, setSiteContent] = useState<SiteContent>(v2Config.siteContent)
+  
+  // For backward compatibility with current components
+  const siteConfig: LegacyPageConfig = legacyConfig
   
   // Initialize refs from config
   useEffect(() => {
@@ -104,16 +91,31 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
     setIsSaving(true)
     
     const supabase = createClient()
-    const updatedConfig: PageConfig = {
-      ...siteConfig,
-      theme: themeRef.current || siteConfig.theme,
-      loader: loaderRef.current || siteConfig.loader,
-      sections: sectionsRef.current || siteConfig.sections,
+    
+    // Get updated sections
+    const updatedSections = sectionsRef.current || siteConfig.sections
+    
+    // Convert to v2 format
+    const updatedSectionSettings: SectionSettings[] = updatedSections.map(s => ({
+      id: s.id,
+      type: s.type,
+      variant: s.variant,
+      colorScheme: s.colorScheme,
+    }))
+    
+    const updatedV2Config: PageConfig = {
+      _version: 2,
+      siteSettings: {
+        theme: themeRef.current || siteConfig.theme,
+        loader: loaderRef.current || siteConfig.loader,
+      },
+      sectionSettings: updatedSectionSettings,
+      siteContent: siteContent,
     }
     
     const { error } = await supabase
       .from('sites')
-      .update({ config: updatedConfig })
+      .update({ config: updatedV2Config })
       .eq('id', site.id)
     
     if (error) {
@@ -126,7 +128,7 @@ export function SiteBackendClient({ site, members }: SiteBackendClientProps) {
     setHasUnsavedChanges(false)
     router.refresh()
     setIsSaving(false)
-  }, [hasUnsavedChanges, isSaving, siteConfig, site.id, router])
+  }, [hasUnsavedChanges, isSaving, siteConfig, site.id, router, v2Config, siteContent])
   
   // Expose save function via ref
   useEffect(() => {

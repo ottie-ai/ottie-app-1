@@ -21,7 +21,7 @@ import { WordReveal } from '@/components/ui/word-reveal'
 export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionComponentProps<HighlightsSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
   const fontWeight = getFontWeight(theme?.headingFontFamily || '')
-  const { title, image, highlights } = data
+  const { title, image, highlights = [] } = data
   const colors = getSectionColors(colorScheme, theme)
   const animationStyle = theme?.animationStyle ?? 'blur'
   const [shouldAnimate, setShouldAnimate] = useState(false)
@@ -252,7 +252,7 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
                         className="text-sm sm:text-base md:text-lg leading-relaxed max-w-md transition-colors duration-1000 ease-[cubic-bezier(0.4,0,0.2,1)]"
                         style={{ color: colors.textColor }}
                       >
-                        {highlight.text}
+                        {highlight.value || highlight.text}
                       </p>
                     </div>
 
@@ -267,9 +267,9 @@ export function HighlightsCards({ data, theme, colorScheme = 'light' }: SectionC
 
                   {/* Right Side - Image */}
                   <div className="relative w-full h-[250px] sm:h-[300px] md:h-full order-first md:order-last">
-                    {highlight.image || image ? (
-                      <Image
-                        src={highlight.image || image || ''}
+                        {(highlight.photo || highlight.image || image) ? (
+                          <Image
+                            src={highlight.photo || highlight.image || image || ''}
                         alt={highlight.title || 'Property highlight'}
                         fill
                         className="object-cover"

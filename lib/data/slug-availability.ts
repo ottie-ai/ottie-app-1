@@ -49,19 +49,25 @@ function validateSlugFormat(slug: string): string | null {
 }
 
 /**
- * Check if a slug is available for a given domain
+ * Check if a site slug is available within a workspace
+ * NEW: Site slugs are unique per workspace, not per domain
+ * 
  * @param slug - The slug to check
- * @param domain - The domain to check against (default: 'ottie.site')
+ * @param workspaceId - The workspace ID to check within
  * @param excludeSiteId - Optional site ID to exclude from check (for updates)
- * @returns true if slug is available, false if taken
+ * @returns { available: boolean, error?: string }
  */
 export async function checkSlugAvailability(
   slug: string,
-  domain: string = 'ottie.site',
+  workspaceId: string,
   excludeSiteId?: string
 ): Promise<{ available: boolean; error?: string }> {
   if (!slug || !slug.trim()) {
     return { available: false, error: 'Slug is required' }
+  }
+
+  if (!workspaceId) {
+    return { available: false, error: 'Workspace ID is required' }
   }
 
   // Validate format first
@@ -76,9 +82,8 @@ export async function checkSlugAvailability(
     .from('sites')
     .select('id')
     .eq('slug', slug.trim().toLowerCase())
-    .eq('domain', domain)
+    .eq('workspace_id', workspaceId)
     .is('deleted_at', null) // Only check active sites (not soft-deleted)
-    .in('status', ['published', 'draft']) // Only check published and draft sites (archived sites have released their slug)
 
   // Exclude current site if updating
   if (excludeSiteId) {
@@ -97,24 +102,30 @@ export async function checkSlugAvailability(
 
 /**
  * Generate an available slug by appending a number if needed
+ * NEW: Checks within workspace, not domain
+ * 
  * @param baseSlug - The base slug to start with
- * @param domain - The domain to check against (default: 'ottie.site')
+ * @param workspaceId - The workspace ID to check within
  * @param excludeSiteId - Optional site ID to exclude from check (for updates)
  * @returns An available slug
  */
 export async function generateAvailableSlug(
   baseSlug: string,
-  domain: string = 'ottie.site',
+  workspaceId: string,
   excludeSiteId?: string
 ): Promise<string> {
   if (!baseSlug || !baseSlug.trim()) {
     return ''
   }
 
-  const trimmedSlug = baseSlug.trim()
+  if (!workspaceId) {
+    return baseSlug.trim()
+  }
+
+  const trimmedSlug = baseSlug.trim().toLowerCase()
   
   // First check if base slug is available
-  const { available } = await checkSlugAvailability(trimmedSlug, domain, excludeSiteId)
+  const { available } = await checkSlugAvailability(trimmedSlug, workspaceId, excludeSiteId)
   
   if (available) {
     return trimmedSlug
@@ -126,7 +137,7 @@ export async function generateAvailableSlug(
   
   while (counter <= maxAttempts) {
     const candidateSlug = `${trimmedSlug}-${counter}`
-    const { available } = await checkSlugAvailability(candidateSlug, domain, excludeSiteId)
+    const { available } = await checkSlugAvailability(candidateSlug, workspaceId, excludeSiteId)
     
     if (available) {
       return candidateSlug
@@ -139,3 +150,57 @@ export async function generateAvailableSlug(
   return `${trimmedSlug}-${Date.now()}`
 }
 
+// ==========================================
+// LEGACY COMPATIBILITY
+// ==========================================
+// These functions maintain backward compatibility with code that
+// still uses domain-based slug checking. They convert domain to workspace lookup.
+
+/**
+ * @deprecated Use checkSlugAvailability with workspaceId instead
+ * Legacy function for checking slug by domain - converts to workspace-based check
+ */
+export async function checkSlugAvailabilityByDomain(
+  slug: string,
+  domain: string = 'ottie.site',
+  excludeSiteId?: string
+): Promise<{ available: boolean; error?: string }> {
+  // For ottie.site, we need workspace context - this is a legacy fallback
+  // In the new architecture, slug uniqueness is per workspace, not per domain
+  // This function is kept for backward compatibility but may not work correctly
+  // for all cases. Prefer using checkSlugAvailability with workspaceId.
+  
+  if (!slug || !slug.trim()) {
+    return { available: false, error: 'Slug is required' }
+  }
+
+  // Validate format first
+  const formatError = validateSlugFormat(slug)
+  if (formatError) {
+    return { available: false, error: formatError }
+  }
+
+  const supabase = await createClient()
+  
+  // For custom domains, we can check by domain
+  // For ottie.site, this is a global check which is more restrictive than needed
+  let query = supabase
+    .from('sites')
+    .select('id')
+    .eq('slug', slug.trim().toLowerCase())
+    .is('deleted_at', null)
+
+  // Exclude current site if updating
+  if (excludeSiteId) {
+    query = query.neq('id', excludeSiteId)
+  }
+
+  const { data, error } = await query.limit(1)
+
+  if (error) {
+    console.error('Error checking slug availability:', error)
+    return { available: false, error: 'Failed to check slug availability' }
+  }
+
+  return { available: !data || data.length === 0 }
+}

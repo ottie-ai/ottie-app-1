@@ -1,14 +1,23 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { PageConfig, Section } from '@/types/builder'
+import type { PageConfig, Section, LegacyPageConfig } from '@/types/builder'
+import { getV1Config } from '@/lib/config-migration'
 import { PasswordCheck } from './password-check'
 import { SiteContentClient } from './site-content-client'
 
 export async function generateMetadata({ params }: { params: Promise<{ site: string }> }): Promise<Metadata> {
   try {
-    const { site } = await params
-    const siteData = await getSiteConfig(site)
+    const { site: siteSlug } = await params
+    
+    // Get workspace context from headers
+    const { headers } = await import('next/headers')
+    const headersList = await headers()
+    const workspaceSlug = headersList.get('x-workspace-slug') || undefined
+    const workspaceDomain = headersList.get('x-workspace-domain') || undefined
+    const workspaceId = headersList.get('x-workspace-id') || undefined
+    
+    const siteData = await getSiteConfig(siteSlug, workspaceSlug, workspaceDomain, workspaceId)
     
     if (!siteData) {
       return {
@@ -18,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
       }
     }
 
-    const { config: siteConfig } = siteData
+    const { config: siteConfig, workspace } = siteData
 
     // Extract site title from first section (usually Hero)
     // Handle case where sections might be empty or undefined
@@ -26,13 +35,15 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
     const siteTitle = (heroSection?.data as any)?.title || siteData.site?.title || 'Property Site'
     const siteSubtitle = (heroSection?.data as any)?.subtitle || ''
     
-    // Canonical URL for SEO - only on ottie.site subdomain
-    const canonicalUrl = `https://${site}.ottie.site`
+    // Canonical URL for SEO - use workspace slug subdomain + site slug path
+    const canonicalUrl = workspaceDomain 
+      ? `https://${workspaceDomain}/${siteSlug}`
+      : `https://${workspace?.slug || workspaceSlug}.ottie.site/${siteSlug}`
 
     return {
       title: siteTitle,
       description: siteSubtitle || `View ${siteTitle} - Real estate property listing.`,
-      robots: 'index, follow', // Allow indexing on ottie.site subdomains
+      robots: 'index, follow', // Allow indexing
       alternates: {
         canonical: canonicalUrl,
       },
@@ -110,86 +121,82 @@ export async function generateMetadata({ params }: { params: Promise<{ site: str
 
 /**
  * Fetch site configuration from database by slug
- * The slug comes from the subdomain (e.g., "231-keaton-street" from "231-keaton-street.ottie.site")
+ * NEW URL STRUCTURE: workspace-slug.ottie.site/site-slug
+ * 
+ * @param siteSlug - Site slug from path
+ * @param workspaceSlug - Workspace slug from subdomain (for ottie.site)
+ * @param workspaceDomain - Custom workspace domain (for custom domains)
+ * @param workspaceId - Workspace ID (from middleware headers for custom domains)
+ * 
  * Only returns site if it's published
  */
-async function getSiteConfig(slug: string, domain?: string, workspaceId?: string): Promise<{ site: any; config: PageConfig } | null> {
+async function getSiteConfig(
+  siteSlug: string, 
+  workspaceSlug?: string, 
+  workspaceDomain?: string, 
+  workspaceId?: string
+): Promise<{ site: any; config: LegacyPageConfig; workspace?: any } | null> {
   try {
     const supabase = await createClient()
     
-    // Build query - support both ottie.site and brand domains
-    // SECURITY: Do NOT select password_hash - it's only needed for verification in server actions
-    // Password verification is handled separately via verifySitePassword server action
-    let query = supabase
-      .from('sites')
-      .select('*, password_protected')
-      .eq('slug', slug)
-      .eq('status', 'published') // Only published sites are accessible
-      .is('deleted_at', null)
+    let workspace: any = null
+    let resolvedWorkspaceId: string | undefined = workspaceId
     
-    // If workspaceId and brand domain are provided (from middleware headers), use brand domain directly
-    // This avoids RLS issues when fetching workspace
-    // Note: We don't filter by workspace_id here because RLS policy for brand domains doesn't require it
-    // The domain filter is sufficient - RLS policy already ensures only published sites are accessible
-    if (workspaceId && domain) {
-      // Use brand domain directly from headers (middleware already verified it)
-      query = query.eq('domain', domain)
-      // Don't filter by workspace_id - RLS policy for brand domains allows public access
-      // Filtering by workspace_id would require authenticated user, which we don't have for public sites
-      // Only log in development - avoid exposing IDs in production
+    // Step 1: Resolve workspace
+    if (workspaceDomain && workspaceId) {
+      // Custom workspace domain - workspace ID already provided by middleware
       if (process.env.NODE_ENV === 'development') {
-        console.log('[getSiteConfig] Using brand domain from headers:', { slug, domain })
+        console.log('[getSiteConfig] Using workspace domain from headers:', { workspaceDomain })
       }
-    } else if (workspaceId) {
-      // WorkspaceId provided but no domain - try to get brand domain from workspace
-      // This is fallback if headers weren't passed correctly
-      const { data: workspace, error: workspaceError } = await supabase
+      
+      // Fetch workspace for additional data
+      const { data: ws } = await supabase
         .from('workspaces')
-        .select('branding_config')
+        .select('id, slug, branding_config')
         .eq('id', workspaceId)
+        .is('deleted_at', null)
         .single()
       
-      if (workspaceError) {
-        // Only log in development
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[getSiteConfig] Error fetching workspace:', workspaceError)
-        }
+      workspace = ws
+    } else if (workspaceSlug) {
+      // ottie.site subdomain - look up workspace by slug
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getSiteConfig] Looking up workspace by slug:', workspaceSlug)
       }
       
-      if (workspace?.branding_config) {
-        const brandingConfig = workspace.branding_config as {
-          custom_brand_domain?: string | null
-          custom_brand_domain_verified?: boolean
-        }
-        
-        // Only log in development
+      const { data: ws, error: wsError } = await supabase
+        .from('workspaces')
+        .select('id, slug, branding_config')
+        .eq('slug', workspaceSlug)
+        .is('deleted_at', null)
+        .single()
+      
+      if (wsError || !ws) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[getSiteConfig] Workspace branding config:', {
-            verified: brandingConfig.custom_brand_domain_verified,
-          })
+          console.log('[getSiteConfig] Workspace not found for slug:', workspaceSlug)
         }
-        
-        // If brand domain is verified, use it for filtering
-        if (brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain) {
-          query = query.eq('domain', brandingConfig.custom_brand_domain)
-        } else {
-          // Brand domain not verified, but workspaceId provided - this shouldn't happen, but fallback to ottie.site
-          query = query.eq('domain', 'ottie.site')
-        }
-      } else {
-        // No branding config, fallback to ottie.site
-        query = query.eq('domain', 'ottie.site')
+        return null
       }
       
-      // Also filter by workspace_id for additional security
-      query = query.eq('workspace_id', workspaceId)
-    } else if (domain) {
-      // Domain provided directly (e.g., from ottie.site subdomain)
-      query = query.eq('domain', domain)
+      workspace = ws
+      resolvedWorkspaceId = ws.id
     } else {
-      // Default to ottie.site if no domain specified
-      query = query.eq('domain', 'ottie.site')
+      // No workspace context - cannot look up site
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getSiteConfig] No workspace context provided')
+      }
+      return null
     }
+    
+    // Step 2: Look up site by slug within the workspace
+    // Site slugs are unique per workspace (not globally)
+    const query = supabase
+      .from('sites')
+      .select('*, password_protected')
+      .eq('slug', siteSlug)
+      .eq('workspace_id', resolvedWorkspaceId)
+      .eq('status', 'published') // Only published sites are accessible
+      .is('deleted_at', null)
     
     // Use maybeSingle() instead of single() to avoid error when no rows found
     const { data: site, error } = await query.maybeSingle()
@@ -199,7 +206,8 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       console.log('[getSiteConfig] Site result:', { 
         found: !!site, 
         error: error ? { code: error.code, message: error.message } : null,
-        slug,
+        siteSlug,
+        workspaceSlug,
       })
     }
     
@@ -216,38 +224,20 @@ async function getSiteConfig(slug: string, domain?: string, workspaceId?: string
       return null
     }
   
-  // Extract config (PageConfig) from site.config
-  const config = site.config as PageConfig | null
-  
-  // In dev mode, allow sites without config - just check if slug exists
-  // Return site even if config is null (we'll show default site)
-  if (!config) {
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[getSiteConfig] Site found but config is null - returning site without config for dev mode')
+    // Extract config and convert to legacy format for backward compatibility
+    // Migration utility handles both v1 and v2 configs automatically
+    const config = getV1Config(site.config)
+    
+    // In dev mode, allow sites without config - just check if slug exists
+    // Return site even if config is null (we'll show default site)
+    if (!config || !config.sections || config.sections.length === 0) {
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[getSiteConfig] Site found but config is null/empty - returning site without config for dev mode')
+      }
     }
-    // Return site with empty config - will show default site
-    return { 
-      site, 
-      config: { 
-        theme: {
-          fontFamily: 'Inter',
-          headingFontFamily: 'Inter',
-          headingFontSize: 1,
-          headingLetterSpacing: 0,
-          titleCase: 'sentence',
-          primaryColor: '#000000',
-          secondaryColor: '#666666',
-          backgroundColor: '#ffffff',
-          textColor: '#000000',
-          borderRadius: 'md',
-        },
-        sections: [] 
-      } as PageConfig 
-    }
-  }
-  
-    return { site, config }
+    
+    return { site, config, workspace }
   } catch (error) {
     console.error('[getSiteConfig] Unexpected error:', error)
     return null
@@ -273,11 +263,11 @@ export default async function SitePage({
   params: Promise<{ site: string }>
 }) {
   // In Next.js 15+, params is a Promise
-  const { site } = await params
+  const { site: siteSlug } = await params
   
   // Only log in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('[SitePage] Received slug:', site)
+    console.log('[SitePage] Received site slug:', siteSlug)
   }
   
   // IMPORTANT: Exclude workspace/builder routes - these should be handled by (app) route group
@@ -285,59 +275,73 @@ export default async function SitePage({
   // the static route in (app) route group, which shouldn't happen.
   // But we check anyway to prevent rendering the wrong page.
   const workspaceRoutes = ['dashboard', 'sites', 'settings', 'client-portals', 'builder']
-  if (workspaceRoutes.includes(site) || site.startsWith('builder-')) {
+  if (workspaceRoutes.includes(siteSlug) || siteSlug.startsWith('builder-')) {
     // This should never happen if routes are set up correctly
     // Return 404 so Next.js tries the next matching route (which should be (app) route group)
     notFound()
   }
   
-  // Check if this is a brand domain request (from middleware headers or direct lookup)
+  // Get workspace context from middleware headers
   // In Next.js 15+, headers() is async
-  let brandDomain: string | undefined
+  let workspaceSlug: string | undefined
+  let workspaceDomain: string | undefined
   let workspaceId: string | undefined
   
   try {
     const { headers } = await import('next/headers')
     const headersList = await headers()
-    brandDomain = headersList.get('x-brand-domain') || undefined
+    
+    // x-workspace-slug is set for ottie.site subdomains
+    workspaceSlug = headersList.get('x-workspace-slug') || undefined
+    // x-workspace-domain and x-workspace-id are set for custom workspace domains
+    workspaceDomain = headersList.get('x-workspace-domain') || undefined
     workspaceId = headersList.get('x-workspace-id') || undefined
     
-    // If headers not available, try to get hostname from request
-    // But skip Vercel preview URLs and localhost
-    if (!brandDomain) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[SitePage] Workspace context:', { workspaceSlug, workspaceDomain, workspaceId: workspaceId ? '(set)' : undefined })
+    }
+    
+    // If no workspace context from headers, try to detect from hostname
+    if (!workspaceSlug && !workspaceDomain) {
       const hostname = headersList.get('host') || headersList.get('x-forwarded-host')
       if (hostname) {
         const hostnameWithoutPort = hostname.split(':')[0]
         
         // Skip Vercel preview URLs and localhost
         if (hostnameWithoutPort.includes('vercel.app') || hostnameWithoutPort.includes('localhost')) {
-          // Only log in development
           if (process.env.NODE_ENV === 'development') {
-            console.log('[SitePage] Skipping brand domain lookup for preview/localhost:', hostnameWithoutPort)
+            console.log('[SitePage] Skipping workspace lookup for preview/localhost:', hostnameWithoutPort)
           }
         } else {
-          // Check if this is a brand domain (not ottie.site, not app/marketing domain)
           const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'ottie.com'
           const rootDomainWithoutPort = rootDomain.split(':')[0]
-          const isOttieSite = hostnameWithoutPort === 'ottie.site' || hostnameWithoutPort.endsWith('.ottie.site')
-          const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || 
-                             hostnameWithoutPort === rootDomainWithoutPort || 
-                             hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+          const sitesDomain = 'ottie.site'
           
-          if (!isOttieSite && !isAppDomain) {
-            // This might be a brand domain - try to look it up
-            // Only log in development
+          // Check if this is an ottie.site subdomain
+          if (hostnameWithoutPort.endsWith(`.${sitesDomain}`)) {
+            workspaceSlug = hostnameWithoutPort.replace(`.${sitesDomain}`, '').split('.')[0]
             if (process.env.NODE_ENV === 'development') {
-              console.log('[SitePage] No headers, trying direct brand domain lookup for:', hostnameWithoutPort)
+              console.log('[SitePage] Detected workspace slug from hostname:', workspaceSlug)
             }
-            const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
-            const brandDomainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
-            if (brandDomainResult && brandDomainResult.verified) {
-              brandDomain = hostnameWithoutPort
-              workspaceId = brandDomainResult.workspace.id
-              // Only log in development - don't expose workspace IDs in production
+          } else {
+            // Check if this is a custom workspace domain
+            const isAppDomain = hostnameWithoutPort === `app.${rootDomainWithoutPort}` || 
+                               hostnameWithoutPort === rootDomainWithoutPort || 
+                               hostnameWithoutPort === `www.${rootDomainWithoutPort}`
+            
+            if (!isAppDomain) {
+              // This might be a custom workspace domain - try to look it up
               if (process.env.NODE_ENV === 'development') {
-                console.log('[SitePage] Found brand domain via direct lookup')
+                console.log('[SitePage] Trying workspace domain lookup for:', hostnameWithoutPort)
+              }
+              const { getWorkspaceByBrandDomain } = await import('@/lib/data/workspace-domain-data')
+              const domainResult = await getWorkspaceByBrandDomain(hostnameWithoutPort, undefined)
+              if (domainResult && domainResult.verified) {
+                workspaceDomain = hostnameWithoutPort
+                workspaceId = domainResult.workspace.id
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('[SitePage] Found workspace domain via direct lookup')
+                }
               }
             }
           }
@@ -349,14 +353,13 @@ export default async function SitePage({
   }
   
   // Fetch site configuration from database
-  const siteData = await getSiteConfig(site, brandDomain, workspaceId)
+  const siteData = await getSiteConfig(siteSlug, workspaceSlug, workspaceDomain, workspaceId)
   
   // If site doesn't exist or isn't published, redirect appropriately
   if (!siteData) {
-    // If this is a brand domain, redirect to root domain of the brand domain
-    // For example: properties.ottie.ai -> ottie.ai
-    if (brandDomain) {
-      const domainParts = brandDomain.split('.')
+    // If this is a custom workspace domain, redirect to root domain of the workspace domain
+    if (workspaceDomain) {
+      const domainParts = workspaceDomain.split('.')
       // Extract root domain (last 2 parts: domain.tld)
       const rootDomain = domainParts.slice(-2).join('.')
       const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
@@ -405,8 +408,8 @@ export default async function SitePage({
     canEdit = false
   }
   
-  // Default config if missing
-  const defaultConfig: PageConfig = {
+  // Default config if missing - using LegacyPageConfig format for backward compatibility
+  const defaultConfig: LegacyPageConfig = {
     theme: {
       fontFamily: 'Inter',
       headingFontFamily: 'Inter',

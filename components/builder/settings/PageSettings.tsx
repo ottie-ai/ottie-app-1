@@ -173,7 +173,7 @@ export function HeroRemixPanel({
       <Field>
         <FieldLabel>Subtitle</FieldLabel>
         <Textarea
-          value={data.subheadline || ''}
+          value={(data.subheadline as string) || ''}
           onChange={(e) => onDataChange({ ...data, subheadline: e.target.value })}
           placeholder="Enter subtitle"
           rows={3}

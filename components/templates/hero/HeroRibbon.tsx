@@ -23,8 +23,14 @@ export function HeroRibbon({ data, theme, colorScheme = 'light', onDataChange }:
   
   const {
     headline,
-    subheadline,
+    subtitle,
     propertyImage,
+    beds,
+    baths,
+    living_area,
+    lot_size,
+    price,
+    currency_symbol,
   } = data
 
   // Use propertyImage for hero image
@@ -153,45 +159,70 @@ export function HeroRibbon({ data, theme, colorScheme = 'light', onDataChange }:
                 }}
               />
               
-              {/* Content below line - subtitle on left, arrow on right */}
+              {/* Content below line - property details on left, arrow on right */}
               <div className="flex items-center justify-between gap-4">
-                {/* Subtitle on left side - responsive width with reveal effect */}
-                {subheadline && (
-                  <motion.div 
-                    className="w-full sm:w-[50%] md:w-[40%] text-white leading-relaxed" 
-                    style={{ 
-                      fontFamily: headingFont, 
-                      fontSize: 'clamp(0.875rem, 2vw, 1.3125rem)' 
-                    }}
-                    initial={
-                      !theme?.animationStyle || theme?.animationStyle === 'blur'
-                        ? { opacity: 1 }
-                        : theme?.animationStyle === 'fade-in' 
-                        ? { opacity: 0 }
-                        : theme?.animationStyle === 'slide-up'
-                        ? { opacity: 0, y: 20 }
-                        : { opacity: 1 }
-                    }
-                    animate={
-                      theme?.animationStyle === 'fade-in' 
-                        ? { opacity: 1 }
-                        : theme?.animationStyle === 'slide-up'
-                        ? { opacity: 1, y: 0 }
-                        : { opacity: 1, y: 0 }
-                    }
-                    transition={{
-                      duration: 0.8,
-                      delay: theme?.animationStyle === 'none' ? 0 : 0.6,
-                      ease: [0.25, 0.1, 0.25, 1],
-                    }}
-                  >
-                    {!theme?.animationStyle || theme?.animationStyle === 'blur' ? (
-                      <WordReveal text={subheadline} delay={0.6} wordDelay={0.03} />
-                    ) : (
-                      subheadline
+                {/* Property details on left side - responsive width with reveal effect */}
+                <motion.div 
+                  className="w-full sm:w-[50%] md:w-[40%] text-white" 
+                  style={{ 
+                    fontFamily: headingFont, 
+                    fontSize: 'clamp(0.875rem, 2vw, 1.3125rem)' 
+                  }}
+                  initial={
+                    !theme?.animationStyle || theme?.animationStyle === 'blur'
+                      ? { opacity: 1 }
+                      : theme?.animationStyle === 'fade-in' 
+                      ? { opacity: 0 }
+                      : theme?.animationStyle === 'slide-up'
+                      ? { opacity: 0, y: 20 }
+                      : { opacity: 1 }
+                  }
+                  animate={
+                    theme?.animationStyle === 'fade-in' 
+                      ? { opacity: 1 }
+                      : theme?.animationStyle === 'slide-up'
+                      ? { opacity: 1, y: 0 }
+                      : { opacity: 1, y: 0 }
+                  }
+                  transition={{
+                    duration: 0.8,
+                    delay: theme?.animationStyle === 'none' ? 0 : 0.6,
+                    ease: [0.25, 0.1, 0.25, 1],
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 leading-relaxed">
+                    {/* Beds */}
+                    {beds !== undefined && beds > 0 && (
+                      <span>{beds} {beds === 1 ? 'bed' : 'beds'}</span>
                     )}
-                  </motion.div>
-                )}
+                    
+                    {/* Baths */}
+                    {baths !== undefined && baths > 0 && (
+                      <span>{baths} {baths === 1 ? 'bath' : 'baths'}</span>
+                    )}
+                    
+                    {/* Living Area */}
+                    {living_area?.value && (
+                      <span>
+                        {living_area.value.toLocaleString()} {living_area.unit || 'sqft'}
+                      </span>
+                    )}
+                    
+                    {/* Lot Size */}
+                    {lot_size?.value && (
+                      <span>
+                        {lot_size.value.toLocaleString()} {lot_size.unit || 'sqft'}
+                      </span>
+                    )}
+                    
+                    {/* Price */}
+                    {price && (
+                      <span className="font-medium">
+                        {price}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
                 
                 {/* Arrow down icon on right side - animated scroll indicator */}
                 <motion.div

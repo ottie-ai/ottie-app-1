@@ -418,7 +418,7 @@ export default function SitesPage() {
     setSlugAvailability({ checking: true, available: null, error: null })
 
     try {
-      const result = await checkSlugAvailability(trimmedSlug, 'ottie.site')
+      const result = await checkSlugAvailability(trimmedSlug, currentWorkspace?.id || '')
       setSlugAvailability({ 
         checking: false, 
         available: result.available, 
@@ -432,10 +432,10 @@ export default function SitesPage() {
       
       // If not available (taken), auto-generate an available slug
       if (!result.available) {
-        const availableSlug = await generateAvailableSlug(trimmedSlug, 'ottie.site')
+        const availableSlug = await generateAvailableSlug(trimmedSlug, currentWorkspace?.id || '')
         setFormData(prev => ({ ...prev, slug: availableSlug }))
         // Check the new slug
-        const newResult = await checkSlugAvailability(availableSlug, 'ottie.site')
+        const newResult = await checkSlugAvailability(availableSlug, currentWorkspace?.id || '')
         setSlugAvailability({ 
           checking: false, 
           available: newResult.available, 

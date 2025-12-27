@@ -551,21 +551,46 @@ export async function middleware(request: NextRequest) {
       hostnameWithoutPort.startsWith('app.') ||
       hostnameWithoutPort.startsWith('www.app.')
     
-    // Check if this is an ottie.site subdomain (e.g., mysite.ottie.site)
+    // Check if this is an ottie.site subdomain (e.g., workspace-slug.ottie.site)
+    // NEW URL STRUCTURE: workspace-slug.ottie.site/site-slug
     if (isOttieSiteDomain && !isAppOrMarketingDomain) {
-      // Extract subdomain from ottie.site (e.g., "mysite" from "mysite.ottie.site")
-      const subdomain = hostnameWithoutPort.replace(`.${sitesDomain}`, '').split('.')[0]
+      // Extract workspace slug from subdomain (e.g., "myagency" from "myagency.ottie.site")
+      const workspaceSlug = hostnameWithoutPort.replace(`.${sitesDomain}`, '').split('.')[0]
       
-      console.log('[Middleware] ottie.site subdomain detected:', subdomain)
+      console.log('[Middleware] ottie.site workspace subdomain detected:', workspaceSlug)
       console.log('[Middleware] Original pathname:', pathname)
       
-      // Rewrite to (z-sites)/[site] route
-      // For root path, rewrite to /[site], for other paths, rewrite to /[site]/path
-      const rewritePath = pathname === '/' ? `/${subdomain}` : `/${subdomain}${pathname}`
+      // Extract site slug from path
+      const pathSegments = pathname.split('/').filter(Boolean)
+      
+      if (pathSegments.length === 0) {
+        // Root path on workspace subdomain (e.g., myagency.ottie.site/)
+        // Redirect to ottie.com for now (or show workspace landing page in the future)
+        console.log('[Middleware] Root path on workspace subdomain, redirecting to ottie.com')
+        const redirectUrl = new URL('/', `https://${rootDomainWithoutPort}`)
+        return NextResponse.redirect(redirectUrl, 302) // Temporary redirect (can be landing page later)
+      }
+      
+      // Extract site slug from first path segment
+      const siteSlug = pathSegments[0]
+      const remainingPath = pathSegments.slice(1).join('/')
+      const rewritePath = remainingPath ? `/${siteSlug}/${remainingPath}` : `/${siteSlug}`
+      
+      console.log('[Middleware] Workspace slug:', workspaceSlug)
+      console.log('[Middleware] Site slug:', siteSlug)
       console.log('[Middleware] Rewriting to path:', rewritePath)
       
+      // Create new request headers with workspace info
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set('x-workspace-slug', workspaceSlug)
+      
+      // Rewrite URL and pass headers
       url.pathname = rewritePath
-      response = NextResponse.rewrite(url)
+      response = NextResponse.rewrite(url, {
+        request: {
+          headers: requestHeaders,
+        },
+      })
       console.log('[Middleware] Rewrite complete, new pathname:', url.pathname)
     } else if (!isAppOrMarketingDomain && !isOttieSiteDomain) {
       // Check if this is a brand domain (custom domain for workspace)
@@ -585,7 +610,7 @@ export async function middleware(request: NextRequest) {
       }
       
       // Import dynamically to avoid issues with server-only modules in middleware
-      const { getWorkspaceByBrandDomain } = await import('@/lib/data/brand-domain-data')
+      const { getWorkspaceByBrandDomain } = await import('@/lib/data/workspace-domain-data')
       // Domain should already be normalized (www removed) by earlier redirect, but use normalized version for lookup just in case
       const domainForLookup = hostnameWithoutPort.startsWith('www.') && 
                               hostnameWithoutPort !== `www.${rootDomainWithoutPort}` &&
@@ -629,10 +654,10 @@ export async function middleware(request: NextRequest) {
         console.log('[Middleware] Site slug:', siteSlug)
         console.log('[Middleware] Rewriting to:', rewritePath)
         
-        // Create new request headers with brand domain info
+        // Create new request headers with workspace domain info
         const requestHeaders = new Headers(request.headers)
         requestHeaders.set('x-workspace-id', brandDomainResult.workspace.id)
-        requestHeaders.set('x-brand-domain', hostnameWithoutPort)
+        requestHeaders.set('x-workspace-domain', hostnameWithoutPort)
         
         // Rewrite URL and pass headers
         url.pathname = rewritePath

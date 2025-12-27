@@ -16,7 +16,7 @@ import { AnimateOnScroll } from '@/components/ui/animate-on-scroll'
  */
 export function HighlightsSimple({ data, theme, colorScheme = 'light' }: SectionComponentProps<HighlightsSectionData>) {
   const headingFont = useDelayedFont(theme?.headingFontFamily || 'system-ui')
-  const { highlights } = data
+  const { highlights = [] } = data
   const colors = getSectionColors(colorScheme, theme)
 
   return (
@@ -29,8 +29,8 @@ export function HighlightsSimple({ data, theme, colorScheme = 'light' }: Section
           {highlights.map((highlight, index) => {
             // Left column: Category label (e.g., "Description", "Share", "Location")
             const categoryLabel = highlight.title || ''
-            // Right column: Content text
-            const contentText = highlight.text || ''
+            // Right column: Content text (support both "value" and "text" for compatibility)
+            const contentText = highlight.value || highlight.text || ''
             // Icon component - try mapping first, then direct lookup
             let IconComponent: React.ComponentType<IconProps> | null = null
             if (highlight.icon) {

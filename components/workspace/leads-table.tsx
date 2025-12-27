@@ -78,22 +78,30 @@ interface LeadsTableProps {
 }
 
 // Helper function to get site URL
-function getSiteUrl(slug: string): string {
+// NEW URL STRUCTURE: workspace-slug.ottie.site/site-slug
+function getSiteUrl(siteSlug: string, workspaceSlug?: string, workspaceDomain?: string): string {
   if (typeof window === 'undefined') return '#'
-  const hostname = window.location.hostname
   const port = window.location.port
   const protocol = window.location.protocol
+  const hostname = window.location.hostname
+  const isLocalhost = hostname.includes('localhost')
   
-  // Extract root domain from current hostname
-  // If on app.localhost or app.ottie.com, extract root domain
-  if (hostname.startsWith('app.')) {
-    const rootDomain = hostname.replace('app.', '')
-    return `${protocol}//${slug}.${rootDomain}${port ? `:${port}` : ''}`
+  // If we have a verified custom workspace domain, use it
+  if (workspaceDomain) {
+    return `${protocol}//${workspaceDomain}/${siteSlug}`
   }
   
-  // Fallback: use current hostname structure
-  const rootDomain = hostname.includes('localhost') ? 'localhost' : hostname.split('.').slice(-2).join('.')
-  return `${protocol}//${slug}.${rootDomain}${port ? `:${port}` : ''}`
+  // Use workspace slug + ottie.site
+  if (workspaceSlug) {
+    if (isLocalhost) {
+      const rootDomain = hostname.startsWith('app.') ? hostname.replace('app.', '') : hostname
+      return `${protocol}//${workspaceSlug}.${rootDomain}${port ? `:${port}` : ''}/${siteSlug}`
+    }
+    return `https://${workspaceSlug}.ottie.site/${siteSlug}`
+  }
+  
+  // Fallback: basic URL
+  return `#`
 }
 
 // Mock data for leads - TODO: Replace with real data from database

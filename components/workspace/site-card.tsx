@@ -154,12 +154,17 @@ export function SiteCard({ site, href = `/sites/${site.id}`, onStatusChange, mem
     e.preventDefault()
     e.stopPropagation()
     
-    // Use domain - if it's not 'ottie.site', it's a custom domain
-    // For custom domains, slug is in the path: https://customdomain.com/slug
-    // For ottie.site, slug is in subdomain: https://slug.ottie.site
-    const fullUrl = site.domain && site.domain !== 'ottie.site'
-      ? `https://${site.domain}/${site.slug}`
-      : `https://${site.slug}.ottie.site`
+    // NEW URL STRUCTURE: workspace-slug.ottie.site/site-slug
+    // For custom workspace domains: customdomain.com/site-slug
+    // Get workspace slug from context for ottie.site URLs
+    const workspaceSlug = currentWorkspace?.slug || 'workspace'
+    const workspaceDomain = (currentWorkspace?.branding_config as any)?.custom_workspace_domain || 
+                           (currentWorkspace?.branding_config as any)?.custom_brand_domain
+    const isCustomDomain = workspaceDomain && (currentWorkspace?.branding_config as any)?.custom_workspace_domain_verified
+    
+    const fullUrl = isCustomDomain
+      ? `https://${workspaceDomain}/${site.slug}`
+      : `https://${workspaceSlug}.ottie.site/${site.slug}`
     
     try {
       await navigator.clipboard.writeText(fullUrl)

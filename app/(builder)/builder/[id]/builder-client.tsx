@@ -1,12 +1,27 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import useMeasure from 'react-use-measure'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Site } from '@/types/database'
-import type { PageConfig, Section, ColorScheme, ThemeConfig, LoaderConfig } from '@/types/builder'
+import type { 
+  PageConfig, 
+  Section, 
+  ColorScheme, 
+  ThemeConfig, 
+  LoaderConfig,
+  SiteContent,
+  SectionSettings,
+  LegacyPageConfig,
+} from '@/types/builder'
+import { 
+  ensureV2Config, 
+  getV1Config,
+  updateSiteContent,
+  DEFAULT_SITE_CONTENT,
+} from '@/lib/config-migration'
 import { toast } from 'sonner'
 import { toastSuccess } from '@/lib/toast-helpers'
 import { Button } from '@/components/ui/button'
@@ -62,29 +77,20 @@ export function BuilderClient({ site }: BuilderClientProps) {
   const loaderRef = useRef<LoaderConfig | null>(null)
   const sectionsRef = useRef<Section[] | null>(null)
   
-  // Site config
-  const config = site.config as PageConfig | null
-  const siteConfig: PageConfig = config || {
-    theme: {
-      fontFamily: 'Inter',
-      headingFontFamily: 'Inter',
-      headingFontSize: 1,
-      headingLetterSpacing: 0,
-      titleCase: 'sentence',
-      primaryColor: '#000000',
-      secondaryColor: '#666666',
-      backgroundColor: '#ffffff',
-      textColor: '#000000',
-      borderRadius: 'md',
-      ctaType: 'none',
-      ctaValue: '',
-    },
-    sections: [],
-    loader: {
-      type: 'none',
-      colorScheme: 'light',
-    },
-  }
+  // Site config - always use v2 format internally
+  const v2Config = useMemo(() => ensureV2Config(site.config), [site.config])
+  
+  // Get legacy format for components that still use Section[] with embedded data
+  const legacyConfig = useMemo(() => getV1Config(site.config), [site.config])
+  
+  // Site content state (v2)
+  const [siteContent, setSiteContent] = useState<SiteContent>(v2Config.siteContent)
+  
+  // For backward compatibility with current components
+  const siteConfig: LegacyPageConfig = legacyConfig
+  
+  // Alias for legacy code that references 'config' directly
+  const config = legacyConfig
 
   // Loader state
   const loaderConfig = siteConfig.loader || { type: 'none', colorScheme: 'light' }
@@ -257,17 +263,28 @@ export function BuilderClient({ site }: BuilderClientProps) {
       return next
     })
     
-    // Auto-save to database
+    // Auto-save to database in v2 format
     try {
       const supabase = createClient()
-      const updatedConfig: PageConfig = {
-        ...siteConfig,
-        sections: updatedSections,
+      
+      // Convert to v2 format
+      const updatedSectionSettings: SectionSettings[] = updatedSections.map(s => ({
+        id: s.id,
+        type: s.type,
+        variant: s.variant,
+        colorScheme: s.colorScheme,
+      }))
+      
+      const updatedV2Config: PageConfig = {
+        _version: 2,
+        siteSettings: v2Config.siteSettings,
+        sectionSettings: updatedSectionSettings,
+        siteContent: siteContent,
       }
       
       const { error } = await supabase
         .from('sites')
-        .update({ config: updatedConfig })
+        .update({ config: updatedV2Config })
         .eq('id', site.id)
       
       if (error) {
@@ -375,22 +392,44 @@ export function BuilderClient({ site }: BuilderClientProps) {
     setEditingState({})
     setHasUnsavedChanges(false)
     
-    // Save to database
+    // Save to database in v2 format
     const supabase = createClient()
     const loaderToSave = loaderRef?.current ?? siteConfig.loader ?? {
       type: 'none',
       colorScheme: 'light',
     }
-    const updatedConfig: PageConfig = {
-      ...siteConfig,
+    
+    // Convert legacy sections to v2 format for saving
+    // Extract section settings (without data)
+    const sectionSettings: SectionSettings[] = updatedSections.map(s => ({
+      id: s.id,
+      type: s.type,
+      variant: s.variant,
+      colorScheme: s.colorScheme,
+    }))
+    
+    // Build v2 config
+    const updatedV2Config: PageConfig = {
+      _version: 2,
+      siteSettings: {
+        theme: themeRef?.current || localTheme,
+        loader: loaderToSave,
+      },
+      sectionSettings,
+      siteContent: siteContent, // Use current site content state
+    }
+    
+    // Also keep legacy format for backward compatibility during transition
+    const updatedLegacyConfig: LegacyPageConfig = {
       sections: updatedSections,
       theme: themeRef?.current || localTheme,
       loader: loaderToSave,
+      meta: siteConfig.meta,
     }
     
     const { error } = await supabase
       .from('sites')
-      .update({ config: updatedConfig })
+      .update({ config: updatedV2Config })
       .eq('id', site.id)
     
     if (error) {
@@ -403,7 +442,7 @@ export function BuilderClient({ site }: BuilderClientProps) {
     // Cleanup orphaned images (images removed from config)
     // This runs asynchronously and doesn't block the save
     import('@/lib/storage/orphan-cleanup').then(({ cleanupOrphanedImages }) => {
-      cleanupOrphanedImages(site.id, siteConfig, updatedConfig).catch(err => {
+      cleanupOrphanedImages(site.id, updatedLegacyConfig, updatedLegacyConfig).catch(err => {
         console.error('Error cleaning up orphaned images:', err)
         // Don't show error to user - this is background cleanup
       })
@@ -412,7 +451,7 @@ export function BuilderClient({ site }: BuilderClientProps) {
     toastSuccess('Changes saved successfully')
     setIsSaving(false)
     router.refresh()
-  }, [sections, editingState, hasUnsavedChanges, themeRef, loaderRef, siteConfig, localTheme, site.id, router])
+  }, [sections, editingState, hasUnsavedChanges, themeRef, loaderRef, siteConfig, localTheme, site.id, router, v2Config, siteContent])
 
   // Expose save function via ref
   useEffect(() => {

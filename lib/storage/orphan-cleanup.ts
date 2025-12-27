@@ -5,20 +5,20 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractImagePathsFromConfig, deleteImages } from './image-processor'
-import type { PageConfig } from '@/types/builder'
+import type { PageConfig, LegacyPageConfig } from '@/types/builder'
 
 /**
  * Cleanup orphaned images when site config is updated
  * Compares old and new config to find images that were removed
  * @param siteId - Site ID
- * @param oldConfig - Previous site config
- * @param newConfig - New site config
+ * @param oldConfig - Previous site config (can be either PageConfig or LegacyPageConfig)
+ * @param newConfig - New site config (can be either PageConfig or LegacyPageConfig)
  * @returns Cleanup result with count of deleted images
  */
 export async function cleanupOrphanedImages(
   siteId: string,
-  oldConfig: PageConfig | null,
-  newConfig: PageConfig
+  oldConfig: PageConfig | LegacyPageConfig | null,
+  newConfig: PageConfig | LegacyPageConfig
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
   try {
     // Validate UUID

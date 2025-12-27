@@ -118,7 +118,7 @@ const DATABASE_FEATURE_ORDER: Array<{
   uiFeaturePatterns: string[] // Patterns to match UI feature names (case-insensitive)
 }> = [
   { featureKey: 'feature_lead_generation', uiFeaturePatterns: ['lead management', 'lead sync', 'lead routing', 'content lock for leads'] },
-  { featureKey: 'feature_custom_brand_domain', uiFeaturePatterns: ['custom domain', 'white label'] },
+  { featureKey: 'feature_custom_workspace_domain', uiFeaturePatterns: ['custom domain', 'white label'] },
   { featureKey: 'feature_custom_property_domain', uiFeaturePatterns: [] }, // Not shown in UI currently
   { featureKey: 'feature_analytics', uiFeaturePatterns: ['visitor analytics', 'analytics'] },
   { featureKey: 'feature_api_access', uiFeaturePatterns: ['api access'] },

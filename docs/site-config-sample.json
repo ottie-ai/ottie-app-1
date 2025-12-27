@@ -54,7 +54,8 @@
     {
       "title": "",
       "value": "",
-      "icon": ""
+      "icon": "",
+      "photo": ""
     }
   ],
   
@@ -98,7 +99,10 @@
     "name": "",
     "agency": "",
     "phone": "",
-    "email": ""
+    "email": "",
+    "bio": "",
+    "photo": "",
+    "license": ""
   },
   
   "mortgage_info": {

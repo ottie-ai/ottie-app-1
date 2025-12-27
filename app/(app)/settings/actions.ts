@@ -974,13 +974,13 @@ export async function handleDowngradeWorkspacePlan(
   const currentPlanName = currentWorkspace.plan || 'free'
   const { data: currentPlan } = await supabase
     .from('plans')
-    .select('feature_password_protection, feature_custom_brand_domain')
+    .select('feature_password_protection, feature_custom_workspace_domain')
     .eq('name', currentPlanName)
     .single()
 
   const { data: targetPlanData } = await supabase
     .from('plans')
-    .select('feature_password_protection, feature_custom_brand_domain, max_sites')
+    .select('feature_password_protection, feature_custom_workspace_domain, max_sites')
     .eq('name', targetPlan)
     .single()
 
@@ -1029,8 +1029,8 @@ export async function handleDowngradeWorkspacePlan(
   }
 
   // Check if we're losing custom brand domain feature
-  const currentHasBrandDomainFeature = currentPlan?.feature_custom_brand_domain ?? false
-  const targetHasBrandDomainFeature = targetPlanData.feature_custom_brand_domain ?? false
+  const currentHasBrandDomainFeature = currentPlan?.feature_custom_workspace_domain ?? false
+  const targetHasBrandDomainFeature = targetPlanData.feature_custom_workspace_domain ?? false
 
   let brandDomainRemoved = false
   // If losing custom brand domain feature, remove brand domain from workspace and Vercel
@@ -1854,4 +1854,165 @@ export async function getPendingInvitations(
   }
 
   return { invitations: invitations as Invitation[] }
+}
+
+// ==========================================
+// WORKSPACE SLUG ACTIONS
+// ==========================================
+
+import { RESERVED_SLUGS } from '@/lib/data/reserved-slugs'
+
+/**
+ * Validate workspace slug format
+ * @param slug - The slug to validate
+ * @returns null if valid, error message if invalid
+ */
+function validateWorkspaceSlugFormat(slug: string): string | null {
+  const trimmedSlug = slug.trim().toLowerCase()
+  
+  if (!trimmedSlug) {
+    return 'Slug is required'
+  }
+  
+  // Check minimum length
+  if (trimmedSlug.length < 5) {
+    return 'Slug must be at least 5 characters long'
+  }
+  
+  // Check maximum length (DNS subdomain limit)
+  if (trimmedSlug.length > 63) {
+    return 'Slug must be at most 63 characters long'
+  }
+  
+  // Check format: only lowercase letters, numbers, and hyphens
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(trimmedSlug) && trimmedSlug.length > 1) {
+    if (trimmedSlug[0] === '-' || trimmedSlug[trimmedSlug.length - 1] === '-') {
+      return 'Slug cannot start or end with a hyphen'
+    }
+    if (!/^[a-z0-9]/.test(trimmedSlug)) {
+      return 'Slug must start with a letter or number'
+    }
+    if (!/[a-z0-9]$/.test(trimmedSlug)) {
+      return 'Slug must end with a letter or number'
+    }
+    return 'Slug can only contain lowercase letters, numbers, and hyphens'
+  }
+  
+  // Check reserved words
+  if (RESERVED_SLUGS.includes(trimmedSlug)) {
+    return `"${trimmedSlug}" is a reserved word and cannot be used`
+  }
+  
+  return null
+}
+
+/**
+ * Check if a workspace slug is available
+ * @param slug - The slug to check
+ * @param excludeWorkspaceId - Optional workspace ID to exclude from check (for updates)
+ * @returns { available: boolean, error?: string }
+ */
+export async function checkWorkspaceSlugAvailability(
+  slug: string,
+  excludeWorkspaceId?: string
+): Promise<{ available: boolean; error?: string }> {
+  if (!slug || !slug.trim()) {
+    return { available: false, error: 'Slug is required' }
+  }
+
+  // Validate format first
+  const formatError = validateWorkspaceSlugFormat(slug)
+  if (formatError) {
+    return { available: false, error: formatError }
+  }
+
+  const supabase = await createClient()
+  
+  let query = supabase
+    .from('workspaces')
+    .select('id')
+    .eq('slug', slug.trim().toLowerCase())
+    .is('deleted_at', null)
+
+  // Exclude current workspace if updating
+  if (excludeWorkspaceId) {
+    query = query.neq('id', excludeWorkspaceId)
+  }
+
+  const { data, error } = await query.limit(1)
+
+  if (error) {
+    console.error('Error checking workspace slug availability:', error)
+    return { available: false, error: 'Failed to check slug availability' }
+  }
+
+  return { available: !data || data.length === 0 }
+}
+
+/**
+ * Update workspace slug
+ * Only workspace owner can update the slug
+ * @param workspaceId - The workspace ID
+ * @param userId - The user ID making the request
+ * @param newSlug - The new slug to set
+ * @returns { success: true, slug: string } or { error: string }
+ */
+export async function updateWorkspaceSlug(
+  workspaceId: string,
+  userId: string,
+  newSlug: string
+): Promise<{ success: true; slug: string } | { error: string }> {
+  if (!workspaceId || !userId || !newSlug) {
+    return { error: 'Missing required fields' }
+  }
+
+  const normalizedSlug = newSlug.trim().toLowerCase()
+
+  // Validate format
+  const formatError = validateWorkspaceSlugFormat(normalizedSlug)
+  if (formatError) {
+    return { error: formatError }
+  }
+
+  const supabase = await createClient()
+
+  // Verify user is workspace owner
+  const { data: membership, error: membershipError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('workspace_id', workspaceId)
+    .eq('user_id', userId)
+    .single()
+
+  if (membershipError || !membership) {
+    return { error: 'Workspace membership not found' }
+  }
+
+  if (membership.role !== 'owner') {
+    return { error: 'Only the workspace owner can change the slug' }
+  }
+
+  // Check if slug is available
+  const availabilityResult = await checkWorkspaceSlugAvailability(normalizedSlug, workspaceId)
+  if (!availabilityResult.available) {
+    return { error: availabilityResult.error || 'This slug is already taken' }
+  }
+
+  // Update the slug
+  const { error: updateError } = await supabase
+    .from('workspaces')
+    .update({ slug: normalizedSlug })
+    .eq('id', workspaceId)
+
+  if (updateError) {
+    console.error('Error updating workspace slug:', updateError)
+    return { error: 'Failed to update workspace slug' }
+  }
+
+  // Revalidate pages
+  revalidatePath('/settings')
+  revalidatePath('/sites')
+  revalidatePath('/dashboard')
+
+  return { success: true, slug: normalizedSlug }
 }

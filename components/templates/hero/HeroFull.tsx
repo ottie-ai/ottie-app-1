@@ -23,7 +23,7 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
   
   const {
     headline,
-    subheadline,
+    subtitle,
     propertyImage,
   } = data
 
@@ -141,12 +141,12 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
       >
         <div className="flex items-end">
           {/* Left - Description - with right padding on mobile to avoid CTA button */}
-          {subheadline && (
+          {subtitle && (
             <div className="max-w-xl flex-1 pr-20 md:pr-0">
               {onDataChange ? (
                 <EditableText
-                  value={subheadline}
-                  onChange={(value) => onDataChange({ ...data, subheadline: value })}
+                  value={subtitle}
+                  onChange={(value) => onDataChange({ ...data, subtitle: value })}
                   label="Edit Description"
                   description="Update the description text."
                 >
@@ -154,7 +154,7 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
                     className="text-white/80 text-base md:text-3xl leading-relaxed tracking-wide"
                     style={{ fontFamily: headingFont }}
                   >
-                    <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
+                    <WordReveal text={subtitle} delay={0.8} wordDelay={0.03} />
                   </p>
                 </EditableText>
               ) : (
@@ -162,7 +162,7 @@ export function HeroFull({ data, theme, colorScheme = 'light', onDataChange }: S
                   className="text-white/80 text-base md:text-3xl leading-relaxed tracking-wide"
                   style={{ fontFamily: headingFont }}
                 >
-                  <WordReveal text={subheadline} delay={0.8} wordDelay={0.03} />
+                  <WordReveal text={subtitle} delay={0.8} wordDelay={0.03} />
                 </p>
               )}
             </div>

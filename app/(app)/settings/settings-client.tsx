@@ -149,8 +149,27 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [smsPhoneNumber, setSmsPhoneNumber] = useState('')
   const [smsEnabled, setSmsEnabled] = useState(false)
   
-  // Brand domain state
+  // Workspace slug state
+  const [workspaceSlug, setWorkspaceSlug] = useState(workspace?.slug || '')
+  const [originalWorkspaceSlug, setOriginalWorkspaceSlug] = useState(workspace?.slug || '')
+  const [isEditingSlug, setIsEditingSlug] = useState(false)
+  const [isSavingSlug, setIsSavingSlug] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false)
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
+  const slugCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Workspace domain state (formerly brand domain)
   const brandingConfig = (workspace?.branding_config || {}) as {
+    custom_workspace_domain?: string | null
+    custom_workspace_domain_verified?: boolean
+    custom_workspace_domain_vercel_dns_instructions?: Array<{
+      type: string
+      domain: string
+      value: string
+      reason: string
+    }>
+    // Legacy fields for backward compatibility
     custom_brand_domain?: string | null
     custom_brand_domain_verified?: boolean
     custom_brand_domain_vercel_dns_instructions?: Array<{
@@ -160,13 +179,18 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       reason: string
     }>
   }
-  const [brandDomain, setBrandDomain] = useState(brandingConfig.custom_brand_domain || '')
+  // Support both old and new field names for backward compatibility during migration
+  const workspaceDomainValue = brandingConfig.custom_workspace_domain || brandingConfig.custom_brand_domain || ''
+  const workspaceDomainVerified = brandingConfig.custom_workspace_domain_verified ?? brandingConfig.custom_brand_domain_verified ?? false
+  const workspaceDomainDNSInstructions = brandingConfig.custom_workspace_domain_vercel_dns_instructions || brandingConfig.custom_brand_domain_vercel_dns_instructions || null
+  
+  const [workspaceDomain, setWorkspaceDomain] = useState(workspaceDomainValue)
   const [vercelDNSInstructions, setVercelDNSInstructions] = useState<Array<{
     type: string
     domain: string
     value: string
     reason: string
-  }> | null>(brandingConfig.custom_brand_domain_vercel_dns_instructions || null)
+  }> | null>(workspaceDomainDNSInstructions)
   const [isVerifying, setIsVerifying] = useState(false)
   const [isSavingDomain, setIsSavingDomain] = useState(false)
   const [isRemovingDomain, setIsRemovingDomain] = useState(false)
@@ -180,8 +204,19 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
       setWorkspaceLogoUrl(workspace.logo_url || '')
       setOriginalWorkspaceLogoUrl(workspace.logo_url || '')
       
-      // Sync brand domain
+      // Sync workspace slug
+      setWorkspaceSlug(workspace.slug || '')
+      setOriginalWorkspaceSlug(workspace.slug || '')
+      
+      // Sync workspace domain (support both old and new field names)
       const config = (workspace.branding_config || {}) as {
+        custom_workspace_domain?: string | null
+        custom_workspace_domain_vercel_dns_instructions?: Array<{
+          type: string
+          domain: string
+          value: string
+          reason: string
+        }>
         custom_brand_domain?: string | null
         custom_brand_domain_vercel_dns_instructions?: Array<{
           type: string
@@ -190,8 +225,8 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
           reason: string
         }>
       }
-      setBrandDomain(config.custom_brand_domain || '')
-      setVercelDNSInstructions(config.custom_brand_domain_vercel_dns_instructions || null)
+      setWorkspaceDomain(config.custom_workspace_domain || config.custom_brand_domain || '')
+      setVercelDNSInstructions(config.custom_workspace_domain_vercel_dns_instructions || config.custom_brand_domain_vercel_dns_instructions || null)
     }
   }, [workspace])
   
@@ -1855,13 +1890,128 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                   <div>
                     <h2 className="text-lg font-semibold">Branding</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Customize your workspace branding and connect a dedicated subdomain for your Ottie sites.
+                      Customize your workspace URL and connect a custom domain for your Ottie sites.
                     </p>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Workspace Slug */}
+                    <div className="flex flex-col gap-4">
+                      <div className="space-y-1 w-full sm:w-[70%]">
+                        <Label htmlFor="workspace-slug" className="text-sm font-medium">Workspace URL</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Your workspace URL is used as the subdomain for all your sites. For example, if your slug is <em>myagency</em>, your sites will be available at <em>myagency.ottie.site/site-slug</em>.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:flex-initial sm:w-80">
+                          <Input
+                            id="workspace-slug"
+                            placeholder="my-agency"
+                            value={workspaceSlug}
+                            onChange={(e) => {
+                              const newSlug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+                              setWorkspaceSlug(newSlug)
+                              setSlugError(null)
+                              setSlugAvailable(null)
+                              
+                              // Debounce slug availability check
+                              if (slugCheckTimeoutRef.current) {
+                                clearTimeout(slugCheckTimeoutRef.current)
+                              }
+                              
+                              if (newSlug && newSlug !== originalWorkspaceSlug && newSlug.length >= 5) {
+                                setIsCheckingSlug(true)
+                                slugCheckTimeoutRef.current = setTimeout(async () => {
+                                  try {
+                                    const { checkWorkspaceSlugAvailability } = await import('./actions')
+                                    const result = await checkWorkspaceSlugAvailability(newSlug, workspace?.id)
+                                    if ('error' in result && result.error) {
+                                      setSlugError(result.error)
+                                      setSlugAvailable(false)
+                                    } else {
+                                      setSlugAvailable(result.available)
+                                      if (!result.available) {
+                                        setSlugError('This slug is already taken')
+                                      } else {
+                                        setSlugError(null)
+                                      }
+                                    }
+                                  } catch (error) {
+                                    setSlugError('Failed to check availability')
+                                  } finally {
+                                    setIsCheckingSlug(false)
+                                  }
+                                }, 500)
+                              } else {
+                                setIsCheckingSlug(false)
+                              }
+                            }}
+                            className={cn(
+                              "w-full",
+                              slugError && "border-destructive focus-visible:ring-destructive"
+                            )}
+                            disabled={isSavingSlug || !isOwner}
+                          />
+                          {isCheckingSlug && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <LottieSpinner size={16} />
+                            </div>
+                          )}
+                          {!isCheckingSlug && slugAvailable === true && workspaceSlug !== originalWorkspaceSlug && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Check className="h-4 w-4 text-green-500" />
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-sm text-muted-foreground">.ottie.site</span>
+                        {isOwner && workspaceSlug !== originalWorkspaceSlug && (
+                          <Button
+                            onClick={async () => {
+                              if (!workspace?.id || !user?.id) return
+                              if (workspaceSlug.length < 5) {
+                                setSlugError('Slug must be at least 5 characters')
+                                return
+                              }
+                              setIsSavingSlug(true)
+                              try {
+                                const { updateWorkspaceSlug } = await import('./actions')
+                                const result = await updateWorkspaceSlug(workspace.id, user.id, workspaceSlug)
+                                if ('error' in result) {
+                                  setSlugError(result.error)
+                                  toast.error(result.error)
+                                } else {
+                                  setOriginalWorkspaceSlug(workspaceSlug)
+                                  setSlugError(null)
+                                  setSlugAvailable(null)
+                                  toastSuccess('Workspace URL updated successfully')
+                                  await refreshWorkspace()
+                                }
+                              } catch (error) {
+                                toast.error('Failed to update workspace URL')
+                              } finally {
+                                setIsSavingSlug(false)
+                              }
+                            }}
+                            disabled={isSavingSlug || !!slugError || isCheckingSlug || !slugAvailable}
+                            className="whitespace-nowrap"
+                          >
+                            {isSavingSlug ? <LottieSpinner size={16} /> : 'Save'}
+                          </Button>
+                        )}
+                      </div>
+                      {slugError && (
+                        <p className="text-sm text-destructive">{slugError}</p>
+                      )}
+                      {!isOwner && (
+                        <p className="text-sm text-muted-foreground">Only the workspace owner can change the URL.</p>
+                      )}
+                    </div>
+                    
+                    <Separator />
+                    
                     {/* Upgrade Banner - Show before input if feature not available */}
-                    {!hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') && (() => {
-                      const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_brand_domain')
+                    {!hasPlanFeature(workspace?.plan, 'feature_custom_workspace_domain') && (() => {
+                      const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_workspace_domain')
                       const planName = firstPlanWithFeature ? firstPlanWithFeature.name.charAt(0).toUpperCase() + firstPlanWithFeature.name.slice(1) : 'a higher tier'
                       
                       return (
@@ -1870,7 +2020,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                             <div className="flex items-start gap-3 flex-1">
                               <Globe className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                               <p className="text-sm text-green-900 dark:text-green-100">
-                                Brand domain is available on <strong>{planName}</strong> plan and higher. Upgrade to enable this feature.
+                                Custom workspace domain is available on <strong>{planName}</strong> plan and higher. Upgrade to enable this feature.
                               </p>
                             </div>
                             <PricingDialog 
@@ -1889,12 +2039,12 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       )
                     })()}
                     
-                    {/* Custom Brand Domain */}
+                    {/* Custom Workspace Domain */}
                     <div className="flex flex-col gap-4">
                       <div className="space-y-1 w-full sm:w-[70%]">
-                        <Label htmlFor="custom-domain" className="text-sm font-medium">Brand Domain</Label>
+                        <Label htmlFor="custom-domain" className="text-sm font-medium">Custom Domain</Label>
                         <p className="text-sm text-muted-foreground">
-                          Connect a dedicated address for your Ottie sites, such as <em>properties.yourdomain.com</em> or <em>listings.yourdomain.com</em>. For security reasons, main domains (like <em>yourdomain.com</em>) can only be set up manually – please contact support if you'd like Ottie to be your primary website.
+                          Connect your own domain for your Ottie sites, such as <em>properties.yourdomain.com</em> or <em>listings.yourdomain.com</em>. For security reasons, main domains (like <em>yourdomain.com</em>) can only be set up manually – please contact support if you'd like Ottie to be your primary website.
                         </p>
                       </div>
                       <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1903,24 +2053,24 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                           <Input
                             id="custom-domain"
                             placeholder="properties.yourdomain.com"
-                            value={brandDomain}
-                            onChange={(e) => setBrandDomain(e.target.value)}
+                            value={workspaceDomain}
+                            onChange={(e) => setWorkspaceDomain(e.target.value)}
                             className="pl-9 w-full"
                             disabled={
-                              !hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain') ||
+                              !hasPlanFeature(workspace?.plan, 'feature_custom_workspace_domain') ||
                               isSavingDomain ||
                               isRemovingDomain ||
-                              !!brandingConfig.custom_brand_domain
+                              !!workspaceDomainValue
                             }
                           />
                         </div>
-                        {!brandingConfig.custom_brand_domain && (
+                        {!workspaceDomainValue && (
                           <Button
                             onClick={async () => {
                               if (!workspace?.id || !user?.id) return
                               setIsSavingDomain(true)
                               try {
-                                const result = await setBrandDomainAction(workspace.id, user.id, brandDomain)
+                                const result = await setBrandDomainAction(workspace.id, user.id, workspaceDomain)
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {
@@ -1934,13 +2084,13 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 setIsSavingDomain(false)
                               }
                             }}
-                            disabled={isSavingDomain || !brandDomain.trim() || !hasPlanFeature(workspace?.plan, 'feature_custom_brand_domain')}
+                            disabled={isSavingDomain || !workspaceDomain.trim() || !hasPlanFeature(workspace?.plan, 'feature_custom_workspace_domain')}
                             className="whitespace-nowrap min-w-[140px]"
                           >
                             {isSavingDomain ? <LottieSpinner size={16} /> : 'Connect Domain'}
                           </Button>
                         )}
-                        {brandingConfig.custom_brand_domain && (
+                        {workspaceDomainValue && (
                           <button
                             onClick={async () => {
                               if (!workspace?.id || !user?.id) return
@@ -1966,7 +2116,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 if ('error' in result) {
                                   toast.error(result.error)
                                 } else {
-                                  setBrandDomain('')
+                                  setWorkspaceDomain('')
                                   setVercelDNSInstructions(null)
                                   toastSuccess('Brand domain removed')
                                   await refreshWorkspace()
@@ -1987,7 +2137,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                     </div>
                     
                     {/* DNS Configuration Instructions */}
-                    {brandingConfig.custom_brand_domain && !brandingConfig.custom_brand_domain_verified && (
+                    {workspaceDomainValue && !workspaceDomainVerified && (
                         <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 p-4 space-y-3">
                           <div className="flex items-start gap-3">
                             <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
@@ -2107,7 +2257,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       )}
                     
                     {/* Verified Status */}
-                    {brandingConfig.custom_brand_domain_verified && brandingConfig.custom_brand_domain && (
+                    {workspaceDomainVerified && workspaceDomainValue && (
                         <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 p-4">
                           <div className="flex items-start gap-3">
                             <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
@@ -2116,7 +2266,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                                 Domain Verified
                               </p>
                               <p className="text-sm text-green-800 dark:text-green-200">
-                                Your brand domain <strong>{brandingConfig.custom_brand_domain}</strong> is active. All sites are accessible at {brandingConfig.custom_brand_domain}/site-slug
+                                Your brand domain <strong>{workspaceDomainValue}</strong> is active. All sites are accessible at {workspaceDomainValue}/site-slug
                               </p>
                             </div>
                         </div>

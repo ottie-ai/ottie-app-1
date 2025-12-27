@@ -22,13 +22,13 @@
 
 import { useState, useEffect } from 'react'
 import type { Site } from '@/types/database'
-import type { PageConfig } from '@/types/builder'
+import type { PageConfig, LegacyPageConfig } from '@/types/builder'
 import { PublishedSitePage, type PublishedSiteData } from './published-site-page'
 import { SiteLoader } from '@/components/site-loader'
 
 interface SiteContentClientProps {
   site: Site
-  siteConfig: PageConfig
+  siteConfig: PageConfig | LegacyPageConfig
   canEdit: boolean  // Currently unused - kept for API compatibility
 }
 
@@ -54,8 +54,8 @@ export function SiteContentClient({ site, siteConfig }: SiteContentClientProps) 
     config: siteConfig, // Public config (theme, sections)
   }
 
-  // Get loader config from site config
-  const loaderConfig = siteConfig?.loader
+  // Get loader config from site config - supports both v2 (PageConfig) and v1 (LegacyPageConfig)
+  const loaderConfig = (siteConfig as any)?.siteSettings?.loader || (siteConfig as any)?.loader
   const shouldShowLoader = loaderConfig && loaderConfig.type !== 'none'
 
   // Show loader OR content, never both at the same time

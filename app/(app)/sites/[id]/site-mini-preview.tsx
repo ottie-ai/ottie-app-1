@@ -1,10 +1,12 @@
 'use client'
 
 import { Site } from '@/types/database'
-import { PageConfig } from '@/types/builder'
+import { LegacyPageConfig } from '@/types/builder'
+import { getV1Config } from '@/lib/config-migration'
 import { SectionRenderer } from '@/components/templates/SectionRenderer'
 import { FontLoader } from '@/components/builder/FontLoader'
 import { Pencil } from 'lucide-react'
+import { useMemo } from 'react'
 
 interface SiteMiniPreviewProps {
   site: Site
@@ -18,7 +20,8 @@ interface SiteMiniPreviewProps {
  * Click: Otvorí builder v novom okne
  */
 export function SiteMiniPreview({ site }: SiteMiniPreviewProps) {
-  const config = site.config as PageConfig | null
+  // Get config in legacy format for backward compatibility
+  const config = useMemo(() => getV1Config(site.config), [site.config])
   const heroSection = config?.sections?.find(s => s.type === 'hero')
   const theme = config?.theme
 
@@ -103,6 +106,8 @@ export function SiteMiniPreview({ site }: SiteMiniPreviewProps) {
     </>
   )
 }
+
+
 
 
 

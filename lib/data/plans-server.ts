@@ -43,7 +43,7 @@ export function getPlanByName(plans: Plan[], planName: string | null | undefined
  * 
  * @param plans - Array of plans
  * @param planName - Plan name to check
- * @param feature - Feature name (e.g., 'feature_custom_brand_domain')
+ * @param feature - Feature name (e.g., 'feature_custom_workspace_domain')
  * @returns true if feature is enabled for this plan
  */
 export function hasFeature(
@@ -51,7 +51,7 @@ export function hasFeature(
   planName: string | null | undefined, 
   feature: keyof Pick<Plan, 
     'feature_lead_generation' | 
-    'feature_custom_brand_domain' | 
+    'feature_custom_workspace_domain' | 
     'feature_custom_property_domain' | 
     'feature_analytics' | 
     'feature_api_access' | 
@@ -80,7 +80,7 @@ export function getFirstPlanWithFeature(
   plans: Plan[],
   feature: keyof Pick<Plan, 
     'feature_lead_generation' | 
-    'feature_custom_brand_domain' | 
+    'feature_custom_workspace_domain' | 
     'feature_custom_property_domain' | 
     'feature_analytics' | 
     'feature_api_access' | 

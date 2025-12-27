@@ -29,10 +29,11 @@
 
 import dynamic from 'next/dynamic'
 import type { Site } from '@/types/database'
-import type { PageConfig, Section, ThemeConfig, CTAType, ColorScheme } from '@/types/builder'
+import type { PageConfig, Section, ThemeConfig, CTAType, ColorScheme, LegacyPageConfig } from '@/types/builder'
+import { getV1Config } from '@/lib/config-migration'
 import { DynamicSectionRenderer } from '@/components/templates/DynamicSectionRenderer'
 import { LenisProvider } from '@/components/providers/LenisProvider'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { getFontByValue, getGoogleFontsUrl } from '@/lib/fonts'
 
 // Dynamically import FloatingCTAButton - only loaded when CTA is enabled
@@ -133,26 +134,9 @@ function useSiteFonts(fonts: string[]) {
  * PublishedSitePage - Renders a published site for public viewing
  */
 export function PublishedSitePage({ site }: PublishedSitePageProps) {
-  const config = site.config as PageConfig | null
-
-  // Default config if missing
-  const siteConfig: PageConfig = config || {
-    theme: {
-      fontFamily: 'Inter',
-      headingFontFamily: 'Inter',
-      headingFontSize: 1,
-      headingLetterSpacing: 0,
-      titleCase: 'sentence',
-      primaryColor: '#000000',
-      secondaryColor: '#666666',
-      backgroundColor: '#ffffff',
-      textColor: '#000000',
-      borderRadius: 'md',
-      ctaType: 'none',
-      ctaValue: '',
-    },
-    sections: [],
-  }
+  // Get config in legacy format for backward compatibility with section renderers
+  // Migration utility handles both v1 and v2 configs
+  const siteConfig = useMemo(() => getV1Config(site.config), [site.config])
 
   const { theme, sections } = siteConfig
   const ctaType = theme?.ctaType || 'none'

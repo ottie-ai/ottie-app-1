@@ -154,7 +154,7 @@ export async function setBrandDomain(
 
   if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
     await logDomainOperation(workspaceId, userId, 'set', domain, false, 'Permission denied')
-    return { error: 'Only workspace owners and admins can set brand domain' }
+    return { error: 'Only workspace owners and admins can set workspace domain' }
   }
 
   // 2. Validate domain format - ONLY subdomains are allowed
@@ -257,10 +257,10 @@ export async function setBrandDomain(
 
   // 5. Check feature flag
   const plans = await loadPlansServer()
-  if (!hasFeature(plans, workspace.plan, 'feature_custom_brand_domain')) {
-    const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_brand_domain')
+  if (!hasFeature(plans, workspace.plan, 'feature_custom_workspace_domain')) {
+    const firstPlanWithFeature = getFirstPlanWithFeature(plans, 'feature_custom_workspace_domain')
     const planName = firstPlanWithFeature ? firstPlanWithFeature.name.charAt(0).toUpperCase() + firstPlanWithFeature.name.slice(1) : 'a higher tier'
-    const errorMsg = `Brand domain feature is not available for your plan. Please upgrade to ${planName} plan or higher.`
+    const errorMsg = `Custom workspace domain feature is not available for your plan. Please upgrade to ${planName} plan or higher.`
     await logDomainOperation(workspaceId, userId, 'set', normalizedDomain, false, 'Feature not available on plan')
     return { error: errorMsg }
   }
@@ -700,7 +700,7 @@ export async function verifyBrandDomain(
 
   if (!domain) {
     await logDomainOperation(workspaceId, userId, 'verify', '', false, 'Domain not set')
-    return { error: 'Brand domain not set. Please set a domain first.' }
+    return { error: 'Workspace domain not set. Please set a domain first.' }
   }
 
   // 3. Check domain verification status via Vercel
@@ -776,7 +776,7 @@ export async function verifyBrandDomain(
         // Check if original slug is available on brand domain
         // On brand domain, we only need to check if it's not used by another site in this workspace
         // (slug uniqueness is per domain, so brand domain slug can be different from ottie.site slug)
-        const { available } = await checkSlugAvailability(originalSlug, domain, site.id)
+        const { available } = await checkSlugAvailability(originalSlug, workspaceId, site.id)
         
         if (available) {
           // Original slug is available - restore it
@@ -920,14 +920,15 @@ export async function removeBrandDomainInternal(
         original_brand_domain_slug: currentSlug,
       }
       
-      // Check if current slug is available on ottie.site
-      const { available } = await checkSlugAvailability(currentSlug, 'ottie.site', site.id)
+      // Check if current slug is available within this workspace
+      // NEW: Slug uniqueness is per workspace, not per domain
+      const { available } = await checkSlugAvailability(currentSlug, workspaceId, site.id)
       
       let newSlug = currentSlug
       if (!available) {
         // Slug is taken - generate a new available slug
-        newSlug = await generateAvailableSlug(currentSlug, 'ottie.site', site.id)
-        console.log(`[Brand Domain] Slug "${currentSlug}" is taken on ottie.site, using "${newSlug}" instead`)
+        newSlug = await generateAvailableSlug(currentSlug, workspaceId, site.id)
+        console.log(`[Workspace Domain] Slug "${currentSlug}" is taken, using "${newSlug}" instead`)
         
         // Store both original slug and the conflict resolution
         updatedMetadata.brand_domain_slug_conflict = true
@@ -1056,7 +1057,7 @@ export async function removeBrandDomain(
 
   if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
     await logDomainOperation(workspaceId, userId, 'remove', '', false, 'Permission denied')
-    return { error: 'Only workspace owners and admins can remove brand domain' }
+    return { error: 'Only workspace owners and admins can remove workspace domain' }
   }
 
   // Get domain before removal for logging

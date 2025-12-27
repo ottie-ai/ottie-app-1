@@ -104,7 +104,7 @@ export function AppProvider({
   const getPlan = (planName: string | null | undefined) => getPlanByName(plans, planName)
   const hasPlanFeature = (
     planName: string | null | undefined, 
-    feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_brand_domain' | 'feature_custom_property_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync' | 'feature_password_protection' | 'feature_premium_fonts' | 'feature_custom_cursor' | 'feature_text_animations'>
+    feature: keyof Pick<Plan, 'feature_lead_generation' | 'feature_custom_workspace_domain' | 'feature_custom_property_domain' | 'feature_analytics' | 'feature_api_access' | 'feature_priority_support' | 'feature_3d_tours' | 'feature_pdf_flyers' | 'feature_crm_sync' | 'feature_password_protection' | 'feature_premium_fonts' | 'feature_custom_cursor' | 'feature_text_animations'>
   ) => hasFeature(plans, planName, feature)
 
   const refresh = async () => {

@@ -1,4 +1,17 @@
 // Site Builder Type Definitions
+// ============================================
+// NEW CONFIG ARCHITECTURE (v2)
+// ============================================
+// PageConfig is now split into 3 parts:
+// 1. SiteSettings - Global site settings (theme, loader, meta)
+// 2. SectionSettings - Per-section layout settings (NO content)
+// 3. SiteContent - Centralized property content data
+//
+// This allows:
+// - Same content displayed in multiple sections
+// - Section layout changes without touching content
+// - Content editing in one place, rendered everywhere
+// ============================================
 
 /**
  * CTA button types for floating action button
@@ -20,27 +33,9 @@ export type SectionType = 'hero' | 'features' | 'gallery' | 'agent' | 'contact' 
  */
 export type SectionVariant = string
 
-/**
- * Flexible data structure for section content
- * Each section type can have its own specific data shape
- */
-export type SectionData = Record<string, unknown>
-
-/**
- * Individual section configuration
- */
-export interface Section<T extends SectionData = SectionData> {
-  /** Unique identifier for the section */
-  id: string
-  /** Type of section (hero, features, etc.) */
-  type: SectionType
-  /** Visual variant of the section (split, centered, etc.) */
-  variant: SectionVariant
-  /** Section-specific data/content */
-  data: T
-  /** Color scheme for this section (light/dark) */
-  colorScheme?: ColorScheme
-}
+// ============================================
+// SITE SETTINGS (Global)
+// ============================================
 
 /**
  * Theme configuration for the entire site
@@ -87,14 +82,296 @@ export interface LoaderConfig {
 }
 
 /**
- * Complete site configuration
+ * Site-wide settings (theme + loader)
+ * Note: SEO metadata (title, description) comes from SiteContent, not here
+ */
+export interface SiteSettings {
+  /** Global theme settings */
+  theme: ThemeConfig
+  /** Loader configuration for site loading animation */
+  loader?: LoaderConfig
+}
+
+// ============================================
+// SECTION SETTINGS (Per-section layout, NO content)
+// ============================================
+
+/**
+ * Individual section settings (layout only, no content)
+ * Content comes from SiteContent
+ */
+export interface SectionSettings {
+  /** Unique identifier for the section */
+  id: string
+  /** Type of section (hero, features, etc.) */
+  type: SectionType
+  /** Visual variant of the section (split, centered, etc.) */
+  variant: SectionVariant
+  /** Color scheme for this section (light/dark) */
+  colorScheme?: ColorScheme
+}
+
+// ============================================
+// SITE CONTENT (Centralized property data)
+// ============================================
+
+/**
+ * Photo/image item
+ */
+export interface SitePhoto {
+  url: string
+  alt?: string
+  label?: string
+}
+
+/**
+ * Address structure
+ */
+export interface SiteAddress {
+  street?: string
+  city?: string
+  neighborhood?: string
+  state?: string
+  zipcode?: string
+  county?: string
+  country?: string
+  subdivision?: string
+}
+
+/**
+ * Price information
+ */
+export interface SitePriceInfo {
+  price?: number
+  is_discounted?: boolean
+  original_price?: number
+  price_per_unit?: {
+    amount?: number
+    unit?: string
+  }
+}
+
+/**
+ * Area measurement (living area, lot size, etc.)
+ */
+export interface SiteAreaMeasurement {
+  value?: number
+  unit?: string
+}
+
+/**
+ * Property highlight item
+ * Matches site-config-sample.json structure
+ */
+export interface SiteHighlight {
+  title: string
+  value?: string  // Main content/value text
+  icon?: string
+  photo?: string  // Photo URL (not "image")
+}
+
+/**
+ * Property feature item
+ */
+export interface SiteFeature {
+  icon?: string
+  label: string
+  value: string
+}
+
+/**
+ * Features and amenities structure
+ */
+export interface SiteFeaturesAmenities {
+  interior?: {
+    amenities?: string[]
+    floor_covering?: string[]
+    kitchen_features?: string[]
+    heating?: string[]
+    cooling?: string[]
+    fireplace?: boolean
+  }
+  appliances?: string[]
+  parking?: {
+    type?: string
+    spaces?: number
+    covered?: boolean
+  }
+  outdoor?: {
+    amenities?: string[]
+    pool?: boolean
+    balcony_terrace?: boolean
+    garden?: boolean
+  }
+  building?: {
+    architecture_style?: string
+    exterior_type?: string
+    elevator?: boolean
+    security_features?: string[]
+  }
+  energy?: {
+    energy_rating?: string
+    solar?: boolean
+    ev_charger?: boolean
+  }
+}
+
+/**
+ * Agent/contact information
+ */
+export interface SiteAgent {
+  name?: string
+  title?: string
+  agency?: string
+  phone?: string
+  email?: string
+  photo?: string
+  bio?: string
+  license?: string
+}
+
+/**
+ * Mortgage/financial information
+ */
+export interface SiteMortgageInfo {
+  interest_rate?: number
+  property_tax?: {
+    amount?: number
+    period?: 'annual' | 'monthly' | 'unknown'
+  }
+  hoa_fee?: {
+    amount?: number
+    period?: 'monthly' | 'quarterly' | 'annual' | 'unknown'
+  }
+}
+
+/**
+ * Property type enum
+ */
+export type PropertyType = 
+  | 'SINGLE_FAMILY' 
+  | 'CONDO' 
+  | 'TOWNHOUSE' 
+  | 'MULTI_FAMILY' 
+  | 'LAND' 
+  | 'COMMERCIAL' 
+  | 'APARTMENT'
+  | 'VILLA'
+  | 'PENTHOUSE'
+  | 'OTHER'
+
+/**
+ * Centralized site content - ALL property data in one place
+ * Sections read from this, editing updates this
+ */
+export interface SiteContent {
+  // Basic info
+  title?: string
+  subtitle?: string
+  language?: string
+  currency?: string
+  currency_symbol?: string
+  property_status?: string
+  
+  // Photos
+  photos?: SitePhoto[]
+  
+  // Location
+  address?: SiteAddress
+  
+  // Pricing
+  price_info?: SitePriceInfo
+  
+  // Property specs
+  beds?: number
+  baths?: number
+  property_type?: PropertyType
+  year_built?: number
+  is_new_construction?: boolean
+  mls_id?: string
+  
+  // Areas
+  living_area?: SiteAreaMeasurement
+  lot_size?: SiteAreaMeasurement
+  
+  // Content
+  highlights?: SiteHighlight[]
+  description?: string
+  
+  // Features
+  features?: SiteFeature[]
+  features_amenities?: SiteFeaturesAmenities
+  
+  // Contact
+  agent?: SiteAgent
+  
+  // Financial
+  mortgage_info?: SiteMortgageInfo
+  
+  // Media
+  virtual_tour_url?: string
+  floorplan_url?: string[]
+}
+
+// ============================================
+// PAGE CONFIG (New v2 structure)
+// ============================================
+
+/**
+ * Complete site configuration (v2)
+ * Split into 3 clear parts: settings, section layout, content
  */
 export interface PageConfig {
+  /** Config version for migration detection */
+  _version?: 2
+  
+  /** Global site settings (theme, loader) */
+  siteSettings: SiteSettings
+  
+  /** Array of section settings in display order (NO content) */
+  sectionSettings: SectionSettings[]
+  
+  /** Centralized property content (includes title, subtitle for SEO) */
+  siteContent: SiteContent
+}
+
+// ============================================
+// LEGACY SUPPORT (v1 structure)
+// ============================================
+
+/**
+ * Flexible data structure for section content (LEGACY)
+ * @deprecated Use SiteContent instead
+ */
+export type SectionData = Record<string, unknown>
+
+/**
+ * Individual section configuration (LEGACY - includes data)
+ * @deprecated Use SectionSettings + SiteContent instead
+ */
+export interface Section<T extends SectionData = SectionData> {
+  /** Unique identifier for the section */
+  id: string
+  /** Type of section (hero, features, etc.) */
+  type: SectionType
+  /** Visual variant of the section (split, centered, etc.) */
+  variant: SectionVariant
+  /** Section-specific data/content */
+  data: T
+  /** Color scheme for this section (light/dark) */
+  colorScheme?: ColorScheme
+}
+
+/**
+ * Legacy PageConfig structure (v1)
+ * @deprecated Use PageConfig (v2) instead
+ */
+export interface LegacyPageConfig {
   /** Array of sections in display order */
   sections: Section[]
   /** Global theme settings */
   theme: ThemeConfig
-  /** Site metadata */
+  /** Site metadata (legacy - use SiteContent.title/subtitle in v2) */
   meta?: {
     title?: string
     description?: string
@@ -104,25 +381,35 @@ export interface PageConfig {
 }
 
 // ============================================
-// Section-specific data types
+// Section-specific data types (LEGACY)
+// These are kept for backward compatibility
+// New sections should read from SiteContent
 // ============================================
 
 /**
  * Hero section data
+ * @deprecated Read from SiteContent instead
  */
 export interface HeroSectionData extends SectionData {
   headline: string
-  subheadline?: string
+  subtitle?: string  // Changed from subheadline to subtitle for consistency with SiteContent
   ctaText?: string
   ctaLink?: string
   backgroundImage?: string
   propertyImage?: string
   price?: string
   address?: string
+  // Property details for HeroRibbon
+  beds?: number
+  baths?: number
+  living_area?: { value?: number; unit?: string }
+  lot_size?: { value?: number; unit?: string }
+  currency_symbol?: string
 }
 
 /**
  * Features section data
+ * @deprecated Read from SiteContent instead
  */
 export interface FeaturesSectionData extends SectionData {
   title?: string
@@ -135,6 +422,7 @@ export interface FeaturesSectionData extends SectionData {
 
 /**
  * Gallery section data
+ * @deprecated Read from SiteContent instead
  */
 export interface GallerySectionData extends SectionData {
   title?: string
@@ -149,6 +437,7 @@ export interface GallerySectionData extends SectionData {
 
 /**
  * Agent section data
+ * @deprecated Read from SiteContent instead
  */
 export interface AgentSectionData extends SectionData {
   name: string
@@ -163,6 +452,7 @@ export interface AgentSectionData extends SectionData {
 
 /**
  * Contact section data
+ * @deprecated Read from SiteContent instead
  */
 export interface ContactSectionData extends SectionData {
   title?: string
@@ -176,15 +466,19 @@ export interface ContactSectionData extends SectionData {
 
 /**
  * Highlights section data
+ * @deprecated Read from SiteContent instead
  */
 export interface HighlightsSectionData extends SectionData {
   title?: string
-  image?: string
+  subtitle?: string  // Section subtitle
+  image?: string  // Section image (legacy - use photo from highlights)
   highlights: Array<{
     title: string
-    text: string
-    image?: string
+    value?: string  // Changed from "text" to "value" to match SiteContent
+    text?: string  // Legacy support - use "value" instead
     icon?: string // Phosphor icon name (e.g., 'bed', 'bath', 'car')
+    photo?: string  // Changed from "image" to "photo" to match SiteContent
+    image?: string  // Legacy support - use "photo" instead
   }>
 }
 
@@ -198,14 +492,56 @@ export interface HighlightsSectionData extends SectionData {
 export interface SectionVariants {
   hero: 'full' | 'ribbon'
   features: 'grid' | 'list' | 'cards' | 'icons'
-  gallery: 'grid' | 'masonry' | 'carousel' | 'lightbox'
+  gallery: 'grid' | 'masonry' | 'carousel' | 'lightbox' | 'horizontal'
   agent: 'card' | 'split' | 'minimal' | 'detailed'
   contact: 'simple' | 'split' | 'map' | 'full'
   highlights: 'cards' | 'simple' | 'timeline'
 }
 
 /**
- * Props that every section component receives
+ * Content field mapping - which SiteContent fields each section type uses
+ * Used by morphing indicator to show relevant content editing
+ */
+export const SECTION_CONTENT_FIELDS: Record<SectionType, (keyof SiteContent)[]> = {
+  hero: ['title', 'subtitle', 'photos', 'price_info', 'address'],
+  features: ['beds', 'baths', 'living_area', 'lot_size', 'year_built', 'property_type', 'features'],
+  gallery: ['photos'],
+  agent: ['agent'],
+  contact: ['agent', 'address'],
+  highlights: ['highlights', 'description'],
+}
+
+// ============================================
+// Component Props (v2 - uses SiteContent)
+// ============================================
+
+/**
+ * Props for new section components (v2)
+ * Uses centralized SiteContent instead of per-section data
+ */
+export interface SectionComponentPropsV2 {
+  /** Section settings (id, type, variant, colorScheme) */
+  sectionSettings: SectionSettings
+  /** Centralized site content */
+  siteContent: SiteContent
+  /** Global theme settings */
+  theme?: ThemeConfig
+  /** Callback for editing content - updates SiteContent */
+  onContentChange?: (updates: Partial<SiteContent>) => void
+}
+
+/**
+ * Section component type (v2)
+ */
+export type SectionComponentV2 = React.ComponentType<SectionComponentPropsV2>
+
+// ============================================
+// Legacy Component Props (v1 - per-section data)
+// ============================================
+
+/**
+ * Props that every section component receives (LEGACY)
+ * @deprecated Use SectionComponentPropsV2 instead
  */
 export interface SectionComponentProps<T extends SectionData = SectionData> {
   data: T
@@ -217,7 +553,35 @@ export interface SectionComponentProps<T extends SectionData = SectionData> {
 }
 
 /**
- * Section component type
+ * Section component type (LEGACY)
+ * @deprecated Use SectionComponentV2 instead
  */
 export type SectionComponent<T extends SectionData = SectionData> = React.ComponentType<SectionComponentProps<T>>
+
+// ============================================
+// Config Detection & Migration Helpers
+// ============================================
+
+/**
+ * Check if config is v2 (new structure)
+ */
+export function isV2Config(config: unknown): config is PageConfig {
+  if (!config || typeof config !== 'object') return false
+  const c = config as Record<string, unknown>
+  return c._version === 2 || ('siteSettings' in c && 'sectionSettings' in c && 'siteContent' in c)
+}
+
+/**
+ * Check if config is v1 (legacy structure)
+ */
+export function isV1Config(config: unknown): config is LegacyPageConfig {
+  if (!config || typeof config !== 'object') return false
+  const c = config as Record<string, unknown>
+  return 'sections' in c && 'theme' in c && !('siteSettings' in c)
+}
+
+/**
+ * Type for any config (v1 or v2)
+ */
+export type AnyPageConfig = PageConfig | LegacyPageConfig
 
