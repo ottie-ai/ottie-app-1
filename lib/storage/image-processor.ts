@@ -125,24 +125,27 @@ export async function downloadAndUploadImage(
         const { default: sharp } = await import('sharp')
         // Optimize with progressive quality reduction until under 5MB
         let quality = 85
-        let optimizedBuffer = buffer
+        let optimizedBuffer: Buffer = Buffer.from(buffer)
         
         while (optimizedBuffer.length > MAX_IMAGE_SIZE && quality > 50) {
-          optimizedBuffer = await sharp(buffer)
+          optimizedBuffer = await sharp(optimizedBuffer)
             .jpeg({ quality, progressive: true, mozjpeg: true })
             .toBuffer()
           
           console.log(`📦 [Image] Quality ${quality}: ${(optimizedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
           
           if (optimizedBuffer.length <= MAX_IMAGE_SIZE) {
-            buffer = optimizedBuffer
-            console.log(`✅ [Image] Optimized to ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
+            console.log(`✅ [Image] Optimized to ${(optimizedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
             break
           }
           
           quality -= 10
         }
         
+        if (optimizedBuffer.length <= MAX_IMAGE_SIZE) {
+          buffer = optimizedBuffer
+        }
+
         // If still too large, resize
         if (buffer.length > MAX_IMAGE_SIZE) {
           console.log(`📦 [Image] Still too large, resizing...`)
