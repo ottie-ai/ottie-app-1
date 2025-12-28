@@ -338,3 +338,4 @@ export function GalleryHorizontal({ data, theme, colorScheme = 'light' }: Sectio
 }
 
 
+
