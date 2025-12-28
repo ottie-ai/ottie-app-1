@@ -143,16 +143,17 @@ export async function downloadAndUploadImage(
         }
         
         if (optimizedBuffer.length <= MAX_IMAGE_SIZE) {
-          buffer = optimizedBuffer
+          buffer = Buffer.from(optimizedBuffer)
         }
 
         // If still too large, resize
         if (buffer.length > MAX_IMAGE_SIZE) {
           console.log(`📦 [Image] Still too large, resizing...`)
-          buffer = await sharp(buffer)
+          const resizedBuffer = await sharp(buffer)
             .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
             .jpeg({ quality: 80, progressive: true, mozjpeg: true })
             .toBuffer()
+          buffer = Buffer.from(resizedBuffer)
           console.log(`✅ [Image] Resized to ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
         }
         
