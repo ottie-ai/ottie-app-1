@@ -1117,14 +1117,34 @@ function PreviewContent() {
                     <div className="flex items-center gap-2">
                       <Code className="h-4 w-4 text-white/60" />
                       <Typography variant="small" className="text-white/80 font-medium">
-                        Vision Analysis Not Available Yet
+                        Vision Analysis Not Generated Yet
                       </Typography>
                     </div>
+                    <Button
+                      onClick={handleRegenerateVision}
+                      disabled={regeneratingVision || !preview?.generated_config || Object.keys(preview?.generated_config || {}).length === 0}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {regeneratingVision ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Generate Vision Analysis (Call 3)
+                        </>
+                      )}
+                    </Button>
                   </div>
                   <div className="p-4">
                     <Typography variant="small" className="text-white/60">
-                      Vision analysis runs automatically in parallel with Call 2 when images are available in the config.
-                      {preview?.generated_config?.photos?.length === 0 && ' No photos found in generated config.'}
+                      {!preview?.generated_config || Object.keys(preview?.generated_config || {}).length === 0
+                        ? 'Please run Call 1 first to generate base config with images'
+                        : 'Click to analyze images and select best hero image using Llama 3.2 90B Vision'}
                     </Typography>
                   </div>
                 </div>
