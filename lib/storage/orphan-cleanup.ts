@@ -1,3 +1,5 @@
+'use server'
+
 /**
  * Orphan Image Cleanup
  * Handles cleanup of images that were removed from site config

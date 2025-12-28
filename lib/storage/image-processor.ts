@@ -121,7 +121,8 @@ export async function downloadAndUploadImage(
     if (buffer.length > MAX_IMAGE_SIZE) {
       console.log(`📦 [Image] Image too large (${(buffer.length / 1024 / 1024).toFixed(2)}MB), optimizing...`)
       try {
-        const sharp = (await import('sharp')).default
+        // Dynamic import to avoid bundling sharp in client code
+        const { default: sharp } = await import('sharp')
         // Optimize with progressive quality reduction until under 5MB
         let quality = 85
         let optimizedBuffer = buffer
