@@ -1381,11 +1381,11 @@ function PreviewContent() {
                         rel="noopener noreferrer"
                         className="text-xs text-blue-400 hover:text-blue-300 break-all flex-1"
                       >
-                        {url}
+                        {photo.url}
                       </a>
                       <Button
                         onClick={() => {
-                          navigator.clipboard.writeText(url)
+                          navigator.clipboard.writeText(photo.url)
                           setCopiedSection(`gallery-image-${index}`)
                           setCopied(true)
                           setTimeout(() => {
