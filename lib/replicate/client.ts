@@ -75,13 +75,34 @@ export async function upscaleWithESRGAN(
     
     const callDuration = Date.now() - callStartTime
     
-    // Output should be a URL string
+    // Debug: Log the actual output to see what we're getting
+    console.log(`🔍 [ESRGAN] Output type: ${typeof output}`)
+    console.log(`🔍 [ESRGAN] Output value:`, JSON.stringify(output))
+    
+    // Output can be a string URL or an object with 'output' property
+    let outputUrl: string | null = null
+    
     if (typeof output === 'string') {
+      outputUrl = output
+    } else if (output && typeof output === 'object' && 'output' in output) {
+      // Handle object response with output property
+      const outputData = (output as any).output
+      if (typeof outputData === 'string') {
+        outputUrl = outputData
+      } else if (Array.isArray(outputData) && outputData.length > 0) {
+        outputUrl = outputData[0]
+      }
+    } else if (Array.isArray(output) && output.length > 0) {
+      // Handle array response
+      outputUrl = output[0]
+    }
+    
+    if (outputUrl && typeof outputUrl === 'string') {
       console.log(`✅ [ESRGAN] Upscaling complete (${callDuration}ms)`)
-      console.log(`✅ [ESRGAN] Output: ${output.substring(0, 80)}...`)
-      return output
+      console.log(`✅ [ESRGAN] Output: ${outputUrl.substring(0, 80)}...`)
+      return outputUrl
     } else {
-      throw new Error('Unexpected output format from Replicate')
+      throw new Error(`Unexpected output format from Replicate. Type: ${typeof output}, Value: ${JSON.stringify(output)}`)
     }
   } catch (error: any) {
     const duration = Date.now() - callStartTime
