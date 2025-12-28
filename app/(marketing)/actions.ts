@@ -1465,4 +1465,100 @@ export async function regenerateImageAnalysis(previewId: string) {
   }
 }
 
+/**
+ * Regenerate hero image upscaling (Call 4) for a preview
+ * Upscales hero image if it's smaller than 1920px width using Replicate ESRGAN
+ */
+export async function regenerateHeroUpscale(previewId: string) {
+  const supabaseAdmin = createAdminClient()
+
+  // Get preview data
+  const { data: preview, error: previewError } = await supabaseAdmin
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  try {
+    // Import upscale function
+    const { upscaleHeroImageIfNeeded } = await import('@/lib/replicate/upscale')
+
+    // Get best hero image URL from image_analysis
+    const imageAnalysis = preview.image_analysis
+    if (!imageAnalysis?.best_hero_url) {
+      return { error: 'No hero image found. Please run Call 3 (Vision Analysis) first.' }
+    }
+
+    const call4StartTime = new Date().toISOString()
+    const call4StartTimeMs = Date.now()
+
+    // Run upscaling
+    const upscaledUrl = await upscaleHeroImageIfNeeded(
+      imageAnalysis.best_hero_url,
+      `temp-preview/${previewId}`
+    )
+
+    const call4EndTime = new Date().toISOString()
+    const call4Duration = Date.now() - call4StartTimeMs
+
+    // Update config if upscaling produced a different URL
+    let updatedConfig = preview.unified_json || preview.generated_config
+    const wasUpscaled = upscaledUrl !== imageAnalysis.best_hero_url
+
+    if (wasUpscaled && updatedConfig?.photos && Array.isArray(updatedConfig.photos) && updatedConfig.photos.length > 0) {
+      // Update photos[0] since best hero should be at index 0 after Call 3
+      if (updatedConfig.photos[0]?.url === imageAnalysis.best_hero_url) {
+        updatedConfig.photos[0].url = upscaledUrl
+      } else {
+        // Fallback: find by URL
+        const heroPhotoIndex = updatedConfig.photos.findIndex(
+          (p: any) => p?.url === imageAnalysis.best_hero_url
+        )
+        if (heroPhotoIndex >= 0 && updatedConfig.photos[heroPhotoIndex]) {
+          updatedConfig.photos[heroPhotoIndex].url = upscaledUrl
+        }
+      }
+
+      // Update best_hero_url in image_analysis
+      const updatedImageAnalysis = {
+        ...imageAnalysis,
+        best_hero_url: upscaledUrl,
+      }
+
+      // Update preview
+      const { error: updateError } = await supabaseAdmin
+        .from('temp_previews')
+        .update({
+          unified_json: updatedConfig,
+          image_analysis: updatedImageAnalysis,
+          updated_at: call4EndTime,
+        })
+        .eq('id', previewId)
+
+      if (updateError) {
+        console.error('Failed to update preview with upscaled image:', updateError)
+        return { error: 'Failed to save upscaled image' }
+      }
+
+      console.log(`✅ Hero image upscaled for ${previewId} in ${call4Duration}ms`)
+    } else {
+      console.log(`ℹ️ Hero image upscaling not needed for ${previewId} (already >= 1920px or same URL)`)
+    }
+
+    return { 
+      success: true, 
+      upscaledUrl,
+      wasUpscaled,
+      duration: call4Duration 
+    }
+  } catch (error: any) {
+    console.error('Error regenerating hero upscale:', error)
+    return { error: error.message || 'Failed to regenerate hero upscale' }
+  }
+}
+
 

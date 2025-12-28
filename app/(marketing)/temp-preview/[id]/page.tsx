@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
 import * as PhosphorIcons from '@phosphor-icons/react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, regenerateImageAnalysis, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, regenerateImageAnalysis, regenerateHeroUpscale, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 
@@ -46,6 +46,7 @@ function PreviewContent() {
   const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation (Call 1)
   const [generatingTitle, setGeneratingTitle] = useState(false) // Track OpenAI title generation (Call 2)
   const [regeneratingVision, setRegeneratingVision] = useState(false) // Track image vision analysis regeneration (Call 3)
+  const [regeneratingUpscale, setRegeneratingUpscale] = useState(false) // Track hero image upscaling (Call 4)
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
   const [removingHtmlTags, setRemovingHtmlTags] = useState(false) // Track HTML tags removal state
 
@@ -322,6 +323,34 @@ function PreviewContent() {
       setError('Failed to regenerate image analysis')
     } finally {
       setRegeneratingVision(false)
+    }
+  }
+
+  const handleRegenerateUpscale = async () => {
+    if (!previewId) return
+    
+    setRegeneratingUpscale(true)
+    try {
+      // Call 4: Regenerate hero image upscaling
+      const result = await regenerateHeroUpscale(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to regenerate hero upscale')
+        setRegeneratingUpscale(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to regenerate hero upscale')
+    } finally {
+      setRegeneratingUpscale(false)
     }
   }
 
@@ -1145,6 +1174,130 @@ function PreviewContent() {
                       {!preview?.generated_config || Object.keys(preview?.generated_config || {}).length === 0
                         ? 'Please run Call 1 first to generate base config with images'
                         : 'Click to analyze images and select best hero image using Llama 4 Scout 17B'}
+                    </Typography>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Call 4: Hero Image Upscaling */}
+            <div>
+              <div className="mb-3">
+                <Typography variant="h4" className="text-white mb-1 border-none">
+                  Call 4: Hero Image Upscaling
+                </Typography>
+                <Typography variant="small" className="text-white/60">
+                  Upscales hero image if smaller than 1920px width using Replicate ESRGAN
+                </Typography>
+              </div>
+
+              {preview?.image_analysis?.best_hero_url ? (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Hero Image Upscaling (Call 4)
+                      </Typography>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleRegenerateUpscale}
+                        disabled={regeneratingUpscale}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {regeneratingUpscale ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Upscaling...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    {/* Hero Image Info */}
+                    <div className="mb-4 p-3 bg-white/[0.05] rounded border border-white/10">
+                      <Typography variant="small" className="text-white/60 mb-2">
+                        Hero Image:
+                      </Typography>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-24 h-24 rounded border border-white/10 overflow-hidden bg-white/5">
+                          <img 
+                            src={preview.image_analysis.best_hero_url} 
+                            alt="Hero image"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none'
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Typography variant="small" className="text-white/80 font-medium mb-1">
+                            Best Hero Image (from Call 3)
+                          </Typography>
+                          <Typography variant="small" className="text-white/60 text-xs font-mono break-all">
+                            {preview.image_analysis.best_hero_url.substring(0, 80)}...
+                          </Typography>
+                          {preview.unified_json?.photos?.[0]?.url && 
+                           preview.unified_json.photos[0].url !== preview.image_analysis.best_hero_url && (
+                            <div className="mt-2">
+                              <Typography variant="small" className="text-green-400 text-xs">
+                                ✅ Upscaled URL in config
+                              </Typography>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Typography variant="small" className="text-white/60">
+                      This step checks if the hero image is smaller than 1920px width and upscales it using Replicate ESRGAN (2x or 4x) if needed.
+                    </Typography>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center gap-2">
+                      <Code className="h-4 w-4 text-white/60" />
+                      <Typography variant="small" className="text-white/80 font-medium">
+                        Hero Image Upscaling Not Available Yet
+                      </Typography>
+                    </div>
+                    <Button
+                      onClick={handleRegenerateUpscale}
+                      disabled={regeneratingUpscale || !preview?.image_analysis?.best_hero_url}
+                      variant="ghost"
+                      size="sm"
+                      className="text-white/60 hover:text-white hover:bg-white/10"
+                    >
+                      {regeneratingUpscale ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Upscaling...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Upscale Hero Image (Call 4)
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="p-4">
+                    <Typography variant="small" className="text-white/60">
+                      {!preview?.image_analysis?.best_hero_url
+                        ? 'Please run Call 3 (Vision Analysis) first to select best hero image'
+                        : 'Click to check and upscale hero image if needed'}
                     </Typography>
                   </div>
                 </div>
