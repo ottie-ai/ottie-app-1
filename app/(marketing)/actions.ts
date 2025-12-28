@@ -1418,21 +1418,16 @@ export async function regenerateImageAnalysis(previewId: string) {
       return { error: 'No config available. Please generate config first (Call 1).' }
     }
 
-    // Extract photo URLs from sections
-    const photoUrls: string[] = []
-    if (config.sections) {
-      for (const section of config.sections) {
-        if (section.type === 'hero' && section.data?.image) {
-          photoUrls.push(section.data.image)
-        }
-        if (section.type === 'gallery' && section.data?.images) {
-          photoUrls.push(...section.data.images.map((img: any) => img.url))
-        }
-      }
-    }
+    // Extract photo URLs from config.photos (same logic as queue worker)
+    const photoUrls: string[] = (config.photos || [])
+      .map((p: { url?: string } | string) => {
+        if (typeof p === 'string') return p
+        return p?.url
+      })
+      .filter((url: string | undefined): url is string => typeof url === 'string' && url.length > 0)
 
     if (photoUrls.length === 0) {
-      return { error: 'No images found in config to analyze' }
+      return { error: 'No images found in config to analyze. Config must have a "photos" array with image URLs.' }
     }
 
     const call3StartTime = new Date().toISOString()
