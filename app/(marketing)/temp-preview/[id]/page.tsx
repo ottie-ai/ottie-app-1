@@ -1244,9 +1244,14 @@ function PreviewContent() {
                           <Typography variant="small" className="text-white/80 font-medium mb-1">
                             Best Hero Image (from Call 3)
                           </Typography>
-                          <Typography variant="small" className="text-white/60 text-xs font-mono break-all">
+                          <a
+                            href={preview.image_analysis.best_hero_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 text-xs font-mono break-all underline"
+                          >
                             {preview.image_analysis.best_hero_url.substring(0, 80)}...
-                          </Typography>
+                          </a>
                           {preview.unified_json?.photos?.[0]?.url && 
                            preview.unified_json.photos[0].url !== preview.image_analysis.best_hero_url && (
                             <div className="mt-2">
