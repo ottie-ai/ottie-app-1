@@ -120,7 +120,8 @@ export async function handleSubscriptionDeleted(
 export async function handleInvoicePaymentSucceeded(
   invoice: Stripe.Invoice
 ) {
-  const subscriptionId = invoice.subscription as string
+  // Type cast to access subscription property (API version compatibility)
+  const subscriptionId = (invoice as any).subscription as string
   
   if (!subscriptionId) {
     return // Not a subscription invoice
@@ -157,7 +158,8 @@ export async function handleInvoicePaymentSucceeded(
 export async function handleInvoicePaymentFailed(
   invoice: Stripe.Invoice
 ) {
-  const subscriptionId = invoice.subscription as string
+  // Type cast to access subscription property (API version compatibility)
+  const subscriptionId = (invoice as any).subscription as string
   
   if (!subscriptionId) {
     return // Not a subscription invoice
