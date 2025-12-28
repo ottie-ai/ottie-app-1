@@ -80,11 +80,14 @@ export async function runApifyActor(
     let pollAttempts = 0
     const maxPollAttempts = Math.floor(timeout / 5000) // Poll every 5 seconds
     
+    console.log(`🔵 [Apify:${scraper.name}] Initial status: ${runStatus}, will poll max ${maxPollAttempts} times`)
+    
     while (runStatus !== 'SUCCEEDED' && runStatus !== 'FAILED' && runStatus !== 'ABORTED') {
       if (pollAttempts >= maxPollAttempts) {
         throw new Error(`Apify run timeout after ${timeout / 1000} seconds`)
       }
 
+      console.log(`🔵 [Apify:${scraper.name}] Waiting 5s before poll attempt ${pollAttempts + 1}...`)
       // Wait 5 seconds before polling again
       await new Promise(resolve => setTimeout(resolve, 5000))
       pollAttempts++
