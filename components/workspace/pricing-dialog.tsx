@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Check, AlertTriangle } from 'lucide-react'
+import { Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -66,6 +66,8 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
   // State for dialog open/close
   const [open, setOpen] = useState(forceOpen || false)
   const [isDowngrading, setIsDowngrading] = useState(false)
+  const [isUpgrading, setIsUpgrading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState<string | null>(null)
   
   // Update open state when forceOpen changes
   useEffect(() => {
@@ -346,6 +348,68 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
     
     setSelectedDowngradeTier(tierId)
     setDowngradeDialogOpen(true)
+  }
+  
+  // Handle upgrade click
+  const handleUpgrade = async (tierId: string) => {
+    if (!workspaceId) {
+      toast.error('Workspace ID not found')
+      return
+    }
+
+    setIsUpgrading(true)
+    setUpgradeError(null)
+    
+    try {
+      // Check if user already has a subscription (upgrade) or is new (checkout)
+      if (stripeCustomerId && currentPlan && currentPlan !== 'free') {
+        // Existing customer - use upgrade endpoint
+        const response = await fetch('/api/stripe/upgrade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspaceId,
+            newPlanId: tierId,
+            billingPeriod: isAnnual ? 'annual' : 'monthly',
+          }),
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upgrade failed')
+        }
+        
+        toast.success('Plan upgraded successfully!')
+        router.refresh()
+        setOpen(false)
+      } else {
+        // New customer - use checkout flow
+        const response = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planId: tierId,
+            billingPeriod: isAnnual ? 'annual' : 'monthly',
+            workspaceId,
+          }),
+        })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Checkout failed')
+        }
+        
+        const { url } = await response.json()
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error('Upgrade error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Something went wrong'
+      setUpgradeError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setIsUpgrading(false)
+    }
   }
   
   // Handle downgrade confirmation
@@ -689,9 +753,19 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                         <Button
                           variant={isHighlighted ? 'default' : 'outline'}
                           className="w-full mt-auto"
-                          disabled={tier.disabled || isCurrentPlan}
+                          disabled={tier.disabled || isCurrentPlan || isUpgrading}
+                          onClick={() => !isCurrentPlan && handleUpgrade(tier.id)}
                         >
-                          {isCurrentPlan ? 'Current Plan' : tier.cta}
+                          {isUpgrading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : isCurrentPlan ? (
+                            'Current Plan'
+                          ) : (
+                            tier.cta
+                          )}
                         </Button>
                       )}
                     </div>
@@ -883,9 +957,19 @@ export function PricingDialog({ children, currentPlan, stripeCustomerId, default
                     <Button
                       variant={isHighlighted ? 'default' : 'outline'}
                       className="w-full"
-                      disabled={tier.disabled || isCurrentPlan}
+                      disabled={tier.disabled || isCurrentPlan || isUpgrading}
+                      onClick={() => !isCurrentPlan && handleUpgrade(tier.id)}
                     >
-                      {isCurrentPlan ? 'Current Plan' : tier.cta}
+                      {isUpgrading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : isCurrentPlan ? (
+                        'Current Plan'
+                      ) : (
+                        tier.cta
+                      )}
                     </Button>
                   )}
                 </div>

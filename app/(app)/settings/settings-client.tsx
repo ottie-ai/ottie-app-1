@@ -157,6 +157,7 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
   const [slugError, setSlugError] = useState<string | null>(null)
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false)
   const slugCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Workspace domain state (formerly brand domain)
@@ -611,6 +612,36 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
     return 'U'
   }
   
+
+  const handleManageSubscription = async () => {
+    if (!workspace?.id) {
+      toast.error('Workspace not found')
+      return
+    }
+
+    setIsLoadingPortal(true)
+    
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: workspace.id }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to open portal')
+      }
+
+      const { url } = await response.json()
+      window.location.href = url
+    } catch (error) {
+      console.error('Portal error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to open subscription portal')
+    } finally {
+      setIsLoadingPortal(false)
+    }
+  }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -2410,19 +2441,32 @@ export function SettingsClient({ user: serverUser, userMetadata }: SettingsClien
                       ) : null}
 
                       {/* Manage Subscription */}
-                      <div className="pt-4 border-t">
-                        <h3 className="text-base font-semibold mb-2">Subscription</h3>
-                        <a
-                          href={workspace?.stripe_customer_id 
-                            ? `https://billing.stripe.com/p/login/${workspace.stripe_customer_id}`
-                            : 'https://dashboard.stripe.com'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-                        >
-                          Manage subscription <ExternalLink className="h-3 w-3" />
-                        </a>
-                  </div>
+                      {workspace?.stripe_customer_id && (
+                        <div className="pt-4 border-t">
+                          <h3 className="text-base font-semibold mb-2">Subscription</h3>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Manage your billing, payment method, and view invoices.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleManageSubscription}
+                            disabled={isLoadingPortal}
+                            className="w-full sm:w-auto"
+                          >
+                            {isLoadingPortal ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                Manage Subscription <ExternalLink className="ml-2 h-3 w-3" />
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ) : (

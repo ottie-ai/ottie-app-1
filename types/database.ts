@@ -95,11 +95,16 @@ export interface Workspace {
   logo_url: string | null
   plan: SubPlan | null // null/empty plan is treated as 'free'
   stripe_customer_id: string | null
+  stripe_subscription_id: string | null // Stripe subscription ID (sub_...)
+  stripe_price_id: string | null // Current Stripe price ID (price_...)
   subscription_status: SubscriptionStatus // Subscription status tracking
+  subscription_period_end: string | null // When current subscription period ends
+  cancel_at_period_end: boolean // Whether subscription will cancel at period end
   seats_limit: number // Maximum number of active users allowed (from plan)
   seats_used: number // Current number of active users
   grace_period_ends_at: string | null // When grace period ends (14 days after payment failure)
   subscription_locked_at: string | null // When workspace was locked due to subscription issues
+  trial_used_at: string | null // When trial was used (null if never used)
   branding_config: WorkspaceBrandingConfig // jsonb - custom domain and branding settings
   usage_stats: {
     sites_created?: number

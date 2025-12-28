@@ -924,11 +924,6 @@ export async function extractGalleryImages(previewId: string) {
     // No need for separate gallery_image_urls column
     console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} images (stored in memory only)`)
 
-    if (updateError) {
-      console.error('🔴 [extractGalleryImages] Failed to update preview:', updateError)
-      return { error: 'Failed to extract images. Please try again.' }
-    }
-
     return { success: true, imageCount: galleryImages.length }
   } catch (error) {
     console.error('🔴 [extractGalleryImages] Error:', error)
