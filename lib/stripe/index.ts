@@ -1,10 +1,10 @@
 import Stripe from 'stripe'
 
 // Server-side Stripe client
-// Using latest API version (auto-upgrades to latest stable)
-// For webhook compatibility, pin to major version: '2024-11-20' instead of 'acacia'
+// Using latest stable API version
+// For webhook compatibility, we use a stable version that's supported by the SDK
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20',
+  apiVersion: '2025-12-15.clover',
   typescript: true,
 })
 
