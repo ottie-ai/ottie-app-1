@@ -8,8 +8,8 @@ Add these environment variables in your Vercel project settings:
 ### Supabase Variables
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # ⚠️ REQUIRED FOR WEBHOOKS
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SECRET_KEY=sb_secret_...  # ⚠️ REQUIRED FOR WEBHOOKS (Admin/Service Role Key)
 ```
 
 ### Stripe Variables (Sandbox/Test Mode)
@@ -36,11 +36,12 @@ NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 
 ## How to Get These Values
 
-### 1. Supabase Service Role Key
+### 1. Supabase Secret Key
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
 2. Select your project
 3. Go to **Settings → API**
-4. Copy the `service_role` key (⚠️ Keep this secret!)
+4. Copy the `service_role` key (starts with `sb_secret_...`) (⚠️ Keep this secret!)
+5. Add it as `SUPABASE_SECRET_KEY` in Vercel
 
 ### 2. Stripe Keys
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
@@ -90,7 +91,7 @@ npm i -g vercel
 vercel link
 
 # Add environment variables
-vercel env add SUPABASE_SERVICE_ROLE_KEY
+vercel env add SUPABASE_SECRET_KEY
 vercel env add STRIPE_SECRET_KEY
 vercel env add STRIPE_WEBHOOK_SECRET
 # ... etc
@@ -125,6 +126,6 @@ Or in Vercel Dashboard:
 - Use test mode keys for development
 - Switch to live mode keys only when ready for production
 
-✅ **Service Role Key is Required**
-The `SUPABASE_SERVICE_ROLE_KEY` is essential for webhook handlers because they need to bypass Row Level Security (RLS) to update workspace subscriptions.
+✅ **Secret Key is Required**
+The `SUPABASE_SECRET_KEY` (service role key) is essential for webhook handlers because they need to bypass Row Level Security (RLS) to update workspace subscriptions.
 
