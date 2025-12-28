@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { LottieSpinner } from '@/components/ui/lottie-spinner'
 import { ArrowLeft, Save, ExternalLink, Code, Copy, Check, RefreshCw } from 'lucide-react'
 import * as PhosphorIcons from '@phosphor-icons/react'
-import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
+import { getPreview, claimPreview, processApifyJson, generateConfigFromApify, generateConfigManually, generateConfigCall1, generateTitleCall2, regenerateImageAnalysis, extractGalleryImages, removeHtmlTagsFromRawHtml } from '../../actions'
 import { createClient } from '@/lib/supabase/client'
 import { sortConfigToSampleOrder } from '@/lib/openai/config-sorter'
 
@@ -45,6 +45,7 @@ function PreviewContent() {
   const [processingJson, setProcessingJson] = useState(false) // Track JSON processing state
   const [generatingConfig, setGeneratingConfig] = useState(false) // Track OpenAI config generation (Call 1)
   const [generatingTitle, setGeneratingTitle] = useState(false) // Track OpenAI title generation (Call 2)
+  const [regeneratingVision, setRegeneratingVision] = useState(false) // Track image vision analysis regeneration (Call 3)
   const [extractingImages, setExtractingImages] = useState(false) // Track gallery images extraction state
   const [removingHtmlTags, setRemovingHtmlTags] = useState(false) // Track HTML tags removal state
 
@@ -293,6 +294,34 @@ function PreviewContent() {
       setError('Failed to generate title and highlights')
     } finally {
       setGeneratingTitle(false)
+    }
+  }
+
+  const handleRegenerateVision = async () => {
+    if (!previewId) return
+    
+    setRegeneratingVision(true)
+    try {
+      // Call 3: Regenerate image vision analysis
+      const result = await regenerateImageAnalysis(previewId)
+      
+      if ('error' in result) {
+        setError(result.error || 'Failed to regenerate image analysis')
+        setRegeneratingVision(false)
+        return
+      }
+      
+      // Reload preview to show updated data
+      const reloadResult = await getPreview(previewId)
+      if ('error' in reloadResult) {
+        setError(reloadResult.error || 'Failed to reload preview')
+      } else {
+        setPreview(reloadResult.preview)
+      }
+    } catch (err) {
+      setError('Failed to regenerate image analysis')
+    } finally {
+      setRegeneratingVision(false)
     }
   }
 
@@ -870,6 +899,25 @@ function PreviewContent() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        onClick={handleRegenerateVision}
+                        disabled={regeneratingVision || !preview?.generated_config}
+                        variant="ghost"
+                        size="sm"
+                        className="text-white/60 hover:text-white hover:bg-white/10"
+                      >
+                        {regeneratingVision ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Regenerating...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Regenerate
+                          </>
+                        )}
+                      </Button>
                       <Button
                         onClick={() => {
                           navigator.clipboard.writeText(JSON.stringify(preview.image_analysis, null, 2))

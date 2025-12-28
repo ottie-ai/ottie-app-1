@@ -1390,4 +1390,84 @@ export async function generateConfigManually(previewId: string) {
   }
 }
 
+/**
+ * Regenerate image analysis (Call 3) for a preview
+ * Analyzes images using Llama 3.2 90B Vision to select best hero image
+ */
+export async function regenerateImageAnalysis(previewId: string) {
+  const supabaseAdmin = createAdminClient()
+
+  // Get preview data
+  const { data: preview, error: previewError } = await supabaseAdmin
+    .from('temp_previews')
+    .select('*')
+    .eq('id', previewId)
+    .single()
+
+  if (previewError || !preview) {
+    return { error: 'Preview not found or expired' }
+  }
+
+  try {
+    // Import vision analysis function
+    const { analyzeImagesWithVision } = await import('@/lib/openai/client')
+
+    // Get photo URLs from generated_config or unified_json
+    const config = preview.generated_config || preview.unified_json
+    if (!config) {
+      return { error: 'No config available. Please generate config first (Call 1).' }
+    }
+
+    // Extract photo URLs from sections
+    const photoUrls: string[] = []
+    if (config.sections) {
+      for (const section of config.sections) {
+        if (section.type === 'hero' && section.data?.image) {
+          photoUrls.push(section.data.image)
+        }
+        if (section.type === 'gallery' && section.data?.images) {
+          photoUrls.push(...section.data.images.map((img: any) => img.url))
+        }
+      }
+    }
+
+    if (photoUrls.length === 0) {
+      return { error: 'No images found in config to analyze' }
+    }
+
+    const call3StartTime = new Date().toISOString()
+
+    // Run vision analysis
+    const imageAnalysis = await analyzeImagesWithVision(photoUrls, 10)
+
+    const call3EndTime = new Date().toISOString()
+    const call3Duration = new Date(call3EndTime).getTime() - new Date(call3StartTime).getTime()
+
+    // Update preview with new image analysis
+    const { error: updateError } = await supabaseAdmin
+      .from('temp_previews')
+      .update({
+        image_analysis: imageAnalysis,
+        updated_at: call3EndTime,
+      })
+      .eq('id', previewId)
+
+    if (updateError) {
+      console.error('Failed to update preview with image analysis:', updateError)
+      return { error: 'Failed to save image analysis' }
+    }
+
+    console.log(`✅ Image analysis regenerated for ${previewId} in ${call3Duration}ms`)
+
+    return { 
+      success: true, 
+      imageAnalysis,
+      duration: call3Duration 
+    }
+  } catch (error: any) {
+    console.error('Error regenerating image analysis:', error)
+    return { error: error.message || 'Failed to regenerate image analysis' }
+  }
+}
+
 
