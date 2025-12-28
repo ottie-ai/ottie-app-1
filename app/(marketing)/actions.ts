@@ -1392,7 +1392,7 @@ export async function generateConfigManually(previewId: string) {
 
 /**
  * Regenerate image analysis (Call 3) for a preview
- * Analyzes images using Llama 3.2 11B Vision to select best hero image
+ * Analyzes images using Llama 4 Scout 17B to select best hero image
  */
 export async function regenerateImageAnalysis(previewId: string) {
   const supabaseAdmin = createAdminClient()

@@ -486,7 +486,7 @@ export async function generateTitle(
 // ============================================
 
 /**
- * Analyze real estate images using Llama 3.2 11B Vision
+ * Analyze real estate images using Llama 4 Scout 17B
  * Evaluates images for composition, lighting, wow factor, and quality
  * Returns the best image index for hero section
  * 
@@ -518,7 +518,7 @@ export async function analyzeImagesWithVision(
   }
   
   console.log(`🖼️ [Vision] Analyzing ${urls.length} images (of ${totalImages} total)...`)
-  console.log('🖼️ [Vision] Model: llama-3.2-11b-vision-preview')
+  console.log('🖼️ [Vision] Model: llama-4-scout-17b-preview')
   
   const client = getGroqClient()
   
@@ -540,7 +540,7 @@ export async function analyzeImagesWithVision(
   
   try {
     const apiCall = client.chat.completions.create({
-      model: 'llama-3.2-11b-vision-preview',
+      model: 'llama-4-scout-17b-preview',
       messages: [
         {
           role: 'user',

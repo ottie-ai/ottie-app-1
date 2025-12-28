@@ -873,7 +873,7 @@ function PreviewContent() {
                   Call 3: Image Vision Analysis
                 </Typography>
                 <Typography variant="small" className="text-white/60">
-                  Analyzes images using Llama 3.2 11B Vision to select best hero image (runs in parallel with Call 2)
+                  Analyzes images using Llama 4 Scout 17B to select best hero image (runs in parallel with Call 2)
                 </Typography>
               </div>
 
@@ -1144,7 +1144,7 @@ function PreviewContent() {
                     <Typography variant="small" className="text-white/60">
                       {!preview?.generated_config || Object.keys(preview?.generated_config || {}).length === 0
                         ? 'Please run Call 1 first to generate base config with images'
-                        : 'Click to analyze images and select best hero image using Llama 3.2 11B Vision'}
+                        : 'Click to analyze images and select best hero image using Llama 4 Scout 17B'}
                     </Typography>
                   </div>
                 </div>
