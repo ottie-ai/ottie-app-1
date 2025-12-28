@@ -103,8 +103,12 @@ export async function upscaleWithESRGAN(
     // Case 2: Single FileOutput object (ReadableStream with url method)
     else if (output && typeof output?.url === 'function') {
       console.log(`🔍 [ESRGAN] Calling output.url()...`)
-      outputUrl = output.url()
-      console.log(`🔍 [ESRGAN] Got URL: ${outputUrl}`)
+      const urlResult = output.url()
+      console.log(`🔍 [ESRGAN] URL result type: ${typeof urlResult}`)
+      console.log(`🔍 [ESRGAN] URL result: ${urlResult}`)
+      // Convert to string if needed (URL object has toString)
+      outputUrl = typeof urlResult === 'string' ? urlResult : String(urlResult)
+      console.log(`🔍 [ESRGAN] Final outputUrl: ${outputUrl}`)
     }
     // Case 3: ReadableStream - might need to read the stream
     else if (output && output.constructor?.name === 'ReadableStream') {
