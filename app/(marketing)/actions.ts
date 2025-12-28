@@ -695,19 +695,20 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
     // Get prompt from centralized prompts file
     const prompt = getRealEstateConfigPrompt('text', structuredText)
 
-    // Call OpenAI - Call 1 only (base config generation)
+    // Call AI provider - Call 1 only (base config generation)
     console.log('🔄 [generateConfigFromStructuredText] Starting Call 1 (base config generation only)')
     
-    // Call OpenAI and get response with usage info
-    const openaiResponse = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
-    let generatedConfig = openaiResponse.data
-    const call1Usage = openaiResponse.usage
-    const call1Duration = openaiResponse.callDuration
+    // Call AI provider and get response with usage info
+    const call1Response = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = call1Response.data
+    const call1Usage = call1Response.usage
+    const call1Duration = call1Response.callDuration
+    const call1Provider = call1Response.provider
 
-    // Sort config keys to match sample config order (this is local operation, not part of OpenAI call)
+    // Sort config keys to match sample config order (this is local operation, not part of AI call)
     generatedConfig = sortConfigToSampleOrder(generatedConfig)
 
-    // Record timestamps (using actual OpenAI call duration)
+    // Record timestamps (using actual AI call duration)
     const call1StartTime = new Date(Date.now() - call1Duration).toISOString()
     const call1EndTime = new Date().toISOString()
 
@@ -726,6 +727,7 @@ async function generateConfigFromStructuredText(previewId: string, structuredTex
             call1_completed_at: call1EndTime,
             call1_duration_ms: call1Duration,
             call1_usage: call1Usage,
+            call1_provider: call1Provider,
           }
         },
         unified_json: generatedConfig, // Reset to Call 1 only (Call 2 will update this later)

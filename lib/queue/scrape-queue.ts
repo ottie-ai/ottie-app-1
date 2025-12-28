@@ -737,10 +737,11 @@ async function generateConfigFromData(
     const call1StartTime = new Date().toISOString()
     console.log('🤖 [Queue Worker] Starting Call 1 (base config generation)...')
     
-    const openaiResponse1 = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
-    let generatedConfig = openaiResponse1.data
-    const call1Usage = openaiResponse1.usage
-    const call1Duration = openaiResponse1.callDuration
+    const call1Response = await generateStructuredJSON(prompt, undefined, 'gpt-4o-mini')
+    let generatedConfig = call1Response.data
+    const call1Usage = call1Response.usage
+    const call1Duration = call1Response.callDuration
+    const call1Provider = call1Response.provider
     const call1EndTime = new Date().toISOString()
 
     // Sort config keys to match sample config order (local operation, not part of OpenAI call)
@@ -772,6 +773,7 @@ async function generateConfigFromData(
             call1_completed_at: call1EndTime,
             call1_duration_ms: call1Duration,
             call1_usage: call1Usage,
+            call1_provider: call1Provider,
           }
         },
         unified_json: processedConfig, // Set initial unified_json with Call 1 data (with processed images)
@@ -798,6 +800,7 @@ async function generateConfigFromData(
             call1_completed_at: call1EndTime,
             call1_duration_ms: call1Duration,
             call1_usage: call1Usage,
+            call1_provider: call1Provider,
             call2_started_at: call2And3StartTime,
             call3_started_at: call2And3StartTime,
           }
@@ -958,6 +961,7 @@ async function generateConfigFromData(
           call1_completed_at: call1EndTime,
           call1_duration_ms: call1Duration,
           call1_usage: call1Usage,
+          call1_provider: call1Provider,
           call2_started_at: call2And3StartTime,
           call2_completed_at: call2And3EndTime,
           call2_duration_ms: call2Duration,

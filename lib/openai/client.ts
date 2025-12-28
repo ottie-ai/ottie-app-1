@@ -54,25 +54,28 @@ export async function generateStructuredJSON(
   prompt: string,
   schema?: object,
   model?: string
-): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number }> {
+): Promise<{ data: any; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }; callDuration: number; provider: 'groq' | 'openai' }> {
   // Try Groq first if API key is configured
   const hasGroqKey = !!process.env.GROQ_API_KEY
   
   if (hasGroqKey) {
     try {
       console.log('🔄 [Structured JSON] Attempting Groq (Llama Versatile) first...')
-      return await generateStructuredJSONWithGroq(prompt, schema, 'llama-3.3-70b-versatile')
+      const result = await generateStructuredJSONWithGroq(prompt, schema, 'llama-3.3-70b-versatile')
+      return { ...result, provider: 'groq' as const }
     } catch (groqError: any) {
       console.warn('⚠️ [Structured JSON] Groq failed, falling back to OpenAI...')
       console.warn('⚠️ [Structured JSON] Groq error:', groqError?.message || groqError)
       
       // Fallback to OpenAI
-      return await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+      const result = await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+      return { ...result, provider: 'openai' as const }
     }
   } else {
     // No Groq key, use OpenAI directly
     console.log('🔄 [Structured JSON] Using OpenAI (Groq not configured)...')
-    return await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+    const result = await generateStructuredJSONWithOpenAI(prompt, schema, model || 'gpt-4o-mini')
+    return { ...result, provider: 'openai' as const }
   }
 }
 

@@ -537,11 +537,11 @@ function PreviewContent() {
                   </div>
                   
                   <div className="p-4">
-                    {/* OpenAI Usage Info */}
+                    {/* AI Provider Usage Info */}
                     {preview.generated_config._metadata?.call1_usage && (
                       <div className="mb-4 p-3 bg-white/[0.05] rounded border border-white/10">
                         <Typography variant="small" className="text-white/60 mb-2">
-                          OpenAI Usage (Call 1):
+                          {(preview.generated_config._metadata?.call1_provider === 'groq' ? 'Groq' : 'OpenAI')} Usage (Call 1):
                         </Typography>
                         <div className="grid grid-cols-3 gap-3 text-xs">
                           <div>
