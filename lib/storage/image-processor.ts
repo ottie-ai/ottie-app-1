@@ -99,14 +99,9 @@ export async function downloadAndUploadImage(
       return { success: false, error: 'Invalid image type' }
     }
 
-    // Read response with size limit
+    // Read response
     const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    // Check size before processing
-    if (buffer.length > MAX_IMAGE_SIZE) {
-      return { success: false, error: `Image too large (max 5MB)` }
-    }
+    let buffer = Buffer.from(arrayBuffer)
 
     // Validate magic bytes to prevent MIME type spoofing
     const magicBytesCheck = validateImageMagicBytes(buffer)
@@ -120,6 +115,51 @@ export async function downloadAndUploadImage(
     
     if (!isValidImageExtension(extension)) {
       return { success: false, error: 'Invalid image format' }
+    }
+
+    // Optimize image if too large (> 5MB)
+    if (buffer.length > MAX_IMAGE_SIZE) {
+      console.log(`📦 [Image] Image too large (${(buffer.length / 1024 / 1024).toFixed(2)}MB), optimizing...`)
+      try {
+        const sharp = (await import('sharp')).default
+        // Optimize with progressive quality reduction until under 5MB
+        let quality = 85
+        let optimizedBuffer = buffer
+        
+        while (optimizedBuffer.length > MAX_IMAGE_SIZE && quality > 50) {
+          optimizedBuffer = await sharp(buffer)
+            .jpeg({ quality, progressive: true, mozjpeg: true })
+            .toBuffer()
+          
+          console.log(`📦 [Image] Quality ${quality}: ${(optimizedBuffer.length / 1024 / 1024).toFixed(2)}MB`)
+          
+          if (optimizedBuffer.length <= MAX_IMAGE_SIZE) {
+            buffer = optimizedBuffer
+            console.log(`✅ [Image] Optimized to ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
+            break
+          }
+          
+          quality -= 10
+        }
+        
+        // If still too large, resize
+        if (buffer.length > MAX_IMAGE_SIZE) {
+          console.log(`📦 [Image] Still too large, resizing...`)
+          buffer = await sharp(buffer)
+            .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+            .jpeg({ quality: 80, progressive: true, mozjpeg: true })
+            .toBuffer()
+          console.log(`✅ [Image] Resized to ${(buffer.length / 1024 / 1024).toFixed(2)}MB`)
+        }
+        
+        // Final check
+        if (buffer.length > MAX_IMAGE_SIZE) {
+          return { success: false, error: `Image too large even after optimization (${(buffer.length / 1024 / 1024).toFixed(2)}MB)` }
+        }
+      } catch (optimizeError) {
+        console.error('❌ [Image] Optimization failed:', optimizeError)
+        return { success: false, error: `Image too large (${(buffer.length / 1024 / 1024).toFixed(2)}MB) and optimization failed` }
+      }
     }
 
     // Generate secure filename
