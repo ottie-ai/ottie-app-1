@@ -58,24 +58,22 @@ export async function upscaleWithESRGAN(
   })
   
   try {
-    // Using nightmareai/real-esrgan - latest version
+    // Using nightmareai/real-esrgan with specific version
     // https://replicate.com/nightmareai/real-esrgan
-    // Using predictions.create() with wait for more reliable results
-    const prediction = await client.predictions.create({
-      version: 'nightmareai/real-esrgan',
-      input: {
-        image: imageUrl,
-        scale: scale,
-        face_enhance: false, // Keep false for general property images
-      },
-      wait: { interval: 500 } // Poll every 500ms
-    })
+    // Note: Using latest version hash - check model page for updates
+    const apiCall = client.run(
+      'nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa',
+      {
+        input: {
+          image: imageUrl,
+          scale: scale,
+          face_enhance: false, // Keep false for general property images
+        }
+      }
+    )
     
-    // Wait for prediction to complete with timeout
-    const output = await Promise.race([
-      Promise.resolve(prediction.output),
-      timeoutPromise
-    ]) as unknown
+    // Wait for completion with timeout
+    const output = await Promise.race([apiCall, timeoutPromise]) as unknown
     
     const callDuration = Date.now() - callStartTime
     
