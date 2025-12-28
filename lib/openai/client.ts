@@ -518,7 +518,7 @@ export async function analyzeImagesWithVision(
   }
   
   console.log(`🖼️ [Vision] Analyzing ${urls.length} images (of ${totalImages} total)...`)
-  console.log('🖼️ [Vision] Model: llama-4-scout-17b-preview')
+  console.log('🖼️ [Vision] Model: llama-4-scout-17b-16e-instruct')
   
   const client = getGroqClient()
   
@@ -540,7 +540,7 @@ export async function analyzeImagesWithVision(
   
   try {
     const apiCall = client.chat.completions.create({
-      model: 'llama-4-scout-17b-preview',
+      model: 'llama-4-scout-17b-16e-instruct',
       messages: [
         {
           role: 'user',
