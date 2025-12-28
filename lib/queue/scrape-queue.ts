@@ -424,16 +424,8 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
       galleryMarkdown = extractStructuredText(galleryHtml)
     }
     
-    // Prepare scraped_data for Apify JSON (saved to same column as markdown for Firecrawl)
-    let scrapedData: any = null
-    if (provider === 'apify' && cleanedJson) {
-      // Save Apify JSON to scraped_data column (same as where markdown would be saved for Firecrawl)
-      scrapedData = {
-        provider: 'apify',
-        apifyScraperId: scrapeResult.apifyScraperId,
-        data: cleanedJson,
-      }
-    }
+    // Note: Apify metadata is now stored in source_domain (e.g., 'apify_zillow')
+    // No need for separate scraped_data column
     
     // Check if we have any content to process
     // For Apify: check if we have cleanedJson
@@ -480,10 +472,6 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
         .update({
           default_raw_html: provider === 'apify' ? apifyJsonString : (rawHtml || null),
           default_markdown: provider === 'apify' ? apifyTextFormat : (markdown || null),
-          gallery_raw_html: galleryHtml,
-          gallery_markdown: galleryMarkdown,
-          gallery_image_urls: galleryImages && galleryImages.length > 0 ? galleryImages : [],
-          scraped_data: scrapedData || undefined,
           status: 'error',
           error_message: 'Túto webstránku nemožno scrapnúť. Skúste inú URL.',
           source_domain: sourceDomain,
@@ -497,17 +485,13 @@ export async function processNextJob(): Promise<{ success: boolean; jobId?: stri
     }
     
     // Update preview with scraped data
-    // For Apify: use JSON string as raw_html and text format as markdown
+    // For Apify: use JSON string as default_raw_html and text format as default_markdown
     // For Firecrawl: use actual HTML and markdown
     await supabase
       .from('temp_previews')
       .update({
         default_raw_html: provider === 'apify' ? apifyJsonString : (rawHtml || null),
         default_markdown: provider === 'apify' ? apifyTextFormat : (markdown || null),
-        gallery_raw_html: galleryHtml,
-        gallery_markdown: galleryMarkdown,
-        gallery_image_urls: galleryImages && galleryImages.length > 0 ? galleryImages : [],
-        scraped_data: scrapedData || undefined, // Save Apify JSON to scraped_data column
         status: finalStatus, // 'completed' if OpenAI disabled, 'pending' if OpenAI will process
         source_domain: sourceDomain,
         updated_at: new Date().toISOString(),

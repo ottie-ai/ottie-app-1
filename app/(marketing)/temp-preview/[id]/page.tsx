@@ -198,7 +198,7 @@ function PreviewContent() {
   }
 
   const handleCopyRawHtml = () => {
-    const rawHtml = preview?.default_raw_html || preview?.raw_html
+    const rawHtml = preview?.default_raw_html
     if (rawHtml) {
       navigator.clipboard.writeText(rawHtml)
       setCopiedSection('raw')
@@ -1099,7 +1099,7 @@ function PreviewContent() {
 
         <div className="space-y-6">
           {/* Step 1: Raw HTML (from Firecrawl call) */}
-          {(preview?.default_raw_html || preview?.raw_html) && (
+          {preview?.default_raw_html && (
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
@@ -1108,9 +1108,9 @@ function PreviewContent() {
                     Step 1: Raw HTML (from Firecrawl)
                   </Typography>
                   <span className="text-xs text-white/40">
-                    ({(((preview.default_raw_html || preview.raw_html)?.length || 0) / 1024).toFixed(1)} KB)
+                    ({((preview.default_raw_html?.length || 0) / 1024).toFixed(1)} KB)
                   </span>
-                  {(preview?.default_raw_html || preview?.raw_html) && (
+                  {preview?.default_raw_html && (
                     <span className="text-xs text-white/50 ml-2">
                       • {getGenerationTime(true) || 'N/A'}
                     </span>
@@ -1158,7 +1158,7 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <pre className="text-xs text-white/70 font-mono whitespace-pre-wrap break-words">
-                  {preview.default_raw_html || preview.raw_html}
+                  {preview.default_raw_html}
                 </pre>
               </div>
             </div>
@@ -1306,16 +1306,16 @@ function PreviewContent() {
             </Typography>
           </div>
 
-          {preview?.gallery_image_urls && preview.gallery_image_urls.length > 0 ? (
+          {preview?.unified_json?.photos && preview.unified_json.photos.length > 0 ? (
 
             <div className="border border-white/10 rounded-lg bg-white/[0.02] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.02]">
                 <div className="flex items-center gap-2">
                   <Code className="h-4 w-4 text-white/60" />
                   <Typography variant="small" className="text-white/80 font-medium">
-                    Image URLs ({preview.gallery_image_urls.length} images)
+                    Image URLs ({preview.unified_json.photos.length} images)
                   </Typography>
-                  {preview?.gallery_image_urls && preview.gallery_image_urls.length > 0 && (
+                  {preview?.unified_json?.photos && preview.unified_json.photos.length > 0 && (
                     <span className="text-xs text-white/50 ml-2">
                       • {getGenerationTime(true) || 'N/A'}
                     </span>
@@ -1343,7 +1343,8 @@ function PreviewContent() {
                   </Button>
                   <Button
                     onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(preview.gallery_image_urls, null, 2))
+                      const photoUrls = preview.unified_json?.photos?.map((p: any) => p.url) || []
+                      navigator.clipboard.writeText(JSON.stringify(photoUrls, null, 2))
                       setCopiedSection('gallery-images')
                       setCopied(true)
                       setTimeout(() => {
@@ -1371,11 +1372,11 @@ function PreviewContent() {
               </div>
               <div className="p-4 max-h-[600px] overflow-auto">
                 <div className="space-y-2">
-                  {preview.gallery_image_urls.map((url: string, index: number) => (
+                  {preview.unified_json.photos.map((photo: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 p-2 bg-white/[0.02] rounded border border-white/10">
                       <span className="text-xs text-white/40 w-8">{index + 1}.</span>
                       <a
-                        href={url}
+                        href={photo.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-400 hover:text-blue-300 break-all flex-1"

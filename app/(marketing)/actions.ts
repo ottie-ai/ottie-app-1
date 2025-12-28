@@ -54,7 +54,6 @@ export async function generatePreview(url: string) {
         source_domain: 'firecrawl', // Default to firecrawl, will be updated by queue worker if Apify is used
         generated_config: {},
         unified_json: {},
-        gallery_image_urls: [],
       })
       .select('id')
       .single()
@@ -197,7 +196,7 @@ export async function getPreviewStatus(previewId: string) {
   
   const { data, error } = await supabase
     .from('temp_previews')
-    .select('id, status, error_message, created_at, generated_config, unified_json, gallery_raw_html, gallery_image_urls')
+    .select('id, status, error_message, created_at, generated_config, unified_json')
     .eq('id', previewId)
     .single()
   
@@ -231,12 +230,7 @@ export async function getPreviewStatus(previewId: string) {
     // Only show queue phase if actually in queue (not processing and has valid position)
     phase = 'queue'
   } else if (data.status === 'scraping') {
-    // Check if gallery scraping is happening (has gallery_html but no gallery_images yet)
-    if (data.gallery_raw_html && (!data.gallery_image_urls || data.gallery_image_urls.length === 0)) {
-      phase = 'gallery'
-    } else {
-      phase = 'scraping'
-    }
+    phase = 'scraping'
   } else if (data.status === 'pending') {
     // Check OpenAI call phases using metadata
     const unifiedMetadata = data.unified_json?._metadata
@@ -857,8 +851,8 @@ export async function processApifyJson(previewId: string) {
     return { error: 'This preview does not contain Apify JSON data in the new schema' }
   }
 
-  // Get scraper ID from preview metadata
-  const scraperId = preview?.scraped_data?.apifyScraperId || preview?.source_domain?.replace('apify_', '')
+  // Get scraper ID from source_domain (e.g., 'apify_zillow' -> 'zillow')
+  const scraperId = preview?.source_domain?.replace('apify_', '')
   const scraper = scraperId ? findApifyScraperById(scraperId) : null
   const cleaner = scraper?.cleanJson
 
@@ -906,8 +900,8 @@ export async function extractGalleryImages(previewId: string) {
     return { error: 'Source URL not found in preview' }
   }
 
-  // Use gallery_html if available (from Call 2), otherwise fallback to default_raw_html
-  const htmlToExtract = preview.gallery_raw_html || preview.default_raw_html || preview.raw_html
+  // Use default_raw_html for extraction
+  const htmlToExtract = preview.default_raw_html
   
   if (!htmlToExtract) {
     return { error: 'This preview does not contain HTML data to extract images from' }
@@ -926,13 +920,9 @@ export async function extractGalleryImages(previewId: string) {
     const galleryImages = galleryExtractor(htmlToExtract)
     console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} gallery images for preview:`, previewId)
 
-    const { error: updateError } = await supabase
-      .from('temp_previews')
-      .update({
-        gallery_image_urls: galleryImages,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', previewId)
+    // Note: Gallery images are now stored directly in photos[] array in unified_json
+    // No need for separate gallery_image_urls column
+    console.log(`🔵 [extractGalleryImages] Extracted ${galleryImages.length} images (stored in memory only)`)
 
     if (updateError) {
       console.error('🔴 [extractGalleryImages] Failed to update preview:', updateError)
@@ -1054,7 +1044,7 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
   }
 
   // Get raw HTML/JSON
-  const rawData = preview.default_raw_html || preview.raw_html
+  const rawData = preview.default_raw_html
   if (!rawData || rawData.trim().length === 0) {
     return { error: 'This preview does not contain raw HTML data to process' }
   }
@@ -1068,8 +1058,8 @@ export async function removeHtmlTagsFromRawHtml(previewId: string) {
     if (parsedJson && (typeof parsedJson === 'object' || Array.isArray(parsedJson))) {
       console.log('🔵 [removeHtmlTagsFromRawHtml] Detected Apify JSON, cleaning and converting to text...')
       
-      // Get scraper ID from preview metadata
-      const scraperId = preview?.scraped_data?.apifyScraperId || preview?.source_domain?.replace('apify_', '')
+      // Get scraper ID from source_domain (e.g., 'apify_zillow' -> 'zillow')
+      const scraperId = preview?.source_domain?.replace('apify_', '')
       const cleaner = scraperId ? getApifyCleaner(scraperId) : null
       
       // Clean the JSON using website-specific cleaner if available
@@ -1215,8 +1205,8 @@ export async function generateConfigCall1(previewId: string) {
     // Firecrawl result - use markdown or extract from HTML
     let structuredText = preview.default_markdown || null
 
-    if (!structuredText && preview.raw_html) {
-      const $ = load(preview.raw_html)
+    if (!structuredText && preview.default_raw_html) {
+      const $ = load(preview.default_raw_html)
       const mainContentSelector = getMainContentSelector(preview.external_url) || 'main'
       const mainElement = $(mainContentSelector)
       
@@ -1377,8 +1367,8 @@ export async function generateConfigManually(previewId: string) {
     // Firecrawl result - use markdown or extract from HTML
     let structuredText = preview.default_markdown || null
 
-    if (!structuredText && preview.raw_html) {
-      const $ = load(preview.raw_html)
+    if (!structuredText && preview.default_raw_html) {
+      const $ = load(preview.default_raw_html)
       const mainContentSelector = getMainContentSelector(preview.external_url) || 'main'
       const mainElement = $(mainContentSelector)
       

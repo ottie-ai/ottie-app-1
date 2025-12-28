@@ -52,9 +52,16 @@ The code checks env vars in this order:
 ## How It Works
 
 ### 1. User submits URL
-- `generatePreview()` creates temp_preview with `status: 'queued'`
+- `generatePreview()` creates temp_preview record with `status: 'queued'`
 - Job is added to Redis queue
 - User sees "Waiting in queue" message with position
+
+**temp_previews schema (13 columns):**
+- Identifiers: `id`, `external_url`, `source_domain`
+- Status: `status`, `error_message`
+- Timestamps: `created_at`, `expires_at`, `updated_at`
+- Content: `default_raw_html`, `default_markdown`
+- AI Results: `generated_config`, `unified_json`, `image_analysis`
 
 ### 2. Worker processes job
 - Vercel cron runs every minute: `POST /api/queue/process-scrape`
@@ -201,3 +208,32 @@ Monitor queue health:
 2. Verify Firecrawl API key is valid
 3. Check if URL is accessible
 4. Review worker logs in Vercel dashboard
+
+## Database Schema
+
+The `temp_previews` table has been simplified to 13 columns (as of migration `remove-unused-columns-from-temp-previews.sql`):
+
+**Identifiers:**
+- `id` (uuid) - Primary key
+- `external_url` (text) - Source URL
+- `source_domain` (text) - Provider identifier (e.g., 'firecrawl', 'apify_zillow')
+
+**Status Tracking:**
+- `status` (text) - Current job status: 'queued', 'scraping', 'pending', 'completed', 'error'
+- `error_message` (text) - Error details if status is 'error'
+
+**Timestamps:**
+- `created_at` (timestamptz) - When job was created
+- `expires_at` (timestamptz) - When preview expires (24 hours after creation)
+- `updated_at` (timestamptz) - Last update time
+
+**Scraped Content:**
+- `default_raw_html` (text) - Raw HTML from scraper or Apify JSON string
+- `default_markdown` (text) - Markdown/text format for AI processing
+
+**AI Processing Results:**
+- `generated_config` (jsonb) - Call 1 output (base config with metadata)
+- `unified_json` (jsonb) - Final config with all AI enhancements (Call 1 + Call 2 + Call 3)
+- `image_analysis` (jsonb) - Call 3 vision analysis results
+
+**Note:** Legacy columns (`raw_html`, `markdown`, `unified_data`, `cleaned_html`, `ai_ready_data`, `scraped_data`, `gallery_raw_html`, `gallery_markdown`, `gallery_image_urls`) have been removed. See `supabase/MIGRATION_INSTRUCTIONS.md` for details.
