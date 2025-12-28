@@ -73,38 +73,44 @@ export async function upscaleWithESRGAN(
     )
     
     // Wait for completion with timeout
-    const output = await Promise.race([apiCall, timeoutPromise]) as unknown
+    // Output is a FileOutput object or array of FileOutput objects
+    const output = await Promise.race([apiCall, timeoutPromise]) as any
     
     const callDuration = Date.now() - callStartTime
     
     // Debug: Log the actual output to see what we're getting
     console.log(`🔍 [ESRGAN] Output type: ${typeof output}`)
-    console.log(`🔍 [ESRGAN] Output value:`, JSON.stringify(output))
+    console.log(`🔍 [ESRGAN] Is array: ${Array.isArray(output)}`)
+    console.log(`🔍 [ESRGAN] Output:`, output)
     
-    // Output can be a string URL or an object with 'output' property
+    // Handle different output formats from Replicate
     let outputUrl: string | null = null
     
-    if (typeof output === 'string') {
-      outputUrl = output
-    } else if (output && typeof output === 'object' && 'output' in output) {
-      // Handle object response with output property
-      const outputData = (output as any).output
-      if (typeof outputData === 'string') {
-        outputUrl = outputData
-      } else if (Array.isArray(outputData) && outputData.length > 0) {
-        outputUrl = outputData[0]
+    // Case 1: Array of FileOutput objects (most common)
+    if (Array.isArray(output) && output.length > 0) {
+      const firstOutput = output[0]
+      // FileOutput has .url() method
+      if (typeof firstOutput?.url === 'function') {
+        outputUrl = firstOutput.url()
+      } else if (typeof firstOutput === 'string') {
+        outputUrl = firstOutput
       }
-    } else if (Array.isArray(output) && output.length > 0) {
-      // Handle array response
-      outputUrl = output[0]
+    }
+    // Case 2: Single FileOutput object
+    else if (output && typeof output?.url === 'function') {
+      outputUrl = output.url()
+    }
+    // Case 3: Direct string URL
+    else if (typeof output === 'string') {
+      outputUrl = output
     }
     
     if (outputUrl && typeof outputUrl === 'string') {
       console.log(`✅ [ESRGAN] Upscaling complete (${callDuration}ms)`)
-      console.log(`✅ [ESRGAN] Output: ${outputUrl.substring(0, 80)}...`)
+      console.log(`✅ [ESRGAN] Output URL: ${outputUrl.substring(0, 80)}...`)
       return outputUrl
     } else {
-      throw new Error(`Unexpected output format from Replicate. Type: ${typeof output}, Value: ${JSON.stringify(output)}`)
+      throw new Error(`Unexpected output format from Replicate. Type: ${typeof output}, IsArray: ${Array.isArray(output)}, Output: ${JSON.stringify(output)}`)
     }
   } catch (error: any) {
     const duration = Date.now() - callStartTime
