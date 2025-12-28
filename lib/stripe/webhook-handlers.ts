@@ -60,6 +60,9 @@ export async function handleSubscriptionUpdated(
 
   const priceId = subscription.items.data[0]?.price.id
 
+  // Get current period end - it may be on billing_cycle_anchor or current_period_end
+  const periodEnd = (subscription as any).current_period_end || (subscription as any).billing_cycle_anchor
+  
   const { error } = await supabaseAdmin
     .from('workspaces')
     .update({
@@ -67,8 +70,8 @@ export async function handleSubscriptionUpdated(
       stripe_subscription_id: subscription.id,
       stripe_price_id: priceId,
       subscription_status: subscription.status as any,
-      subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
+      ...(periodEnd && { subscription_period_end: new Date(periodEnd * 1000).toISOString() }),
+      cancel_at_period_end: (subscription as any).cancel_at_period_end || false,
     })
     .eq('id', workspaceId)
 
