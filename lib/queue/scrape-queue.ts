@@ -819,7 +819,7 @@ async function generateConfigFromData(
     const [titleResult, visionResult] = await Promise.allSettled([
       generateTitle(propertyText, 'gpt-4o-mini', generatedConfig.language),
       photoUrls.length > 0 
-        ? analyzeImagesWithVision(photoUrls, 10) 
+        ? analyzeImagesWithVision(photoUrls, 5) // Llama 4 Scout max 5 images
         : Promise.resolve(null as ImageAnalysisResult | null)
     ])
     

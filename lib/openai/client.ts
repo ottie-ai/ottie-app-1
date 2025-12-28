@@ -491,17 +491,21 @@ export async function generateTitle(
  * Returns the best image index for hero section
  * 
  * @param imageUrls - Array of image URLs to analyze
- * @param maxImages - Maximum number of images to analyze (default: 10)
+ * @param maxImages - Maximum number of images to analyze (default: 5, model limit)
  * @returns ImageAnalysisResult with best hero index and per-image scores
  */
 export async function analyzeImagesWithVision(
   imageUrls: string[],
-  maxImages: number = 10
+  maxImages: number = 5
 ): Promise<ImageAnalysisResult> {
   const callStartTime = Date.now()
   
+  // Llama 4 Scout supports max 5 images
+  const modelLimit = 5
+  const effectiveMax = Math.min(maxImages, modelLimit)
+  
   // Limit the number of images to analyze
-  const urls = imageUrls.slice(0, maxImages)
+  const urls = imageUrls.slice(0, effectiveMax)
   const totalImages = imageUrls.length
   
   if (urls.length === 0) {

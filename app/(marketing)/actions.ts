@@ -1432,8 +1432,8 @@ export async function regenerateImageAnalysis(previewId: string) {
 
     const call3StartTime = new Date().toISOString()
 
-    // Run vision analysis
-    const imageAnalysis = await analyzeImagesWithVision(photoUrls, 10)
+    // Run vision analysis (Llama 4 Scout max 5 images)
+    const imageAnalysis = await analyzeImagesWithVision(photoUrls, 5)
 
     const call3EndTime = new Date().toISOString()
     const call3Duration = new Date(call3EndTime).getTime() - new Date(call3StartTime).getTime()
