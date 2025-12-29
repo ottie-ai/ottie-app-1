@@ -58,11 +58,10 @@ export async function upscaleWithESRGAN(
   })
   
   try {
-    // Using nightmareai/real-esrgan with specific version
-    // https://replicate.com/nightmareai/real-esrgan
-    // Note: Using latest version hash - check model page for updates
+    // Using daanelson/real-esrgan-a100 with specific version
+    // https://replicate.com/daanelson/real-esrgan-a100
     const apiCall = client.run(
-      'nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa',
+      'daanelson/real-esrgan-a100:f94d7ed4a1f7e1ffed0d51e4089e4911609d5eeee5e874ef323d2c7562624bed',
       {
         input: {
           image: imageUrl,
