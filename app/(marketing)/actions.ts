@@ -1529,6 +1529,14 @@ export async function regenerateHeroUpscale(previewId: string) {
         best_hero_url: upscaledUrl,
       }
 
+      // Update metadata with Call 4 duration
+      if (!updatedConfig._metadata) {
+        updatedConfig._metadata = {}
+      }
+      updatedConfig._metadata.call4_started_at = call4StartTime
+      updatedConfig._metadata.call4_completed_at = call4EndTime
+      updatedConfig._metadata.call4_duration_ms = call4Duration
+
       // Update preview
       const { error: updateError } = await supabaseAdmin
         .from('temp_previews')
@@ -1547,6 +1555,26 @@ export async function regenerateHeroUpscale(previewId: string) {
       console.log(`✅ Hero image upscaled for ${previewId} in ${call4Duration}ms`)
     } else {
       console.log(`ℹ️ Hero image upscaling not needed for ${previewId} (already >= 1920px or same URL)`)
+      
+      // Still save duration even if no upscaling was needed
+      if (!updatedConfig._metadata) {
+        updatedConfig._metadata = {}
+      }
+      updatedConfig._metadata.call4_started_at = call4StartTime
+      updatedConfig._metadata.call4_completed_at = call4EndTime
+      updatedConfig._metadata.call4_duration_ms = call4Duration
+      
+      const { error: updateError } = await supabaseAdmin
+        .from('temp_previews')
+        .update({
+          unified_json: updatedConfig,
+          updated_at: call4EndTime,
+        })
+        .eq('id', previewId)
+      
+      if (updateError) {
+        console.error('Failed to update preview with Call 4 duration:', updateError)
+      }
     }
 
     return { 

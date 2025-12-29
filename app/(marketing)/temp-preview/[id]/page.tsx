@@ -107,6 +107,17 @@ function PreviewContent() {
     return null
   }
 
+  // Calculate generation time for Call 4 (hero image upscaling)
+  // Uses call4_duration_ms from metadata
+  const getCall4Time = (): string | null => {
+    const metadata = preview?.unified_json?._metadata
+    if (metadata?.call4_duration_ms !== undefined) {
+      return formatTime(metadata.call4_duration_ms)
+    }
+    
+    return null
+  }
+
   // Legacy function for other steps (kept for backward compatibility)
   const getGenerationTime = (hasData: boolean): string | null => {
     if (!hasData || !preview?.created_at) return null
@@ -1199,6 +1210,11 @@ function PreviewContent() {
                       <Typography variant="small" className="text-white/80 font-medium">
                         Hero Image Upscaling (Call 4)
                       </Typography>
+                      {getCall4Time() && (
+                        <span className="text-xs text-white/50 ml-2">
+                          • {getCall4Time()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -1263,6 +1279,14 @@ function PreviewContent() {
                         </div>
                       </div>
                     </div>
+
+                    {getCall4Time() && (
+                      <div className="mt-4 p-3 bg-white/[0.05] rounded border border-white/10">
+                        <div className="text-xs text-white/40">
+                          Call duration: {getCall4Time()}
+                        </div>
+                      </div>
+                    )}
 
                     <Typography variant="small" className="text-white/60">
                       This step checks if the hero image is smaller than 1920px width and upscales it using Replicate ESRGAN (2x or 4x) if needed.
