@@ -882,15 +882,22 @@ async function generateConfigFromData(
     // ============================================
     // Call 4: Upscale hero image if needed (< 1920px width)
     // ============================================
+    let call4StartTime: number | null = null
+    let call4EndTime: string | null = null
+    let call4Duration = 0
+    
     if (imageAnalysis?.best_hero_url) {
       console.log('🚀 [Queue Worker] Starting Call 4 - Hero image upscaling check...')
-      const call4StartTime = Date.now()
+      call4StartTime = Date.now()
       
       try {
         const upscaledUrl = await upscaleHeroImageIfNeeded(
           imageAnalysis.best_hero_url,
           `temp-preview/${previewId}`
         )
+        
+        call4EndTime = new Date().toISOString()
+        call4Duration = Date.now() - call4StartTime
         
         // If upscaling produced a different URL, update the config
         if (upscaledUrl !== imageAnalysis.best_hero_url) {
@@ -920,9 +927,10 @@ async function generateConfigFromData(
           console.log(`ℹ️ [Queue Worker] Call 4 - No upscaling needed or upscaling skipped`)
         }
         
-        const call4Duration = Date.now() - call4StartTime
         console.log(`✅ [Queue Worker] Call 4 completed (${call4Duration}ms)`)
       } catch (upscaleError: any) {
+        call4EndTime = new Date().toISOString()
+        call4Duration = Date.now() - (call4StartTime || Date.now())
         console.error(`❌ [Queue Worker] Call 4 - Upscaling failed:`, upscaleError?.message || upscaleError)
         console.warn(`⚠️ [Queue Worker] Continuing with original hero image`)
       }
@@ -954,6 +962,11 @@ async function generateConfigFromData(
           call3_completed_at: call2And3EndTime,
           call3_duration_ms: call3Duration,
           call3_usage: call3Usage,
+          ...(call4StartTime && call4EndTime && {
+            call4_started_at: new Date(call4StartTime).toISOString(),
+            call4_completed_at: call4EndTime,
+            call4_duration_ms: call4Duration,
+          }),
         }
       },
       status: 'completed',
